@@ -4,12 +4,12 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { NAV_SECTIONS, APP_NAME } from '@/constants';
-import { ChevronLeft, ChevronRight, Activity, LayoutDashboard, Bell, Monitor, FileText, PackageCheck, Wrench, CalendarCheck, Gauge, Package, GraduationCap, Trash2, ShieldAlert, CheckCircle, BarChart3, ArrowUpDown, FileBarChart, Users, Settings } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Activity, LayoutDashboard, Bell, Monitor, FileText, PackageCheck, Wrench, CalendarCheck, Gauge, Package, GraduationCap, Trash2, ShieldAlert, CheckCircle, BarChart3, ArrowUpDown, FileBarChart, Users, Settings, ClipboardList, Headphones, BrainCircuit, Shield } from 'lucide-react';
 
 const iconMap: Record<string, React.ElementType> = {
   LayoutDashboard, Bell, Monitor, FileText, PackageCheck, Wrench, CalendarCheck, Gauge,
   Package, GraduationCap, Trash2, Activity, ShieldAlert, CheckCircle, BarChart3,
-  ArrowUpDown, FileBarChart, Users, Settings,
+  ArrowUpDown, FileBarChart, Users, Settings, ClipboardList, Headphones, BrainCircuit, Shield,
 };
 
 interface SidebarProps {
@@ -26,16 +26,16 @@ export default function Sidebar({ userRoles = ['admin'] }: SidebarProps) {
   };
 
   return (
-    <aside className={`flex h-screen flex-col border-r border-gray-200 bg-white transition-all duration-200 dark:border-gray-800 dark:bg-gray-950 ${collapsed ? 'w-16' : 'w-64'}`}>
-      <div className="flex h-16 items-center justify-between border-b border-gray-200 px-4 dark:border-gray-800">
+    <aside className={`panel-surface flex h-screen flex-col border-r-0 transition-all duration-200 ${collapsed ? 'w-16' : 'w-72'}`}>
+      <div className="flex h-16 items-center justify-between border-b border-[var(--border-subtle)] px-4">
         {!collapsed && (
           <Link href="/" className="flex items-center gap-2">
-            <Activity className="h-6 w-6 text-blue-600" />
-            <span className="text-lg font-bold text-gray-900 dark:text-white">{APP_NAME}</span>
+            <Activity className="h-6 w-6 text-[var(--brand)]" />
+            <span className="text-lg font-bold text-[var(--foreground)]">{APP_NAME}</span>
           </Link>
         )}
-        {collapsed && <Activity className="mx-auto h-6 w-6 text-blue-600" />}
-        <button onClick={() => setCollapsed(!collapsed)} className="rounded-lg p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-800">
+        {collapsed && <Activity className="mx-auto h-6 w-6 text-[var(--brand)]" />}
+        <button onClick={() => setCollapsed(!collapsed)} className="rounded-lg p-1 text-[var(--text-muted)] hover:bg-[var(--surface-2)] hover:text-[var(--foreground)]">
           {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
         </button>
       </div>
@@ -50,7 +50,7 @@ export default function Sidebar({ userRoles = ['admin'] }: SidebarProps) {
           return (
             <div key={section.title} className="mb-4">
               {!collapsed && (
-                <p className="mb-1 px-3 text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-600">
+                <p className="mb-1 px-3 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">
                   {section.title}
                 </p>
               )}
@@ -63,8 +63,8 @@ export default function Sidebar({ userRoles = ['admin'] }: SidebarProps) {
                     href={item.href}
                     className={`mb-0.5 flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
                       active
-                        ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400'
-                        : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-white'
+                        ? 'bg-[var(--brand)]/20 text-[var(--foreground)]'
+                        : 'text-[var(--text-muted)] hover:bg-[var(--surface-2)] hover:text-[var(--foreground)]'
                     }`}
                     title={collapsed ? item.label : undefined}
                   >

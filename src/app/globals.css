@@ -1,8 +1,18 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #070a14;
+  --foreground: #e6ebff;
+  --surface-1: #0e1324;
+  --surface-2: #131a31;
+  --surface-3: #1a2340;
+  --border-subtle: #2a3352;
+  --text-muted: #9ca8cf;
+  --brand: #7b61ff;
+  --brand-strong: #6a4dff;
+  --danger: #f87171;
+  --success: #34d399;
+  --warning: #fbbf24;
 }
 
 @theme inline {
@@ -14,13 +24,35 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #070a14;
+    --foreground: #e6ebff;
   }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: Inter, Arial, Helvetica, sans-serif;
+}
+
+.app-shell {
+  background:
+    radial-gradient(1200px 600px at 80% -10%, rgb(123 97 255 / 12%), transparent 55%),
+    radial-gradient(1000px 500px at 10% -10%, rgb(46 187 255 / 8%), transparent 55%),
+    var(--background);
+}
+
+.panel-surface {
+  border: 1px solid var(--border-subtle);
+  background: linear-gradient(180deg, rgb(255 255 255 / 2%) 0%, rgb(255 255 255 / 0%) 100%), var(--surface-1);
+  box-shadow: 0 10px 24px rgb(1 4 12 / 25%);
+}
+
+.panel-surface-muted {
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-2);
+}
+
+.text-muted {
+  color: var(--text-muted);
 }

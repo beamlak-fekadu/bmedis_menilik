@@ -15,3 +15,4 @@
 \i 08_training_data.sql
 \i 09_disposal_data.sql
 \i 10_analytics_data.sql
+\i 11_post_upgrade_baseline.sql

@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import {
-  ArrowLeft, Play, Pause, CheckCircle, XCircle, UserPlus, Plus,
+  ArrowLeft, Play, Pause, CheckCircle, XCircle, UserPlus, Plus, WifiOff, RefreshCcw,
 } from 'lucide-react';
 import {
   PageHeader, Card, CardHeader, CardTitle, CardContent, CardFooter,
@@ -13,6 +13,8 @@ import { UrgencyBadge, WorkOrderStatusBadge } from '@/components/ui/StatusBadge'
 import {
   getWorkOrderById, updateWorkOrder, getMaintenanceEvents, createMaintenanceEvent,
 } from '@/services/maintenance.service';
+import { logOfflineSyncEvent } from '@/services/offline-sync.service';
+import { enqueueOfflineAction, getOfflineQueue, markOfflineActionFailed, removeOfflineAction } from '@/lib/offline/technician-queue';
 import { getAll } from '@/services/settings.service';
 import { getProfiles } from '@/services/users.service';
 import { useToast } from '@/components/ui/Toast';
@@ -61,6 +63,7 @@ export default function WorkOrderDetailPage() {
   const [eventForm, setEventForm] = useState(emptyEventForm);
   const [failureCodes, setFailureCodes] = useState<FailureCode[]>([]);
   const [actionCodes, setActionCodes] = useState<MaintenanceActionCode[]>([]);
+  const [queueCount, setQueueCount] = useState(0);
 
   const loadWO = useCallback(async () => {
     const { data, error } = await getWorkOrderById(id);
@@ -88,6 +91,7 @@ export default function WorkOrderDetailPage() {
       const woData = data as unknown as WOWithJoins;
       setWO(woData);
       await loadEvents(woData.asset_id);
+      setQueueCount(getOfflineQueue().length);
       setLoading(false);
     }
     init();
@@ -106,6 +110,75 @@ export default function WorkOrderDetailPage() {
     } else {
       toast('success', `Work order ${status.replace(/_/g, ' ')}`);
       await loadWO();
+    }
+    setActionLoading(false);
+  }
+
+  function queueStatusUpdate(status: WorkOrderStatus) {
+    const queued = enqueueOfflineAction({
+      type: 'update_status',
+      workOrderId: id,
+      payload: { status, queued_at: new Date().toISOString() },
+    });
+    void logOfflineSyncEvent({
+      client_action_id: queued.id,
+      entity_type: 'work_order',
+      entity_id: id,
+      action_type: 'update_status',
+      payload: queued.payload,
+      sync_status: 'pending',
+    });
+    setQueueCount(getOfflineQueue().length);
+    toast('success', 'Status update queued for sync');
+  }
+
+  async function syncQueuedActions() {
+    const queue = getOfflineQueue().filter((item) => item.workOrderId === id);
+    if (queue.length === 0) {
+      toast('info', 'No queued actions for this work order');
+      return;
+    }
+
+    setActionLoading(true);
+    let failedActions = 0;
+
+    for (const action of queue) {
+      if (action.type === 'update_status') {
+        const status = action.payload.status as WorkOrderStatus;
+        const { error } = await updateWorkOrder(id, { status });
+        if (!error) {
+          removeOfflineAction(action.id);
+          await logOfflineSyncEvent({
+            client_action_id: action.id,
+            entity_type: 'work_order',
+            entity_id: id,
+            action_type: 'update_status',
+            payload: action.payload,
+            sync_status: 'synced',
+          });
+        } else {
+          failedActions += 1;
+          markOfflineActionFailed(action.id, String(error));
+          await logOfflineSyncEvent({
+            client_action_id: action.id,
+            entity_type: 'work_order',
+            entity_id: id,
+            action_type: 'update_status',
+            payload: {
+              ...action.payload,
+              error: String(error),
+            },
+            sync_status: 'failed',
+          });
+        }
+      }
+    }
+    await loadWO();
+    setQueueCount(getOfflineQueue().length);
+    if (failedActions > 0) {
+      toast('warning', `${failedActions} queued action(s) failed to sync`);
+    } else {
+      toast('success', 'Queued actions synchronized');
     }
     setActionLoading(false);
   }
@@ -370,6 +443,14 @@ export default function WorkOrderDetailPage() {
                     Complete
                   </Button>
                 )}
+                <Button size="sm" variant="secondary" onClick={() => queueStatusUpdate('in_progress')}>
+                  <WifiOff className="h-4 w-4" />
+                  Queue Offline Start
+                </Button>
+                <Button size="sm" variant="outline" onClick={syncQueuedActions} loading={actionLoading}>
+                  <RefreshCcw className="h-4 w-4" />
+                  Sync Queue ({queueCount})
+                </Button>
                 {!isTerminal && (
                   <Button size="sm" variant="destructive" onClick={() => handleStatusUpdate('canceled')} loading={actionLoading}>
                     <XCircle className="h-4 w-4" />

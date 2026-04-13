@@ -61,9 +61,30 @@ export async function getEquipmentById(id: string) {
 
 export async function createEquipment(data: Omit<EquipmentAsset, 'id' | 'created_at' | 'updated_at' | 'deleted_at' | 'department' | 'category' | 'manufacturer' | 'model'>) {
   const supabase = createClient();
+  const normalizedAssetCode = data.asset_code.trim().toUpperCase();
+  const normalizedName = data.name.trim();
+
+  const { data: duplicateByCode } = await supabase
+    .from('equipment_assets')
+    .select('id')
+    .eq('asset_code', normalizedAssetCode)
+    .is('deleted_at', null)
+    .limit(1);
+
+  if (duplicateByCode && duplicateByCode.length > 0) {
+    return {
+      data: null,
+      error: { message: 'Duplicate asset code detected. Please use a unique code.' },
+    };
+  }
+
   return supabase
     .from('equipment_assets')
-    .insert(data)
+    .insert({
+      ...data,
+      asset_code: normalizedAssetCode,
+      name: normalizedName,
+    })
     .select(EQUIPMENT_SELECT)
     .single();
 }

@@ -6,7 +6,7 @@ interface CardProps {
 
 export default function Card({ children, className = '', padding = true }: CardProps) {
   return (
-    <div className={`rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-950 ${padding ? 'p-6' : ''} ${className}`}>
+    <div className={`panel-surface rounded-2xl ${padding ? 'p-6' : ''} ${className}`}>
       {children}
     </div>
   );
@@ -17,11 +17,11 @@ export function CardHeader({ children, className = '' }: { children: React.React
 }
 
 export function CardTitle({ children, className = '' }: { children: React.ReactNode; className?: string }) {
-  return <h3 className={`text-lg font-semibold text-gray-900 dark:text-white ${className}`}>{children}</h3>;
+  return <h3 className={`text-lg font-semibold text-[var(--foreground)] ${className}`}>{children}</h3>;
 }
 
 export function CardDescription({ children, className = '' }: { children: React.ReactNode; className?: string }) {
-  return <p className={`text-sm text-gray-500 dark:text-gray-400 ${className}`}>{children}</p>;
+  return <p className={`text-sm text-[var(--text-muted)] ${className}`}>{children}</p>;
 }
 
 export function CardContent({ children, className = '' }: { children: React.ReactNode; className?: string }) {
@@ -29,5 +29,5 @@ export function CardContent({ children, className = '' }: { children: React.Reac
 }
 
 export function CardFooter({ children, className = '' }: { children: React.ReactNode; className?: string }) {
-  return <div className={`mt-4 flex items-center gap-2 border-t border-gray-200 pt-4 dark:border-gray-800 ${className}`}>{children}</div>;
+  return <div className={`mt-4 flex items-center gap-2 border-t border-[var(--border-subtle)] pt-4 ${className}`}>{children}</div>;
 }

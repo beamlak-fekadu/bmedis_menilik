@@ -17,7 +17,7 @@ export default function DashboardLayout({ children, userName, userRole, userRole
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
-    <div className="flex h-screen overflow-hidden bg-gray-50 dark:bg-gray-900">
+    <div className="app-shell flex h-screen overflow-hidden">
       <div className={`fixed inset-0 z-40 lg:hidden ${mobileMenuOpen ? '' : 'pointer-events-none'}`}>
         <div className={`absolute inset-0 bg-black/50 transition-opacity ${mobileMenuOpen ? 'opacity-100' : 'opacity-0'}`} onClick={() => setMobileMenuOpen(false)} />
         <div className={`absolute inset-y-0 left-0 z-50 transition-transform ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>

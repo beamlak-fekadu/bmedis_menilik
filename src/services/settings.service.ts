@@ -11,7 +11,8 @@ type ReferenceTable =
   | 'maintenance_action_codes'
   | 'calibration_types'
   | 'pm_templates'
-  | 'scoring_weights';
+  | 'scoring_weights'
+  | 'memis_lookup_values';
 
 const ALLOWED_TABLES: ReadonlySet<string> = new Set<ReferenceTable>([
   'departments',
@@ -25,6 +26,7 @@ const ALLOWED_TABLES: ReadonlySet<string> = new Set<ReferenceTable>([
   'calibration_types',
   'pm_templates',
   'scoring_weights',
+  'memis_lookup_values',
 ]);
 
 function assertTable(table: string): asserts table is ReferenceTable {
