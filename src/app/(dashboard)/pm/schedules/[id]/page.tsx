@@ -28,6 +28,7 @@ export default function PMScheduleDetailPage() {
   const { toast } = useToast();
 
   const [schedule, setSchedule] = useState<ScheduleWithJoins | null>(null);
+  const [overdueDays, setOverdueDays] = useState(0);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
 
@@ -53,10 +54,21 @@ export default function PMScheduleDetailPage() {
       return;
     }
     setSchedule(found);
+    if (found.status === 'overdue') {
+      const days = Math.ceil((Date.now() - new Date(found.scheduled_date).getTime()) / (1000 * 60 * 60 * 24));
+      setOverdueDays(days);
+    } else {
+      setOverdueDays(0);
+    }
     setLoading(false);
   }, [id, toast]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      void load();
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [load]);
 
   function openCompletionModal() {
     setCompletionForm({
@@ -210,11 +222,7 @@ export default function PMScheduleDetailPage() {
                 {schedule.status === 'overdue' && (
                   <div className="mt-4 rounded-lg bg-red-50 p-3 dark:bg-red-900/20">
                     <p className="text-sm font-medium text-red-700 dark:text-red-400">
-                      This PM is overdue by{' '}
-                      {Math.ceil(
-                        (Date.now() - new Date(schedule.scheduled_date).getTime()) / (1000 * 60 * 60 * 24)
-                      )}{' '}
-                      days
+                      This PM is overdue by {overdueDays} days
                     </p>
                   </div>
                 )}

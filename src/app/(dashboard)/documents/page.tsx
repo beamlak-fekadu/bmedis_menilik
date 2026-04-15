@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { Upload, FileText, Download, Trash2, Eye } from 'lucide-react';
+import { Upload, Download, Trash2, Eye } from 'lucide-react';
 import PageHeader from '@/components/ui/PageHeader';
 import DataTable from '@/components/ui/DataTable';
 import Button from '@/components/ui/Button';
@@ -17,6 +17,8 @@ import { getDocuments, uploadDocument, deleteDocument } from '@/services/documen
 import { getEquipmentList } from '@/services/equipment.service';
 import type { EquipmentDocument, DocumentType, EquipmentAsset } from '@/types/database';
 import { createClient } from '@/lib/supabase/client';
+
+type DocumentRow = EquipmentDocument & { [key: string]: unknown };
 
 const DOCUMENT_TYPE_OPTIONS: { value: DocumentType; label: string }[] = [
   { value: 'manual', label: 'Manual' },
@@ -46,7 +48,7 @@ function formatLabel(val: string) {
 
 export default function DocumentsPage() {
   const { toast } = useToast();
-  const [documents, setDocuments] = useState<EquipmentDocument[]>([]);
+  const [documents, setDocuments] = useState<DocumentRow[]>([]);
   const [assets, setAssets] = useState<EquipmentAsset[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploadOpen, setUploadOpen] = useState(false);
@@ -62,15 +64,16 @@ export default function DocumentsPage() {
     setLoading(true);
     try {
       const { data: assetData } = await getEquipmentList();
-      setAssets((assetData || []) as unknown as EquipmentAsset[]);
+      const typedAssets = (assetData || []) as unknown as EquipmentAsset[];
+      setAssets(typedAssets);
 
-      const allDocs: EquipmentDocument[] = [];
-      if (assetData) {
+      const allDocs: DocumentRow[] = [];
+      if (typedAssets.length > 0) {
         const results = await Promise.all(
-          assetData.map((a: any) => getDocuments(a.id))
+          typedAssets.map((asset) => getDocuments(asset.id))
         );
         results.forEach((r) => {
-          if (r.data) allDocs.push(...(r.data as EquipmentDocument[]));
+          if (r.data) allDocs.push(...(r.data as DocumentRow[]));
         });
       }
       setDocuments(allDocs);
@@ -209,9 +212,9 @@ export default function DocumentsPage() {
         }
       />
 
-      <DataTable
-        columns={columns as any}
-        data={documents as unknown as Record<string, unknown>[]}
+      <DataTable<DocumentRow>
+        columns={columns}
+        data={documents}
         searchPlaceholder="Search documents..."
         emptyMessage="No documents uploaded yet"
       />

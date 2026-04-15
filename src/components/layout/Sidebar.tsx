@@ -4,12 +4,12 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { NAV_SECTIONS, APP_NAME } from '@/constants';
-import { ChevronLeft, ChevronRight, Activity, LayoutDashboard, Bell, Monitor, FileText, PackageCheck, Wrench, CalendarCheck, Gauge, Package, GraduationCap, Trash2, ShieldAlert, CheckCircle, BarChart3, ArrowUpDown, FileBarChart, Users, Settings, ClipboardList, Headphones, BrainCircuit, Shield } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Activity, LayoutDashboard, Bell, Monitor, FileText, PackageCheck, Wrench, CalendarCheck, Gauge, Package, GraduationCap, Trash2, ShieldAlert, CheckCircle, BarChart3, ArrowUpDown, FileBarChart, Users, Settings, ClipboardList, Headphones, BrainCircuit, Shield, MessageSquareText } from 'lucide-react';
 
 const iconMap: Record<string, React.ElementType> = {
   LayoutDashboard, Bell, Monitor, FileText, PackageCheck, Wrench, CalendarCheck, Gauge,
   Package, GraduationCap, Trash2, Activity, ShieldAlert, CheckCircle, BarChart3,
-  ArrowUpDown, FileBarChart, Users, Settings, ClipboardList, Headphones, BrainCircuit, Shield,
+  ArrowUpDown, FileBarChart, Users, Settings, ClipboardList, Headphones, BrainCircuit, Shield, MessageSquareText,
 };
 
 interface SidebarProps {

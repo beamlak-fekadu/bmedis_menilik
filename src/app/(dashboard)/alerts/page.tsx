@@ -7,10 +7,8 @@ import {
   Bell,
   CheckCircle,
   Clock,
-  Filter,
   ShieldAlert,
   Info,
-  MoreHorizontal,
 } from 'lucide-react';
 import { getRecommendationFlags, acknowledgeFlag } from '@/services/analytics.service';
 import { useAuth } from '@/hooks/useAuth';

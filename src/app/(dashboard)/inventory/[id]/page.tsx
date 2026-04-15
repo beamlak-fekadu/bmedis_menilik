@@ -3,7 +3,7 @@
 import { useEffect, useState, use } from 'react';
 import Link from 'next/link';
 import {
-  Pencil, Clock, Activity, ShieldAlert, Gauge, Wrench, CalendarCheck,
+  Pencil, Clock, Activity, Gauge,
 } from 'lucide-react';
 import {
   PageHeader, Button, Card, CardHeader, CardTitle, CardContent,
@@ -16,6 +16,7 @@ import { getPMSchedules } from '@/services/pm.service';
 import { getCalibrationRecords } from '@/services/calibration.service';
 import { getReliabilityMetrics, getRiskScores } from '@/services/analytics.service';
 import { ROUTES } from '@/constants';
+import { AskAiButton } from '@/components/assistant/AskAiButton';
 import type {
   EquipmentCondition, PMScheduleStatus, CalibrationResult, RiskLevel,
 } from '@/types/database';
@@ -408,12 +409,20 @@ export default function EquipmentDetailPage({ params }: { params: Promise<{ id: 
           { label: equipment.asset_code },
         ]}
         actions={
-          <Link href={`${ROUTES.INVENTORY}/${id}/edit`}>
-            <Button variant="outline">
-              <Pencil className="h-4 w-4" />
-              Edit
-            </Button>
-          </Link>
+          <div className="flex items-center gap-2">
+            <AskAiButton
+              moduleLabel="Equipment"
+              label="Ask AI about this equipment"
+              seedPrompt="Summarize this equipment status, maintenance history, and safe first-line actions."
+              contextRefs={{ equipmentId: id }}
+            />
+            <Link href={`${ROUTES.INVENTORY}/${id}/edit`}>
+              <Button variant="outline">
+                <Pencil className="h-4 w-4" />
+                Edit
+              </Button>
+            </Link>
+          </div>
         }
       />
 

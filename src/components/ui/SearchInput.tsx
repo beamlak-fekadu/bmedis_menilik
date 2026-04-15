@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Search, X } from 'lucide-react';
 
 interface SearchInputProps {
@@ -12,24 +12,29 @@ interface SearchInputProps {
 
 export default function SearchInput({ value: externalValue, onChange, placeholder = 'Search...', debounceMs = 300 }: SearchInputProps) {
   const [local, setLocal] = useState(externalValue || '');
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isControlled = externalValue !== undefined;
+  const displayValue = isControlled ? externalValue : local;
+
+  const debouncedChange = useCallback((val: string) => {
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+    debounceTimerRef.current = setTimeout(() => onChange(val), debounceMs);
+  }, [onChange, debounceMs]);
 
   useEffect(() => {
-    if (externalValue !== undefined) setLocal(externalValue);
-  }, [externalValue]);
-
-  const debouncedChange = useCallback(
-    (() => {
-      let timer: ReturnType<typeof setTimeout>;
-      return (val: string) => {
-        clearTimeout(timer);
-        timer = setTimeout(() => onChange(val), debounceMs);
-      };
-    })(),
-    [onChange, debounceMs]
-  );
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, []);
 
   const handleChange = (val: string) => {
-    setLocal(val);
+    if (!isControlled) {
+      setLocal(val);
+    }
     debouncedChange(val);
   };
 
@@ -38,12 +43,12 @@ export default function SearchInput({ value: externalValue, onChange, placeholde
       <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
       <input
         type="text"
-        value={local}
+        value={displayValue}
         onChange={(e) => handleChange(e.target.value)}
         placeholder={placeholder}
         className="block w-full rounded-lg border border-gray-300 bg-white py-2 pl-10 pr-8 text-sm shadow-sm transition-colors placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-900 dark:text-white"
       />
-      {local && (
+      {displayValue && (
         <button onClick={() => handleChange('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
           <X className="h-4 w-4" />
         </button>

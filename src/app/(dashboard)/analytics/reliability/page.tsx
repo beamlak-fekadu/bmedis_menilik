@@ -29,6 +29,7 @@ interface ReliabilityRow {
   failure_count: number;
   repair_count: number;
   equipment_assets: AssetInfo;
+  [key: string]: unknown;
 }
 
 function availabilityColor(pct: number): string {
@@ -223,10 +224,9 @@ export default function ReliabilityPage() {
         </ChartCard>
       </div>
 
-      {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-      <DataTable
-        columns={columns as any}
-        data={data as any[]}
+      <DataTable<ReliabilityRow>
+        columns={columns}
+        data={data}
         keyField="id"
         searchPlaceholder="Search assets..."
         emptyMessage="No reliability metrics found"

@@ -5,6 +5,7 @@ import { BrainCircuit, HeartPulse, RefreshCcw, Stethoscope, Siren, Users } from 
 import { Badge, Button, Card, CardHeader, CardTitle, DataTable, PageHeader, StatCard } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
 import { getDecisionSupportSnapshot, refreshDecisionSupportSnapshots, type DecisionSupportSnapshot } from '@/services/decision-support.service';
+import { AskAiButton } from '@/components/assistant/AskAiButton';
 
 const EMPTY_SNAPSHOT: DecisionSupportSnapshot = {
   triage: [],
@@ -31,7 +32,10 @@ export default function DecisionSupportPage() {
   }, []);
 
   useEffect(() => {
-    void load();
+    const timer = setTimeout(() => {
+      void load();
+    }, 0);
+    return () => clearTimeout(timer);
   }, [load]);
 
   const avgHealth = snapshot.healthScores.length
@@ -107,25 +111,32 @@ export default function DecisionSupportPage() {
         title="Decision Support Center"
         description="Unified triage, explainable health scoring, clinical readiness, escalation pressure, and workload balancing."
         actions={
-          <Button
-            size="sm"
-            variant="outline"
-            loading={refreshing}
-            onClick={async () => {
-              setRefreshing(true);
-              const { error } = await refreshDecisionSupportSnapshots();
-              setRefreshing(false);
-              if (error) {
-                toast('error', 'Snapshot refresh failed. Verify migration 00014 is applied.');
-                return;
-              }
-              await load();
-              toast('success', 'Decision-support snapshots refreshed');
-            }}
-          >
-            <RefreshCcw className="h-4 w-4" />
-            Refresh Snapshots
-          </Button>
+          <div className="flex items-center gap-2">
+            <AskAiButton
+              moduleLabel="Decision Support"
+              label="Ask AI why prioritized"
+              seedPrompt="Explain the top triage priorities, health drivers, and readiness risks in this decision-support snapshot."
+            />
+            <Button
+              size="sm"
+              variant="outline"
+              loading={refreshing}
+              onClick={async () => {
+                setRefreshing(true);
+                const { error } = await refreshDecisionSupportSnapshots();
+                setRefreshing(false);
+                if (error) {
+                  toast('error', 'Snapshot refresh failed. Verify migration 00014 is applied.');
+                  return;
+                }
+                await load();
+                toast('success', 'Decision-support snapshots refreshed');
+              }}
+            >
+              <RefreshCcw className="h-4 w-4" />
+              Refresh Snapshots
+            </Button>
+          </div>
         }
       />
 

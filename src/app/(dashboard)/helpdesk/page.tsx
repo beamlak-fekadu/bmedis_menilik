@@ -13,6 +13,7 @@ type HelpdeskRow = {
   message: string;
   generated_at: string;
   is_acknowledged: boolean;
+  [key: string]: unknown;
 };
 
 export default function HelpdeskPage() {
@@ -89,9 +90,9 @@ export default function HelpdeskPage() {
         <CardHeader>
           <CardTitle>Escalation Queue</CardTitle>
         </CardHeader>
-        <DataTable
-          columns={columns as any}
-          data={rows as any[]}
+        <DataTable<HelpdeskRow>
+          columns={columns}
+          data={rows}
           loading={loading}
           searchPlaceholder="Search escalations..."
           emptyMessage="No escalations found"

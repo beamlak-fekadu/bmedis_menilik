@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { ArrowRightLeft, Boxes, ClipboardCheck, HandHelping, Warehouse } from 'lucide-react';
 import { PageHeader, Card, Badge } from '@/components/ui';
+import { AskAiButton } from '@/components/assistant/AskAiButton';
 
 const LOGISTICS_AREAS = [
   { title: 'Item Receive', href: '/spare-parts', desc: 'Record inbound stock and supplier receipts.', icon: Warehouse },
@@ -18,7 +19,16 @@ export default function LogisticsPage() {
       <PageHeader
         title="Logistics"
         description="Store operations for stock receiving, request, issue, and balance control."
-        actions={<Badge variant="warning">Stockout visibility active</Badge>}
+        actions={
+          <div className="flex items-center gap-2">
+            <AskAiButton
+              moduleLabel="Logistics"
+              label="Explain stock issues"
+              seedPrompt="Explain likely stock risks and what actions to prioritize for logistics continuity."
+            />
+            <Badge variant="warning">Stockout visibility active</Badge>
+          </div>
+        }
       />
       <div className="grid gap-4 md:grid-cols-2">
         {LOGISTICS_AREAS.map((area) => (

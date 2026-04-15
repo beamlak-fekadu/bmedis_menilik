@@ -8,7 +8,6 @@ import DataTable from '@/components/ui/DataTable';
 import FilterBar from '@/components/ui/FilterBar';
 import Button from '@/components/ui/Button';
 import Badge from '@/components/ui/Badge';
-import { PageLoader } from '@/components/ui/Spinner';
 import { useToast } from '@/components/ui/Toast';
 import * as reportsService from '@/services/reports.service';
 import * as settingsService from '@/services/settings.service';

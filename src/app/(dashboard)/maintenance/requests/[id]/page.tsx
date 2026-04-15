@@ -44,7 +44,12 @@ export default function RequestDetailPage() {
     setLoading(false);
   }, [id, toast]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      void load();
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [load]);
 
   async function handleStatusUpdate(status: MaintenanceRequestStatus) {
     setActionLoading(true);

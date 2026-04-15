@@ -6,6 +6,7 @@ import { useProfile } from '@/hooks/useProfile';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { PageLoader } from '@/components/ui/Spinner';
 import { ToastProvider } from '@/components/ui/Toast';
+import { AssistantProvider } from '@/components/assistant/AssistantProvider';
 
 export default function DashboardRootLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -28,14 +29,16 @@ export default function DashboardRootLayout({ children }: { children: React.Reac
 
   return (
     <ToastProvider>
-      <DashboardLayout
-        userName={profile?.full_name || user.email || 'User'}
-        userRole={profile?.primaryRole || 'user'}
-        userRoles={profile?.roleNames || ['viewer']}
-        onLogout={handleLogout}
-      >
-        {children}
-      </DashboardLayout>
+      <AssistantProvider>
+        <DashboardLayout
+          userName={profile?.full_name || user.email || 'User'}
+          userRole={profile?.primaryRole || 'user'}
+          userRoles={profile?.roleNames || ['viewer']}
+          onLogout={handleLogout}
+        >
+          {children}
+        </DashboardLayout>
+      </AssistantProvider>
     </ToastProvider>
   );
 }

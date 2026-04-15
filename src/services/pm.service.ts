@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/client';
-import type { PMPlan, PMSchedule, PMCompletion, PMScheduleStatus } from '@/types/database';
+import type { PMPlan, PMCompletion, PMScheduleStatus } from '@/types/database';
 
 export interface PMPlanFilters {
   asset_id?: string;

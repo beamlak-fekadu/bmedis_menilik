@@ -3,18 +3,30 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Plus, Wrench, ClipboardList } from 'lucide-react';
+import { Wrench, ClipboardList } from 'lucide-react';
 import { PageHeader, DataTable, Tabs, Button, Spinner } from '@/components/ui';
 import { UrgencyBadge, WorkOrderStatusBadge, RequestStatusBadge } from '@/components/ui/StatusBadge';
 import { getMaintenanceRequests, getWorkOrders } from '@/services/maintenance.service';
 import { useToast } from '@/components/ui/Toast';
 import type { MaintenanceRequest, WorkOrder } from '@/types/database';
 
+type RequestRow = MaintenanceRequest & {
+  equipment_assets?: Array<{ id: string; asset_code: string; name: string }> | null;
+  departments?: Array<{ id: string; name: string; code: string }> | null;
+  [key: string]: unknown;
+};
+
+type WorkOrderRow = WorkOrder & {
+  equipment_assets?: Array<{ id: string; asset_code: string; name: string }> | null;
+  profiles?: Array<{ id: string; full_name: string; email: string }> | null;
+  [key: string]: unknown;
+};
+
 export default function MaintenancePage() {
   const router = useRouter();
   const { toast } = useToast();
-  const [requests, setRequests] = useState<MaintenanceRequest[]>([]);
-  const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
+  const [requests, setRequests] = useState<RequestRow[]>([]);
+  const [workOrders, setWorkOrders] = useState<WorkOrderRow[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -26,8 +38,8 @@ export default function MaintenancePage() {
       ]);
       if (reqRes.error) toast('error', 'Failed to load maintenance requests');
       if (woRes.error) toast('error', 'Failed to load work orders');
-      setRequests((reqRes.data ?? []) as MaintenanceRequest[]);
-      setWorkOrders((woRes.data ?? []) as WorkOrder[]);
+      setRequests((reqRes.data ?? []) as unknown as RequestRow[]);
+      setWorkOrders((woRes.data ?? []) as unknown as WorkOrderRow[]);
       setLoading(false);
     }
     load();
@@ -39,23 +51,17 @@ export default function MaintenancePage() {
       key: 'asset_name',
       header: 'Asset',
       sortable: true,
-      render: (row: MaintenanceRequest) =>
-        (row as unknown as Record<string, unknown>).equipment_assets
-          ? ((row as unknown as Record<string, Record<string, string>>).equipment_assets.name)
-          : '—',
+      render: (row: RequestRow) => row.equipment_assets?.[0]?.name ?? '—',
     },
     {
       key: 'department_name',
       header: 'Department',
-      render: (row: MaintenanceRequest) =>
-        (row as unknown as Record<string, unknown>).departments
-          ? ((row as unknown as Record<string, Record<string, string>>).departments.name)
-          : '—',
+      render: (row: RequestRow) => row.departments?.[0]?.name ?? '—',
     },
     {
       key: 'fault_description',
       header: 'Fault Description',
-      render: (row: MaintenanceRequest) =>
+      render: (row: RequestRow) =>
         row.fault_description.length > 60
           ? `${row.fault_description.slice(0, 60)}…`
           : row.fault_description,
@@ -65,19 +71,19 @@ export default function MaintenancePage() {
       key: 'urgency',
       header: 'Urgency',
       sortable: true,
-      render: (row: MaintenanceRequest) => <UrgencyBadge urgency={row.urgency} />,
+      render: (row: RequestRow) => <UrgencyBadge urgency={row.urgency} />,
     },
     {
       key: 'status',
       header: 'Status',
       sortable: true,
-      render: (row: MaintenanceRequest) => <RequestStatusBadge status={row.status} />,
+      render: (row: RequestRow) => <RequestStatusBadge status={row.status} />,
     },
     {
       key: 'created_at',
       header: 'Created',
       sortable: true,
-      render: (row: MaintenanceRequest) => new Date(row.created_at).toLocaleDateString(),
+      render: (row: RequestRow) => new Date(row.created_at).toLocaleDateString(),
     },
   ];
 
@@ -87,50 +93,44 @@ export default function MaintenancePage() {
       key: 'asset_name',
       header: 'Asset',
       sortable: true,
-      render: (row: WorkOrder) =>
-        (row as unknown as Record<string, unknown>).equipment_assets
-          ? ((row as unknown as Record<string, Record<string, string>>).equipment_assets.name)
-          : '—',
+      render: (row: WorkOrderRow) => row.equipment_assets?.[0]?.name ?? '—',
     },
     {
       key: 'assigned_to_name',
       header: 'Assigned To',
-      render: (row: WorkOrder) =>
-        (row as unknown as Record<string, unknown>).profiles
-          ? ((row as unknown as Record<string, Record<string, string>>).profiles.full_name)
-          : 'Unassigned',
+      render: (row: WorkOrderRow) => row.profiles?.[0]?.full_name ?? 'Unassigned',
     },
     {
       key: 'priority',
       header: 'Priority',
       sortable: true,
-      render: (row: WorkOrder) => <UrgencyBadge urgency={row.priority} />,
+      render: (row: WorkOrderRow) => <UrgencyBadge urgency={row.priority} />,
     },
     {
       key: 'status',
       header: 'Status',
       sortable: true,
-      render: (row: WorkOrder) => <WorkOrderStatusBadge status={row.status} />,
+      render: (row: WorkOrderRow) => <WorkOrderStatusBadge status={row.status} />,
     },
     {
       key: 'work_type',
       header: 'Type',
       sortable: true,
-      render: (row: WorkOrder) =>
+      render: (row: WorkOrderRow) =>
         row.work_type.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
     },
     {
       key: 'started_at',
       header: 'Started',
       sortable: true,
-      render: (row: WorkOrder) =>
+      render: (row: WorkOrderRow) =>
         row.started_at ? new Date(row.started_at).toLocaleDateString() : '—',
     },
     {
       key: 'completed_at',
       header: 'Completed',
       sortable: true,
-      render: (row: WorkOrder) =>
+      render: (row: WorkOrderRow) =>
         row.completed_at ? new Date(row.completed_at).toLocaleDateString() : '—',
     },
   ];
@@ -158,11 +158,11 @@ export default function MaintenancePage() {
             label: 'Requests',
             count: requests.length,
             content: (
-              <DataTable
-                columns={requestColumns as any}
-                data={requests as unknown as Record<string, unknown>[]}
+              <DataTable<RequestRow>
+                columns={requestColumns}
+                data={requests}
                 searchPlaceholder="Search requests…"
-                onRowClick={(row) => router.push(`/maintenance/requests/${(row as Record<string, unknown>).id}`)}
+                onRowClick={(row) => router.push(`/maintenance/requests/${row.id}`)}
                 emptyMessage="No maintenance requests found"
                 actions={
                   <Link href="/maintenance/requests/new">
@@ -180,11 +180,11 @@ export default function MaintenancePage() {
             label: 'Work Orders',
             count: workOrders.length,
             content: (
-              <DataTable
-                columns={woColumns as any}
-                data={workOrders as unknown as Record<string, unknown>[]}
+              <DataTable<WorkOrderRow>
+                columns={woColumns}
+                data={workOrders}
                 searchPlaceholder="Search work orders…"
-                onRowClick={(row) => router.push(`/maintenance/work-orders/${(row as Record<string, unknown>).id}`)}
+                onRowClick={(row) => router.push(`/maintenance/work-orders/${row.id}`)}
                 emptyMessage="No work orders found"
                 actions={
                   <Link href="/maintenance/work-orders/new">

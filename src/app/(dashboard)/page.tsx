@@ -48,6 +48,7 @@ interface WorkOrderRow {
   status: 'open' | 'assigned' | 'in_progress' | 'on_hold' | 'completed' | 'canceled';
   department_name: string;
   created_at: string;
+  [key: string]: unknown;
 }
 
 interface OverduePMRow {
@@ -57,6 +58,7 @@ interface OverduePMRow {
   scheduled_date: string;
   days_overdue: number;
   department_name: string;
+  [key: string]: unknown;
 }
 
 interface AlertRow {
@@ -231,10 +233,9 @@ export default function DashboardPage() {
             </span>
           </CardTitle>
         </CardHeader>
-        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-        <Table
-          columns={woColumns as any}
-          data={workOrders as any[]}
+        <Table<WorkOrderRow>
+          columns={woColumns}
+          data={workOrders}
           emptyMessage="No open work orders"
         />
       </Card>
@@ -249,10 +250,9 @@ export default function DashboardPage() {
             </span>
           </CardTitle>
         </CardHeader>
-        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-        <Table
-          columns={pmColumns as any}
-          data={overduePM as any[]}
+        <Table<OverduePMRow>
+          columns={pmColumns}
+          data={overduePM}
           emptyMessage="No overdue preventive maintenance"
         />
       </Card>

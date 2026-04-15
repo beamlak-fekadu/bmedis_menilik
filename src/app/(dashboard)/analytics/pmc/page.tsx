@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import {
   ClipboardCheck,
   CalendarCheck,
-  CalendarX,
   Percent,
 } from 'lucide-react';
 import { getPMComplianceMetrics } from '@/services/analytics.service';
@@ -22,6 +21,7 @@ interface PMCRow {
   completed_count: number;
   pmc_percentage: number;
   computed_at: string;
+  [key: string]: unknown;
 }
 
 function pmcColor(pct: number): string {
@@ -42,7 +42,7 @@ function pmcBarColor(pct: number): string {
   return '#ef4444';
 }
 
-function formatPeriod(start: string, end: string): string {
+function formatPeriod(start: string): string {
   const s = new Date(start);
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   return `${months[s.getMonth()]} ${s.getFullYear()}`;
@@ -90,7 +90,7 @@ export default function PMCPage() {
   // Monthly trend — aggregate by period
   const monthMap = new Map<string, { scheduled: number; completed: number }>();
   data.forEach((d) => {
-    const key = formatPeriod(d.period_start, d.period_end);
+    const key = formatPeriod(d.period_start);
     const prev = monthMap.get(key) ?? { scheduled: 0, completed: 0 };
     monthMap.set(key, {
       scheduled: prev.scheduled + d.scheduled_count,
@@ -115,7 +115,7 @@ export default function PMCPage() {
       key: 'period',
       header: 'Period',
       sortable: true,
-      render: (row: PMCRow) => formatPeriod(row.period_start, row.period_end),
+      render: (row: PMCRow) => formatPeriod(row.period_start),
     },
     {
       key: 'scheduled_count',
@@ -219,10 +219,9 @@ export default function PMCPage() {
         </ChartCard>
       </div>
 
-      {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-      <DataTable
-        columns={columns as any}
-        data={data as any[]}
+      <DataTable<PMCRow>
+        columns={columns}
+        data={data}
         keyField="id"
         searchPlaceholder="Search departments..."
         emptyMessage="No PM compliance data found"

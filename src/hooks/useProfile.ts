@@ -16,7 +16,10 @@ export function useProfile(userId: string | undefined) {
   const supabase = createClient();
 
   useEffect(() => {
-    if (!userId) { setLoading(false); return; }
+    if (!userId) {
+      const timer = setTimeout(() => setLoading(false), 0);
+      return () => clearTimeout(timer);
+    }
 
     async function fetchProfile() {
       const { data: profileData } = await supabase
@@ -41,7 +44,7 @@ export function useProfile(userId: string | undefined) {
       setLoading(false);
     }
 
-    fetchProfile();
+    void fetchProfile();
   }, [userId, supabase]);
 
   return { profile, loading };

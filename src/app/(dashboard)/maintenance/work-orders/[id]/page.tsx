@@ -18,6 +18,7 @@ import { enqueueOfflineAction, getOfflineQueue, markOfflineActionFailed, removeO
 import { getAll } from '@/services/settings.service';
 import { getProfiles } from '@/services/users.service';
 import { useToast } from '@/components/ui/Toast';
+import { AskAiButton } from '@/components/assistant/AskAiButton';
 import type {
   WorkOrder, WorkOrderStatus, MaintenanceEvent, FailureCode, MaintenanceActionCode, Profile,
 } from '@/types/database';
@@ -30,6 +31,7 @@ type WOWithJoins = WorkOrder & {
 type EventWithJoins = MaintenanceEvent & {
   failure_codes?: { id: string; code: string; description: string };
   maintenance_action_codes?: { id: string; code: string; description: string };
+  [key: string]: unknown;
 };
 
 const emptyEventForm = {
@@ -316,10 +318,18 @@ export default function WorkOrderDetailPage() {
           { label: wo.work_order_number },
         ]}
         actions={
-          <Button variant="outline" size="sm" onClick={() => router.push('/maintenance')}>
-            <ArrowLeft className="h-4 w-4" />
-            Back
-          </Button>
+          <div className="flex items-center gap-2">
+            <AskAiButton
+              moduleLabel="Maintenance"
+              label="Summarize with AI"
+              seedPrompt="Summarize this work order and propose safe next troubleshooting or escalation steps."
+              contextRefs={{ workOrderId: id, equipmentId: wo.asset_id }}
+            />
+            <Button variant="outline" size="sm" onClick={() => router.push('/maintenance')}>
+              <ArrowLeft className="h-4 w-4" />
+              Back
+            </Button>
+          </div>
         }
       />
 
@@ -474,9 +484,9 @@ export default function WorkOrderDetailPage() {
             )}
           </CardHeader>
           <CardContent>
-            <Table
-              columns={eventColumns as any}
-              data={events as unknown as Record<string, unknown>[]}
+            <Table<EventWithJoins>
+              columns={eventColumns}
+              data={events}
               emptyMessage="No maintenance events logged"
             />
           </CardContent>

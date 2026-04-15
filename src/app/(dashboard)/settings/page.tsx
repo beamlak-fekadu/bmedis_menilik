@@ -16,7 +16,6 @@ import {
   useToast,
   Badge,
 } from '@/components/ui';
-import { PageLoader } from '@/components/ui/Spinner';
 
 type ReferenceTable =
   | 'departments'

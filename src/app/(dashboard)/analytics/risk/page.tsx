@@ -13,6 +13,7 @@ import { PageLoader } from '@/components/ui/Spinner';
 import { RiskBadge } from '@/components/ui/StatusBadge';
 import { ChartCard, HorizontalBarChart } from '@/components/charts';
 import type { RiskLevel } from '@/types/database';
+import { AskAiButton } from '@/components/assistant/AskAiButton';
 
 interface AssetInfo {
   id: string;
@@ -32,6 +33,7 @@ interface RiskRow {
   assessed_at: string;
   notes: string | null;
   equipment_assets: AssetInfo;
+  [key: string]: unknown;
 }
 
 function rpnColor(rpn: number): string {
@@ -144,6 +146,13 @@ export default function RiskPage() {
           { label: 'Analytics' },
           { label: 'Risk Scoring' },
         ]}
+        actions={
+          <AskAiButton
+            moduleLabel="Decision Support"
+            label="Explain this risk view"
+            seedPrompt="Explain what drives high RPN in this page and which items should be escalated first."
+          />
+        }
       />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -188,10 +197,9 @@ export default function RiskPage() {
 
       <div>
         <h2 className="mb-3 text-lg font-semibold text-gray-900 dark:text-white">Full RPN Ranking</h2>
-        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-        <DataTable
-          columns={columns as any}
-          data={sorted as any[]}
+        <DataTable<RiskRow>
+          columns={columns}
+          data={sorted}
           keyField="id"
           searchPlaceholder="Search assets..."
           emptyMessage="No risk scores found"
@@ -205,10 +213,9 @@ export default function RiskPage() {
             <ShieldAlert className="h-5 w-5" />
             High-Risk Watchlist
           </h2>
-          {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-          <DataTable
-            columns={watchlistColumns as any}
-            data={highCritical.sort((a, b) => b.rpn - a.rpn) as any[]}
+          <DataTable<RiskRow>
+            columns={watchlistColumns}
+            data={[...highCritical].sort((a, b) => b.rpn - a.rpn)}
             keyField="id"
             emptyMessage="No high-risk items"
             pageSize={10}

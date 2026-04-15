@@ -22,7 +22,6 @@ import {
   getLowStockParts,
 } from '@/services/spare-parts.service';
 import { createClient } from '@/lib/supabase/client';
-import type { SparePart } from '@/types/database';
 
 type PartRow = Record<string, unknown>;
 type ReceiptRow = Record<string, unknown>;

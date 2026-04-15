@@ -9,16 +9,19 @@ import { PMStatusBadge } from '@/components/ui/StatusBadge';
 import { getPMPlans, getPMSchedules, getOverduePMSchedules } from '@/services/pm.service';
 import { useToast } from '@/components/ui/Toast';
 import type { PMPlan, PMSchedule } from '@/types/database';
+import { AskAiButton } from '@/components/assistant/AskAiButton';
 
 type PlanWithJoins = PMPlan & {
   equipment_assets?: { id: string; asset_code: string; name: string };
   pm_templates?: { id: string; name: string; frequency_days: number };
+  [key: string]: unknown;
 };
 
 type ScheduleWithJoins = PMSchedule & {
   pm_plans?: { id: string; name: string; frequency_days: number };
   equipment_assets?: { id: string; asset_code: string; name: string };
   profiles?: { id: string; full_name: string; email: string };
+  [key: string]: unknown;
 };
 
 interface OverduePM {
@@ -32,6 +35,7 @@ interface OverduePM {
   category_name: string;
   assigned_to_name: string | null;
   days_overdue: number;
+  [key: string]: unknown;
 }
 
 export default function PMPage() {
@@ -176,6 +180,13 @@ export default function PMPage() {
         title="Preventive Maintenance"
         description="Manage PM plans, schedules, and track overdue tasks"
         breadcrumbs={[{ label: 'Dashboard', href: '/' }, { label: 'Preventive Maintenance' }]}
+        actions={
+          <AskAiButton
+            moduleLabel="Preventive Maintenance"
+            label="Explain PM issues"
+            seedPrompt="Explain overdue PM concerns and what should be prioritized first."
+          />
+        }
       />
 
       <Tabs
@@ -185,9 +196,9 @@ export default function PMPage() {
             label: 'Plans',
             count: plans.length,
             content: (
-              <DataTable
-                columns={planColumns as any}
-                data={plans as unknown as Record<string, unknown>[]}
+              <DataTable<PlanWithJoins>
+                columns={planColumns}
+                data={plans}
                 searchPlaceholder="Search plans…"
                 emptyMessage="No PM plans found"
                 actions={
@@ -206,11 +217,11 @@ export default function PMPage() {
             label: 'Schedules',
             count: schedules.length,
             content: (
-              <DataTable
-                columns={scheduleColumns as any}
-                data={schedules as unknown as Record<string, unknown>[]}
+              <DataTable<ScheduleWithJoins>
+                columns={scheduleColumns}
+                data={schedules}
                 searchPlaceholder="Search schedules…"
-                onRowClick={(row) => router.push(`/pm/schedules/${(row as Record<string, unknown>).id}`)}
+                onRowClick={(row) => router.push(`/pm/schedules/${row.id}`)}
                 emptyMessage="No PM schedules found"
               />
             ),
@@ -226,10 +237,10 @@ export default function PMPage() {
                 <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">All preventive maintenance is up to date.</p>
               </div>
             ) : (
-              <Table
-                columns={overdueColumns as any}
-                data={overdue as unknown as Record<string, unknown>[]}
-                onRowClick={(row) => router.push(`/pm/schedules/${(row as Record<string, unknown>).id}`)}
+              <Table<OverduePM>
+                columns={overdueColumns}
+                data={overdue}
+                onRowClick={(row) => router.push(`/pm/schedules/${row.id}`)}
               />
             ),
           },

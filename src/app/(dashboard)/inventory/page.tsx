@@ -84,11 +84,17 @@ export default function InventoryPage() {
   }, [filters]);
 
   useEffect(() => {
-    loadReferenceData();
+    const timer = setTimeout(() => {
+      void loadReferenceData();
+    }, 0);
+    return () => clearTimeout(timer);
   }, [loadReferenceData]);
 
   useEffect(() => {
-    loadEquipment();
+    const timer = setTimeout(() => {
+      void loadEquipment();
+    }, 0);
+    return () => clearTimeout(timer);
   }, [loadEquipment]);
 
   const handleFilterChange = (key: string, value: string) => {

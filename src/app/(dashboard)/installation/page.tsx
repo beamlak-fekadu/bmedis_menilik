@@ -15,9 +15,14 @@ import { getEquipmentList } from '@/services/equipment.service';
 import { createClient } from '@/lib/supabase/client';
 import type { InstallationRecord, EquipmentAsset } from '@/types/database';
 
+type InstallationRow = InstallationRecord & {
+  equipment_assets?: Array<{ id: string; asset_code: string; name: string }> | null;
+  [key: string]: unknown;
+};
+
 export default function InstallationPage() {
   const { toast } = useToast();
-  const [records, setRecords] = useState<(InstallationRecord & { asset?: EquipmentAsset })[]>([]);
+  const [records, setRecords] = useState<InstallationRow[]>([]);
   const [assets, setAssets] = useState<EquipmentAsset[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
@@ -47,7 +52,7 @@ export default function InstallationPage() {
         getEquipmentList(),
       ]);
 
-      setRecords((installRes.data || []) as (InstallationRecord & { asset?: EquipmentAsset })[]);
+      setRecords((installRes.data || []) as unknown as InstallationRow[]);
       setAssets((assetRes.data || []) as unknown as EquipmentAsset[]);
     } catch {
       toast('error', 'Failed to load installation records');
@@ -98,49 +103,41 @@ export default function InstallationPage() {
     setFormNotes('');
   };
 
-  type RecordRow = (typeof records)[number];
-
   const columns = [
     {
       key: 'asset_code',
       header: 'Asset Code',
       sortable: true,
-      render: (row: RecordRow) => {
-        const asset = (row as unknown as Record<string, unknown>).equipment_assets as { asset_code: string } | null;
-        return asset?.asset_code || '—';
-      },
+      render: (row: InstallationRow) => row.equipment_assets?.[0]?.asset_code || '—',
     },
     {
       key: 'asset_name',
       header: 'Asset Name',
-      render: (row: RecordRow) => {
-        const asset = (row as unknown as Record<string, unknown>).equipment_assets as { name: string } | null;
-        return asset?.name || '—';
-      },
+      render: (row: InstallationRow) => row.equipment_assets?.[0]?.name || '—',
     },
     { key: 'installed_by', header: 'Installed By', sortable: true },
     {
       key: 'installation_date',
       header: 'Installation Date',
       sortable: true,
-      render: (row: RecordRow) => new Date(row.installation_date).toLocaleDateString(),
+      render: (row: InstallationRow) => new Date(row.installation_date).toLocaleDateString(),
     },
     {
       key: 'commissioning_date',
       header: 'Commissioning Date',
-      render: (row: RecordRow) =>
+      render: (row: InstallationRow) =>
         row.commissioning_date ? new Date(row.commissioning_date).toLocaleDateString() : '—',
     },
     {
       key: 'go_live_date',
       header: 'Go-Live Date',
-      render: (row: RecordRow) =>
+      render: (row: InstallationRow) =>
         row.go_live_date ? new Date(row.go_live_date).toLocaleDateString() : '—',
     },
     {
       key: 'initial_training_done',
       header: 'Training Done',
-      render: (row: RecordRow) =>
+      render: (row: InstallationRow) =>
         row.initial_training_done ? (
           <CheckCircle className="h-5 w-5 text-green-500" />
         ) : (
@@ -164,9 +161,9 @@ export default function InstallationPage() {
         }
       />
 
-      <DataTable
-        columns={columns as any}
-        data={records as unknown as Record<string, unknown>[]}
+      <DataTable<InstallationRow>
+        columns={columns}
+        data={records}
         searchPlaceholder="Search installation records..."
         emptyMessage="No installation records found"
       />

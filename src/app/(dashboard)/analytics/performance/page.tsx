@@ -8,7 +8,7 @@ import {
   Sliders,
 } from 'lucide-react';
 import { getPerformanceScores } from '@/services/analytics.service';
-import { PageHeader, StatCard, DataTable, Badge } from '@/components/ui';
+import { PageHeader, StatCard, DataTable } from '@/components/ui';
 import { PageLoader } from '@/components/ui/Spinner';
 import Card, { CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { ChartCard, BarChart } from '@/components/charts';
@@ -30,6 +30,7 @@ interface PerformanceRow {
   composite_score: number | null;
   weights_profile_id: string | null;
   equipment_assets: AssetInfo;
+  [key: string]: unknown;
 }
 
 function scoreColor(score: number): string {
@@ -245,10 +246,9 @@ export default function PerformancePage() {
         </CardContent>
       </Card>
 
-      {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-      <DataTable
-        columns={columns as any}
-        data={ranked as any[]}
+      <DataTable<PerformanceRow>
+        columns={columns}
+        data={ranked}
         keyField="id"
         searchPlaceholder="Search assets..."
         emptyMessage="No performance scores found"

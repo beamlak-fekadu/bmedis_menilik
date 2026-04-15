@@ -11,7 +11,7 @@ import { getReplacementPriorities } from '@/services/analytics.service';
 import { PageHeader, StatCard, DataTable, Badge } from '@/components/ui';
 import { PageLoader } from '@/components/ui/Spinner';
 import Card, { CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
-import { ChartCard, HorizontalBarChart, BarChart } from '@/components/charts';
+import { ChartCard, HorizontalBarChart } from '@/components/charts';
 
 interface AssetInfo {
   id: string;
@@ -34,6 +34,7 @@ interface ReplacementRow {
   rank: number | null;
   justification: string | null;
   equipment_assets: AssetInfo;
+  [key: string]: unknown;
 }
 
 const SCORE_CRITERIA = [
@@ -266,10 +267,9 @@ export default function ReplacementPage() {
         )}
       </ChartCard>
 
-      {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-      <DataTable
-        columns={columns as any}
-        data={ranked as any[]}
+      <DataTable<ReplacementRow>
+        columns={columns}
+        data={ranked}
         keyField="id"
         searchPlaceholder="Search assets..."
         emptyMessage="No replacement priorities found"

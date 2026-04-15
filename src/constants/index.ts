@@ -40,6 +40,7 @@ export const ROUTES = {
   SECURITY: '/security',
   DOCUMENTS: '/documents',
   INSTALLATION: '/installation',
+  CHATBOT: '/chatbot',
 } as const;
 
 export const NAV_SECTIONS = [
@@ -77,6 +78,7 @@ export const NAV_SECTIONS = [
       { label: 'PM Compliance', href: ROUTES.ANALYTICS_PMC, icon: 'CheckCircle', roles: ['admin', 'technician', 'viewer'] },
       { label: 'Performance Scores', href: ROUTES.ANALYTICS_PERFORMANCE, icon: 'BarChart3', roles: ['admin', 'technician', 'viewer'] },
       { label: 'Replacement Priority', href: ROUTES.REPLACEMENT, icon: 'ArrowUpDown', roles: ['admin', 'technician', 'viewer'] },
+      { label: 'Operations Chatbot', href: ROUTES.CHATBOT, icon: 'MessageSquareText', roles: ['admin', 'technician', 'department_user', 'store_user', 'viewer'] },
     ],
   },
   {
