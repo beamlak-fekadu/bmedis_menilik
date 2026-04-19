@@ -16,21 +16,27 @@ export const CHAT_CAPABILITIES = [
   'my_tasks',
   'prioritize_tasks',
   'summarize_work_order',
+  'summarize_equipment',
   'explain_equipment_risk',
   'explain_pm_status',
+  'explain_replacement_priority',
   'safe_troubleshooting',
+  'maintenance_tips',
   'maintenance_guidance',
   'logistics_status',
+  'procurement_status',
+  'pending_approvals',
   'approval_tasks',
   'alerts_and_escalations',
   'decision_support_analysis',
   'general_fallback',
+  'general_system_fallback',
 ] as const;
 
 export const CHAT_DECISIONS = ['answer', 'limited_answer', 'check_manual', 'escalate', 'refuse'] as const;
 export const ANSWER_BASIS = ['system_data', 'manual_or_sop', 'general_safe_guidance', 'insufficient_data'] as const;
 export const CONFIDENCE_LEVELS = ['high', 'medium', 'low'] as const;
-export const CHAT_PROVIDERS = ['stub', 'ollama', 'groq'] as const;
+export const CHAT_PROVIDERS = ['gemini'] as const;
 export const SAFETY_MODES = ['normal', 'strict', 'fallback'] as const;
 export const RESOLUTION_SOURCES = ['explicit_context', 'module_context', 'memory_context', 'text_match', 'none'] as const;
 export const ENTITY_TYPES = ['equipment', 'work_order', 'department', 'part'] as const;
@@ -67,11 +73,15 @@ export const ChatContextRefsSchema = z.object({
   equipmentId: z.string().uuid().optional(),
   workOrderId: z.string().uuid().optional(),
   departmentId: z.string().uuid().optional(),
+  organizationUnitId: z.string().uuid().optional(),
 });
 
 export const ChatModuleContextSchema = z.object({
   moduleLabel: z.string().trim().min(1).max(80).optional(),
   pathname: z.string().trim().min(1).max(250).optional(),
+  route: z.string().trim().max(250).optional(),
+  pageLabel: z.string().trim().max(120).optional(),
+  currentFilters: z.record(z.string(), z.union([z.string(), z.number(), z.boolean(), z.null()])).optional(),
 });
 
 export const ChatRequestSchema = z.object({
@@ -83,7 +93,11 @@ export const ChatRequestSchema = z.object({
 
 export const AssistantContentSchema = z.object({
   decision: z.enum(CHAT_DECISIONS),
+  title: z.string().max(180).optional(),
   summary: z.string().max(2000),
+  key_findings: z.array(z.string().max(400)).max(10).default([]),
+  recommended_actions: z.array(z.string().max(400)).max(10).default([]),
+  priority_reasoning: z.array(z.string().max(400)).max(10).default([]),
   likely_causes: z.array(z.string().max(300)).max(8).default([]),
   troubleshooting_steps: z.array(z.string().max(400)).max(10).default([]),
   maintenance_tips: z.array(z.string().max(400)).max(10).default([]),
@@ -97,6 +111,8 @@ export const AssistantContentSchema = z.object({
   insights: z.array(z.string().max(400)).max(10).default([]),
   recommendations: z.array(z.string().max(400)).max(10).default([]),
   escalation_guidance: z.string().max(600).optional(),
+  entities_referenced: z.array(z.string().max(160)).max(12).default([]),
+  follow_up_suggestions: z.array(z.string().max(240)).max(8).default([]),
 });
 
 export const ChatResponseSchema = z.object({
@@ -131,8 +147,13 @@ export interface ClassifiedRequest {
 
 export interface UserChatProfile {
   profileId: string;
+  userId?: string;
+  displayName?: string;
   roleNames: string[];
   departmentId: string | null;
+  departmentName?: string | null;
+  organizationUnitId?: string | null;
+  permissions?: string[];
 }
 
 export interface ChatEvidence {
@@ -167,6 +188,8 @@ export interface MemorySnapshot {
   sessionId: string;
   shortSummary: string;
   focus: string;
+  threadIntent?: ChatIntent;
+  activeCapability?: CapabilityId;
   recentTurns: Array<{ role: ChatMessageRole; content: string }>;
   lastEntities: ResolvedEntity[];
 }
@@ -209,7 +232,13 @@ export interface TelemetryEvent {
   fallbackReason?: FallbackReason;
   roleNames: string[];
   moduleLabel?: string;
+  route?: string;
   evidenceSignals: string[];
+  groundedBy?: 'live_data' | 'memory' | 'general_fallback' | 'mixed';
+  parsingRecoveryUsed?: boolean;
+  classifierCandidates?: CapabilityMatch[];
+  resolvedEntities?: ResolvedEntity[];
+  latencyMs?: number;
   metadata?: Record<string, unknown>;
 }
 
@@ -235,6 +264,9 @@ export interface OrchestratorResult {
 export interface ChatModuleContext {
   moduleLabel?: string;
   pathname?: string;
+  route?: string;
+  pageLabel?: string;
+  currentFilters?: Record<string, string | number | boolean | null>;
 }
 
 export interface ChatModelMessage {

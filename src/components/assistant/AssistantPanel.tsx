@@ -6,6 +6,7 @@ import { Button, EmptyState, Spinner, Textarea } from '@/components/ui';
 import { AssistantContextChips } from './AssistantContextChips';
 import { AssistantMessageCard } from './AssistantMessageCard';
 import { useAssistantContext } from './AssistantProvider';
+import { ASSISTANT_NAME } from '@/constants';
 
 const QUICK_PROMPTS_BY_MODULE: Record<string, string[]> = {
   Equipment: [
@@ -79,7 +80,7 @@ export function AssistantPanel() {
           <div className="flex items-center justify-between border-b border-[var(--assistant-accent-soft)] px-4 py-3">
             <div className="inline-flex items-center gap-2">
               <MessageSquareText className="h-4 w-4 text-[var(--assistant-accent)]" />
-              <p className="text-sm font-semibold">Biomedical AI Copilot</p>
+              <p className="text-sm font-semibold">{ASSISTANT_NAME}</p>
             </div>
             <div className="flex items-center gap-2">
               <Button variant="ghost" size="sm" onClick={startNewSession}>
@@ -118,6 +119,11 @@ export function AssistantPanel() {
           </div>
 
           <div className="space-y-3 border-t border-[var(--assistant-accent-soft)] px-4 py-4">
+            {!contextRefs && (
+              <p className="text-xs text-[var(--text-muted)]">
+                No entity linked yet. Responses will stay general until equipment, work-order, or department context is attached.
+              </p>
+            )}
             <div className="flex flex-wrap gap-2">
               {quickPrompts.map((prompt) => (
                 <button

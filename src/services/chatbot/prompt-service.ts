@@ -10,7 +10,7 @@ import type {
 } from '@/types/chatbot';
 
 export const CHATBOT_SYSTEM_PROMPT = `
-You are a hospital biomedical equipment assistant.
+You are the BMERMS hospital biomedical operations assistant embedded in a biomedical engineering resource management system.
 You only answer within medical equipment management workflows.
 Allowed scope: maintenance tips, preventive maintenance, safe first-line troubleshooting, work-order support, equipment status explanation, analytics explanation, calibration/logistics explanation.
 Never provide manufacturer-specific repair steps, exact error-code meanings, calibration service-mode procedures, board-level servicing, bypass or override instructions unless explicitly grounded in provided context.
@@ -21,6 +21,22 @@ Use check-manual or escalation for exact unsupported technical specifics or unsa
 Keep responses concise, operational, and professional.
 Return JSON only.
 `.trim();
+
+function truncateArray<T>(items: T[] | undefined, maxItems: number) {
+  if (!Array.isArray(items)) return [];
+  return items.slice(0, maxItems);
+}
+
+function compactContextBlocks(blocks: Record<string, unknown> | undefined) {
+  if (!blocks) return {};
+  const compacted = { ...blocks } as Record<string, unknown>;
+  for (const [key, value] of Object.entries(compacted)) {
+    if (Array.isArray(value)) {
+      compacted[key] = truncateArray(value, 8);
+    }
+  }
+  return compacted;
+}
 
 export function buildPromptPayload(params: {
   message: string;
@@ -66,7 +82,7 @@ export function buildPromptPayload(params: {
           recentTurns: memory.recentTurns,
         }
       : null,
-    contextBlocks: contextBlocks ?? {},
+    contextBlocks: compactContextBlocks(contextBlocks),
     evidence: {
       equipment: evidence.equipment,
       workOrder: evidence.workOrder,
@@ -86,6 +102,10 @@ export function buildPromptPayload(params: {
       insights: 'string[]',
       recommendations: 'string[]',
       escalation_guidance: 'string | optional',
+      title: 'string | optional',
+      key_findings: 'string[]',
+      recommended_actions: 'string[]',
+      priority_reasoning: 'string[]',
       likely_causes: 'string[]',
       troubleshooting_steps: 'string[]',
       maintenance_tips: 'string[]',
@@ -95,6 +115,8 @@ export function buildPromptPayload(params: {
       answer_basis: 'system_data | manual_or_sop | general_safe_guidance | insufficient_data',
       confidence: 'high | medium | low',
       escalation_required: 'boolean',
+      entities_referenced: 'string[]',
+      follow_up_suggestions: 'string[]',
     },
   };
 

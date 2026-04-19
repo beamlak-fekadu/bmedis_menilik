@@ -8,6 +8,7 @@ import {
   Tooltip,
   Legend,
 } from 'chart.js';
+import { useChartTheme } from './useChartTheme';
 
 ChartJS.register(ArcElement, Title, Tooltip, Legend);
 
@@ -34,6 +35,7 @@ export default function DoughnutChart({
   title,
   height = 300,
 }: DoughnutChartProps) {
+  const chartTheme = useChartTheme();
   const backgroundColor = colors ?? DEFAULT_COLORS.slice(0, data.length);
 
   const chartData = {
@@ -56,17 +58,17 @@ export default function DoughnutChart({
       title: {
         display: !!title,
         text: title ?? '',
-        color: '#9ca3af',
+        color: chartTheme.labelColor,
       },
       legend: {
         position: 'bottom' as const,
-        labels: { color: '#9ca3af', padding: 16 },
+        labels: { color: chartTheme.labelColor, padding: 16 },
       },
       tooltip: {
-        backgroundColor: 'rgba(17, 24, 39, 0.95)',
-        titleColor: '#f9fafb',
-        bodyColor: '#f9fafb',
-        borderColor: 'rgba(75, 85, 99, 0.3)',
+        backgroundColor: chartTheme.tooltipBackground,
+        titleColor: chartTheme.tooltipText,
+        bodyColor: chartTheme.tooltipText,
+        borderColor: chartTheme.tooltipBorder,
         borderWidth: 1,
       },
     },

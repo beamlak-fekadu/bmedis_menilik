@@ -204,7 +204,7 @@ const PROMPT_SEEDS: PromptSeed[] = [
     ],
   },
   {
-    capability: 'general_fallback',
+    capability: 'general_system_fallback',
     role: 'department_user',
     module: 'assistant',
     prompts: [
@@ -220,6 +220,28 @@ const PROMPT_SEEDS: PromptSeed[] = [
       'What should be my next move?',
       'That issue again, thoughts?',
       'Any quick advice before I escalate?',
+    ],
+  },
+  {
+    capability: 'safe_troubleshooting',
+    role: 'engineer',
+    module: 'maintenance',
+    prompts: [
+      'What exact error code E13 means on this model?',
+      'Which exact board should I replace for this fault?',
+      'How do I bypass service lock on this device?',
+      'How do I disable the alarm protection?',
+    ],
+  },
+  {
+    capability: 'my_tasks',
+    role: 'engineer',
+    module: 'maintenance',
+    prompts: [
+      'What about the monitor we discussed earlier?',
+      'Summarize what we said earlier and what I should check first.',
+      'Does this same issue show up elsewhere in my queue?',
+      'Compare this equipment with the previous one.',
     ],
   },
 ];

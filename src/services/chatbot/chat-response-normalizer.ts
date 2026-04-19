@@ -22,7 +22,11 @@ export function normalizeAssistantPayload(raw: unknown, fallbackSummary?: string
 
   return {
     decision: (decision as AssistantContent['decision']) ?? 'limited_answer',
+    title: stringOrUndefined(source.title),
     summary: summary.slice(0, 2000),
+    key_findings: arrayOfStrings(source.key_findings ?? source.keyFindings),
+    recommended_actions: arrayOfStrings(source.recommended_actions ?? source.recommendedActions),
+    priority_reasoning: arrayOfStrings(source.priority_reasoning ?? source.priorityReasoning),
     likely_causes: arrayOfStrings(source.likely_causes ?? source.likelyCauses),
     troubleshooting_steps: arrayOfStrings(source.troubleshooting_steps ?? source.troubleshootingSteps),
     maintenance_tips: arrayOfStrings(source.maintenance_tips ?? source.maintenanceTips),
@@ -30,6 +34,8 @@ export function normalizeAssistantPayload(raw: unknown, fallbackSummary?: string
     actions: arrayOfStrings(source.actions),
     insights: arrayOfStrings(source.insights),
     recommendations: arrayOfStrings(source.recommendations),
+    entities_referenced: arrayOfStrings(source.entities_referenced ?? source.entitiesReferenced),
+    follow_up_suggestions: arrayOfStrings(source.follow_up_suggestions ?? source.followUpSuggestions),
     escalation_recommendation: stringOrUndefined(source.escalation_recommendation ?? source.escalationRecommendation),
     escalation_guidance: stringOrUndefined(source.escalation_guidance ?? source.escalationGuidance),
     reason_for_limit: stringOrUndefined(source.reason_for_limit ?? source.reasonForLimit),

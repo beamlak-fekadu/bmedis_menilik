@@ -15,8 +15,12 @@ function parseWorkOrderNumber(message: string) {
   return match ? `WO-${match[1].toUpperCase()}` : null;
 }
 
+function asksForPriorReference(message: string) {
+  return /\b(it|that|this one|previous|earlier|the one we discussed|the monitor we discussed)\b/i.test(message);
+}
+
 export async function resolveEntities(params: ResolveParams): Promise<ResolvedEntity[]> {
-  const { supabase, message, contextRefs, memory, profile } = params;
+  const { supabase, message, contextRefs, moduleContext, memory, profile } = params;
   const resolved: ResolvedEntity[] = [];
 
   if (contextRefs?.equipmentId) {
@@ -67,13 +71,27 @@ export async function resolveEntities(params: ResolveParams): Promise<ResolvedEn
     }
   }
 
-  if (!resolved.length && memory?.lastEntities?.length) {
+  if ((!resolved.length || asksForPriorReference(message)) && memory?.lastEntities?.length) {
     for (const entity of memory.lastEntities.slice(0, 3)) {
-      resolved.push({
-        ...entity,
-        source: 'memory_context',
-      });
+      if (!resolved.find((item) => item.type === entity.type && item.id === entity.id)) {
+        resolved.push({
+          ...entity,
+          source: 'memory_context',
+        });
+      }
     }
+  }
+
+  const routeHint = `${moduleContext?.pathname ?? ''} ${moduleContext?.moduleLabel ?? ''}`.toLowerCase();
+  const prefersWorkOrderContext = routeHint.includes('work-order') || routeHint.includes('maintenance');
+  const prefersEquipmentContext = routeHint.includes('inventory') || routeHint.includes('equipment');
+  if (prefersWorkOrderContext && !resolved.find((item) => item.type === 'work_order') && memory?.lastEntities?.length) {
+    const previousWorkOrder = memory.lastEntities.find((item) => item.type === 'work_order');
+    if (previousWorkOrder) resolved.push({ ...previousWorkOrder, source: 'module_context' });
+  }
+  if (prefersEquipmentContext && !resolved.find((item) => item.type === 'equipment') && memory?.lastEntities?.length) {
+    const previousEquipment = memory.lastEntities.find((item) => item.type === 'equipment');
+    if (previousEquipment) resolved.push({ ...previousEquipment, source: 'module_context' });
   }
 
   const workOrderNumber = parseWorkOrderNumber(message);

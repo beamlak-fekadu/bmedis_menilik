@@ -1,6 +1,11 @@
-export const APP_NAME = 'MedEquip Pro';
-export const APP_DESCRIPTION = 'Medical Equipment Management and Decision-Support System';
-export const HOSPITAL_NAME = "St. Peter's Specialized Hospital";
+export const APP_NAME = 'BMERMS';
+export const APP_NAME_SHORT = 'BMERMS';
+export const APP_NAME_FULL = 'Biomedical Engineering Resource Management System';
+export const APP_DESCRIPTION = 'Biomedical Engineering Resource Management System';
+export const APP_OPERATIONAL_TAGLINE = 'Clinical engineering operations, reliability, and decision support in one unified platform.';
+export const HOSPITAL_NAME = 'Yekatit-12 Hospital Medical College';
+export const CHATBOT_NAME = 'BMERMS AI Chatbot';
+export const ASSISTANT_NAME = 'BMERMS AI Assistant';
 
 export const ROUTES = {
   LOGIN: '/login',
@@ -78,7 +83,7 @@ export const NAV_SECTIONS = [
       { label: 'PM Compliance', href: ROUTES.ANALYTICS_PMC, icon: 'CheckCircle', roles: ['admin', 'technician', 'viewer'] },
       { label: 'Performance Scores', href: ROUTES.ANALYTICS_PERFORMANCE, icon: 'BarChart3', roles: ['admin', 'technician', 'viewer'] },
       { label: 'Replacement Priority', href: ROUTES.REPLACEMENT, icon: 'ArrowUpDown', roles: ['admin', 'technician', 'viewer'] },
-      { label: 'Operations Chatbot', href: ROUTES.CHATBOT, icon: 'MessageSquareText', roles: ['admin', 'technician', 'department_user', 'store_user', 'viewer'] },
+      { label: CHATBOT_NAME, href: ROUTES.CHATBOT, icon: 'MessageSquareText', roles: ['admin', 'technician', 'department_user', 'store_user', 'viewer'] },
     ],
   },
   {

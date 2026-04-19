@@ -5,6 +5,7 @@ import { Badge, Button } from '@/components/ui';
 import type { AssistantUiMessage } from './AssistantProvider';
 import type { AssistantContent } from '@/types/chatbot';
 import { useToast } from '@/components/ui/Toast';
+import { ASSISTANT_NAME } from '@/constants';
 
 const BASIS_BADGE_VARIANT: Record<string, 'default' | 'info' | 'purple' | 'warning'> = {
   system_data: 'info',
@@ -21,7 +22,11 @@ const CONFIDENCE_BADGE_VARIANT: Record<string, 'success' | 'warning' | 'error'> 
 
 function buildCopyText(assistant: AssistantContent) {
   const sections = [
+    assistant.title ? `Title: ${assistant.title}` : '',
     `Summary: ${assistant.summary}`,
+    assistant.key_findings.length ? `Key findings:\n- ${assistant.key_findings.join('\n- ')}` : '',
+    assistant.recommended_actions.length ? `Recommended actions:\n- ${assistant.recommended_actions.join('\n- ')}` : '',
+    assistant.priority_reasoning.length ? `Priority reasoning:\n- ${assistant.priority_reasoning.join('\n- ')}` : '',
     assistant.likely_causes.length ? `Likely causes:\n- ${assistant.likely_causes.join('\n- ')}` : '',
     assistant.troubleshooting_steps.length ? `Troubleshooting steps:\n- ${assistant.troubleshooting_steps.join('\n- ')}` : '',
     assistant.maintenance_tips.length ? `Maintenance tips:\n- ${assistant.maintenance_tips.join('\n- ')}` : '',
@@ -46,12 +51,46 @@ export function AssistantMessageCard({ message }: { message: AssistantUiMessage 
       >
         <div className="mb-2 inline-flex items-center gap-2 text-xs text-[var(--text-muted)]">
           {isUser ? <UserCircle2 className="h-4 w-4" /> : <Bot className="h-4 w-4 text-[var(--assistant-accent)]" />}
-          {isUser ? 'You' : 'AI Copilot'}
+          {isUser ? 'You' : ASSISTANT_NAME}
         </div>
 
         {message.assistant ? (
           <div className="space-y-3 text-sm">
+            {message.assistant.title && <p className="font-semibold">{message.assistant.title}</p>}
             <p>{message.assistant.summary || message.content}</p>
+
+            {message.assistant.key_findings.length > 0 && (
+              <div>
+                <p className="mb-1 font-semibold">Key findings</p>
+                <ul className="list-disc space-y-1 pl-5 text-[var(--text-muted)]">
+                  {message.assistant.key_findings.map((item) => (
+                    <li key={item}>{item}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {message.assistant.recommended_actions.length > 0 && (
+              <div>
+                <p className="mb-1 font-semibold">Recommended actions</p>
+                <ol className="list-decimal space-y-1 pl-5 text-[var(--text-muted)]">
+                  {message.assistant.recommended_actions.map((item) => (
+                    <li key={item}>{item}</li>
+                  ))}
+                </ol>
+              </div>
+            )}
+
+            {message.assistant.priority_reasoning.length > 0 && (
+              <div>
+                <p className="mb-1 font-semibold">Priority reasoning</p>
+                <ul className="list-disc space-y-1 pl-5 text-[var(--text-muted)]">
+                  {message.assistant.priority_reasoning.map((item) => (
+                    <li key={item}>{item}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
 
             {message.assistant.likely_causes.length > 0 && (
               <div>
@@ -98,12 +137,12 @@ export function AssistantMessageCard({ message }: { message: AssistantUiMessage 
             )}
 
             {message.assistant.escalation_required && (
-              <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-3">
-                <p className="mb-1 inline-flex items-center gap-2 text-sm font-medium text-amber-200">
+              <div className="assistant-warning rounded-xl p-3">
+                <p className="assistant-warning-strong mb-1 inline-flex items-center gap-2 text-sm font-medium">
                   <AlertTriangle className="h-4 w-4" />
                   Escalation Recommended
                 </p>
-                <p className="text-sm text-amber-100">
+                <p className="text-sm">
                   {message.assistant.escalation_recommendation || 'Escalate to a qualified biomedical engineer or vendor.'}
                 </p>
               </div>
@@ -128,6 +167,19 @@ export function AssistantMessageCard({ message }: { message: AssistantUiMessage 
                 Copy
               </Button>
             </div>
+
+            {message.assistant.follow_up_suggestions.length > 0 && (
+              <div>
+                <p className="mb-1 font-semibold">Suggested follow-ups</p>
+                <div className="flex flex-wrap gap-2">
+                  {message.assistant.follow_up_suggestions.map((item) => (
+                    <Badge key={item} variant="default">
+                      {item}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         ) : (
           <p className="text-sm">{message.content}</p>

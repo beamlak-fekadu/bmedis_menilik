@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { NAV_SECTIONS, APP_NAME } from '@/constants';
+import { NAV_SECTIONS, APP_NAME_SHORT, ROUTES } from '@/constants';
 import { ChevronLeft, ChevronRight, Activity, LayoutDashboard, Bell, Monitor, FileText, PackageCheck, Wrench, CalendarCheck, Gauge, Package, GraduationCap, Trash2, ShieldAlert, CheckCircle, BarChart3, ArrowUpDown, FileBarChart, Users, Settings, ClipboardList, Headphones, BrainCircuit, Shield, MessageSquareText } from 'lucide-react';
 
 const iconMap: Record<string, React.ElementType> = {
@@ -31,7 +31,7 @@ export default function Sidebar({ userRoles = ['admin'] }: SidebarProps) {
         {!collapsed && (
           <Link href="/" className="flex items-center gap-2">
             <Activity className="h-6 w-6 text-[var(--brand)]" />
-            <span className="text-lg font-bold text-[var(--foreground)]">{APP_NAME}</span>
+            <span className="text-lg font-bold text-[var(--foreground)]">{APP_NAME_SHORT}</span>
           </Link>
         )}
         {collapsed && <Activity className="mx-auto h-6 w-6 text-[var(--brand)]" />}
@@ -57,18 +57,26 @@ export default function Sidebar({ userRoles = ['admin'] }: SidebarProps) {
               {visibleItems.map((item) => {
                 const Icon = iconMap[item.icon] || Monitor;
                 const active = isActive(item.href);
+                const isChatbotItem = item.href === ROUTES.CHATBOT;
+                const chatbotClass = isChatbotItem
+                  ? active
+                    ? 'border border-[var(--chatbot-nav-border)] bg-[image:var(--chatbot-nav-bg-active)] text-[var(--chatbot-nav-text)] shadow-[var(--chatbot-nav-glow)]'
+                    : 'border border-[var(--chatbot-nav-border)] bg-[image:var(--chatbot-nav-bg)] text-[var(--chatbot-nav-text)] hover:bg-[image:var(--chatbot-nav-bg-hover)]'
+                  : '';
                 return (
                   <Link
                     key={item.href}
                     href={item.href}
                     className={`mb-0.5 flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-                      active
+                      !isChatbotItem && active
                         ? 'bg-[var(--brand)]/20 text-[var(--foreground)]'
-                        : 'text-[var(--text-muted)] hover:bg-[var(--surface-2)] hover:text-[var(--foreground)]'
-                    }`}
+                        : !isChatbotItem
+                          ? 'text-[var(--text-muted)] hover:bg-[var(--surface-2)] hover:text-[var(--foreground)]'
+                          : chatbotClass
+                    } ${isChatbotItem ? 'relative overflow-hidden' : ''}`}
                     title={collapsed ? item.label : undefined}
                   >
-                    <Icon className="h-5 w-5 flex-shrink-0" />
+                    <Icon className={`h-5 w-5 flex-shrink-0 ${isChatbotItem ? 'text-[var(--chatbot-nav-icon)]' : ''}`} />
                     {!collapsed && <span>{item.label}</span>}
                   </Link>
                 );

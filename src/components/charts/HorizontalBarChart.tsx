@@ -10,6 +10,7 @@ import {
   Tooltip,
   Legend,
 } from 'chart.js';
+import { useChartTheme } from './useChartTheme';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
@@ -36,6 +37,7 @@ export default function HorizontalBarChart({
   title,
   height = 300,
 }: HorizontalBarChartProps) {
+  const chartTheme = useChartTheme();
   const backgroundColor = colors ?? labels.map((_, i) => DEFAULT_COLORS[i % DEFAULT_COLORS.length]);
 
   const data = {
@@ -57,24 +59,24 @@ export default function HorizontalBarChart({
       title: {
         display: !!title,
         text: title ?? '',
-        color: '#9ca3af',
+        color: chartTheme.labelColor,
       },
       legend: { display: false },
       tooltip: {
-        backgroundColor: 'rgba(17, 24, 39, 0.95)',
-        titleColor: '#f9fafb',
-        bodyColor: '#f9fafb',
-        borderColor: 'rgba(75, 85, 99, 0.3)',
+        backgroundColor: chartTheme.tooltipBackground,
+        titleColor: chartTheme.tooltipText,
+        bodyColor: chartTheme.tooltipText,
+        borderColor: chartTheme.tooltipBorder,
         borderWidth: 1,
       },
     },
     scales: {
       x: {
-        ticks: { color: '#9ca3af' },
-        grid: { color: 'rgba(75, 85, 99, 0.2)' },
+        ticks: { color: chartTheme.labelColor },
+        grid: { color: chartTheme.gridColor },
       },
       y: {
-        ticks: { color: '#9ca3af' },
+        ticks: { color: chartTheme.labelColor },
         grid: { display: false },
       },
     },

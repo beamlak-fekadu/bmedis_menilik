@@ -12,6 +12,7 @@ import {
   Legend,
   Filler,
 } from 'chart.js';
+import { useChartTheme } from './useChartTheme';
 
 ChartJS.register(
   CategoryScale,
@@ -52,6 +53,7 @@ export default function LineChart({
   title,
   height = 300,
 }: LineChartProps) {
+  const chartTheme = useChartTheme();
   const coloredDatasets = datasets.map((ds, i) => ({
     ...ds,
     borderColor: ds.borderColor ?? DEFAULT_BORDER_COLORS[i % DEFAULT_BORDER_COLORS.length],
@@ -68,27 +70,27 @@ export default function LineChart({
       title: {
         display: !!title,
         text: title ?? '',
-        color: '#9ca3af',
+        color: chartTheme.labelColor,
       },
       legend: {
-        labels: { color: '#9ca3af' },
+        labels: { color: chartTheme.labelColor },
       },
       tooltip: {
-        backgroundColor: 'rgba(17, 24, 39, 0.95)',
-        titleColor: '#f9fafb',
-        bodyColor: '#f9fafb',
-        borderColor: 'rgba(75, 85, 99, 0.3)',
+        backgroundColor: chartTheme.tooltipBackground,
+        titleColor: chartTheme.tooltipText,
+        bodyColor: chartTheme.tooltipText,
+        borderColor: chartTheme.tooltipBorder,
         borderWidth: 1,
       },
     },
     scales: {
       x: {
-        ticks: { color: '#9ca3af' },
-        grid: { color: 'rgba(75, 85, 99, 0.2)' },
+        ticks: { color: chartTheme.labelColor },
+        grid: { color: chartTheme.gridColor },
       },
       y: {
-        ticks: { color: '#9ca3af' },
-        grid: { color: 'rgba(75, 85, 99, 0.2)' },
+        ticks: { color: chartTheme.labelColor },
+        grid: { color: chartTheme.gridColor },
       },
     },
   };

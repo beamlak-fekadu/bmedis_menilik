@@ -6,6 +6,7 @@ import { PageHeader, StatCard, Card, CardHeader, CardTitle, DataTable, Badge, Bu
 import { createProcurementRequest, getProcurementPipeline } from '@/services/procurement.service';
 import { procurementRequestSchema } from '@/utils/validation/operations';
 import { useToast } from '@/components/ui/Toast';
+import { AskAiButton } from '@/components/assistant/AskAiButton';
 
 type ProcurementRow = {
   id: string;
@@ -82,7 +83,16 @@ export default function ProcurementPage() {
       <PageHeader
         title="Procurement Tracking"
         description="Track procurement request pipeline from request through delivery."
-        actions={<Button onClick={() => setModalOpen(true)}>New Procurement Request</Button>}
+        actions={
+          <div className="flex items-center gap-2">
+            <AskAiButton
+              moduleLabel="Procurement"
+              label="Ask AI pipeline risk"
+              seedPrompt="Summarize procurement blockers and what should be prioritized today."
+            />
+            <Button onClick={() => setModalOpen(true)}>New Procurement Request</Button>
+          </div>
+        }
       />
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard label="Requested" value={summary.requested} icon={<ClipboardCheck className="h-6 w-6" />} color="yellow" />

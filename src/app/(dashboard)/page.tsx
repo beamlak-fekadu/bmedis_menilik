@@ -29,6 +29,7 @@ import Card, { CardHeader, CardTitle } from '@/components/ui/Card';
 import { ChartCard, BarChart, DoughnutChart } from '@/components/charts';
 import { UrgencyBadge, WorkOrderStatusBadge } from '@/components/ui/StatusBadge';
 import type { DashboardStats } from '@/types/database';
+import { AskAiButton } from '@/components/assistant/AskAiButton';
 
 interface DeptData {
   department_name: string;
@@ -180,6 +181,13 @@ export default function DashboardPage() {
       <PageHeader
         title="Dashboard"
         description="Hospital equipment management overview"
+        actions={
+          <AskAiButton
+            moduleLabel="Dashboard"
+            label="Ask AI priorities"
+            seedPrompt="What should I prioritize first today based on current dashboard signals?"
+          />
+        }
       />
 
       {/* Stat Cards */}

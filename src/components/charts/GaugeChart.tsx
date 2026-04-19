@@ -6,6 +6,7 @@ import {
   ArcElement,
   Tooltip,
 } from 'chart.js';
+import { useChartTheme } from './useChartTheme';
 
 ChartJS.register(ArcElement, Tooltip);
 
@@ -22,6 +23,7 @@ export default function GaugeChart({
   color = 'rgb(37, 99, 235)',
   size = 200,
 }: GaugeChartProps) {
+  const chartTheme = useChartTheme();
   const clamped = Math.min(100, Math.max(0, value));
   const remainder = 100 - clamped;
 
@@ -29,7 +31,7 @@ export default function GaugeChart({
     datasets: [
       {
         data: [clamped, remainder],
-        backgroundColor: [color, 'rgba(75, 85, 99, 0.2)'],
+        backgroundColor: [color, chartTheme.gridColor],
         borderColor: 'transparent',
         circumference: 260,
         rotation: 230,
@@ -55,11 +57,11 @@ export default function GaugeChart({
     >
       <Doughnut data={data} options={options} />
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-3xl font-bold text-gray-900 dark:text-white">
+        <span className="text-3xl font-bold text-[var(--foreground)]">
           {clamped}%
         </span>
         {label && (
-          <span className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+          <span className="mt-1 text-sm text-[var(--text-muted)]">
             {label}
           </span>
         )}

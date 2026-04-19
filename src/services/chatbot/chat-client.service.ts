@@ -7,6 +7,7 @@ export interface ChatSessionListItem {
   id: string;
   title: string;
   created_at: string;
+  last_message_at?: string;
 }
 
 export interface PersistedChatMessage {
@@ -29,8 +30,8 @@ export async function listChatSessions(limit = 20) {
   const supabase = createClient();
   return supabase
     .from('chat_sessions')
-    .select('id, title, created_at')
-    .order('created_at', { ascending: false })
+    .select('id, title, created_at, last_message_at')
+    .order('last_message_at', { ascending: false })
     .limit(limit);
 }
 

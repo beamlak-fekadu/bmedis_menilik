@@ -12,7 +12,7 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const variantStyles: Record<Variant, string> = {
-  primary: 'bg-[var(--brand)] text-white hover:bg-[var(--brand-strong)] focus:ring-[var(--brand)]',
+  primary: 'bg-[var(--brand)] text-white hover:bg-[var(--brand-strong)] focus:ring-[var(--brand)] disabled:border disabled:border-[var(--border-subtle)] disabled:bg-[var(--surface-3)] disabled:text-[var(--foreground)] disabled:opacity-100',
   secondary: 'bg-[var(--surface-3)] text-[var(--foreground)] hover:bg-[#232e50] focus:ring-[var(--brand)]',
   outline: 'border border-[var(--border-subtle)] bg-transparent text-[var(--foreground)] hover:bg-[var(--surface-2)] focus:ring-[var(--brand)]',
   ghost: 'text-[var(--text-muted)] hover:bg-[var(--surface-2)] hover:text-[var(--foreground)] focus:ring-[var(--brand)]',
@@ -31,7 +31,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     <button
       ref={ref}
       disabled={disabled || loading}
-      className={`inline-flex items-center justify-center gap-2 rounded-xl font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-0 disabled:pointer-events-none disabled:opacity-50 ${variantStyles[variant]} ${sizeStyles[size]} ${className}`}
+      className={`inline-flex items-center justify-center gap-2 rounded-xl font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-0 disabled:cursor-not-allowed ${variantStyles[variant]} ${sizeStyles[size]} ${className}`}
       {...props}
     >
       {loading && (

@@ -1,19 +1,13 @@
 import { type ChatLlmProvider, type ChatProviderName } from '@/types/chatbot';
-import { groqProvider } from './groq-provider';
-import { ollamaProvider } from './ollama-provider';
-import { stubProvider } from './stub-provider';
+import { geminiProvider } from './gemini-provider';
 
 const PROVIDERS: Record<ChatProviderName, ChatLlmProvider> = {
-  stub: stubProvider,
-  ollama: ollamaProvider,
-  groq: groqProvider,
+  gemini: geminiProvider,
 };
 
 function resolveProviderName() {
-  const configured = (process.env.CHAT_PROVIDER ?? 'stub').toLowerCase();
-  if (configured === 'groq') return 'groq';
-  if (configured === 'ollama') return 'ollama';
-  return 'stub';
+  const configured = (process.env.AI_PROVIDER ?? 'gemini').toLowerCase();
+  return (configured === 'gemini' ? 'gemini' : 'gemini') as ChatProviderName;
 }
 
 export function getChatProvider() {

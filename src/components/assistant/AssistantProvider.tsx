@@ -66,7 +66,9 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
     setIsOpen(true);
     setModuleLabel(options?.moduleLabel ?? routeModuleLabel);
     if (options?.contextRefs) {
-      setContextRefs((prev) => ({ ...prev, ...options.contextRefs }));
+      setContextRefs(options.contextRefs);
+    } else if (options) {
+      setContextRefs(undefined);
     }
     if (options?.seedPrompt) {
       setDraftInput(options.seedPrompt);
@@ -104,6 +106,8 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
         moduleContext: {
           moduleLabel,
           pathname,
+          route: pathname,
+          pageLabel: moduleLabel,
         },
       });
 

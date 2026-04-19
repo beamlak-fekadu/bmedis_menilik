@@ -33,9 +33,9 @@ test('classifier maps paraphrases to my_tasks capability', () => {
   assert.notEqual(classified.confidenceLabel, 'low');
 });
 
-test('classifier routes unknown phrasing to general fallback', () => {
+test('classifier routes unknown phrasing to system fallback', () => {
   const classified = classifyChatRequest('Can you help with that thing from earlier?');
-  assert.equal(classified.capability, 'general_fallback');
+  assert.equal(classified.capability, 'general_system_fallback');
 });
 
 test('safety keeps unknown queries useful with limited answer', () => {

@@ -15,11 +15,16 @@ import { evaluateSafetyDecision, STANDARD_RESPONSES } from './safety-service';
 import { buildPromptPayload } from './prompt-service';
 import { generateAssistantContent } from './llm-service';
 import { logCopilotTelemetry } from './telemetry-service';
+import { getCapabilityDefinition, normalizeCapabilityId } from './capability-registry';
 
 function buildBlockedAssistantContent(decision: ChatDecision, reason: string): AssistantContent {
   return {
     decision,
+    title: decision === 'refuse' ? 'Request outside safe scope' : 'Limited operational guidance',
     summary: reason,
+    key_findings: [],
+    recommended_actions: [],
+    priority_reasoning: [],
     likely_causes: [],
     troubleshooting_steps: [],
     maintenance_tips: [],
@@ -27,6 +32,8 @@ function buildBlockedAssistantContent(decision: ChatDecision, reason: string): A
     actions: [],
     insights: [],
     recommendations: [],
+    entities_referenced: [],
+    follow_up_suggestions: [],
     escalation_recommendation: decision === 'escalate' ? STANDARD_RESPONSES.escalate : undefined,
     escalation_guidance: decision === 'escalate' ? STANDARD_RESPONSES.escalate : undefined,
     reason_for_limit: reason,
@@ -46,8 +53,12 @@ interface OrchestrateParams {
 }
 
 export async function orchestrateAssistantResponse(params: OrchestrateParams): Promise<OrchestratorResult> {
+  const startedAt = Date.now();
   const { supabase, sessionId, message, profile, contextRefs, moduleContext } = params;
-  const classified = classifyChatRequest(message);
+  const rawClassified = classifyChatRequest(message);
+  const capability = normalizeCapabilityId(rawClassified.capability);
+  const classified = { ...rawClassified, capability };
+  const capabilityDef = getCapabilityDefinition(capability);
   const initialMemory = await loadConversationMemory(supabase, sessionId);
   const resolvedEntities = await resolveEntities({
     supabase,
@@ -60,7 +71,7 @@ export async function orchestrateAssistantResponse(params: OrchestrateParams): P
   const memory = await loadConversationMemory(supabase, sessionId, resolvedEntities);
   const taskContext = await buildTaskContext({
     supabase,
-    capability: classified.capability,
+    capability,
     profile,
     contextRefs: {
       equipmentId: contextRefs?.equipmentId ?? resolvedEntities.find((entity) => entity.type === 'equipment')?.id,
@@ -84,16 +95,24 @@ export async function orchestrateAssistantResponse(params: OrchestrateParams): P
       fallbackReason: classified.fallbackReason,
       roleNames: profile.roleNames,
       moduleLabel: moduleContext?.moduleLabel,
+      route: moduleContext?.route ?? moduleContext?.pathname,
       evidenceSignals: taskContext.evidence.evidenceSignals,
+      groundedBy: taskContext.evidence.evidenceSignals.length ? 'live_data' : 'general_fallback',
+      classifierCandidates: classified.candidates,
+      resolvedEntities,
+      latencyMs: Date.now() - startedAt,
       metadata: {
         classified,
+        capabilityDefinition: capabilityDef,
         policyCategory: safety.policyCategory,
         policyReason: safety.reason,
       },
     });
     await persistConversationMemory(supabase, {
       ...memory,
-      focus: classified.capability,
+      focus: capability,
+      activeCapability: capability,
+      threadIntent: classified.intent,
       lastEntities: resolvedEntities,
     });
 
@@ -164,16 +183,27 @@ export async function orchestrateAssistantResponse(params: OrchestrateParams): P
       fallbackReason: classified.fallbackReason,
       roleNames: profile.roleNames,
       moduleLabel: moduleContext?.moduleLabel,
+      route: moduleContext?.route ?? moduleContext?.pathname,
       evidenceSignals: taskContext.evidence.evidenceSignals,
+      groundedBy: taskContext.evidence.evidenceSignals.length ? 'live_data' : 'general_fallback',
+      parsingRecoveryUsed: Boolean(
+        (providerResult.providerMetadata?.parser as { usedFallback?: boolean } | undefined)?.usedFallback
+      ),
+      classifierCandidates: classified.candidates,
+      resolvedEntities,
+      latencyMs: Date.now() - startedAt,
       metadata: {
         provider: providerResult.provider,
         model: providerResult.model,
         providerMetadata: providerResult.providerMetadata ?? null,
+        capabilityDefinition: capabilityDef,
       },
     });
     await persistConversationMemory(supabase, {
       ...memory,
-      focus: classified.capability,
+      focus: capability,
+      activeCapability: capability,
+      threadIntent: classified.intent,
       lastEntities: resolvedEntities,
     });
 
@@ -209,9 +239,15 @@ export async function orchestrateAssistantResponse(params: OrchestrateParams): P
       fallbackReason: 'provider_failure',
       roleNames: profile.roleNames,
       moduleLabel: moduleContext?.moduleLabel,
+      route: moduleContext?.route ?? moduleContext?.pathname,
       evidenceSignals: taskContext.evidence.evidenceSignals,
+      groundedBy: 'general_fallback',
+      classifierCandidates: classified.candidates,
+      resolvedEntities,
+      latencyMs: Date.now() - startedAt,
       metadata: {
         error: error instanceof Error ? error.message : String(error),
+        capabilityDefinition: capabilityDef,
       },
     });
 

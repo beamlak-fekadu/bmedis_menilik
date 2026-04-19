@@ -51,23 +51,20 @@ The assistant is backend-controlled and safety-gated for medical equipment opera
 Create your env file from `.env.example` and set:
 
 ```bash
-CHAT_PROVIDER=groq
-GROQ_API_KEY=your_groq_api_key
-GROQ_MODEL=llama-3.1-8b-instant
+AI_PROVIDER=gemini
+GEMINI_API_KEY=your_gemini_api_key
+GEMINI_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai/
+GEMINI_MODEL=gemini-2.5-flash
 ```
 
-Optional provider controls:
+Optional Gemini controls:
 
 ```bash
-GROQ_TEMPERATURE=0.1
-GROQ_TIMEOUT_MS=30000
-GROQ_BASE_URL=https://api.groq.com/openai/v1
+GEMINI_TEMPERATURE=0.1
+GEMINI_TIMEOUT_MS=30000
+GEMINI_RETRY_COUNT=1
+GEMINI_MAX_COMPLETION_TOKENS=900
 ```
-
-Optional non-production adapters remain available:
-
-- `CHAT_PROVIDER=stub` for deterministic local safety-flow validation
-- `CHAT_PROVIDER=ollama` for local legacy adapter usage
 
 ### 2) Safety decision flow
 
@@ -78,7 +75,7 @@ The backend enforces policy before any model call:
 3. Retrieve grounded context from Supabase (equipment/work orders/PM/calibration/logistics/analytics/manual snippets).
 4. Evaluate evidence sufficiency and safety policy.
 5. If blocked, return structured refusal/redirect without calling LLM.
-6. If allowed, call Groq and validate structured JSON output contract.
+6. If allowed, call Gemini and validate structured JSON output contract.
 
 Decisions:
 
@@ -100,7 +97,7 @@ Decisions:
 ### 4) Go-live checklist
 
 - [ ] Apply `supabase/migrations/00015_chatbot_tables.sql`.
-- [ ] Set `CHAT_PROVIDER=groq` and valid `GROQ_API_KEY`.
+- [ ] Set `AI_PROVIDER=gemini` and valid `GEMINI_API_KEY`.
 - [ ] Run `npm run lint` and `npm run build`.
 - [ ] Validate contextual assistant entry points from major modules.
 - [ ] Validate refusal/escalation behavior for unsupported or unsafe prompts.

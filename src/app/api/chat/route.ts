@@ -17,7 +17,7 @@ async function getUserChatProfile() {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('id, department_id')
+    .select('id, department_id, full_name')
     .eq('user_id', user.id)
     .single();
 
@@ -25,17 +25,25 @@ async function getUserChatProfile() {
 
   const { data: userRoles } = await supabase
     .from('user_roles')
-    .select('roles(name)')
+    .select('roles(name, permissions)')
     .eq('user_id', profile.id);
 
   const roleNames = (userRoles ?? [])
     .map((row: Record<string, unknown>) => (row.roles as { name?: string } | null)?.name)
     .filter(Boolean) as string[];
+  const permissions = (userRoles ?? [])
+    .flatMap((row: Record<string, unknown>) => {
+      const rolePermissions = (row.roles as { permissions?: unknown } | null)?.permissions;
+      return Array.isArray(rolePermissions) ? rolePermissions.filter((item) => typeof item === 'string') : [];
+    }) as string[];
 
   const chatProfile: UserChatProfile = {
     profileId: profile.id,
+    userId: user.id,
+    displayName: (profile.full_name as string | undefined) ?? user.email ?? 'User',
     roleNames: roleNames.length ? roleNames : ['viewer'],
     departmentId: profile.department_id as string | null,
+    permissions,
   };
 
   return { supabase, user, profile: chatProfile };

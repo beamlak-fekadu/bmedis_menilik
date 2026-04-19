@@ -136,8 +136,18 @@ const CAPABILITY_KEYWORDS: Array<{ capability: CapabilityId; patterns: RegExp[];
     baseScore: 0.75,
   },
   {
+    capability: 'summarize_equipment',
+    patterns: [/\bsummari[sz]e\b.*\b(equipment|asset|device)\b/i, /\bstatus of this (asset|device|equipment)\b/i],
+    baseScore: 0.74,
+  },
+  {
     capability: 'explain_equipment_risk',
     patterns: [/\bhigh risk\b/i, /\brpn\b/i, /\bmtbf\b/i, /\bmttr\b/i, /\bwhy is .* risk\b/i],
+    baseScore: 0.78,
+  },
+  {
+    capability: 'explain_replacement_priority',
+    patterns: [/\breplacement priority\b/i, /\bwhy .*replace\b/i, /\breplacement urgency\b/i, /\breplacement rank\b/i],
     baseScore: 0.78,
   },
   {
@@ -156,9 +166,24 @@ const CAPABILITY_KEYWORDS: Array<{ capability: CapabilityId; patterns: RegExp[];
     baseScore: 0.68,
   },
   {
+    capability: 'maintenance_tips',
+    patterns: [/\bpm tips?\b/i, /\bmaintenance tips?\b/i, /\bpreventive maintenance tips?\b/i],
+    baseScore: 0.72,
+  },
+  {
     capability: 'logistics_status',
     patterns: [/\blogistics\b/i, /\blow stock\b/i, /\bspare parts?\b/i, /\bprocurement\b/i, /\binventory\b/i],
     baseScore: 0.76,
+  },
+  {
+    capability: 'procurement_status',
+    patterns: [/\bprocurement\b/i, /\bpipeline\b/i, /\bexpected delivery\b/i, /\bpurchase request\b/i],
+    baseScore: 0.75,
+  },
+  {
+    capability: 'pending_approvals',
+    patterns: [/\bpending approvals?\b/i, /\bwhat approvals\b/i, /\bawaiting sign[-\s]?off\b/i],
+    baseScore: 0.75,
   },
   {
     capability: 'approval_tasks',
@@ -181,12 +206,12 @@ const INTENT_TO_CAPABILITY: Record<ChatIntent, CapabilityId> = {
   maintenance_tip: 'maintenance_guidance',
   troubleshooting: 'safe_troubleshooting',
   work_order_help: 'summarize_work_order',
-  equipment_lookup: 'maintenance_guidance',
+  equipment_lookup: 'summarize_equipment',
   analytics_explanation: 'decision_support_analysis',
   calibration_or_logistics: 'logistics_status',
   too_detailed: 'safe_troubleshooting',
   unsafe: 'safe_troubleshooting',
-  out_of_scope: 'general_fallback',
+  out_of_scope: 'general_system_fallback',
 };
 
 function toConfidenceLabel(score: number): ConfidenceLevel {
@@ -216,7 +241,7 @@ export function classifyChatRequest(message: string): ClassifiedRequest {
   const ambiguous = Boolean(topCandidate && secondCandidate && topCandidate.confidence - secondCandidate.confidence < 0.08);
 
   const buildResult = (intent: ChatIntent, details: Partial<ClassifiedRequest>): ClassifiedRequest => {
-    const fallbackCapability = details.capability ?? INTENT_TO_CAPABILITY[intent] ?? 'general_fallback';
+    const fallbackCapability = details.capability ?? INTENT_TO_CAPABILITY[intent] ?? 'general_system_fallback';
     const confidence = details.confidence ?? topCandidate?.confidence ?? 0.45;
     const confidenceLabel = details.confidenceLabel ?? toConfidenceLabel(confidence);
     const candidates =
@@ -231,7 +256,7 @@ export function classifyChatRequest(message: string): ClassifiedRequest {
 
     return {
       intent,
-      capability: confidenceLabel === 'low' ? 'general_fallback' : fallbackCapability,
+      capability: confidenceLabel === 'low' ? 'general_system_fallback' : fallbackCapability,
       reasons,
       troubleshootingSubtype: details.troubleshootingSubtype ?? 'none',
       specificity: details.specificity ?? 'general',
@@ -248,7 +273,7 @@ export function classifyChatRequest(message: string): ClassifiedRequest {
     reasons.push('Detected patient-care or diagnosis language.');
     matchedSignals.push('out_of_scope_pattern');
     return buildResult('out_of_scope', {
-      capability: 'general_fallback',
+      capability: 'general_system_fallback',
       confidence: 0.98,
       confidenceLabel: 'high',
       specificity: 'unsafe',
@@ -315,7 +340,7 @@ export function classifyChatRequest(message: string): ClassifiedRequest {
       }
 
       return buildResult(intentPattern.intent, {
-        capability: topCandidate?.capability ?? INTENT_TO_CAPABILITY[intentPattern.intent] ?? 'general_fallback',
+          capability: topCandidate?.capability ?? INTENT_TO_CAPABILITY[intentPattern.intent] ?? 'general_system_fallback',
         specificity: 'general',
       });
     }
@@ -324,7 +349,7 @@ export function classifyChatRequest(message: string): ClassifiedRequest {
   reasons.push('Defaulted to maintenance_tip for operational guidance.');
   matchedSignals.push('default_maintenance_tip');
   return buildResult('maintenance_tip', {
-    capability: 'general_fallback',
+    capability: 'general_system_fallback',
     confidence: Math.max(0.38, topCandidate?.confidence ?? 0.4),
     confidenceLabel: 'low',
     specificity: 'general',

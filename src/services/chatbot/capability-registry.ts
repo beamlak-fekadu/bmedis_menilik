@@ -8,6 +8,7 @@ export interface CapabilityDefinition {
   retrievalBlocks: string[];
   responseSections: Array<'summary' | 'actions' | 'insights' | 'recommendations' | 'escalation_guidance' | 'confidence'>;
   safetyConstraints: string[];
+  fallbackBehavior: 'general_guidance' | 'request_context' | 'escalate';
 }
 
 const ALL_SECTIONS: CapabilityDefinition['responseSections'] = [
@@ -28,6 +29,7 @@ export const CAPABILITY_REGISTRY: Record<CapabilityId, CapabilityDefinition> = {
     retrievalBlocks: ['assignedWorkOrders', 'pendingApprovals', 'overduePm'],
     responseSections: ALL_SECTIONS,
     safetyConstraints: ['role_scope_only'],
+    fallbackBehavior: 'request_context',
   },
   prioritize_tasks: {
     id: 'prioritize_tasks',
@@ -37,6 +39,7 @@ export const CAPABILITY_REGISTRY: Record<CapabilityId, CapabilityDefinition> = {
     retrievalBlocks: ['decisionSupport', 'recommendationFlags', 'openWorkOrders'],
     responseSections: ALL_SECTIONS,
     safetyConstraints: ['role_scope_only'],
+    fallbackBehavior: 'request_context',
   },
   summarize_work_order: {
     id: 'summarize_work_order',
@@ -46,6 +49,17 @@ export const CAPABILITY_REGISTRY: Record<CapabilityId, CapabilityDefinition> = {
     retrievalBlocks: ['workOrder', 'maintenanceHistory'],
     responseSections: ALL_SECTIONS,
     safetyConstraints: ['role_scope_only'],
+    fallbackBehavior: 'request_context',
+  },
+  summarize_equipment: {
+    id: 'summarize_equipment',
+    intents: ['equipment_lookup', 'analytics_explanation'],
+    description: 'Summarizes current equipment status, reliability, and maintenance context.',
+    requiredInputs: ['equipmentId'],
+    retrievalBlocks: ['equipment', 'maintenanceHistory', 'riskScores', 'reliability'],
+    responseSections: ALL_SECTIONS,
+    safetyConstraints: ['role_scope_only'],
+    fallbackBehavior: 'request_context',
   },
   explain_equipment_risk: {
     id: 'explain_equipment_risk',
@@ -55,6 +69,17 @@ export const CAPABILITY_REGISTRY: Record<CapabilityId, CapabilityDefinition> = {
     retrievalBlocks: ['riskScores', 'reliability', 'replacementPriority'],
     responseSections: ALL_SECTIONS,
     safetyConstraints: ['role_scope_only'],
+    fallbackBehavior: 'request_context',
+  },
+  explain_replacement_priority: {
+    id: 'explain_replacement_priority',
+    intents: ['analytics_explanation'],
+    description: 'Explains replacement urgency, ranking, and impact tradeoffs.',
+    requiredInputs: ['equipmentId?'],
+    retrievalBlocks: ['replacementPriority', 'riskScores', 'reliability', 'recommendationFlags'],
+    responseSections: ALL_SECTIONS,
+    safetyConstraints: ['role_scope_only'],
+    fallbackBehavior: 'general_guidance',
   },
   explain_pm_status: {
     id: 'explain_pm_status',
@@ -64,6 +89,7 @@ export const CAPABILITY_REGISTRY: Record<CapabilityId, CapabilityDefinition> = {
     retrievalBlocks: ['overduePm', 'pmCompliance'],
     responseSections: ALL_SECTIONS,
     safetyConstraints: ['role_scope_only'],
+    fallbackBehavior: 'general_guidance',
   },
   safe_troubleshooting: {
     id: 'safe_troubleshooting',
@@ -73,6 +99,17 @@ export const CAPABILITY_REGISTRY: Record<CapabilityId, CapabilityDefinition> = {
     retrievalBlocks: ['equipment', 'manualOrSop', 'maintenanceHistory'],
     responseSections: ALL_SECTIONS,
     safetyConstraints: ['no_board_level', 'no_bypass', 'first_line_only'],
+    fallbackBehavior: 'escalate',
+  },
+  maintenance_tips: {
+    id: 'maintenance_tips',
+    intents: ['maintenance_tip'],
+    description: 'Provides role-aware preventive maintenance tips and checks.',
+    requiredInputs: ['departmentId?'],
+    retrievalBlocks: ['equipment', 'pmSnapshot', 'overduePm'],
+    responseSections: ALL_SECTIONS,
+    safetyConstraints: ['role_scope_only'],
+    fallbackBehavior: 'general_guidance',
   },
   maintenance_guidance: {
     id: 'maintenance_guidance',
@@ -82,6 +119,7 @@ export const CAPABILITY_REGISTRY: Record<CapabilityId, CapabilityDefinition> = {
     retrievalBlocks: ['equipment', 'workOrders', 'pmSnapshot'],
     responseSections: ALL_SECTIONS,
     safetyConstraints: ['role_scope_only'],
+    fallbackBehavior: 'general_guidance',
   },
   logistics_status: {
     id: 'logistics_status',
@@ -91,6 +129,27 @@ export const CAPABILITY_REGISTRY: Record<CapabilityId, CapabilityDefinition> = {
     retrievalBlocks: ['lowStock', 'procurementPipeline'],
     responseSections: ALL_SECTIONS,
     safetyConstraints: ['role_scope_only'],
+    fallbackBehavior: 'general_guidance',
+  },
+  procurement_status: {
+    id: 'procurement_status',
+    intents: ['calibration_or_logistics'],
+    description: 'Explains procurement pipeline risk and blockers impacting maintenance.',
+    requiredInputs: ['departmentId?'],
+    retrievalBlocks: ['procurementPipeline', 'lowStock', 'openWorkOrders'],
+    responseSections: ALL_SECTIONS,
+    safetyConstraints: ['role_scope_only'],
+    fallbackBehavior: 'general_guidance',
+  },
+  pending_approvals: {
+    id: 'pending_approvals',
+    intents: ['work_order_help', 'maintenance_tip'],
+    description: 'Lists pending approvals and likely operational impact.',
+    requiredInputs: ['profileId'],
+    retrievalBlocks: ['maintenanceRequests', 'disposalRequests', 'procurementPipeline'],
+    responseSections: ALL_SECTIONS,
+    safetyConstraints: ['role_scope_only'],
+    fallbackBehavior: 'request_context',
   },
   approval_tasks: {
     id: 'approval_tasks',
@@ -100,6 +159,7 @@ export const CAPABILITY_REGISTRY: Record<CapabilityId, CapabilityDefinition> = {
     retrievalBlocks: ['maintenanceRequests', 'disposalRequests', 'procurementPipeline'],
     responseSections: ALL_SECTIONS,
     safetyConstraints: ['role_scope_only'],
+    fallbackBehavior: 'request_context',
   },
   alerts_and_escalations: {
     id: 'alerts_and_escalations',
@@ -109,6 +169,7 @@ export const CAPABILITY_REGISTRY: Record<CapabilityId, CapabilityDefinition> = {
     retrievalBlocks: ['recommendationFlags', 'recentAlerts'],
     responseSections: ALL_SECTIONS,
     safetyConstraints: ['role_scope_only'],
+    fallbackBehavior: 'general_guidance',
   },
   decision_support_analysis: {
     id: 'decision_support_analysis',
@@ -118,6 +179,7 @@ export const CAPABILITY_REGISTRY: Record<CapabilityId, CapabilityDefinition> = {
     retrievalBlocks: ['decisionSupport'],
     responseSections: ALL_SECTIONS,
     safetyConstraints: ['role_scope_only'],
+    fallbackBehavior: 'general_guidance',
   },
   general_fallback: {
     id: 'general_fallback',
@@ -127,9 +189,33 @@ export const CAPABILITY_REGISTRY: Record<CapabilityId, CapabilityDefinition> = {
     retrievalBlocks: ['lightweightContext'],
     responseSections: ALL_SECTIONS,
     safetyConstraints: ['safe_general_only'],
+    fallbackBehavior: 'general_guidance',
+  },
+  general_system_fallback: {
+    id: 'general_system_fallback',
+    intents: ['maintenance_tip'],
+    description: 'Safe, contextual fallback preserving system-operational tone.',
+    requiredInputs: [],
+    retrievalBlocks: ['lightweightContext'],
+    responseSections: ALL_SECTIONS,
+    safetyConstraints: ['safe_general_only'],
+    fallbackBehavior: 'general_guidance',
   },
 };
 
 export function getCapabilityDefinition(capability: CapabilityId) {
   return CAPABILITY_REGISTRY[capability];
+}
+
+const CAPABILITY_ALIASES: Record<string, CapabilityId> = {
+  pending_approvals: 'pending_approvals',
+  approval_tasks: 'pending_approvals',
+  maintenance_tips: 'maintenance_tips',
+  procurement_status: 'procurement_status',
+  general_system_fallback: 'general_system_fallback',
+  general_fallback: 'general_system_fallback',
+};
+
+export function normalizeCapabilityId(capability: CapabilityId | string): CapabilityId {
+  return CAPABILITY_ALIASES[capability] ?? (capability as CapabilityId);
 }

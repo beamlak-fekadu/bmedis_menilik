@@ -1,6 +1,10 @@
 import type { Metadata } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
+import { cookies } from 'next/headers';
 import './globals.css';
+import { APP_NAME_SHORT, APP_NAME_FULL, HOSPITAL_NAME } from '@/constants';
+import { ThemeProvider, ThemeScript } from '@/components/theme/ThemeProvider';
+import { getServerThemeFromPreference, isThemePreference, THEME_COOKIE_KEY } from '@/components/theme/theme-contract';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -13,21 +17,31 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'MedEquip Pro - Medical Equipment Management',
-  description: 'Hospital-level Medical Equipment Management and Decision-Support System for St. Peter\'s Specialized Hospital',
+  title: `${APP_NAME_SHORT} - ${APP_NAME_FULL}`,
+  description: `${APP_NAME_FULL} for ${HOSPITAL_NAME}`,
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const cookieStore = await cookies();
+  const cookieThemeValue = cookieStore.get(THEME_COOKIE_KEY)?.value;
+  const preference = isThemePreference(cookieThemeValue) ? cookieThemeValue : undefined;
+  const initialTheme = getServerThemeFromPreference(preference);
+  const htmlClassName = `${geistSans.variable} ${geistMono.variable} h-full antialiased${initialTheme === 'dark' ? ' dark' : ''}`;
+
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      data-theme={initialTheme}
+      className={htmlClassName}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        <ThemeScript />
+        <ThemeProvider>{children}</ThemeProvider>
+      </body>
     </html>
   );
 }

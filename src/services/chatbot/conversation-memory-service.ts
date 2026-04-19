@@ -2,6 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { ChatMessageRole, MemorySnapshot, ResolvedEntity } from '@/types/chatbot';
 
 const MEMORY_TURN_LIMIT = 10;
+const RECENT_TURN_SUMMARY_LIMIT = 6;
 
 function inferFocusFromText(text: string) {
   const normalized = text.toLowerCase();
@@ -16,7 +17,7 @@ function inferFocusFromText(text: string) {
 function summarizeTurns(turns: Array<{ role: ChatMessageRole; content: string }>) {
   if (!turns.length) return 'No prior conversation context.';
   const sample = turns
-    .slice(-4)
+    .slice(-RECENT_TURN_SUMMARY_LIMIT)
     .map((turn) => `${turn.role === 'user' ? 'User' : 'Assistant'}: ${turn.content}`)
     .join(' | ');
   return sample.slice(0, 800);
@@ -45,11 +46,13 @@ export async function loadConversationMemory(
   const focusSeed = recentTurns.length ? recentTurns[recentTurns.length - 1].content : '';
   const focus = inferFocusFromText(focusSeed);
 
-  let memoryRow: { summary_text?: string; focus?: string; last_entities?: unknown } | null = null;
+  let memoryRow:
+    | { summary_text?: string; focus?: string; last_entities?: unknown; thread_intent?: string; active_capability?: string }
+    | null = null;
   try {
     const { data } = await supabase
       .from('chat_session_memory')
-      .select('summary_text, focus, last_entities')
+      .select('summary_text, focus, last_entities, thread_intent, active_capability')
       .eq('session_id', sessionId)
       .maybeSingle()
       .throwOnError();
@@ -66,6 +69,8 @@ export async function loadConversationMemory(
     sessionId,
     shortSummary: typeof memoryRow?.summary_text === 'string' && memoryRow.summary_text.trim() ? memoryRow.summary_text : shortSummary,
     focus: typeof memoryRow?.focus === 'string' && memoryRow.focus.trim() ? memoryRow.focus : focus,
+    threadIntent: (memoryRow?.thread_intent as MemorySnapshot['threadIntent']) ?? undefined,
+    activeCapability: (memoryRow?.active_capability as MemorySnapshot['activeCapability']) ?? undefined,
     recentTurns,
     lastEntities: persistedEntities.length ? persistedEntities : fallbackEntities,
   };
@@ -82,6 +87,8 @@ export async function persistConversationMemory(
         session_id: snapshot.sessionId,
         summary_text: snapshot.shortSummary,
         focus: snapshot.focus,
+        thread_intent: snapshot.threadIntent ?? null,
+        active_capability: snapshot.activeCapability ?? null,
         last_entities: snapshot.lastEntities,
         updated_at: new Date().toISOString(),
       })

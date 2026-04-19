@@ -9,26 +9,41 @@ interface TaskContextParams {
   contextRefs?: ChatContextRefs;
 }
 
+function isAdmin(profile: UserChatProfile) {
+  return profile.roleNames.includes('admin');
+}
+
 async function loadTaskBlocks(supabase: SupabaseClient, profile: UserChatProfile) {
+  const assignedWorkOrdersQuery = supabase
+    .from('work_orders')
+    .select('id, work_order_number, status, priority, assigned_to, created_at, asset_id')
+    .in('status', ['open', 'assigned', 'in_progress', 'on_hold'])
+    .order('created_at', { ascending: false })
+    .limit(20);
+
+  const scopedWorkOrdersQuery = isAdmin(profile)
+    ? assignedWorkOrdersQuery
+    : assignedWorkOrdersQuery.or(`assigned_to.eq.${profile.profileId},status.in.(open,assigned,in_progress,on_hold)`);
+
+  let maintenanceApprovalsQuery = supabase
+    .from('maintenance_requests')
+    .select('id, request_number, status, urgency, created_at, department_id')
+    .eq('status', 'pending')
+    .order('created_at', { ascending: false })
+    .limit(12);
+
+  if (!isAdmin(profile) && profile.departmentId) {
+    maintenanceApprovalsQuery = maintenanceApprovalsQuery.eq('department_id', profile.departmentId);
+  }
+
   const [workOrdersRes, overduePmRes, approvalMaintenanceRes, disposalRes, procurementRes] = await Promise.all([
-    supabase
-      .from('work_orders')
-      .select('id, work_order_number, status, priority, assigned_to, created_at')
-      .eq('assigned_to', profile.profileId)
-      .in('status', ['open', 'assigned', 'in_progress', 'on_hold'])
-      .order('created_at', { ascending: false })
-      .limit(12),
+    scopedWorkOrdersQuery,
     supabase
       .from('v_overdue_pm')
       .select('id, plan_name, asset_code, asset_name, days_overdue, department_name')
       .order('days_overdue', { ascending: false })
       .limit(12),
-    supabase
-      .from('maintenance_requests')
-      .select('id, request_number, status, urgency, created_at, department_id')
-      .eq('status', 'pending')
-      .order('created_at', { ascending: false })
-      .limit(8),
+    maintenanceApprovalsQuery,
     supabase
       .from('disposal_requests')
       .select('id, request_number, status, created_at')
@@ -50,6 +65,25 @@ async function loadTaskBlocks(supabase: SupabaseClient, profile: UserChatProfile
     disposalApprovals: (disposalRes.data ?? []) as Record<string, unknown>[],
     procurementApprovals: (procurementRes.data ?? []) as Record<string, unknown>[],
   };
+}
+
+function buildPriorityReasoning(
+  blocks: {
+    assignedWorkOrders: Record<string, unknown>[];
+    overduePm: Record<string, unknown>[];
+    recommendationFlags: Record<string, unknown>[];
+    decisionSupportQueue: Record<string, unknown>[];
+  }
+) {
+  const reasons: string[] = [];
+  const highPriorityOrders = blocks.assignedWorkOrders.filter((item) => ['high', 'critical'].includes(String(item.priority ?? '')));
+  if (highPriorityOrders.length > 0) reasons.push(`${highPriorityOrders.length} high-priority work orders need action.`);
+  const overdueHeavy = blocks.overduePm.filter((item) => Number(item.days_overdue ?? 0) >= 7);
+  if (overdueHeavy.length > 0) reasons.push(`${overdueHeavy.length} PM tasks are overdue by at least one week.`);
+  const criticalFlags = blocks.recommendationFlags.filter((item) => ['high', 'critical'].includes(String(item.severity ?? '')));
+  if (criticalFlags.length > 0) reasons.push(`${criticalFlags.length} high-severity recommendation flags are still open.`);
+  if (blocks.decisionSupportQueue.length > 0) reasons.push('Decision-support queue indicates triage pressure on key assets.');
+  return reasons;
 }
 
 async function loadRiskAndAnalytics(supabase: SupabaseClient, contextRefs?: ChatContextRefs) {
@@ -134,30 +168,72 @@ async function loadLogistics(supabase: SupabaseClient) {
   };
 }
 
+async function loadDecisionSupportSnapshot(supabase: SupabaseClient) {
+  const [readinessRes, workloadRes] = await Promise.all([
+    supabase
+      .from('clinical_readiness_snapshots')
+      .select('department_id, readiness_score, essential_total, essential_functional, snapshot_date')
+      .order('snapshot_date', { ascending: false })
+      .limit(15),
+    supabase
+      .from('workload_capacity_snapshots')
+      .select('assignee_id, open_assignments, overdue_assignments, estimated_hours, snapshot_date')
+      .order('snapshot_date', { ascending: false })
+      .limit(20),
+  ]);
+
+  return {
+    readinessSnapshot: (readinessRes.data ?? []) as Record<string, unknown>[],
+    workloadSnapshot: (workloadRes.data ?? []) as Record<string, unknown>[],
+  };
+}
+
 function selectCapabilityBlocks(
   capability: CapabilityId,
   shared: Record<string, unknown>,
   riskAnalytics: Record<string, unknown>,
-  logistics: Record<string, unknown>
+  logistics: Record<string, unknown>,
+  decisionSupport: Record<string, unknown>
 ) {
   switch (capability) {
     case 'my_tasks':
     case 'prioritize_tasks':
-      return { ...shared, ...riskAnalytics };
+      return {
+        ...shared,
+        ...riskAnalytics,
+        ...decisionSupport,
+        priorityReasoning: buildPriorityReasoning({
+          assignedWorkOrders: (shared.assignedWorkOrders as Record<string, unknown>[]) ?? [],
+          overduePm: (shared.overduePm as Record<string, unknown>[]) ?? [],
+          recommendationFlags: (riskAnalytics.recommendationFlags as Record<string, unknown>[]) ?? [],
+          decisionSupportQueue: (riskAnalytics.decisionSupportQueue as Record<string, unknown>[]) ?? [],
+        }),
+      };
     case 'summarize_work_order':
     case 'maintenance_guidance':
+    case 'summarize_equipment':
+    case 'maintenance_tips':
       return { ...shared };
+    case 'explain_replacement_priority':
+      return {
+        replacementPriority: riskAnalytics.replacementPriority,
+        recommendationFlags: riskAnalytics.recommendationFlags,
+        reliabilityMetrics: riskAnalytics.reliabilityMetrics,
+      };
     case 'explain_equipment_risk':
     case 'decision_support_analysis':
     case 'alerts_and_escalations':
-      return { ...riskAnalytics, ...shared };
+      return { ...riskAnalytics, ...shared, ...decisionSupport };
     case 'explain_pm_status':
       return { overduePm: shared.overduePm, pmSignals: riskAnalytics.reliabilityMetrics };
     case 'logistics_status':
+    case 'procurement_status':
+      return { ...shared, ...logistics };
+    case 'pending_approvals':
     case 'approval_tasks':
       return { ...shared, ...logistics };
     default:
-      return { ...shared, ...riskAnalytics, ...logistics };
+      return { ...shared, ...riskAnalytics, ...logistics, ...decisionSupport };
   }
 }
 
@@ -167,24 +243,29 @@ export async function buildTaskContext(params: TaskContextParams): Promise<TaskC
   const intentForEvidence =
     capability === 'logistics_status'
       ? 'calibration_or_logistics'
+      : capability === 'procurement_status'
+        ? 'calibration_or_logistics'
       : capability === 'safe_troubleshooting'
         ? 'troubleshooting'
-        : capability === 'decision_support_analysis' || capability === 'explain_equipment_risk' || capability === 'alerts_and_escalations'
+      : capability === 'decision_support_analysis' || capability === 'explain_equipment_risk' || capability === 'alerts_and_escalations' || capability === 'explain_replacement_priority'
           ? 'analytics_explanation'
           : capability === 'summarize_work_order'
             ? 'work_order_help'
+          : capability === 'summarize_equipment'
+            ? 'equipment_lookup'
             : 'maintenance_tip';
 
   const evidence: ChatEvidence = await buildChatEvidence(supabase, contextRefs, profile, intentForEvidence);
-  const [shared, riskAnalytics, logistics] = await Promise.all([
+  const [shared, riskAnalytics, logistics, decisionSupport] = await Promise.all([
     loadTaskBlocks(supabase, profile),
     loadRiskAndAnalytics(supabase, contextRefs),
     loadLogistics(supabase),
+    loadDecisionSupportSnapshot(supabase),
   ]);
 
   return {
     capability,
     evidence,
-    blocks: selectCapabilityBlocks(capability, shared, riskAnalytics, logistics),
+    blocks: selectCapabilityBlocks(capability, shared, riskAnalytics, logistics, decisionSupport),
   };
 }

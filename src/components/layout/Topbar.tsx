@@ -1,9 +1,10 @@
 'use client';
 
 import { Bell, LogOut, Menu, Search, User } from 'lucide-react';
-import { HOSPITAL_NAME } from '@/constants';
+import { APP_NAME_SHORT, HOSPITAL_NAME } from '@/constants';
 import Button from '@/components/ui/Button';
 import Dropdown from '@/components/ui/Dropdown';
+import { ThemeToggle } from '@/components/theme/ThemeToggle';
 
 interface TopbarProps {
   userName?: string;
@@ -22,7 +23,10 @@ export default function Topbar({ userName = 'User', userRole = '', alertCount = 
             <Menu className="h-5 w-5" />
           </button>
         )}
-        <h2 className="text-sm font-medium text-[var(--text-muted)]">{HOSPITAL_NAME}</h2>
+        <div>
+          <h2 className="text-sm font-semibold text-[var(--foreground)]">{APP_NAME_SHORT}</h2>
+          <p className="text-xs text-[var(--text-muted)]">{HOSPITAL_NAME}</p>
+        </div>
       </div>
 
       <div className="hidden min-w-[260px] items-center gap-2 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-2)] px-3 py-2 text-sm text-[var(--text-muted)] md:flex lg:min-w-[360px]">
@@ -31,6 +35,7 @@ export default function Topbar({ userName = 'User', userRole = '', alertCount = 
       </div>
 
       <div className="flex items-center gap-2">
+        <ThemeToggle />
         <Button variant="ghost" size="icon" className="relative">
           <Bell className="h-5 w-5 text-[var(--text-muted)]" />
           {alertCount > 0 && (

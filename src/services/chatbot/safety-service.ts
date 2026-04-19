@@ -24,7 +24,7 @@ const ROLE_INTENT_BLOCKS: Record<string, ChatIntent[]> = {
 };
 
 const ROLE_CAPABILITY_BLOCKS: Record<string, CapabilityId[]> = {
-  viewer: ['approval_tasks'],
+  viewer: ['approval_tasks', 'pending_approvals'],
   store_user: ['safe_troubleshooting'],
 };
 

@@ -77,6 +77,15 @@ function normalizeFromObject(rawObject: Record<string, unknown>, requiredDecisio
       (typeof camel.summary === 'string' && camel.summary) ||
       FALLBACK_SUMMARY
     ).slice(0, 2000),
+    title:
+      typeof snake.title === 'string'
+        ? snake.title.slice(0, 180)
+        : typeof camel.title === 'string'
+          ? camel.title.slice(0, 180)
+          : undefined,
+    key_findings: coerceStringArray(snake.key_findings ?? camel.keyFindings, 10, 400),
+    recommended_actions: coerceStringArray(snake.recommended_actions ?? camel.recommendedActions, 10, 400),
+    priority_reasoning: coerceStringArray(snake.priority_reasoning ?? camel.priorityReasoning, 10, 400),
     likely_causes: coerceStringArray(snake.likely_causes ?? camel.likelyCauses, 8, 300),
     troubleshooting_steps: coerceStringArray(snake.troubleshooting_steps ?? camel.troubleshootingSteps, 10, 400),
     maintenance_tips: coerceStringArray(snake.maintenance_tips ?? camel.maintenanceTips, 10, 400),
@@ -84,6 +93,8 @@ function normalizeFromObject(rawObject: Record<string, unknown>, requiredDecisio
     actions: coerceStringArray(snake.actions ?? camel.actions, 10, 400),
     insights: coerceStringArray(snake.insights ?? camel.insights, 10, 400),
     recommendations: coerceStringArray(snake.recommendations ?? camel.recommendations, 10, 400),
+    entities_referenced: coerceStringArray(snake.entities_referenced ?? camel.entitiesReferenced, 12, 160),
+    follow_up_suggestions: coerceStringArray(snake.follow_up_suggestions ?? camel.followUpSuggestions, 8, 240),
     escalation_recommendation:
       typeof snake.escalation_recommendation === 'string'
         ? snake.escalation_recommendation.slice(0, 600)
@@ -137,7 +148,11 @@ function buildSafeFallback(requiredDecision: ChatDecision): AssistantContent {
   const fallbackDecision: ChatDecision = requiredDecision === 'answer' ? 'limited_answer' : requiredDecision;
   return {
     decision: fallbackDecision,
+    title: 'Operational guidance unavailable',
     summary: FALLBACK_SUMMARY,
+    key_findings: [],
+    recommended_actions: [],
+    priority_reasoning: [],
     likely_causes: [],
     troubleshooting_steps: [],
     maintenance_tips: [],
@@ -145,6 +160,8 @@ function buildSafeFallback(requiredDecision: ChatDecision): AssistantContent {
     actions: [],
     insights: [],
     recommendations: [],
+    entities_referenced: [],
+    follow_up_suggestions: [],
     reason_for_limit: 'Provider output was not reliably parseable into the required structure.',
     answer_basis: 'insufficient_data',
     confidence: 'low',

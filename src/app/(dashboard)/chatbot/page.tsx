@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { usePathname } from 'next/navigation';
 import { AlertTriangle, Bot, ClipboardCopy, MessageSquareText, Send, UserCircle2 } from 'lucide-react';
 import {
   Badge,
@@ -29,6 +30,7 @@ import {
 } from '@/services/chatbot/chat-client.service';
 import type { AssistantContent, ChatContextRefs } from '@/types/chatbot';
 import { normalizeAssistantPayload } from '@/services/chatbot/chat-response-normalizer';
+import { CHATBOT_NAME, ASSISTANT_NAME } from '@/constants';
 
 type UIMessage = {
   id: string;
@@ -75,7 +77,11 @@ function mapPersistedMessage(row: PersistedChatMessage): UIMessage {
 
 function buildCopyText(assistant: AssistantContent) {
   const sections = [
+    assistant.title ? `Title: ${assistant.title}` : '',
     `Summary: ${assistant.summary}`,
+    assistant.key_findings.length ? `Key findings:\n- ${assistant.key_findings.join('\n- ')}` : '',
+    assistant.recommended_actions.length ? `Recommended actions:\n- ${assistant.recommended_actions.join('\n- ')}` : '',
+    assistant.priority_reasoning.length ? `Priority reasoning:\n- ${assistant.priority_reasoning.join('\n- ')}` : '',
     assistant.likely_causes.length ? `Likely causes:\n- ${assistant.likely_causes.join('\n- ')}` : '',
     assistant.troubleshooting_steps.length ? `Troubleshooting steps:\n- ${assistant.troubleshooting_steps.join('\n- ')}` : '',
     assistant.maintenance_tips.length ? `Maintenance tips:\n- ${assistant.maintenance_tips.join('\n- ')}` : '',
@@ -87,6 +93,7 @@ function buildCopyText(assistant: AssistantContent) {
 
 export default function ChatbotPage() {
   const { toast } = useToast();
+  const pathname = usePathname();
   const [sessions, setSessions] = useState<ChatSessionListItem[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | undefined>();
   const [messages, setMessages] = useState<UIMessage[]>([]);
@@ -186,6 +193,12 @@ export default function ChatbotPage() {
         message: trimmed,
         sessionId: activeSessionId,
         contextRefs,
+        moduleContext: {
+          moduleLabel: CHATBOT_NAME,
+          pathname,
+          route: pathname,
+          pageLabel: CHATBOT_NAME,
+        },
       });
 
       setActiveSessionId(payload.sessionId);
@@ -221,7 +234,7 @@ export default function ChatbotPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Operations Chatbot"
+        title={CHATBOT_NAME}
         description="Ask about equipment status, maintenance, troubleshooting, PM, work orders, calibration, logistics, and replacement priorities."
       />
 
@@ -258,14 +271,14 @@ export default function ChatbotPage() {
           </CardContent>
         </Card>
 
-        <Card className="h-[calc(100vh-220px)] overflow-hidden" padding={false}>
+        <Card className="flex h-[calc(100vh-220px)] flex-col overflow-hidden" padding={false}>
           <CardHeader className="border-b border-[var(--border-subtle)] p-4">
             <CardTitle className="inline-flex items-center gap-2 text-base">
               <MessageSquareText className="h-4 w-4" />
-              Biomedical Operations Assistant
+              {ASSISTANT_NAME}
             </CardTitle>
           </CardHeader>
-          <CardContent className="flex h-full min-h-0 flex-col gap-4 p-4">
+          <CardContent className="flex min-h-0 flex-1 flex-col gap-4 p-4">
             <div ref={messagesContainerRef} className="min-h-0 flex-1 space-y-4 overflow-y-auto pr-1">
               {loadingMessages ? (
                 <div className="flex justify-center py-8">
@@ -292,7 +305,30 @@ export default function ChatbotPage() {
 
                       {message.assistant ? (
                         <div className="space-y-3 text-sm">
+                          {message.assistant.title && <p className="font-semibold">{message.assistant.title}</p>}
                           <p>{message.assistant.summary || message.content}</p>
+
+                          {message.assistant.key_findings.length > 0 && (
+                            <div>
+                              <p className="mb-1 font-semibold">Key findings</p>
+                              <ul className="list-disc space-y-1 pl-5 text-[var(--text-muted)]">
+                                {message.assistant.key_findings.map((item) => (
+                                  <li key={item}>{item}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+
+                          {message.assistant.recommended_actions.length > 0 && (
+                            <div>
+                              <p className="mb-1 font-semibold">Recommended actions</p>
+                              <ol className="list-decimal space-y-1 pl-5 text-[var(--text-muted)]">
+                                {message.assistant.recommended_actions.map((item) => (
+                                  <li key={item}>{item}</li>
+                                ))}
+                              </ol>
+                            </div>
+                          )}
 
                           {message.assistant.likely_causes.length > 0 && (
                             <div>
@@ -339,8 +375,8 @@ export default function ChatbotPage() {
                           )}
 
                           {message.assistant.escalation_required && (
-                            <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-3 text-amber-100">
-                              <div className="mb-1 inline-flex items-center gap-2 text-sm font-medium">
+                            <div className="assistant-warning rounded-xl p-3">
+                              <div className="assistant-warning-strong mb-1 inline-flex items-center gap-2 text-sm font-medium">
                                 <AlertTriangle className="h-4 w-4" />
                                 Escalation Recommended
                               </div>
@@ -443,7 +479,12 @@ export default function ChatbotPage() {
                   className="border-[var(--border-subtle)] bg-[var(--surface-1)] text-[var(--foreground)] placeholder:text-[var(--text-muted)]"
                 />
                 <div className="mt-2 flex justify-end">
-                  <Button onClick={sendMessage} loading={sending} disabled={sending || !input.trim()}>
+                  <Button
+                    onClick={sendMessage}
+                    loading={sending}
+                    disabled={sending || !input.trim()}
+                    className="min-w-[120px] shadow-sm"
+                  >
                     <Send className="h-4 w-4" />
                     Send
                   </Button>

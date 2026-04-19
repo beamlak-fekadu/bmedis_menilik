@@ -18,7 +18,7 @@ export function AskAiButton({
   moduleLabel,
   seedPrompt,
   contextRefs,
-  label = 'Ask AI',
+  label = 'Ask Assistant',
   variant = 'outline',
   size = 'sm',
 }: AskAiButtonProps) {

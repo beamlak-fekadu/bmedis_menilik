@@ -20,7 +20,13 @@ export async function logCopilotTelemetry(
         fallback_reason: event.fallbackReason ?? null,
         role_names: event.roleNames,
         module_label: event.moduleLabel ?? null,
+        route: event.route ?? null,
         evidence_signals: event.evidenceSignals,
+        grounded_by: event.groundedBy ?? null,
+        parsing_recovery_used: event.parsingRecoveryUsed ?? false,
+        classifier_candidates: event.classifierCandidates ?? null,
+        resolved_entities: event.resolvedEntities ?? null,
+        latency_ms: event.latencyMs ?? null,
         metadata: event.metadata ?? null,
       })
       .throwOnError();
