@@ -3,11 +3,11 @@
 import { useEffect, useState, use } from 'react';
 import Link from 'next/link';
 import {
-  Pencil, Clock, Activity, Gauge,
+  Activity, ArrowUpDown, CalendarCheck, Pencil, ShieldAlert,
 } from 'lucide-react';
 import {
   PageHeader, Button, Card, CardHeader, CardTitle, CardContent,
-  Tabs, Table, Spinner, StatCard,
+  Tabs, Table, Spinner,
 } from '@/components/ui';
 import { ConditionBadge, PMStatusBadge, RiskBadge } from '@/components/ui/StatusBadge';
 import { getEquipmentById } from '@/services/equipment.service';
@@ -122,6 +122,41 @@ function DetailRow({ label, value }: { label: string; value: React.ReactNode }) 
   );
 }
 
+function HealthMetricCard({
+  title,
+  icon,
+  children,
+  hasData,
+}: {
+  title: string;
+  icon: React.ReactNode;
+  children: React.ReactNode;
+  hasData: boolean;
+}) {
+  return (
+    <div className="panel-surface rounded-lg p-4">
+      <div className="mb-3 flex items-center gap-2">
+        <span className="rounded-md bg-[var(--surface-2)] p-2 text-[var(--brand)]">{icon}</span>
+        <h2 className="text-sm font-semibold text-[var(--foreground)]">{title}</h2>
+      </div>
+      {hasData ? (
+        <div className="space-y-2">{children}</div>
+      ) : (
+        <p className="text-sm text-[var(--text-muted)]">No data yet — complete one work order to compute</p>
+      )}
+    </div>
+  );
+}
+
+function MetricLine({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div className="flex items-center justify-between gap-3 text-sm">
+      <span className="text-[var(--text-muted)]">{label}</span>
+      <span className="font-semibold text-[var(--foreground)]">{value}</span>
+    </div>
+  );
+}
+
 export default function EquipmentDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const [equipment, setEquipment] = useState<EquipmentDetail | null>(null);
@@ -190,7 +225,7 @@ export default function EquipmentDetailPage({ params }: { params: Promise<{ id: 
       <div className="py-12 text-center">
         <p className="text-lg text-red-600">{error ?? 'Equipment not found'}</p>
         <Link href={ROUTES.INVENTORY} className="mt-4 inline-block text-sm text-blue-600 hover:underline">
-          Back to Inventory
+          Back to Equipment
         </Link>
       </div>
     );
@@ -332,133 +367,29 @@ export default function EquipmentDetailPage({ params }: { params: Promise<{ id: 
     />
   );
 
-  const noDataMsg = (label: string) => (
-    <Card>
-      <CardContent>
-        <p className="py-4 text-center text-sm text-gray-500">
-          No {label} data yet — complete one work order to compute
-        </p>
-      </CardContent>
-    </Card>
-  );
-
-  const analyticsContent = (
-    <div className="space-y-6">
-      {/* Reliability */}
-      <h3 className="text-sm font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-        Reliability
-      </h3>
-      {reliability ? (
-        <div className="grid gap-4 sm:grid-cols-3">
-          <StatCard label="MTTR" value={reliability.mttr_hours != null ? `${reliability.mttr_hours.toFixed(1)}h` : 'N/A'} icon={<Clock className="h-5 w-5" />} color="blue" />
-          <StatCard label="MTBF" value={reliability.mtbf_hours != null ? `${reliability.mtbf_hours.toFixed(1)}h` : 'N/A'} icon={<Activity className="h-5 w-5" />} color="green" />
-          <StatCard label="Availability" value={reliability.availability_ratio != null ? `${(reliability.availability_ratio * 100).toFixed(1)}%` : 'N/A'} icon={<Gauge className="h-5 w-5" />} color="purple" />
-        </div>
-      ) : noDataMsg('reliability')}
-
-      {/* Risk */}
-      <h3 className="text-sm font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-        Risk (RPN = Severity × Occurrence × Detectability)
-      </h3>
-      {risk ? (
-        <Card>
-          <CardContent>
-            <div className="grid gap-4 sm:grid-cols-5">
-              <div className="text-center">
-                <p className="text-xs font-medium text-gray-500">Severity (S)</p>
-                <p className="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{risk.severity}</p>
-              </div>
-              <div className="text-center">
-                <p className="text-xs font-medium text-gray-500">Occurrence (O)</p>
-                <p className="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{risk.occurrence}</p>
-              </div>
-              <div className="text-center">
-                <p className="text-xs font-medium text-gray-500">Detectability (D)</p>
-                <p className="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{risk.detectability}</p>
-              </div>
-              <div className="text-center">
-                <p className="text-xs font-medium text-gray-500">RPN</p>
-                <p className="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{risk.rpn}</p>
-              </div>
-              <div className="flex flex-col items-center justify-center">
-                <p className="text-xs font-medium text-gray-500">Risk Level</p>
-                <div className="mt-1"><RiskBadge level={risk.risk_level} /></div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      ) : noDataMsg('risk assessment')}
-
-      {/* PM Compliance */}
-      <h3 className="text-sm font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-        PM Compliance
-      </h3>
-      {pmCompliance ? (
-        <Card>
-          <CardContent>
-            <div className="flex items-center gap-6">
-              <div>
-                <p className="text-xs font-medium text-gray-500">Compliance Rate</p>
-                <p className="mt-1 text-3xl font-bold text-gray-900 dark:text-white">
-                  {pmCompliance.pmc_percentage.toFixed(1)}%
-                </p>
-              </div>
-              <div>
-                <p className="text-xs font-medium text-gray-500">Completed / Scheduled</p>
-                <p className="mt-1 text-xl font-semibold text-gray-900 dark:text-white">
-                  {pmCompliance.completed_count} / {pmCompliance.scheduled_count}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      ) : noDataMsg('PM compliance')}
-
-      {/* Replacement Priority */}
-      <h3 className="text-sm font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-        Replacement Priority
-      </h3>
-      {replacement ? (
-        <Card>
-          <CardContent>
-            <div className="flex items-center gap-6">
-              <div>
-                <p className="text-xs font-medium text-gray-500">System Rank</p>
-                <p className="mt-1 text-3xl font-bold text-gray-900 dark:text-white">#{replacement.rank}</p>
-              </div>
-              <div>
-                <p className="text-xs font-medium text-gray-500">Priority Index</p>
-                <p className="mt-1 text-xl font-semibold text-gray-900 dark:text-white">
-                  {replacement.replacement_priority_index.toFixed(2)}
-                </p>
-              </div>
-              {replacement.justification && (
-                <div className="flex-1">
-                  <p className="text-xs font-medium text-gray-500">Key Driver</p>
-                  <p className="mt-1 text-sm text-gray-700 dark:text-gray-300">{replacement.justification}</p>
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      ) : noDataMsg('replacement priority')}
-    </div>
-  );
-
   const tabs = [
     { id: 'overview', label: 'Overview', content: overviewContent },
     { id: 'maintenance', label: 'Maintenance History', count: events.length, content: maintenanceContent },
     { id: 'pm', label: 'PM Records', count: schedules.length, content: pmContent },
     { id: 'calibration', label: 'Calibration', count: calibrations.length, content: calibrationContent },
-    { id: 'analytics', label: 'Analytics', content: analyticsContent },
   ];
+
+  const hasReliability = Boolean(
+    reliability
+    && reliability.mtbf_hours != null
+    && reliability.mttr_hours != null
+    && reliability.availability_ratio != null
+  );
+  const hasRisk = Boolean(risk && risk.rpn != null && risk.risk_level && risk.severity != null && risk.occurrence != null && risk.detectability != null);
+  const hasPmCompliance = Boolean(pmCompliance && pmCompliance.scheduled_count > 0 && pmCompliance.pmc_percentage != null);
+  const hasReplacement = Boolean(replacement && replacement.rank != null && replacement.replacement_priority_index != null);
 
   return (
     <div>
       <PageHeader
         title={equipment.name}
         breadcrumbs={[
-          { label: 'Equipment Inventory', href: ROUTES.INVENTORY },
+          { label: 'Equipment', href: ROUTES.INVENTORY },
           { label: equipment.asset_code },
         ]}
         actions={
@@ -478,6 +409,30 @@ export default function EquipmentDetailPage({ params }: { params: Promise<{ id: 
           </div>
         }
       />
+
+      <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <HealthMetricCard title="Reliability" icon={<Activity className="h-4 w-4" />} hasData={hasReliability}>
+          <MetricLine label="MTBF" value={`${reliability?.mtbf_hours?.toFixed(1)}h`} />
+          <MetricLine label="MTTR" value={`${reliability?.mttr_hours?.toFixed(1)}h`} />
+          <MetricLine label="Availability" value={`${((reliability?.availability_ratio ?? 0) * 100).toFixed(1)}%`} />
+        </HealthMetricCard>
+
+        <HealthMetricCard title="Risk" icon={<ShieldAlert className="h-4 w-4" />} hasData={hasRisk}>
+          <MetricLine label="RPN" value={risk?.rpn} />
+          <MetricLine label="Band" value={risk ? <RiskBadge level={risk.risk_level} /> : null} />
+          <MetricLine label="S / O / D" value={risk ? `${risk.severity} / ${risk.occurrence} / ${risk.detectability}` : null} />
+        </HealthMetricCard>
+
+        <HealthMetricCard title="PM Compliance" icon={<CalendarCheck className="h-4 w-4" />} hasData={hasPmCompliance}>
+          <MetricLine label="Compliance" value={`${pmCompliance?.pmc_percentage.toFixed(1)}%`} />
+          <MetricLine label="Completed / Scheduled" value={`${pmCompliance?.completed_count} / ${pmCompliance?.scheduled_count}`} />
+        </HealthMetricCard>
+
+        <HealthMetricCard title="Replacement Priority" icon={<ArrowUpDown className="h-4 w-4" />} hasData={hasReplacement}>
+          <MetricLine label="Rank" value={`#${replacement?.rank}`} />
+          <MetricLine label="Priority Index" value={replacement?.replacement_priority_index.toFixed(2)} />
+        </HealthMetricCard>
+      </div>
 
       <Tabs tabs={tabs} defaultTab="overview" />
     </div>

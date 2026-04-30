@@ -24,7 +24,7 @@ interface ReportCard {
 const reports: ReportCard[] = [
   {
     type: 'equipment',
-    title: 'Equipment Inventory',
+    title: 'Equipment',
     description: 'Complete inventory of all equipment assets with status, department, and specifications.',
     icon: <Monitor className="h-8 w-8" />,
     color: 'text-blue-600 bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400',

@@ -225,7 +225,7 @@ export default function PMPage() {
 
       {/* PM Compliance by Department */}
       {deptCompliance.length > 0 && (
-        <div className="mb-6 panel-surface rounded-2xl p-5">
+        <div className="mb-6 panel-surface rounded-lg p-5">
           <h2 className="mb-4 text-sm font-semibold text-[var(--foreground)]">PM Compliance by Department</h2>
           <div className="space-y-2">
             {deptCompliance.map((dept) => (

@@ -22,7 +22,7 @@ export default function StatCard({ label, value, icon, trend, color = 'blue', on
 
   return (
     <div
-      className={`panel-surface rounded-2xl p-5 transition-shadow ${onClick ? 'cursor-pointer hover:shadow-lg' : ''}`}
+      className={`panel-surface rounded-lg p-5 transition-colors ${onClick ? 'cursor-pointer hover:border-[var(--brand)]/50' : ''}`}
       onClick={onClick}
     >
       <div className="flex items-center justify-between">

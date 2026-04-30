@@ -32,29 +32,29 @@ export function RiskBandDrilldown({ bands, totalAssessed }: { bands: RiskBand[];
         const isOpen = expanded === band.key;
         const widthPct = totalAssessed > 0 ? (band.count / totalAssessed) * 100 : 0;
         return (
-          <div key={band.key} className="rounded-lg border border-[var(--border-color)]">
+          <div key={band.key} className="rounded-lg border border-[var(--border-subtle)]/60">
             <button
               type="button"
               onClick={() => setExpanded(isOpen ? null : band.key)}
-              className="flex w-full items-center justify-between gap-4 p-3 text-left transition hover:bg-white/5"
+              className="flex w-full flex-col gap-3 p-3 text-left transition hover:bg-[var(--surface-2)]/60 sm:flex-row sm:items-center sm:justify-between"
               aria-expanded={isOpen}
               aria-label={`${band.label} band — ${band.count} equipment, ${band.percentage}%`}
             >
-              <div className="flex flex-1 items-center gap-3">
+              <div className="flex w-full items-center gap-3 sm:w-64">
                 <span className={`inline-flex h-6 min-w-[5rem] items-center justify-center rounded-md px-2 text-xs font-semibold ${band.colorClass} ${band.textClass}`}>
                   {band.label}
                 </span>
                 <span className="text-xs text-[var(--text-muted)]">RPN {band.range}</span>
               </div>
-              <div className="flex items-center gap-4">
-                <div className="hidden h-2 w-40 overflow-hidden rounded-full bg-white/5 sm:block">
+              <div className="flex w-full items-center gap-4">
+                <div className="h-3 min-w-[9rem] flex-1 overflow-hidden rounded-full bg-[var(--surface-2)]">
                   <div
                     className={`h-full ${band.colorClass}`}
-                    style={{ width: `${widthPct}%` }}
+                    style={{ width: `${Math.max(widthPct, band.count > 0 ? 4 : 0)}%` }}
                     aria-hidden
                   />
                 </div>
-                <div className="flex items-baseline gap-1">
+                <div className="flex w-24 items-baseline justify-end gap-1">
                   <span className="text-lg font-semibold text-[var(--foreground)]">{band.count}</span>
                   <span className="text-xs text-[var(--text-muted)]">({band.percentage}%)</span>
                 </div>
@@ -62,11 +62,11 @@ export function RiskBandDrilldown({ bands, totalAssessed }: { bands: RiskBand[];
               </div>
             </button>
             {isOpen && (
-              <div className="border-t border-[var(--border-color)] p-3">
+              <div className="border-t border-[var(--border-subtle)]/60 p-3">
                 {band.topAssets.length === 0 ? (
                   <p className="text-sm text-[var(--text-muted)]">No equipment in this band.</p>
                 ) : (
-                  <ul className="divide-y divide-[var(--border-color)]">
+                  <ul className="divide-y divide-[var(--border-subtle)]/60">
                     {band.topAssets.map((asset) => (
                       <li key={asset.asset_id} className="flex items-center justify-between py-2 text-sm">
                         <div>
@@ -76,7 +76,7 @@ export function RiskBandDrilldown({ bands, totalAssessed }: { bands: RiskBand[];
                         <div className="flex items-center gap-3">
                           <span className="text-xs font-medium text-[var(--foreground)]">RPN {asset.rpn}</span>
                           <Link
-                            href={`/equipment/${asset.asset_id}`}
+                            href={`/inventory/${asset.asset_id}`}
                             className="text-xs font-medium text-violet-300 hover:text-violet-200"
                           >
                             View asset →

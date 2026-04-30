@@ -15,13 +15,15 @@ import { RiskBandDrilldown, type RiskBand } from './_components/RiskBandDrilldow
 interface TriageRow {
   id: string;
   flag_id: string | null;
+  flag_type: string | null;
+  flag_severity: string | null;
   asset_id: string;
   asset_name: string;
   asset_code: string;
+  department_id: string | null;
   department_name: string;
-  flag_type: string;
-  severity: string;
-  message: string;
+  recommendation: string;
+  rationale: string[];
   score: number;
 }
 
@@ -66,6 +68,8 @@ interface ReplacementRow {
 
 function actionForFlagType(flagType: string, assetId: string): { label: string; href: string } {
   switch (flagType) {
+    case 'urgent_maintenance':
+      return { label: 'Create work order', href: `/maintenance/work-orders/new?asset=${assetId}` };
     case 'recurring_failure':
       return { label: 'Schedule diagnostic', href: `/maintenance?asset=${assetId}` };
     case 'replacement_candidate':
@@ -79,11 +83,11 @@ function actionForFlagType(flagType: string, assetId: string): { label: string; 
     case 'prioritize_pm':
       return { label: 'Reschedule PM', href: `/pm?asset=${assetId}` };
     case 'monitor_closely':
-      return { label: 'View details', href: `/equipment/${assetId}` };
+      return { label: 'View details', href: `/inventory/${assetId}` };
     case 'low_availability':
-      return { label: 'View maintenance history', href: `/equipment/${assetId}?tab=history` };
+      return { label: 'View maintenance history', href: `/inventory/${assetId}?tab=history` };
     default:
-      return { label: 'View asset', href: `/equipment/${assetId}` };
+      return { label: 'View asset', href: `/inventory/${assetId}` };
   }
 }
 
@@ -92,6 +96,19 @@ function severityScore(severity: string): number {
   if (severity === 'high') return 25;
   if (severity === 'medium') return 10;
   return 4;
+}
+
+function normalizeRationale(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value.map((item) => String(item)).filter(Boolean);
+  }
+  if (value && typeof value === 'object') {
+    return Object.entries(value as Record<string, unknown>)
+      .map(([key, val]) => `${key}: ${Array.isArray(val) ? val.join(', ') : String(val)}`)
+      .filter(Boolean);
+  }
+  if (typeof value === 'string') return [value];
+  return [];
 }
 
 // ─── readiness colour ─────────────────────────────────────────────────────────
@@ -120,79 +137,101 @@ const BAND_META: Record<RiskBand['key'], { label: string; range: string; colorCl
 
 // ─── data fetchers ────────────────────────────────────────────────────────────
 
-async function fetchTriageData(supabase: Awaited<ReturnType<typeof createClient>>, userId: string | null, primaryRole: string): Promise<{ rows: TriageRow[]; totalFlags: number }> {
-  // Fetch all unacknowledged flags, joined with asset and department.
-  // LIMIT 500 to bound query cost on large installs — we sort and slice to 10 in JS.
-  let query = supabase
-    .from('recommendation_flags')
-    .select('id, asset_id, flag_type, severity, message, equipment_assets(id, asset_code, name, departments(name))')
-    .eq('is_acknowledged', false)
-    .order('generated_at', { ascending: false })
-    .limit(500); // performance guard; still covers full seed dataset
+async function fetchTriageData(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  profileId: string | null,
+  primaryRole: string
+): Promise<{ rows: TriageRow[]; totalItems: number }> {
+  let totalQuery = supabase
+    .from('triage_action_queue')
+    .select('id', { count: 'exact', head: true })
+    .eq('status', 'open');
 
-  // For technician role: cross-filter to assets where they have an open work order assigned.
-  // Fetch their assigned asset_ids first, then apply the filter.
-  let techAssetIds: string[] | null = null;
-  if (primaryRole === 'technician' && userId) {
-    const { data: woRows } = await supabase
-      .from('work_orders')
-      .select('asset_id')
-      .eq('assigned_to', userId)
-      .in('status', ['open', 'assigned', 'in_progress', 'on_hold']);
-    techAssetIds = (woRows ?? []).map((r) => r.asset_id as string).filter(Boolean);
+  let rowsQuery = supabase
+    .from('triage_action_queue')
+    .select('id, asset_id, priority_score, recommendation, rationale, equipment_assets(id, asset_code, name, department_id, departments(id, name))')
+    .eq('status', 'open')
+    .order('priority_score', { ascending: false });
+
+  if (primaryRole === 'technician' && profileId) {
+    totalQuery = totalQuery.eq('assigned_to', profileId);
+    rowsQuery = rowsQuery.eq('assigned_to', profileId);
   }
 
-  const { data, error } = await query;
-  if (error) {
-    if (process.env.NODE_ENV === 'development') console.warn('[Command/Section1] triage query error:', error);
-    return { rows: [], totalFlags: 0 };
+  const [countRes, rowsRes] = await Promise.all([
+    totalQuery,
+    rowsQuery.limit(10), // Command Center is an executive triage surface; show only the highest-priority 10 and keep the exact count in the footer.
+  ]);
+
+  if (countRes.error || rowsRes.error) {
+    if (process.env.NODE_ENV === 'development') {
+      console.warn('[Command/Section1] triage queue query error:', countRes.error ?? rowsRes.error);
+    }
+    return { rows: [], totalItems: 0 };
   }
 
-  const all = (data ?? []) as Array<Record<string, unknown>>;
+  const queueRows = (rowsRes.data ?? []) as Array<Record<string, unknown>>;
+  const assetIds = queueRows.map((row) => row.asset_id as string).filter(Boolean);
+  const flagByAsset = new Map<string, Record<string, unknown>>();
 
-  // Score each flag and group per asset (highest severity per asset wins).
-  const assetMap = new Map<string, TriageRow>();
-  for (const row of all) {
-    const asset = row.equipment_assets as { id: string; asset_code: string; name: string; departments?: { name: string } | null } | null;
-    if (!asset) continue;
-    const assetId = asset.id;
+  if (assetIds.length > 0) {
+    const { data: flagRows, error: flagError } = await supabase
+      .from('recommendation_flags')
+      .select('id, asset_id, flag_type, severity, generated_at')
+      .eq('is_acknowledged', false)
+      .in('asset_id', assetIds)
+      .order('generated_at', { ascending: false });
 
-    // Technician sees only their assigned assets.
-    if (techAssetIds !== null && !techAssetIds.includes(assetId)) continue;
-
-    const score = severityScore(row.severity as string);
-    const existing = assetMap.get(assetId);
-    if (!existing || score > existing.score) {
-      assetMap.set(assetId, {
-        id: row.id as string,
-        flag_id: row.id as string,
-        asset_id: assetId,
-        asset_name: asset.name,
-        asset_code: asset.asset_code,
-        department_name: asset.departments?.name ?? 'Unknown',
-        flag_type: row.flag_type as string,
-        severity: row.severity as string,
-        message: row.message as string,
-        score,
-      });
+    if (flagError) {
+      if (process.env.NODE_ENV === 'development') console.warn('[Command/Section1] flag action-driver query error:', flagError);
+    } else {
+      for (const flag of (flagRows ?? []) as Array<Record<string, unknown>>) {
+        const assetId = flag.asset_id as string;
+        const existing = flagByAsset.get(assetId);
+        const flagRank = severityScore(flag.severity as string);
+        const existingRank = existing ? severityScore(existing.severity as string) : -1;
+        if (!existing || flagRank > existingRank) {
+          flagByAsset.set(assetId, flag);
+        }
+      }
     }
   }
 
-  const sorted = Array.from(assetMap.values()).sort((a, b) => b.score - a.score);
-  if (process.env.NODE_ENV === 'development') {
-    console.log(`[Command/Section1] total unacknowledged flags: ${all.length}, unique assets: ${assetMap.size}`);
-  }
+  const rows = queueRows.map((row) => {
+    const asset = row.equipment_assets as {
+      id: string;
+      asset_code: string;
+      name: string;
+      department_id: string | null;
+      departments?: { id: string; name: string } | null;
+    } | null;
+    const flag = flagByAsset.get(row.asset_id as string);
+    return {
+      id: row.id as string,
+      flag_id: (flag?.id as string | undefined) ?? null,
+      flag_type: (flag?.flag_type as string | undefined) ?? null,
+      flag_severity: (flag?.severity as string | undefined) ?? null,
+      asset_id: row.asset_id as string,
+      asset_name: asset?.name ?? 'Unknown asset',
+      asset_code: asset?.asset_code ?? 'N/A',
+      department_id: asset?.department_id ?? asset?.departments?.id ?? null,
+      department_name: asset?.departments?.name ?? 'Unknown',
+      recommendation: row.recommendation as string,
+      rationale: normalizeRationale(row.rationale),
+      score: Number(row.priority_score ?? 0),
+    };
+  });
 
-  return { rows: sorted.slice(0, 10), totalFlags: assetMap.size };
+  return { rows, totalItems: countRes.count ?? 0 };
 }
 
 async function fetchReadinessData(supabase: Awaited<ReturnType<typeof createClient>>): Promise<DeptReadiness[]> {
-  // Fetch all active equipment with their category criticality and department.
   const { data, error } = await supabase
-    .from('equipment_assets')
-    .select('id, condition, status, department_id, departments(id, name), equipment_categories(criticality_level)')
-    .is('deleted_at', null)
-    .limit(500); // performance guard; full seed is 80 rows
+    .from('clinical_readiness_snapshots')
+    .select('department_id, readiness_score, essential_total, essential_functional, snapshot_date, created_at, departments(id, name)')
+    .order('snapshot_date', { ascending: false })
+    .order('created_at', { ascending: false })
+    .limit(500); // covers all departments and several refresh dates; reduced to latest per department below
 
   if (error) {
     if (process.env.NODE_ENV === 'development') console.warn('[Command/Section2] readiness query error:', error);
@@ -202,35 +241,22 @@ async function fetchReadinessData(supabase: Awaited<ReturnType<typeof createClie
   const map = new Map<string, DeptReadiness>();
   for (const row of (data ?? []) as Array<Record<string, unknown>>) {
     const dept = row.departments as { id: string; name: string } | null;
-    const cat = row.equipment_categories as { criticality_level: string } | null;
     if (!dept) continue;
-
-    const criticality = cat?.criticality_level ?? 'low';
-    const isEssential = ['high', 'critical'].includes(criticality);
-    if (!isEssential) continue;
-
-    const existing = map.get(dept.id) ?? {
+    if (map.has(dept.id)) continue;
+    map.set(dept.id, {
       department_id: dept.id,
       department_name: dept.name,
-      essential_total: 0,
-      essential_functional: 0,
-      readiness_score: 0,
-    };
-    existing.essential_total += 1;
-    if (row.condition === 'functional' && row.status === 'active') existing.essential_functional += 1;
-    map.set(dept.id, existing);
+      essential_total: Number(row.essential_total ?? 0),
+      essential_functional: Number(row.essential_functional ?? 0),
+      readiness_score: Math.round(Number(row.readiness_score ?? 0)),
+    });
   }
-
-  const rows = Array.from(map.values()).map((r) => ({
-    ...r,
-    readiness_score: r.essential_total > 0 ? Math.round((r.essential_functional / r.essential_total) * 100) : 0,
-  }));
 
   if (process.env.NODE_ENV === 'development') {
-    console.log(`[Command/Section2] departments with essential equipment: ${rows.length}`);
+    console.log(`[Command/Section2] latest clinical readiness snapshot departments: ${map.size}`);
   }
 
-  return rows.sort((a, b) => a.department_name.localeCompare(b.department_name));
+  return Array.from(map.values()).sort((a, b) => a.department_name.localeCompare(b.department_name));
 }
 
 async function fetchWorkInProgress(supabase: Awaited<ReturnType<typeof createClient>>): Promise<WorkInProgress> {
@@ -344,11 +370,13 @@ async function fetchReplacementData(supabase: Awaited<ReturnType<typeof createCl
 export default async function CommandCenterPage() {
   const profile = await getServerProfile();
   const primaryRole = profile?.roleNames?.[0] ?? 'viewer';
-  const userId = profile ? (profile as unknown as Record<string, unknown>).user_id as string ?? null : null;
+  const profileId = profile ? ((profile as unknown as Record<string, unknown>).id as string ?? null) : null;
+  const departmentId = profile ? ((profile as unknown as Record<string, unknown>).department_id as string ?? null) : null;
+  const canMutate = primaryRole !== 'viewer';
 
   const supabase = await createClient();
 
-  let triage: { rows: TriageRow[]; totalFlags: number } = { rows: [], totalFlags: 0 };
+  let triage: { rows: TriageRow[]; totalItems: number } = { rows: [], totalItems: 0 };
   let readiness: DeptReadiness[] = [];
   let wip: WorkInProgress = { open_work_orders: 0, in_progress: 0, assigned: 0, on_hold: 0, overdue_pm: 0, overdue_pm_gt30: 0, calibration_due_30d: 0 };
   let risk: { rows: RiskScoreRow[]; totalAssets: number } = { rows: [], totalAssets: 0 };
@@ -356,7 +384,7 @@ export default async function CommandCenterPage() {
 
   try {
     [triage, readiness, wip, risk, replacement] = await Promise.all([
-      fetchTriageData(supabase, userId, primaryRole),
+      fetchTriageData(supabase, profileId, primaryRole),
       fetchReadinessData(supabase),
       fetchWorkInProgress(supabase),
       fetchRiskData(supabase),
@@ -384,7 +412,14 @@ export default async function CommandCenterPage() {
     topAssets: bandAssets[key],
   }));
 
-  const triageHeading = primaryRole === 'technician' ? 'Your urgent items' : 'Hospital triage';
+  const triageHeading =
+    primaryRole === 'technician'
+      ? 'Your urgent items'
+      : primaryRole === 'department_user'
+        ? 'Department readiness focus'
+        : primaryRole === 'store_user'
+          ? 'Parts and procurement focus'
+          : 'Hospital triage';
   const now = new Date().toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 
   return (
@@ -406,7 +441,7 @@ export default async function CommandCenterPage() {
                   {triageHeading}
                 </span>
               </CardTitle>
-              {triage.totalFlags > 10 && (
+              {triage.totalItems > 10 && (
                 <Link href="/command/triage" className="text-xs text-violet-300 hover:text-violet-200">
                   View all →
                 </Link>
@@ -423,48 +458,65 @@ export default async function CommandCenterPage() {
             ) : (
               <>
                 <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
+                  <table className="min-w-[760px] w-full text-sm">
                     <thead>
-                      <tr className="border-b border-[var(--border-color)] text-left">
+                      <tr className="border-b border-[var(--border-subtle)]/60 text-left">
                         <th className="pb-2 pr-4 font-medium text-[var(--text-muted)]">Asset</th>
                         <th className="pb-2 pr-4 font-medium text-[var(--text-muted)]">Department</th>
                         <th className="pb-2 pr-4 font-medium text-[var(--text-muted)]">Reason</th>
                         <th className="pb-2 pr-4 font-medium text-[var(--text-muted)]">Score</th>
                         <th className="pb-2 pr-4 font-medium text-[var(--text-muted)]">Action</th>
-                        <th className="pb-2 font-medium text-[var(--text-muted)]">Ack</th>
+                        {canMutate && <th className="pb-2 font-medium text-[var(--text-muted)]">Ack</th>}
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-[var(--border-color)]">
+                    <tbody className="divide-y divide-[var(--border-subtle)]/60">
                       {triage.rows.map((row) => {
-                        const action = actionForFlagType(row.flag_type, row.asset_id);
+                        const action = actionForFlagType(row.flag_type ?? '', row.asset_id);
+                        const isProcurementRelevant = row.flag_type === 'part_shortage' || row.flag_type === 'low_stock';
                         return (
                           <tr key={row.id} className="group">
                             <td className="py-3 pr-4">
-                              <Link href={`/equipment/${row.asset_id}`} className="font-medium text-[var(--foreground)] hover:text-violet-300">
+                              <Link href={`/inventory/${row.asset_id}`} className="font-medium text-[var(--foreground)] hover:text-violet-300">
                                 {row.asset_name}
                               </Link>
                               <p className="text-xs text-[var(--text-muted)]">{row.asset_code}</p>
                             </td>
                             <td className="py-3 pr-4 text-[var(--text-muted)]">{row.department_name}</td>
-                            <td className="py-3 pr-4 max-w-[200px]">
-                              <p className="truncate text-[var(--foreground)]">{row.message}</p>
+                            <td className="max-w-md py-3 pr-4">
+                              <p className="line-clamp-2 text-[var(--foreground)]">{row.recommendation}</p>
+                              {row.rationale.length > 0 && (
+                                <div className="mt-1 flex flex-wrap gap-1">
+                                  {row.rationale.slice(0, 4).map((item) => (
+                                    <span key={item} className="rounded-md bg-[var(--surface-2)] px-1.5 py-0.5 text-[10px] text-[var(--text-muted)]">
+                                      {item}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
                             </td>
                             <td className="py-3 pr-4">
-                              <Badge variant={row.severity === 'critical' ? 'error' : row.severity === 'high' ? 'warning' : 'info'}>
-                                {row.severity}
+                              <Badge variant={row.score >= 75 ? 'error' : row.score >= 45 ? 'warning' : 'info'}>
+                                {row.score.toFixed(1)}
                               </Badge>
                             </td>
                             <td className="py-3 pr-4">
                               <Link
                                 href={action.href}
-                                className="inline-flex items-center rounded-md border border-[var(--border-color)] px-2.5 py-1 text-xs font-medium text-[var(--foreground)] transition hover:border-violet-400 hover:text-violet-300"
+                                className={`inline-flex items-center rounded-md border border-[var(--border-subtle)] px-2.5 py-1 text-xs font-medium text-[var(--foreground)] transition hover:border-violet-400 hover:text-violet-300 ${isProcurementRelevant ? 'bg-amber-500/10 text-amber-300' : ''}`}
                               >
                                 {action.label}
                               </Link>
                             </td>
-                            <td className="py-3">
-                              {row.flag_id && <AcknowledgeButton flagId={row.flag_id} label={`Acknowledge flag for ${row.asset_name}`} />}
-                            </td>
+                            {canMutate && (
+                              <td className="py-3">
+                                <AcknowledgeButton
+                                  queueId={row.id}
+                                  assetId={row.asset_id}
+                                  hasActiveFlag={Boolean(row.flag_id)}
+                                  label={`Acknowledge triage item for ${row.asset_name}`}
+                                />
+                              </td>
+                            )}
                           </tr>
                         );
                       })}
@@ -472,8 +524,8 @@ export default async function CommandCenterPage() {
                   </table>
                 </div>
                 <p className="mt-3 text-right text-xs text-[var(--text-muted)]">
-                  Showing top {triage.rows.length} of {triage.totalFlags} urgent item{triage.totalFlags !== 1 ? 's' : ''}
-                  {triage.totalFlags > 10 && (
+                  Showing top {triage.rows.length} of {triage.totalItems} triage item{triage.totalItems !== 1 ? 's' : ''}
+                  {triage.totalItems > 10 && (
                     <> — <Link href="/command/triage" className="text-violet-300 hover:text-violet-200">View all</Link></>
                   )}
                 </p>
@@ -502,11 +554,12 @@ export default async function CommandCenterPage() {
                 <div className="flex gap-3 overflow-x-auto pb-2">
                   {readiness.map((dept) => {
                     const colors = readinessColor(dept.readiness_score);
+                    const isFocusedDepartment = primaryRole === 'department_user' && departmentId === dept.department_id;
                     return (
                       <Link
                         key={dept.department_id}
-                        href={`/equipment?department=${dept.department_id}`}
-                        className={`flex min-w-[140px] flex-col items-center rounded-xl border-2 p-4 transition hover:opacity-80 ${colors.ring}`}
+                        href={`/inventory?department=${dept.department_id}`}
+                        className={`flex min-w-[140px] flex-col items-center rounded-lg border p-4 transition hover:opacity-80 ${colors.ring} ${isFocusedDepartment ? 'ring-2 ring-[var(--brand)] ring-offset-2 ring-offset-[var(--background)]' : ''}`}
                         aria-label={`${dept.department_name}: ${dept.readiness_score}% ready`}
                       >
                         <span className={`text-3xl font-bold ${colors.text}`}>{dept.readiness_score}%</span>
@@ -530,7 +583,7 @@ export default async function CommandCenterPage() {
         <h2 className="mb-3 text-sm font-semibold uppercase tracking-widest text-[var(--text-muted)]">Work in progress</h2>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           {/* Open Work Orders */}
-          <Link href="/work-orders?status=open" className="panel-surface rounded-2xl p-5 transition hover:shadow-lg">
+          <Link href="/work-orders?status=open" className="panel-surface rounded-lg p-5 transition hover:border-[var(--brand)]/50">
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-sm font-medium text-[var(--text-muted)]">Open Work Orders</p>
@@ -548,7 +601,7 @@ export default async function CommandCenterPage() {
           </Link>
 
           {/* Overdue PM */}
-          <Link href="/pm?status=overdue" className="panel-surface rounded-2xl p-5 transition hover:shadow-lg">
+          <Link href="/pm?status=overdue" className="panel-surface rounded-lg p-5 transition hover:border-[var(--brand)]/50">
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-sm font-medium text-[var(--text-muted)]">Overdue PM</p>
@@ -564,7 +617,7 @@ export default async function CommandCenterPage() {
           </Link>
 
           {/* Calibration Due */}
-          <Link href="/calibration?due_within=30" className="panel-surface rounded-2xl p-5 transition hover:shadow-lg">
+          <Link href="/calibration?due_within=30" className="panel-surface rounded-lg p-5 transition hover:border-[var(--brand)]/50">
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-sm font-medium text-[var(--text-muted)]">Calibration Due (30d)</p>
@@ -622,7 +675,7 @@ export default async function CommandCenterPage() {
       <section aria-label="Replacement watchlist">
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <CardTitle>
                 <span className="inline-flex items-center gap-2">
                   <ArrowUpDown className="h-5 w-5 text-amber-400" />
@@ -641,9 +694,9 @@ export default async function CommandCenterPage() {
               <p className="py-4 text-center text-sm text-[var(--text-muted)]">No replacement candidates scored yet</p>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full text-sm">
+                <table className="min-w-[720px] w-full text-sm">
                   <thead>
-                    <tr className="border-b border-[var(--border-color)] text-left">
+                    <tr className="border-b border-[var(--border-subtle)]/60 text-left">
                       <th className="pb-2 pr-4 font-medium text-[var(--text-muted)]">Rank</th>
                       <th className="pb-2 pr-4 font-medium text-[var(--text-muted)]">Asset</th>
                       <th className="pb-2 pr-4 font-medium text-[var(--text-muted)]">Department</th>
@@ -651,7 +704,7 @@ export default async function CommandCenterPage() {
                       <th className="pb-2 font-medium text-[var(--text-muted)]">Key Driver</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-[var(--border-color)]">
+                  <tbody className="divide-y divide-[var(--border-subtle)]/60">
                     {replacement.rows.map((row) => (
                       <tr key={row.asset_id}>
                         <td className="py-3 pr-4">
@@ -660,7 +713,7 @@ export default async function CommandCenterPage() {
                           </span>
                         </td>
                         <td className="py-3 pr-4">
-                          <Link href={`/equipment/${row.asset_id}`} className="font-medium text-[var(--foreground)] hover:text-violet-300">
+                          <Link href={`/inventory/${row.asset_id}`} className="font-medium text-[var(--foreground)] hover:text-violet-300">
                             {row.asset_name}
                           </Link>
                           <p className="text-xs text-[var(--text-muted)]">{row.asset_code}</p>
@@ -669,8 +722,8 @@ export default async function CommandCenterPage() {
                         <td className="py-3 pr-4">
                           <Badge variant="warning">{row.priority_index.toFixed(1)}</Badge>
                         </td>
-                        <td className="py-3 max-w-[200px]">
-                          <p className="truncate text-xs text-[var(--text-muted)]">
+                        <td className="max-w-md py-3">
+                          <p className="line-clamp-2 text-xs text-[var(--text-muted)]">
                             {row.justification ?? 'Multi-factor scoring'}
                           </p>
                         </td>

@@ -22,6 +22,9 @@ export default function Sidebar({ userRoles = ['admin'] }: SidebarProps) {
 
   const isActive = (href: string) => {
     if (href === '/') return pathname === '/';
+    if (href === ROUTES.EQUIPMENT) {
+      return pathname.startsWith('/inventory') || pathname.startsWith('/equipment');
+    }
     return pathname.startsWith(href);
   };
 

@@ -191,7 +191,7 @@ export default function EditEquipmentPage({ params }: { params: Promise<{ id: st
       <PageHeader
         title={`Edit: ${assetName}`}
         breadcrumbs={[
-          { label: 'Equipment Inventory', href: ROUTES.INVENTORY },
+          { label: 'Equipment', href: ROUTES.INVENTORY },
           { label: assetName, href: `${ROUTES.INVENTORY}/${id}` },
           { label: 'Edit' },
         ]}

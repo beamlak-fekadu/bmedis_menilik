@@ -6,7 +6,7 @@ interface CardProps {
 
 export default function Card({ children, className = '', padding = true }: CardProps) {
   return (
-    <div className={`panel-surface rounded-2xl ${padding ? 'p-6' : ''} ${className}`}>
+    <div className={`panel-surface rounded-lg ${padding ? 'p-6' : ''} ${className}`}>
       {children}
     </div>
   );

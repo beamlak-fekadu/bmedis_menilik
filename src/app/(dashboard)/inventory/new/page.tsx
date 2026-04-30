@@ -159,7 +159,7 @@ export default function NewEquipmentPage() {
       <PageHeader
         title="Register New Equipment"
         breadcrumbs={[
-          { label: 'Equipment Inventory', href: ROUTES.INVENTORY },
+          { label: 'Equipment', href: ROUTES.INVENTORY },
           { label: 'Register New' },
         ]}
       />

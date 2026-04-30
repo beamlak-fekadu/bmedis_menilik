@@ -44,7 +44,7 @@ function getReportConfig(type: string): ReportConfig | null {
   switch (type) {
     case 'equipment':
       return {
-        title: 'Equipment Inventory Report',
+        title: 'Equipment Report',
         description: 'Complete listing of all equipment assets',
         filterDefs: ['department', 'category', 'status'],
         fetchData: reportsService.getEquipmentReport,

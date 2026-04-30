@@ -168,7 +168,7 @@ export default function AlertsPage() {
                     <Badge variant="info">{flagTypeLabel(alert.flag_type)}</Badge>
                     {alert.equipment_assets && (
                       <Link
-                        href={`/equipment/${alert.equipment_assets.id}`}
+                        href={`/inventory/${alert.equipment_assets.id}`}
                         className="text-xs font-medium text-blue-600 hover:underline dark:text-blue-400"
                       >
                         {alert.equipment_assets.asset_code} — {alert.equipment_assets.name}

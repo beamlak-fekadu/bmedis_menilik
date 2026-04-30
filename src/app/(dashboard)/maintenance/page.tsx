@@ -193,12 +193,12 @@ export default function MaintenancePage() {
 
       {/* Recurring failure equipment card */}
       {recurringFailures.length > 0 && (
-        <div className="mb-6 panel-surface rounded-2xl p-5">
+        <div className="mb-6 panel-surface rounded-lg p-5">
           <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-rose-300">
             <Wrench className="h-4 w-4" />
             Recurring failure equipment ({recurringFailures.length})
           </h2>
-          <div className="max-h-64 overflow-y-auto divide-y divide-[var(--border-color)]">
+          <div className="max-h-64 overflow-y-auto divide-y divide-[var(--border-subtle)]/60">
             {recurringFailures.map((flag) => {
               const asset = flag.equipment_assets;
               const assetId = asset?.id ?? flag.asset_id;

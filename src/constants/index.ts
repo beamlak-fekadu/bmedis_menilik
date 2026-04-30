@@ -24,7 +24,7 @@ export const ROUTES = {
   ANALYTICS_PERFORMANCE: '/analytics/performance',
   // Active routes
   INVENTORY: '/inventory',
-  EQUIPMENT: '/equipment',
+  EQUIPMENT: '/inventory',
   INVENTORY_NEW: '/inventory/new',
   MAINTENANCE: '/maintenance',
   WORK_ORDERS: '/work-orders',

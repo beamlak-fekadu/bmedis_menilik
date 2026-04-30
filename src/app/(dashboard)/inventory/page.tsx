@@ -197,7 +197,7 @@ export default function InventoryPage() {
   return (
     <div>
       <PageHeader
-        title="Equipment Inventory"
+        title="Equipment"
         description="Manage and track all hospital equipment assets"
         actions={
           <Link href={ROUTES.INVENTORY_NEW}>
