@@ -1,5 +1,5 @@
 -- Seed 03: Equipment Assets
--- 80 medical equipment assets across 8 departments at St. Peter's Specialized Hospital.
+-- 80 medical equipment assets across 8 departments at Yekatit-12 Hospital Medical College.
 -- Ages range 1-15 years; varied conditions and statuses.
 
 -- Alias short references for readability:

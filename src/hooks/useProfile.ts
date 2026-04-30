@@ -28,7 +28,15 @@ export function useProfile(userId: string | undefined) {
         .eq('user_id', userId)
         .single();
 
-      if (!profileData) { setLoading(false); return; }
+      if (!profileData) {
+        if (process.env.NODE_ENV !== 'production') {
+          console.warn(
+            '[useProfile] No profile matched current auth user_id. If this is a seeded demo account, link profiles.user_id to auth.users.id using supabase/seed/99_link_auth_users.sql.'
+          );
+        }
+        setLoading(false);
+        return;
+      }
 
       const { data: userRolesData } = await supabase
         .from('user_roles')

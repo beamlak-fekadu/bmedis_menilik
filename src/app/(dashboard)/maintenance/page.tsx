@@ -7,6 +7,7 @@ import { Wrench, ClipboardList } from 'lucide-react';
 import { PageHeader, DataTable, Tabs, Button, Spinner } from '@/components/ui';
 import { UrgencyBadge, WorkOrderStatusBadge, RequestStatusBadge } from '@/components/ui/StatusBadge';
 import { getMaintenanceRequests, getWorkOrders } from '@/services/maintenance.service';
+import { getRecommendationFlags } from '@/services/analytics.service';
 import { useToast } from '@/components/ui/Toast';
 import type { MaintenanceRequest, WorkOrder } from '@/types/database';
 
@@ -21,6 +22,15 @@ type WorkOrderRow = WorkOrder & {
   profiles?: { id: string; full_name?: string | null; email?: string | null } | Array<{ id: string; full_name?: string | null; email?: string | null }> | null;
   [key: string]: unknown;
 };
+
+interface RecurringFailureFlag {
+  id: string;
+  asset_id: string;
+  message: string;
+  severity: string;
+  generated_at: string;
+  equipment_assets?: { id?: string; asset_code?: string; name?: string } | null;
+}
 
 function firstRelation<T>(value: T | T[] | null | undefined): T | null {
   if (!value) return null;
@@ -37,19 +47,25 @@ export default function MaintenancePage() {
   const { toast } = useToast();
   const [requests, setRequests] = useState<RequestRow[]>([]);
   const [workOrders, setWorkOrders] = useState<WorkOrderRow[]>([]);
+  const [recurringFailures, setRecurringFailures] = useState<RecurringFailureFlag[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function load() {
       setLoading(true);
-      const [reqRes, woRes] = await Promise.all([
+      const [reqRes, woRes, flagRes] = await Promise.all([
         getMaintenanceRequests(),
         getWorkOrders(),
+        getRecommendationFlags(), // fetch all flags; filtered to recurring_failure + unacknowledged below
       ]);
       if (reqRes.error) toast('error', 'Failed to load maintenance requests');
       if (woRes.error) toast('error', 'Failed to load work orders');
       setRequests((reqRes.data ?? []) as unknown as RequestRow[]);
       setWorkOrders((woRes.data ?? []) as unknown as WorkOrderRow[]);
+      const allFlags = (flagRes.data ?? []) as unknown as Array<RecurringFailureFlag & { flag_type: string; is_acknowledged: boolean }>;
+      setRecurringFailures(
+        allFlags.filter((f) => f.flag_type === 'recurring_failure' && !f.is_acknowledged)
+      );
       setLoading(false);
     }
     load();
@@ -172,8 +188,41 @@ export default function MaintenancePage() {
       <PageHeader
         title="Maintenance"
         description="Manage maintenance requests and work orders"
-        breadcrumbs={[{ label: 'Dashboard', href: '/' }, { label: 'Maintenance' }]}
+        breadcrumbs={[{ label: 'Command Center', href: '/command' }, { label: 'Maintenance' }]}
       />
+
+      {/* Recurring failure equipment card */}
+      {recurringFailures.length > 0 && (
+        <div className="mb-6 panel-surface rounded-2xl p-5">
+          <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-rose-300">
+            <Wrench className="h-4 w-4" />
+            Recurring failure equipment ({recurringFailures.length})
+          </h2>
+          <div className="max-h-64 overflow-y-auto divide-y divide-[var(--border-color)]">
+            {recurringFailures.map((flag) => {
+              const asset = flag.equipment_assets;
+              const assetId = asset?.id ?? flag.asset_id;
+              return (
+                <div key={flag.id} className="flex items-center justify-between gap-4 py-2">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium text-[var(--foreground)]">
+                      {asset?.name ?? 'Unknown asset'}
+                    </p>
+                    <p className="text-xs text-[var(--text-muted)]">{asset?.asset_code ?? flag.asset_id}</p>
+                    <p className="truncate text-xs text-[var(--text-muted)]">{flag.message}</p>
+                  </div>
+                  <Link
+                    href={`/inventory/${assetId}?tab=history`}
+                    className="shrink-0 text-xs font-medium text-violet-300 hover:text-violet-200"
+                  >
+                    View history →
+                  </Link>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       <Tabs
         tabs={[

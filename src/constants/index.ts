@@ -10,10 +10,19 @@ export const ASSISTANT_NAME = 'BMERMS AI Assistant';
 export const ROUTES = {
   LOGIN: '/login',
   RESET_PASSWORD: '/reset-password',
-  DASHBOARD: '/dashboard/analytical',
+  COMMAND: '/command',
+  // DEPRECATED — kept as redirect targets in middleware. DASHBOARD now points to /command
+  // so any code that uses ROUTES.DASHBOARD as the post-login default keeps working.
+  DASHBOARD: '/command',
   DASHBOARD_ANALYTICAL: '/dashboard/analytical',
   DASHBOARD_WORK_ORDERS: '/dashboard/work-orders',
   DECISION_SUPPORT: '/decision-support',
+  ANALYTICS: '/analytics',
+  ANALYTICS_RELIABILITY: '/analytics/reliability',
+  ANALYTICS_RISK: '/analytics/risk',
+  ANALYTICS_PMC: '/analytics/pmc',
+  ANALYTICS_PERFORMANCE: '/analytics/performance',
+  // Active routes
   INVENTORY: '/inventory',
   EQUIPMENT: '/equipment',
   INVENTORY_NEW: '/inventory/new',
@@ -32,11 +41,6 @@ export const ROUTES = {
   TRAINING: '/training',
   DISPOSAL: '/disposal',
   REPORTS: '/reports',
-  ANALYTICS: '/analytics',
-  ANALYTICS_RELIABILITY: '/analytics/reliability',
-  ANALYTICS_RISK: '/analytics/risk',
-  ANALYTICS_PMC: '/analytics/pmc',
-  ANALYTICS_PERFORMANCE: '/analytics/performance',
   REPLACEMENT: '/replacement',
   ALERTS: '/alerts',
   HELPDESK: '/helpdesk',
@@ -50,38 +54,53 @@ export const ROUTES = {
 
 export const NAV_SECTIONS = [
   {
-    title: 'Dashboard',
+    title: 'Command',
     items: [
-      { label: 'Analytical Dashboard', href: ROUTES.DASHBOARD_ANALYTICAL, icon: 'LayoutDashboard', roles: ['admin', 'technician', 'department_user', 'store_user', 'viewer'] },
-      { label: 'Work Order Dashboard', href: ROUTES.DASHBOARD_WORK_ORDERS, icon: 'ClipboardList', roles: ['admin', 'technician', 'department_user', 'viewer'] },
+      { label: 'Command Center', href: ROUTES.COMMAND, icon: 'LayoutDashboard', roles: ['admin', 'technician', 'department_user', 'store_user', 'viewer'] },
     ],
   },
   {
-    title: 'Operations',
+    title: 'Equipment',
     items: [
       { label: 'Equipment', href: ROUTES.EQUIPMENT, icon: 'Monitor', roles: ['admin', 'technician', 'department_user', 'store_user', 'viewer'] },
-      { label: 'Requests', href: ROUTES.REQUESTS, icon: 'ClipboardList', roles: ['admin', 'technician', 'department_user'] },
+    ],
+  },
+  {
+    title: 'Work',
+    items: [
       { label: 'Maintenance', href: ROUTES.MAINTENANCE, icon: 'Wrench', roles: ['admin', 'technician', 'department_user'] },
       { label: 'Preventive Maintenance', href: ROUTES.PM, icon: 'CalendarCheck', roles: ['admin', 'technician'] },
       { label: 'Calibration', href: ROUTES.CALIBRATION, icon: 'Gauge', roles: ['admin', 'technician'] },
-      { label: 'Logistics', href: ROUTES.LOGISTICS, icon: 'Package', roles: ['admin', 'technician', 'store_user'] },
-      { label: 'Procurement', href: ROUTES.PROCUREMENT, icon: 'PackageCheck', roles: ['admin', 'technician', 'store_user'] },
+      { label: 'Work Orders', href: ROUTES.WORK_ORDERS, icon: 'ClipboardList', roles: ['admin', 'technician', 'department_user', 'viewer'] },
+    ],
+  },
+  {
+    title: 'Inventory',
+    items: [
       { label: 'Spare Parts', href: ROUTES.SPARE_PARTS, icon: 'Package', roles: ['admin', 'technician', 'store_user'] },
+      { label: 'Logistics', href: ROUTES.LOGISTICS, icon: 'Boxes', roles: ['admin', 'technician', 'store_user'] },
+      { label: 'Procurement', href: ROUTES.PROCUREMENT, icon: 'PackageCheck', roles: ['admin', 'technician', 'store_user'] },
+    ],
+  },
+  {
+    title: 'People',
+    items: [
       { label: 'Training', href: ROUTES.TRAINING, icon: 'GraduationCap', roles: ['admin', 'technician', 'department_user'] },
-      { label: 'Helpdesk', href: ROUTES.HELPDESK, icon: 'Headphones', roles: ['admin', 'technician', 'department_user'] },
-      { label: 'Alerts', href: ROUTES.ALERTS, icon: 'Bell', roles: ['admin', 'technician'] },
+      { label: 'Users & Roles', href: ROUTES.USERS, icon: 'Users', roles: ['admin'] },
+    ],
+  },
+  {
+    title: 'Lifecycle',
+    items: [
+      { label: 'Replacement Priority', href: ROUTES.REPLACEMENT, icon: 'ArrowUpDown', roles: ['admin', 'technician', 'viewer'] },
       { label: 'Disposal', href: ROUTES.DISPOSAL, icon: 'Trash2', roles: ['admin', 'technician'] },
     ],
   },
   {
-    title: 'Decision Support',
+    title: 'Support',
     items: [
-      { label: 'Decision Support Center', href: ROUTES.DECISION_SUPPORT, icon: 'BrainCircuit', roles: ['admin', 'technician', 'viewer'] },
-      { label: 'Reliability Analytics', href: ROUTES.ANALYTICS_RELIABILITY, icon: 'Activity', roles: ['admin', 'technician', 'viewer'] },
-      { label: 'Risk Scoring', href: ROUTES.ANALYTICS_RISK, icon: 'ShieldAlert', roles: ['admin', 'technician', 'viewer'] },
-      { label: 'PM Compliance', href: ROUTES.ANALYTICS_PMC, icon: 'CheckCircle', roles: ['admin', 'technician', 'viewer'] },
-      { label: 'Performance Scores', href: ROUTES.ANALYTICS_PERFORMANCE, icon: 'BarChart3', roles: ['admin', 'technician', 'viewer'] },
-      { label: 'Replacement Priority', href: ROUTES.REPLACEMENT, icon: 'ArrowUpDown', roles: ['admin', 'technician', 'viewer'] },
+      { label: 'Helpdesk', href: ROUTES.HELPDESK, icon: 'Headphones', roles: ['admin', 'technician', 'department_user'] },
+      { label: 'Alerts', href: ROUTES.ALERTS, icon: 'Bell', roles: ['admin', 'technician'] },
       { label: CHATBOT_NAME, href: ROUTES.CHATBOT, icon: 'MessageSquareText', roles: ['admin', 'technician', 'department_user', 'store_user', 'viewer'] },
     ],
   },
@@ -95,7 +114,6 @@ export const NAV_SECTIONS = [
     title: 'Administration',
     items: [
       { label: 'Security', href: ROUTES.SECURITY, icon: 'Shield', roles: ['admin'] },
-      { label: 'Users & Roles', href: ROUTES.USERS, icon: 'Users', roles: ['admin'] },
       { label: 'Settings', href: ROUTES.SETTINGS, icon: 'Settings', roles: ['admin'] },
     ],
   },

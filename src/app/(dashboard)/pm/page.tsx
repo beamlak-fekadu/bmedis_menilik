@@ -7,8 +7,16 @@ import { Plus, AlertTriangle } from 'lucide-react';
 import { PageHeader, DataTable, Tabs, Table, Button, Badge, Spinner } from '@/components/ui';
 import { PMStatusBadge } from '@/components/ui/StatusBadge';
 import { getPMPlans, getPMSchedules, getOverduePMSchedules } from '@/services/pm.service';
+import { getPMComplianceMetrics } from '@/services/analytics.service';
 import { useToast } from '@/components/ui/Toast';
 import type { PMPlan, PMSchedule } from '@/types/database';
+
+interface PMComplianceDeptRow {
+  department_id: string;
+  department_name: string;
+  avg_pmc: number;
+  plan_count: number;
+}
 import { AskAiButton } from '@/components/assistant/AskAiButton';
 
 type PlanWithJoins = PMPlan & {
@@ -45,15 +53,17 @@ export default function PMPage() {
   const [plans, setPlans] = useState<PlanWithJoins[]>([]);
   const [schedules, setSchedules] = useState<ScheduleWithJoins[]>([]);
   const [overdue, setOverdue] = useState<OverduePM[]>([]);
+  const [deptCompliance, setDeptCompliance] = useState<PMComplianceDeptRow[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function load() {
       setLoading(true);
-      const [planRes, schedRes, overdueRes] = await Promise.all([
+      const [planRes, schedRes, overdueRes, pmcRes] = await Promise.all([
         getPMPlans(),
         getPMSchedules(),
         getOverduePMSchedules(),
+        getPMComplianceMetrics(), // fetch all rows; grouped by department in component
       ]);
       if (planRes.error) toast('error', 'Failed to load PM plans');
       if (schedRes.error) toast('error', 'Failed to load PM schedules');
@@ -61,6 +71,30 @@ export default function PMPage() {
       setPlans((planRes.data ?? []) as unknown as PlanWithJoins[]);
       setSchedules((schedRes.data ?? []) as unknown as ScheduleWithJoins[]);
       setOverdue((overdueRes.data ?? []) as unknown as OverduePM[]);
+
+      // Aggregate pm_compliance_metrics by department — every department with at least one PM plan
+      const pmcRows = (pmcRes.data ?? []) as Array<{
+        department_id?: string;
+        pmc_percentage?: number;
+        departments?: { name?: string } | null;
+      }>;
+      const deptMap = new Map<string, { name: string; totalPmc: number; count: number }>();
+      for (const row of pmcRows) {
+        if (!row.department_id) continue;
+        const name = row.departments?.name ?? 'Unknown';
+        const existing = deptMap.get(row.department_id) ?? { name, totalPmc: 0, count: 0 };
+        existing.totalPmc += row.pmc_percentage ?? 0;
+        existing.count += 1;
+        deptMap.set(row.department_id, existing);
+      }
+      setDeptCompliance(
+        Array.from(deptMap.entries()).map(([id, { name, totalPmc, count }]) => ({
+          department_id: id,
+          department_name: name,
+          avg_pmc: count > 0 ? totalPmc / count : 0,
+          plan_count: count,
+        })).sort((a, b) => a.department_name.localeCompare(b.department_name))
+      );
       setLoading(false);
     }
     load();
@@ -179,7 +213,7 @@ export default function PMPage() {
       <PageHeader
         title="Preventive Maintenance"
         description="Manage PM plans, schedules, and track overdue tasks"
-        breadcrumbs={[{ label: 'Dashboard', href: '/' }, { label: 'Preventive Maintenance' }]}
+        breadcrumbs={[{ label: 'Command Center', href: '/command' }, { label: 'Preventive Maintenance' }]}
         actions={
           <AskAiButton
             moduleLabel="Preventive Maintenance"
@@ -188,6 +222,30 @@ export default function PMPage() {
           />
         }
       />
+
+      {/* PM Compliance by Department */}
+      {deptCompliance.length > 0 && (
+        <div className="mb-6 panel-surface rounded-2xl p-5">
+          <h2 className="mb-4 text-sm font-semibold text-[var(--foreground)]">PM Compliance by Department</h2>
+          <div className="space-y-2">
+            {deptCompliance.map((dept) => (
+              <div key={dept.department_id} className="flex items-center gap-3">
+                <span className="w-40 truncate text-sm text-[var(--foreground)]">{dept.department_name}</span>
+                <div className="h-2 flex-1 overflow-hidden rounded-full bg-white/5">
+                  <div
+                    className={`h-full rounded-full ${dept.avg_pmc >= 80 ? 'bg-emerald-500' : dept.avg_pmc >= 60 ? 'bg-amber-500' : 'bg-rose-500'}`}
+                    style={{ width: `${Math.min(100, dept.avg_pmc)}%` }}
+                    aria-label={`${dept.avg_pmc.toFixed(0)}%`}
+                  />
+                </div>
+                <span className={`w-12 text-right text-sm font-medium ${dept.avg_pmc >= 80 ? 'text-emerald-300' : dept.avg_pmc >= 60 ? 'text-amber-300' : 'text-rose-300'}`}>
+                  {dept.avg_pmc.toFixed(0)}%
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <Tabs
         tabs={[

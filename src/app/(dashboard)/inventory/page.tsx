@@ -8,8 +8,23 @@ import { PageHeader, Button, DataTable, FilterBar, Spinner } from '@/components/
 import { ConditionBadge } from '@/components/ui/StatusBadge';
 import { getEquipmentList, type EquipmentFilters } from '@/services/equipment.service';
 import { getAll } from '@/services/settings.service';
+import { getRiskScores } from '@/services/analytics.service';
 import { ROUTES } from '@/constants';
 import type { EquipmentCondition, EquipmentStatus } from '@/types/database';
+
+function rpnBandLabel(rpn: number): string {
+  if (rpn <= 100) return 'Low';
+  if (rpn <= 200) return 'Medium';
+  if (rpn <= 500) return 'High';
+  return 'Critical';
+}
+
+function rpnBandClass(rpn: number): string {
+  if (rpn <= 100) return 'bg-emerald-500/15 text-emerald-300';
+  if (rpn <= 200) return 'bg-amber-500/15 text-amber-300';
+  if (rpn <= 500) return 'bg-orange-500/15 text-orange-300';
+  return 'bg-rose-500/15 text-rose-300';
+}
 
 interface EquipmentRow {
   id: string;
@@ -48,6 +63,7 @@ export default function InventoryPage() {
   const router = useRouter();
   const [data, setData] = useState<EquipmentRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [riskByAsset, setRiskByAsset] = useState<Map<string, number>>(new Map());
   const [departments, setDepartments] = useState<RefOption[]>([]);
   const [categories, setCategories] = useState<RefOption[]>([]);
   const [filters, setFilters] = useState<Record<string, string>>({
@@ -78,8 +94,17 @@ export default function InventoryPage() {
     if (filters.condition) activeFilters.condition = filters.condition;
     if (filters.status) activeFilters.status = filters.status;
 
-    const { data: equipment } = await getEquipmentList(activeFilters);
+    const [{ data: equipment }, riskRes] = await Promise.all([
+      getEquipmentList(activeFilters),
+      getRiskScores(), // fetch all risk scores; merged by asset_id for the RPN band column
+    ]);
     setData((equipment as unknown as EquipmentRow[]) ?? []);
+
+    const map = new Map<string, number>();
+    for (const row of (riskRes.data as Array<{ asset_id: string; rpn: number }> | null) ?? []) {
+      if (!map.has(row.asset_id)) map.set(row.asset_id, row.rpn);
+    }
+    setRiskByAsset(map);
     setLoading(false);
   }, [filters]);
 
@@ -145,6 +170,19 @@ export default function InventoryPage() {
         row.installation_date
           ? new Date(row.installation_date).toLocaleDateString()
           : '—',
+    },
+    {
+      key: 'rpn_band',
+      header: 'Risk Band',
+      render: (row: EquipmentRow) => {
+        const rpn = riskByAsset.get(row.id);
+        if (rpn == null) return <span className="text-xs text-gray-400">Not assessed</span>;
+        return (
+          <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${rpnBandClass(rpn)}`}>
+            {rpnBandLabel(rpn)} ({rpn})
+          </span>
+        );
+      },
     },
   ];
 

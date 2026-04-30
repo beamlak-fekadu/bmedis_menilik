@@ -14,7 +14,7 @@ import { getEquipmentById } from '@/services/equipment.service';
 import { getMaintenanceEvents } from '@/services/maintenance.service';
 import { getPMSchedules } from '@/services/pm.service';
 import { getCalibrationRecords } from '@/services/calibration.service';
-import { getReliabilityMetrics, getRiskScores } from '@/services/analytics.service';
+import { getReliabilityMetrics, getRiskScores, getPMComplianceMetrics, getReplacementPriorities } from '@/services/analytics.service';
 import { ROUTES } from '@/constants';
 import { AskAiButton } from '@/components/assistant/AskAiButton';
 import type {
@@ -87,6 +87,20 @@ interface RiskRow {
   [key: string]: unknown;
 }
 
+interface PMComplianceRow {
+  pmc_percentage: number;
+  scheduled_count: number;
+  completed_count: number;
+  [key: string]: unknown;
+}
+
+interface ReplacementRow {
+  replacement_priority_index: number;
+  rank: number;
+  justification: string | null;
+  [key: string]: unknown;
+}
+
 function formatDate(val: string | null): string {
   if (!val) return '—';
   return new Date(val).toLocaleDateString();
@@ -116,6 +130,8 @@ export default function EquipmentDetailPage({ params }: { params: Promise<{ id: 
   const [calibrations, setCalibrations] = useState<CalibrationRow[]>([]);
   const [reliability, setReliability] = useState<ReliabilityRow | null>(null);
   const [risk, setRisk] = useState<RiskRow | null>(null);
+  const [pmCompliance, setPmCompliance] = useState<PMComplianceRow | null>(null);
+  const [replacement, setReplacement] = useState<ReplacementRow | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -130,12 +146,14 @@ export default function EquipmentDetailPage({ params }: { params: Promise<{ id: 
       }
       setEquipment(data as unknown as EquipmentDetail);
 
-      const [eventsRes, pmRes, calRes, relRes, riskRes] = await Promise.all([
+      const [eventsRes, pmRes, calRes, relRes, riskRes, pmcRes, repRes] = await Promise.all([
         getMaintenanceEvents(id),
         getPMSchedules({ asset_id: id }),
         getCalibrationRecords({ asset_id: id }),
         getReliabilityMetrics({ asset_id: id }),
         getRiskScores({ asset_id: id }),
+        getPMComplianceMetrics({ asset_id: id }),
+        getReplacementPriorities({ asset_id: id }),
       ]);
 
       setEvents((eventsRes.data as unknown as MaintenanceEventRow[]) ?? []);
@@ -147,6 +165,12 @@ export default function EquipmentDetailPage({ params }: { params: Promise<{ id: 
 
       const riskData = riskRes.data as unknown as RiskRow[] | null;
       if (riskData?.length) setRisk(riskData[0]);
+
+      const pmcData = pmcRes.data as unknown as PMComplianceRow[] | null;
+      if (pmcData?.length) setPmCompliance(pmcData[0]);
+
+      const repData = repRes.data as unknown as ReplacementRow[] | null;
+      if (repData?.length) setReplacement(repData[0]);
 
       setLoading(false);
     }
@@ -308,87 +332,116 @@ export default function EquipmentDetailPage({ params }: { params: Promise<{ id: 
     />
   );
 
+  const noDataMsg = (label: string) => (
+    <Card>
+      <CardContent>
+        <p className="py-4 text-center text-sm text-gray-500">
+          No {label} data yet — complete one work order to compute
+        </p>
+      </CardContent>
+    </Card>
+  );
+
   const analyticsContent = (
     <div className="space-y-6">
+      {/* Reliability */}
+      <h3 className="text-sm font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+        Reliability
+      </h3>
       {reliability ? (
-        <>
-          <h3 className="text-sm font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-            Reliability Metrics
-          </h3>
-          <div className="grid gap-4 sm:grid-cols-3">
-            <StatCard
-              label="MTTR"
-              value={reliability.mttr_hours != null ? `${reliability.mttr_hours.toFixed(1)}h` : 'N/A'}
-              icon={<Clock className="h-5 w-5" />}
-              color="blue"
-            />
-            <StatCard
-              label="MTBF"
-              value={reliability.mtbf_hours != null ? `${reliability.mtbf_hours.toFixed(1)}h` : 'N/A'}
-              icon={<Activity className="h-5 w-5" />}
-              color="green"
-            />
-            <StatCard
-              label="Availability"
-              value={reliability.availability_ratio != null ? `${(reliability.availability_ratio * 100).toFixed(1)}%` : 'N/A'}
-              icon={<Gauge className="h-5 w-5" />}
-              color="purple"
-            />
-          </div>
-        </>
-      ) : (
-        <Card>
-          <CardContent>
-            <p className="py-4 text-center text-sm text-gray-500">
-              No reliability metrics available for this equipment.
-            </p>
-          </CardContent>
-        </Card>
-      )}
+        <div className="grid gap-4 sm:grid-cols-3">
+          <StatCard label="MTTR" value={reliability.mttr_hours != null ? `${reliability.mttr_hours.toFixed(1)}h` : 'N/A'} icon={<Clock className="h-5 w-5" />} color="blue" />
+          <StatCard label="MTBF" value={reliability.mtbf_hours != null ? `${reliability.mtbf_hours.toFixed(1)}h` : 'N/A'} icon={<Activity className="h-5 w-5" />} color="green" />
+          <StatCard label="Availability" value={reliability.availability_ratio != null ? `${(reliability.availability_ratio * 100).toFixed(1)}%` : 'N/A'} icon={<Gauge className="h-5 w-5" />} color="purple" />
+        </div>
+      ) : noDataMsg('reliability')}
 
+      {/* Risk */}
+      <h3 className="text-sm font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+        Risk (RPN = Severity × Occurrence × Detectability)
+      </h3>
       {risk ? (
-        <>
-          <h3 className="mt-6 text-sm font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-            Risk Assessment
-          </h3>
-          <Card>
-            <CardContent>
-              <div className="grid gap-4 sm:grid-cols-5">
-                <div className="text-center">
-                  <p className="text-xs font-medium text-gray-500">Severity (S)</p>
-                  <p className="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{risk.severity}</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-xs font-medium text-gray-500">Occurrence (O)</p>
-                  <p className="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{risk.occurrence}</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-xs font-medium text-gray-500">Detectability (D)</p>
-                  <p className="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{risk.detectability}</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-xs font-medium text-gray-500">RPN</p>
-                  <p className="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{risk.rpn}</p>
-                </div>
-                <div className="flex flex-col items-center justify-center">
-                  <p className="text-xs font-medium text-gray-500">Risk Level</p>
-                  <div className="mt-1">
-                    <RiskBadge level={risk.risk_level} />
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </>
-      ) : (
         <Card>
           <CardContent>
-            <p className="py-4 text-center text-sm text-gray-500">
-              No risk assessment data available for this equipment.
-            </p>
+            <div className="grid gap-4 sm:grid-cols-5">
+              <div className="text-center">
+                <p className="text-xs font-medium text-gray-500">Severity (S)</p>
+                <p className="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{risk.severity}</p>
+              </div>
+              <div className="text-center">
+                <p className="text-xs font-medium text-gray-500">Occurrence (O)</p>
+                <p className="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{risk.occurrence}</p>
+              </div>
+              <div className="text-center">
+                <p className="text-xs font-medium text-gray-500">Detectability (D)</p>
+                <p className="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{risk.detectability}</p>
+              </div>
+              <div className="text-center">
+                <p className="text-xs font-medium text-gray-500">RPN</p>
+                <p className="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{risk.rpn}</p>
+              </div>
+              <div className="flex flex-col items-center justify-center">
+                <p className="text-xs font-medium text-gray-500">Risk Level</p>
+                <div className="mt-1"><RiskBadge level={risk.risk_level} /></div>
+              </div>
+            </div>
           </CardContent>
         </Card>
-      )}
+      ) : noDataMsg('risk assessment')}
+
+      {/* PM Compliance */}
+      <h3 className="text-sm font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+        PM Compliance
+      </h3>
+      {pmCompliance ? (
+        <Card>
+          <CardContent>
+            <div className="flex items-center gap-6">
+              <div>
+                <p className="text-xs font-medium text-gray-500">Compliance Rate</p>
+                <p className="mt-1 text-3xl font-bold text-gray-900 dark:text-white">
+                  {pmCompliance.pmc_percentage.toFixed(1)}%
+                </p>
+              </div>
+              <div>
+                <p className="text-xs font-medium text-gray-500">Completed / Scheduled</p>
+                <p className="mt-1 text-xl font-semibold text-gray-900 dark:text-white">
+                  {pmCompliance.completed_count} / {pmCompliance.scheduled_count}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      ) : noDataMsg('PM compliance')}
+
+      {/* Replacement Priority */}
+      <h3 className="text-sm font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+        Replacement Priority
+      </h3>
+      {replacement ? (
+        <Card>
+          <CardContent>
+            <div className="flex items-center gap-6">
+              <div>
+                <p className="text-xs font-medium text-gray-500">System Rank</p>
+                <p className="mt-1 text-3xl font-bold text-gray-900 dark:text-white">#{replacement.rank}</p>
+              </div>
+              <div>
+                <p className="text-xs font-medium text-gray-500">Priority Index</p>
+                <p className="mt-1 text-xl font-semibold text-gray-900 dark:text-white">
+                  {replacement.replacement_priority_index.toFixed(2)}
+                </p>
+              </div>
+              {replacement.justification && (
+                <div className="flex-1">
+                  <p className="text-xs font-medium text-gray-500">Key Driver</p>
+                  <p className="mt-1 text-sm text-gray-700 dark:text-gray-300">{replacement.justification}</p>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      ) : noDataMsg('replacement priority')}
     </div>
   );
 

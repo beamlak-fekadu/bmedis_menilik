@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/client';
 import type { PMPlan, PMCompletion, PMScheduleStatus } from '@/types/database';
+import { recomputeAssetAnalytics } from '@/actions/analytics.actions';
 
 export interface PMPlanFilters {
   asset_id?: string;
@@ -65,12 +66,21 @@ export async function getPMSchedules(filters: PMScheduleFilters = {}) {
 
 export async function updateScheduleStatus(id: string, status: PMScheduleStatus) {
   const supabase = createClient();
-  return supabase
+  const result = await supabase
     .from('pm_schedules')
     .update({ status })
     .eq('id', id)
     .select(PM_SCHEDULE_SELECT)
     .single();
+
+  if (!result.error && status === 'completed') {
+    const assetId = (result.data as Record<string, unknown> | null)?.asset_id as string | undefined;
+    if (assetId) {
+      await recomputeAssetAnalytics(assetId).catch(() => {});
+    }
+  }
+
+  return result;
 }
 
 export async function createPMCompletion(data: Omit<PMCompletion, 'id' | 'created_at'>) {

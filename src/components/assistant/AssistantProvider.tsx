@@ -50,7 +50,7 @@ function mapModuleFromPathname(pathname: string): string {
   if (pathname.startsWith('/pm')) return 'Preventive Maintenance';
   if (pathname.startsWith('/calibration')) return 'Calibration';
   if (pathname.startsWith('/spare-parts') || pathname.startsWith('/logistics') || pathname.startsWith('/procurement')) return 'Logistics';
-  if (pathname.startsWith('/analytics') || pathname.startsWith('/decision-support') || pathname.startsWith('/replacement')) return 'Decision Support';
+  if (pathname.startsWith('/command') || pathname.startsWith('/replacement')) return 'Decision Support';
   if (pathname.startsWith('/reports')) return 'Reporting';
   return 'Operations';
 }

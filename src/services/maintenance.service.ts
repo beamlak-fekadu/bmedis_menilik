@@ -6,6 +6,7 @@ import type {
   WorkOrderStatus,
   MaintenanceEvent,
 } from '@/types/database';
+import { recomputeAssetAnalytics } from '@/actions/analytics.actions';
 
 export interface MaintenanceRequestFilters {
   status?: MaintenanceRequestStatus;
@@ -117,12 +118,21 @@ export async function createWorkOrder(data: Omit<WorkOrder, 'id' | 'work_order_n
 
 export async function updateWorkOrder(id: string, data: Partial<Omit<WorkOrder, 'id' | 'work_order_number' | 'created_at' | 'updated_at' | 'asset' | 'assignee' | 'request'>>) {
   const supabase = createClient();
-  return supabase
+  const result = await supabase
     .from('work_orders')
     .update(data)
     .eq('id', id)
     .select(WORK_ORDER_SELECT)
     .single();
+
+  if (!result.error && data.status === 'completed') {
+    const assetId = (result.data as Record<string, unknown> | null)?.asset_id as string | undefined;
+    if (assetId) {
+      await recomputeAssetAnalytics(assetId).catch(() => {});
+    }
+  }
+
+  return result;
 }
 
 export async function getMaintenanceEvents(assetId: string) {

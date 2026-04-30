@@ -1,4 +1,4 @@
--- Master Seed File for St. Peter's Specialized Hospital Demo Data
+-- Master Seed File for Yekatit-12 Hospital Medical College Demo Data
 -- Run this file to populate the entire database with realistic seed data.
 -- Execute after all migrations have been applied.
 --
@@ -16,3 +16,7 @@
 \i 09_disposal_data.sql
 \i 10_analytics_data.sql
 \i 11_post_upgrade_baseline.sql
+
+-- Auth linking step is intentionally separate:
+-- - Create real users in Supabase Authentication first.
+-- - Then run 99_link_auth_users.sql with real auth.users UUID values.

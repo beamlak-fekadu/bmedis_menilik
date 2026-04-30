@@ -7,7 +7,7 @@ export function isAdmin(profile: UserChatProfile) {
 
 export function usesBroadWorkOrderPool(profile: UserChatProfile, capability: CapabilityId) {
   if (isAdmin(profile)) return true;
-  if (capability === 'prioritize_tasks' && profile.roleNames.includes('engineer')) return true;
+  if (capability === 'prioritize_tasks' && profile.roleNames.includes('technician')) return true;
   return false;
 }
 
@@ -74,7 +74,7 @@ export async function loadTaskBlocks(
     supabase
       .from('procurement_requests')
       .select('id, request_number, status, priority, created_at')
-      .in('status', ['requested', 'under_review'])
+      .in('status', ['requested', 'approved'])
       .order('created_at', { ascending: false })
       .limit(8),
     trainingRequestsQuery,
