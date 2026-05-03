@@ -17,5 +17,6 @@ export { default as FilterBar } from './FilterBar';
 export { default as Dropdown } from './Dropdown';
 export { default as Pagination } from './Pagination';
 export { default as ConfirmDialog } from './ConfirmDialog';
+export { default as ExpandableText } from './ExpandableText';
 export { ToastProvider, useToast } from './Toast';
 export { ConditionBadge, UrgencyBadge, WorkOrderStatusBadge, RequestStatusBadge, PMStatusBadge, RiskBadge } from './StatusBadge';

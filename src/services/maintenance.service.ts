@@ -7,6 +7,7 @@ import type {
   MaintenanceEvent,
 } from '@/types/database';
 import { recomputeAssetAnalytics } from '@/actions/analytics.actions';
+import { logAuditEvent } from './audit.service';
 
 export interface MaintenanceRequestFilters {
   status?: MaintenanceRequestStatus;
@@ -118,12 +119,23 @@ export async function createWorkOrder(data: Omit<WorkOrder, 'id' | 'work_order_n
 
 export async function updateWorkOrder(id: string, data: Partial<Omit<WorkOrder, 'id' | 'work_order_number' | 'created_at' | 'updated_at' | 'asset' | 'assignee' | 'request'>>) {
   const supabase = createClient();
+  const oldRow = await supabase.from('work_orders').select(WORK_ORDER_SELECT).eq('id', id).single();
   const result = await supabase
     .from('work_orders')
     .update(data)
     .eq('id', id)
     .select(WORK_ORDER_SELECT)
     .single();
+
+  if (!result.error) {
+    await logAuditEvent({
+      action: data.status ? 'work_order.status_update' : 'work_order.update',
+      entityType: 'work_orders',
+      entityId: id,
+      oldValues: (oldRow.data as Record<string, unknown> | null) ?? null,
+      newValues: (result.data as Record<string, unknown> | null) ?? null,
+    });
+  }
 
   if (!result.error && data.status === 'completed') {
     const assetId = (result.data as Record<string, unknown> | null)?.asset_id as string | undefined;

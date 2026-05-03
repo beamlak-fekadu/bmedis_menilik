@@ -160,7 +160,7 @@ export default function DocumentsPage() {
       render: (row: EquipmentDocument) => {
         const asset = assetMap.get(row.asset_id || '');
         return asset ? (
-          <Link href={`/inventory/${asset.id}`} className="text-blue-600 hover:underline dark:text-blue-400">
+          <Link href={`/equipment/${asset.id}`} className="text-blue-600 hover:underline dark:text-blue-400">
             {asset.name}
           </Link>
         ) : '—';

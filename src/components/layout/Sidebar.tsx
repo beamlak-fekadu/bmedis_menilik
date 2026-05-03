@@ -30,7 +30,7 @@ export default function Sidebar({ userRoles = ['admin'] }: SidebarProps) {
 
   return (
     <aside className={`panel-surface flex h-screen flex-col border-r-0 transition-all duration-200 ${collapsed ? 'w-16' : 'w-72'}`}>
-      <div className="flex h-16 items-center justify-between border-b border-[var(--border-subtle)] px-4">
+      <div className="flex h-16 shrink-0 items-center justify-between border-b border-[var(--border-subtle)] px-4">
         {!collapsed && (
           <Link href="/" className="flex items-center gap-2">
             <Activity className="h-6 w-6 text-[var(--brand)]" />
@@ -43,7 +43,7 @@ export default function Sidebar({ userRoles = ['admin'] }: SidebarProps) {
         </button>
       </div>
 
-      <nav className="flex-1 overflow-y-auto px-2 py-4">
+      <nav className="flex-1 min-h-0 overflow-y-auto px-2 py-4">
         {NAV_SECTIONS.map((section) => {
           const visibleItems = section.items.filter((item) =>
             item.roles.some((r) => userRoles.includes(r))

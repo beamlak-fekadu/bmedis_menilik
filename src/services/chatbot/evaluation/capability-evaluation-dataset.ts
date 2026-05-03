@@ -3,7 +3,7 @@ import type { CapabilityId } from '@/types/chatbot';
 export interface EvaluationPrompt {
   id: string;
   capability: CapabilityId;
-  role: 'engineer' | 'admin' | 'logistics' | 'department_user';
+  role: 'technician' | 'admin' | 'logistics' | 'department_user';
   module: string;
   prompt: string;
 }
@@ -18,7 +18,7 @@ interface PromptSeed {
 const PROMPT_SEEDS: PromptSeed[] = [
   {
     capability: 'my_tasks',
-    role: 'engineer',
+    role: 'technician',
     module: 'maintenance',
     prompts: [
       'What is on my to-do list right now?',
@@ -52,7 +52,7 @@ const PROMPT_SEEDS: PromptSeed[] = [
   },
   {
     capability: 'summarize_work_order',
-    role: 'engineer',
+    role: 'technician',
     module: 'work-orders',
     prompts: [
       'Summarize work order WO-2043 for handoff.',
@@ -69,7 +69,7 @@ const PROMPT_SEEDS: PromptSeed[] = [
   },
   {
     capability: 'explain_equipment_risk',
-    role: 'engineer',
+    role: 'technician',
     module: 'analytics',
     prompts: [
       'Why is this equipment marked high risk?',
@@ -103,7 +103,7 @@ const PROMPT_SEEDS: PromptSeed[] = [
   },
   {
     capability: 'safe_troubleshooting',
-    role: 'engineer',
+    role: 'technician',
     module: 'maintenance',
     prompts: [
       'What should I check first for intermittent failure?',
@@ -220,7 +220,7 @@ const PROMPT_SEEDS: PromptSeed[] = [
   },
   {
     capability: 'training_status',
-    role: 'engineer',
+    role: 'technician',
     module: 'training',
     prompts: [
       'What is the status of pending training requests?',
@@ -286,7 +286,7 @@ const PROMPT_SEEDS: PromptSeed[] = [
   },
   {
     capability: 'safe_troubleshooting',
-    role: 'engineer',
+    role: 'technician',
     module: 'maintenance',
     prompts: [
       'What exact error code E13 means on this model?',
@@ -297,7 +297,7 @@ const PROMPT_SEEDS: PromptSeed[] = [
   },
   {
     capability: 'my_tasks',
-    role: 'engineer',
+    role: 'technician',
     module: 'maintenance',
     prompts: [
       'What about the monitor we discussed earlier?',

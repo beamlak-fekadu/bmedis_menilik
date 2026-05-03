@@ -12,6 +12,7 @@ import { useToast } from '@/components/ui/Toast';
 import * as reportsService from '@/services/reports.service';
 import * as settingsService from '@/services/settings.service';
 import type { ReportFilters } from '@/services/reports.service';
+import { exportToCSV, exportToPDF } from '@/utils/export';
 
 type Row = Record<string, unknown>;
 
@@ -362,30 +363,6 @@ function getReportConfig(type: string): ReportConfig | null {
   }
 }
 
-function exportToCSV(data: Row[], columns: ReportConfig['columns'], filename: string) {
-  const headers = columns.map((c) => c.header);
-  const rows = data.map((row) =>
-    columns.map((col) => {
-      const val = row[col.key];
-      if (val == null) return '';
-      if (typeof val === 'object') return JSON.stringify(val);
-      return String(val);
-    })
-  );
-
-  const csvContent = [
-    headers.join(','),
-    ...rows.map((r) => r.map((v) => `"${v.replace(/"/g, '""')}"`).join(',')),
-  ].join('\n');
-
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-  const link = document.createElement('a');
-  link.href = URL.createObjectURL(blob);
-  link.download = `${filename}_${new Date().toISOString().split('T')[0]}.csv`;
-  link.click();
-  URL.revokeObjectURL(link.href);
-}
-
 export default function ReportTypePage() {
   const params = useParams();
   const router = useRouter();
@@ -516,6 +493,17 @@ export default function ReportTypePage() {
     toast('success', 'Report exported as CSV');
   };
 
+  const handlePdfExport = () => {
+    exportToPDF({
+      data,
+      columns: config.columns,
+      filename: reportType,
+      title: config.title,
+      filters: filterValues,
+    });
+    toast('success', 'Report exported as PDF');
+  };
+
   const handlePrint = () => {
     window.print();
   };
@@ -536,6 +524,10 @@ export default function ReportTypePage() {
             <Button variant="outline" onClick={handleExport}>
               <Download className="h-4 w-4" />
               Export CSV
+            </Button>
+            <Button variant="outline" onClick={handlePdfExport}>
+              <Download className="h-4 w-4" />
+              Export PDF
             </Button>
             <Button variant="outline" onClick={handlePrint}>
               <Printer className="h-4 w-4" />

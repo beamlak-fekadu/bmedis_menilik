@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { getRecommendationFlags, acknowledgeFlag } from '@/services/analytics.service';
 import { useAuth } from '@/hooks/useAuth';
+import { useRole } from '@/hooks/useRole';
 import { PageHeader, StatCard, Badge, Button, Tabs, FilterBar } from '@/components/ui';
 import { PageLoader } from '@/components/ui/Spinner';
 import { useToast } from '@/components/ui/Toast';
@@ -19,6 +20,7 @@ import { UrgencyBadge } from '@/components/ui/StatusBadge';
 import Card, { CardContent } from '@/components/ui/Card';
 import type { Urgency, RecommendationFlagType } from '@/types/database';
 import { generateAlertSummary } from '@/utils/decision-support/explanations';
+import ExpandableText from '@/components/ui/ExpandableText';
 
 interface AssetInfo {
   id: string;
@@ -89,6 +91,7 @@ function severityOrder(s: Urgency): number {
 
 export default function AlertsPage() {
   const { user } = useAuth();
+  const { primaryRole } = useRole();
   const { toast } = useToast();
   const [data, setData] = useState<AlertRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -169,51 +172,56 @@ export default function AlertsPage() {
                     <Badge variant="info">{flagTypeLabel(alert.flag_type)}</Badge>
                     {alert.equipment_assets && (
                       <Link
-                        href={`/inventory/${alert.equipment_assets.id}`}
+                        href={`/equipment/${alert.equipment_assets.id}`}
                         className="text-xs font-medium text-blue-600 hover:underline dark:text-blue-400"
                       >
                         {alert.equipment_assets.asset_code} — {alert.equipment_assets.name}
                       </Link>
                     )}
                   </div>
-                  <p className="mt-2 text-sm text-gray-800 dark:text-gray-200">
-                    {generateAlertSummary({
-                      assetName: alert.equipment_assets?.name,
-                      flagType: alert.flag_type,
-                      details: alert.details,
-                    })}
-                  </p>
+                  <div className="mt-2 text-sm text-gray-800 dark:text-gray-200">
+                    <ExpandableText
+                      text={generateAlertSummary({
+                        assetName: alert.equipment_assets?.name,
+                        flagType: alert.flag_type,
+                        details: alert.details,
+                      })}
+                      lines={2}
+                    />
+                  </div>
                   {alert.details && Object.keys(alert.details).length > 0 && (
                     <div className="mt-2 rounded-md bg-gray-50 p-2 dark:bg-gray-800/50">
-                      <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-600 dark:text-gray-400">
+                      <div className="flex flex-wrap gap-1 text-xs text-gray-600 dark:text-gray-400">
                         {Object.entries(alert.details).map(([k, v]) => (
-                          <span key={k}>
-                            <span className="font-medium">{k.replace(/_/g, ' ')}:</span>{' '}
-                            {String(v)}
+                          <span key={k} className="rounded-full bg-[var(--surface-2)] px-2 py-0.5">
+                            <span className="font-medium">{k.replace(/_/g, ' ')}:</span> {String(v)}
                           </span>
                         ))}
                       </div>
                     </div>
                   )}
                   <div className="mt-2 flex items-center justify-between">
-                    <span className="text-xs text-gray-400">
-                      {new Date(alert.generated_at).toLocaleString()}
-                    </span>
-                    <Button
-                      onClick={() => handleAcknowledge(alert.id)}
-                      disabled={acknowledging === alert.id}
-                      variant="outline"
-                      size="sm"
-                    >
-                      {acknowledging === alert.id ? (
-                        'Acknowledging...'
-                      ) : (
-                        <>
-                          <CheckCircle className="mr-1.5 h-3.5 w-3.5" />
-                          Acknowledge
-                        </>
-                      )}
-                    </Button>
+                    <div className="text-xs text-gray-400">
+                      <div>Generated: {new Date(alert.generated_at).toLocaleString()}</div>
+                      {alert.acknowledged_at && <div>Acknowledged: {new Date(alert.acknowledged_at).toLocaleString()}</div>}
+                    </div>
+                    {primaryRole !== 'viewer' && (
+                      <Button
+                        onClick={() => handleAcknowledge(alert.id)}
+                        disabled={acknowledging === alert.id}
+                        variant="outline"
+                        size="sm"
+                      >
+                        {acknowledging === alert.id ? (
+                          'Acknowledging...'
+                        ) : (
+                          <>
+                            <CheckCircle className="mr-1.5 h-3.5 w-3.5" />
+                            Acknowledge
+                          </>
+                        )}
+                      </Button>
+                    )}
                   </div>
                 </div>
               </div>

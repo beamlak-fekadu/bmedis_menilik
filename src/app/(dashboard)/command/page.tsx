@@ -6,6 +6,7 @@ import {
 import { getServerProfile } from '@/lib/auth/helpers';
 import { createClient } from '@/lib/supabase/server';
 import { Badge, Card, CardContent, CardHeader, CardTitle, PageHeader } from '@/components/ui';
+import ExpandableText from '@/components/ui/ExpandableText';
 import { RefreshButton } from './_components/RefreshButton';
 import { AcknowledgeButton } from './_components/AcknowledgeButton';
 import { RiskBandDrilldown, type RiskBand } from './_components/RiskBandDrilldown';
@@ -84,6 +85,8 @@ function actionForFlagType(flagType: string, assetId: string): { label: string; 
       return { label: 'Add to replacement plan', href: `/replacement?asset=${assetId}` };
     case 'part_shortage':
       return { label: 'Open procurement', href: `/procurement?asset=${assetId}` };
+    case 'low_stock':
+      return { label: 'Open spare parts', href: `/spare-parts?asset=${assetId}` };
     case 'overdue_pm':
       return { label: 'Schedule PM', href: `/pm?asset=${assetId}` };
     case 'calibrate_soon':
@@ -91,19 +94,12 @@ function actionForFlagType(flagType: string, assetId: string): { label: string; 
     case 'prioritize_pm':
       return { label: 'Reschedule PM', href: `/pm?asset=${assetId}` };
     case 'monitor_closely':
-      return { label: 'View details', href: `/inventory/${assetId}` };
+      return { label: 'View details', href: `/equipment/${assetId}` };
     case 'low_availability':
-      return { label: 'View maintenance history', href: `/inventory/${assetId}?tab=history` };
+      return { label: 'View maintenance history', href: `/equipment/${assetId}?tab=history` };
     default:
-      return { label: 'View asset', href: `/inventory/${assetId}` };
+      return { label: 'View asset', href: `/equipment/${assetId}` };
   }
-}
-
-function severityScore(severity: string): number {
-  if (severity === 'critical') return 45;
-  if (severity === 'high') return 25;
-  if (severity === 'medium') return 10;
-  return 4;
 }
 
 function normalizeRationale(value: unknown): string[] {
@@ -112,11 +108,58 @@ function normalizeRationale(value: unknown): string[] {
   }
   if (value && typeof value === 'object') {
     return Object.entries(value as Record<string, unknown>)
-      .map(([key, val]) => `${key}: ${Array.isArray(val) ? val.join(', ') : String(val)}`)
+      .map(([key, val]) => `${key}=${Array.isArray(val) ? val.join(', ') : String(val)}`)
       .filter(Boolean);
   }
   if (typeof value === 'string') return [value];
   return [];
+}
+
+function formatRationaleChip(raw: string): { label: string; className: string } | null {
+  const eqIdx = raw.indexOf('=');
+  if (eqIdx === -1) {
+    return { label: raw.replace(/_/g, ' '), className: 'bg-[var(--surface-2)] text-[var(--text-muted)]' };
+  }
+  const key = raw.slice(0, eqIdx);
+  const val = raw.slice(eqIdx + 1);
+
+  if (key === 'open_flags') {
+    const n = Number(val);
+    if (n === 0) return null;
+    return { label: `${val} open flag${n !== 1 ? 's' : ''}`, className: 'bg-blue-500/20 text-blue-300' };
+  }
+  if (key === 'top_flag') {
+    if (val === 'none') return null;
+    const labelMap: Record<string, string> = {
+      recurring_failure: 'Recurring failure',
+      urgent_maintenance: 'Urgent maintenance',
+      replacement_candidate: 'Replacement candidate',
+      overdue_pm: 'Overdue PM',
+      calibrate_soon: 'Calibration due',
+      prioritize_pm: 'PM rescheduling needed',
+      monitor_closely: 'Monitor closely',
+      low_availability: 'Low availability',
+      part_shortage: 'Part shortage',
+    };
+    const label = labelMap[val] ?? val.replace(/_/g, ' ');
+    const highSev = ['recurring_failure', 'urgent_maintenance', 'replacement_candidate', 'part_shortage'];
+    return { label, className: highSev.includes(val) ? 'bg-rose-500/20 text-rose-300' : 'bg-orange-500/20 text-orange-300' };
+  }
+  if (key === 'rpn') {
+    const n = Number(val);
+    const cls = n >= 500 ? 'bg-rose-500/20 text-rose-300' : n >= 200 ? 'bg-orange-500/20 text-orange-300' : n >= 100 ? 'bg-amber-500/20 text-amber-300' : 'bg-[var(--surface-2)] text-[var(--text-muted)]';
+    return { label: `RPN ${val}`, className: cls };
+  }
+  if (key === 'pmc') {
+    const n = Number(val);
+    return { label: `PM compliance ${val}%`, className: n < 70 ? 'bg-amber-500/20 text-amber-300' : 'bg-[var(--surface-2)] text-[var(--text-muted)]' };
+  }
+  if (key === 'replacement_rank') {
+    if (val === '999') return null;
+    const n = Number(val);
+    return { label: `Replacement rank #${val}`, className: n <= 3 ? 'bg-orange-500/20 text-orange-300' : 'bg-[var(--surface-2)] text-[var(--text-muted)]' };
+  }
+  return { label: raw.replace(/_/g, ' ').replace(/=/g, ': '), className: 'bg-[var(--surface-2)] text-[var(--text-muted)]' };
 }
 
 // ─── readiness colour ─────────────────────────────────────────────────────────
@@ -150,82 +193,69 @@ async function fetchTriageData(
   profileId: string | null,
   primaryRole: string
 ): Promise<{ rows: TriageRow[]; totalItems: number }> {
-  let totalQuery = supabase
-    .from('triage_action_queue')
-    .select('id', { count: 'exact', head: true })
-    .eq('status', 'open');
+  // Fetch asset_ids for distinct-count, and a larger set of rows for dedup.
+  let assetIdQuery = supabase
+    .from('v_command_center_triage')
+    .select('asset_id')
+    .eq('status', 'open')
+    .limit(500);
 
   let rowsQuery = supabase
-    .from('triage_action_queue')
-    .select('id, asset_id, priority_score, recommendation, rationale, equipment_assets(id, asset_code, name, department_id, departments(id, name))')
+    .from('v_command_center_triage')
+    .select('triage_id, asset_id, asset_code, asset_name, department_id, department_name, priority_score, recommendation, rationale, top_flag_id, top_flag_type, top_flag_severity')
     .eq('status', 'open')
     .order('priority_score', { ascending: false });
 
   if (primaryRole === 'technician' && profileId) {
-    totalQuery = totalQuery.eq('assigned_to', profileId);
+    assetIdQuery = assetIdQuery.eq('assigned_to', profileId);
     rowsQuery = rowsQuery.eq('assigned_to', profileId);
   }
 
-  const [countRes, rowsRes] = await Promise.all([
-    totalQuery,
-    rowsQuery.limit(10), // Command Center is an executive triage surface; show only the highest-priority 10 and keep the exact count in the footer.
+  const [assetIdRes, rowsRes] = await Promise.all([
+    assetIdQuery,
+    rowsQuery.limit(100),
   ]);
 
-  if (countRes.error || rowsRes.error) {
+  if (assetIdRes.error || rowsRes.error) {
     if (process.env.NODE_ENV === 'development') {
-      console.warn('[Command/Section1] triage queue query error:', countRes.error ?? rowsRes.error);
+      console.warn('[Command/Section1] triage queue query error:', assetIdRes.error ?? rowsRes.error);
     }
     return { rows: [], totalItems: 0 };
   }
 
-  const queueRows = (rowsRes.data ?? []) as Array<Record<string, unknown>>;
-  const assetIds = queueRows.map((row) => row.asset_id as string).filter(Boolean);
-  const flagByAsset = new Map<string, Record<string, unknown>>();
+  // Count distinct asset_ids for the footer total.
+  const totalUniqueAssets = new Set(
+    (assetIdRes.data ?? []).map((r: Record<string, unknown>) => r.asset_id as string).filter(Boolean)
+  ).size;
 
-  if (assetIds.length > 0) {
-    const { data: flagRows, error: flagError } = await supabase
-      .from('recommendation_flags')
-      .select('id, asset_id, flag_type, severity, generated_at')
-      .eq('is_acknowledged', false)
-      .in('asset_id', assetIds)
-      .order('generated_at', { ascending: false });
+  const allRows = (rowsRes.data ?? []) as Array<Record<string, unknown>>;
 
-    if (flagError) {
-      if (process.env.NODE_ENV === 'development') console.warn('[Command/Section1] flag action-driver query error:', flagError);
-    } else {
-      for (const flag of (flagRows ?? []) as Array<Record<string, unknown>>) {
-        const assetId = flag.asset_id as string;
-        const existing = flagByAsset.get(assetId);
-        const flagRank = severityScore(flag.severity as string);
-        const existingRank = existing ? severityScore(existing.severity as string) : -1;
-        if (!existing || flagRank > existingRank) {
-          flagByAsset.set(assetId, flag);
-        }
-      }
+  // Deduplicate by asset_id — keep highest priority_score per asset, then take top 10.
+  const deduped = new Map<string, Record<string, unknown>>();
+  for (const row of allRows) {
+    const aid = row.asset_id as string;
+    const existing = deduped.get(aid);
+    if (!existing || Number(row.priority_score) > Number(existing.priority_score)) {
+      deduped.set(aid, row);
     }
   }
+  const queueRows = Array.from(deduped.values())
+    .sort((a, b) => Number(b.priority_score) - Number(a.priority_score))
+    .slice(0, 10);
 
   const rows = queueRows.map((row) => {
-    const asset = row.equipment_assets as {
-      id: string;
-      asset_code: string;
-      name: string;
-      department_id: string | null;
-      departments?: { id: string; name: string } | null;
-    } | null;
-    const flag = flagByAsset.get(row.asset_id as string);
     return {
-      id: row.id as string,
-      flag_id: (flag?.id as string | undefined) ?? null,
-      flag_type: (flag?.flag_type as string | undefined) ?? null,
-      flag_severity: (flag?.severity as string | undefined) ?? null,
+      id: row.triage_id as string,
+      flag_id: (row.top_flag_id as string | undefined) ?? null,
+      flag_type: (row.top_flag_type as string | undefined) ?? null,
+      flag_severity: (row.top_flag_severity as string | undefined) ?? null,
       asset_id: row.asset_id as string,
-      asset_name: asset?.name ?? 'Unknown asset',
-      asset_code: asset?.asset_code ?? 'N/A',
-      department_id: asset?.department_id ?? asset?.departments?.id ?? null,
-      department_name: asset?.departments?.name ?? 'Unknown',
+      asset_name: (row.asset_name as string | undefined) ?? 'Unknown asset',
+      asset_code: (row.asset_code as string | undefined) ?? 'N/A',
+      department_id: (row.department_id as string | null) ?? null,
+      department_name: (row.department_name as string | undefined) ?? 'Unknown',
       recommendation: generateTriageReason({
-        flagType: (flag?.flag_type as string | undefined) ?? null,
+        flagType: (row.top_flag_type as string | undefined) ?? null,
         rationale: normalizeRationale(row.rationale),
         fallbackRecommendation: (row.recommendation as string | undefined) ?? null,
       }),
@@ -234,41 +264,35 @@ async function fetchTriageData(
     };
   });
 
-  return { rows, totalItems: countRes.count ?? 0 };
+  return { rows, totalItems: totalUniqueAssets };
 }
 
 async function fetchReadinessData(supabase: Awaited<ReturnType<typeof createClient>>): Promise<DeptReadiness[]> {
   const { data, error } = await supabase
-    .from('clinical_readiness_snapshots')
-    .select('department_id, readiness_score, essential_total, essential_functional, snapshot_date, created_at, departments(id, name)')
-    .order('snapshot_date', { ascending: false })
-    .order('created_at', { ascending: false })
-    .limit(500); // covers all departments and several refresh dates; reduced to latest per department below
+    .from('v_department_readiness')
+    .select('department_id, department_name, readiness_score, essential_total, essential_functional')
+    .order('department_name', { ascending: true })
+    .limit(500);
 
   if (error) {
     if (process.env.NODE_ENV === 'development') console.warn('[Command/Section2] readiness query error:', error);
     return [];
   }
 
-  const map = new Map<string, DeptReadiness>();
-  for (const row of (data ?? []) as Array<Record<string, unknown>>) {
-    const dept = row.departments as { id: string; name: string } | null;
-    if (!dept) continue;
-    if (map.has(dept.id)) continue;
-    map.set(dept.id, {
-      department_id: dept.id,
-      department_name: dept.name,
+  const rows = ((data ?? []) as Array<Record<string, unknown>>)
+    .map((row) => ({
+      department_id: row.department_id as string,
+      department_name: (row.department_name as string | undefined) ?? 'Unknown',
       essential_total: Number(row.essential_total ?? 0),
       essential_functional: Number(row.essential_functional ?? 0),
       readiness_score: Math.round(Number(row.readiness_score ?? 0)),
-    });
-  }
+    }));
 
   if (process.env.NODE_ENV === 'development') {
-    console.log(`[Command/Section2] latest clinical readiness snapshot departments: ${map.size}`);
+    console.log(`[Command/Section2] latest clinical readiness snapshot departments: ${rows.length}`);
   }
 
-  return Array.from(map.values()).sort((a, b) => a.department_name.localeCompare(b.department_name));
+  return rows.sort((a, b) => a.department_name.localeCompare(b.department_name));
 }
 
 async function fetchWorkInProgress(supabase: Awaited<ReturnType<typeof createClient>>): Promise<WorkInProgress> {
@@ -347,8 +371,8 @@ async function fetchRiskData(supabase: Awaited<ReturnType<typeof createClient>>)
 async function fetchReplacementData(supabase: Awaited<ReturnType<typeof createClient>>): Promise<{ rows: ReplacementRow[]; total: number }> {
   // Fetch full table ordered by priority, slice to top 5 for display.
   const { data, error } = await supabase
-    .from('replacement_priority_scores')
-    .select('asset_id, age_score, failure_score, availability_score, maintenance_burden_score, spare_part_score, risk_score, cost_score, replacement_priority_index, rank, justification, equipment_assets(asset_code, name, departments(name))')
+    .from('v_replacement_decision')
+    .select('asset_id, asset_code, asset_name, department_name, age_score, failure_score, availability_score, maintenance_burden_score, spare_part_score, risk_score, cost_score, replacement_priority_index, replacement_rank, justification')
     .order('replacement_priority_index', { ascending: false })
     .limit(500); // performance guard; returns all candidates for total count
 
@@ -358,12 +382,11 @@ async function fetchReplacementData(supabase: Awaited<ReturnType<typeof createCl
   }
 
   const all = ((data ?? []) as Array<Record<string, unknown>>).map((row) => {
-    const asset = row.equipment_assets as { asset_code: string; name: string; departments?: { name: string } | null } | null;
     return {
       asset_id: row.asset_id as string,
-      asset_name: asset?.name ?? 'Unknown',
-      asset_code: asset?.asset_code ?? 'N/A',
-      department_name: asset?.departments?.name ?? 'Unknown',
+      asset_name: (row.asset_name as string | undefined) ?? 'Unknown',
+      asset_code: (row.asset_code as string | undefined) ?? 'N/A',
+      department_name: (row.department_name as string | undefined) ?? 'Unknown',
       age_score: row.age_score as number | null,
       failure_score: row.failure_score as number | null,
       availability_score: row.availability_score as number | null,
@@ -372,7 +395,7 @@ async function fetchReplacementData(supabase: Awaited<ReturnType<typeof createCl
       risk_score: row.risk_score as number | null,
       cost_score: row.cost_score as number | null,
       priority_index: Number(row.replacement_priority_index ?? 0),
-      rank: Number(row.rank ?? 0),
+      rank: Number(row.replacement_rank ?? 0),
       justification: (row.justification as string | null) ?? null,
     };
   });
@@ -494,29 +517,37 @@ export default async function CommandCenterPage() {
                         const isProcurementRelevant = row.flag_type === 'part_shortage' || row.flag_type === 'low_stock';
                         return (
                           <tr key={row.id} className="group">
-                            <td className="py-3 pr-4">
-                              <Link href={`/inventory/${row.asset_id}`} className="font-medium text-[var(--foreground)] hover:text-violet-300">
+                            <td className="sticky left-0 z-10 bg-[var(--background)] py-3 pr-4">
+                              <Link href={`/equipment/${row.asset_id}`} className="font-medium text-[var(--foreground)] hover:text-violet-300">
                                 {row.asset_name}
                               </Link>
                               <p className="text-xs text-[var(--text-muted)]">{row.asset_code}</p>
                             </td>
                             <td className="py-3 pr-4 text-[var(--text-muted)]">{row.department_name}</td>
                             <td className="max-w-md py-3 pr-4">
-                              <p className="line-clamp-2 text-[var(--foreground)]">{row.recommendation}</p>
-                              {row.rationale.length > 0 && (
-                                <div className="mt-1 flex flex-wrap gap-1">
-                                  {row.rationale.slice(0, 4).map((item) => (
-                                    <span key={item} className="rounded-md bg-[var(--surface-2)] px-1.5 py-0.5 text-[10px] text-[var(--text-muted)]">
-                                      {item}
-                                    </span>
-                                  ))}
-                                </div>
-                              )}
+                              <ExpandableText text={row.recommendation} lines={2} />
+                              {row.rationale.length > 0 && (() => {
+                                const chips = row.rationale.slice(0, 5).map(formatRationaleChip).filter(Boolean) as Array<{ label: string; className: string }>;
+                                if (chips.length === 0) return null;
+                                return (
+                                  <div className="mt-1 flex flex-wrap gap-1">
+                                    {chips.map((chip, i) => (
+                                      <span key={i} className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${chip.className}`}>
+                                        {chip.label}
+                                      </span>
+                                    ))}
+                                  </div>
+                                );
+                              })()}
                             </td>
                             <td className="py-3 pr-4">
                               <Badge variant={row.score >= 75 ? 'error' : row.score >= 45 ? 'warning' : 'info'}>
                                 {row.score.toFixed(1)}
                               </Badge>
+                              {row.flag_severity && (
+                                <p className="mt-1 text-[10px] uppercase text-[var(--text-muted)]">Severity: {row.flag_severity}</p>
+                              )}
+                              <p className="mt-1 text-[10px] text-[var(--text-muted)]">Computed: {now}</p>
                             </td>
                             <td className="py-3 pr-4">
                               <Link
@@ -543,7 +574,7 @@ export default async function CommandCenterPage() {
                   </table>
                 </div>
                 <p className="mt-3 text-right text-xs text-[var(--text-muted)]">
-                  Showing top {triage.rows.length} of {triage.totalItems} triage item{triage.totalItems !== 1 ? 's' : ''}
+                  Showing top {triage.rows.length} of {triage.totalItems} unique asset{triage.totalItems !== 1 ? 's' : ''}
                   {triage.totalItems > 10 && (
                     <> — <Link href="/command/triage" className="text-violet-300 hover:text-violet-200">View all</Link></>
                   )}
@@ -577,7 +608,7 @@ export default async function CommandCenterPage() {
                     return (
                       <Link
                         key={dept.department_id}
-                        href={`/inventory?department=${dept.department_id}`}
+                        href={`/equipment?department=${dept.department_id}`}
                         className={`flex min-w-[140px] flex-col items-center rounded-lg border p-4 transition hover:opacity-80 ${colors.ring} ${isFocusedDepartment ? 'ring-2 ring-[var(--brand)] ring-offset-2 ring-offset-[var(--background)]' : ''}`}
                         aria-label={`${dept.department_name}: ${dept.readiness_score}% ready`}
                       >
@@ -732,7 +763,7 @@ export default async function CommandCenterPage() {
                           </span>
                         </td>
                         <td className="py-3 pr-4">
-                          <Link href={`/inventory/${row.asset_id}`} className="font-medium text-[var(--foreground)] hover:text-violet-300">
+                          <Link href={`/equipment/${row.asset_id}`} className="font-medium text-[var(--foreground)] hover:text-violet-300">
                             {row.asset_name}
                           </Link>
                           <p className="text-xs text-[var(--text-muted)]">{row.asset_code}</p>
@@ -742,9 +773,7 @@ export default async function CommandCenterPage() {
                           <Badge variant="warning">{row.priority_index.toFixed(1)}</Badge>
                         </td>
                         <td className="max-w-md py-3">
-                          <p className="line-clamp-2 text-xs text-[var(--text-muted)]">
-                            {generateReplacementDriver(row)}
-                          </p>
+                          <ExpandableText text={generateReplacementDriver(row)} lines={2} className="text-xs text-[var(--text-muted)]" />
                         </td>
                       </tr>
                     ))}

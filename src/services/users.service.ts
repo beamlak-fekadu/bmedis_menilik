@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/client';
 import type { Profile, UserRole } from '@/types/database';
+import { logAuditEvent } from './audit.service';
 
 const PROFILE_SELECT = `
   id, user_id, full_name, email, phone, department_id,
@@ -33,12 +34,25 @@ export async function getProfileById(id: string) {
 
 export async function updateProfile(id: string, data: Partial<Omit<Profile, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'department' | 'roles'>>) {
   const supabase = createClient();
-  return supabase
+  const oldProfile = await supabase.from('profiles').select(PROFILE_SIMPLE_SELECT).eq('id', id).single();
+  const result = await supabase
     .from('profiles')
     .update(data)
     .eq('id', id)
     .select(PROFILE_SIMPLE_SELECT)
     .single();
+
+  if (!result.error) {
+    await logAuditEvent({
+      action: 'profile.update',
+      entityType: 'profiles',
+      entityId: id,
+      oldValues: (oldProfile.data as Record<string, unknown> | null) ?? null,
+      newValues: (result.data as Record<string, unknown> | null) ?? null,
+    });
+  }
+
+  return result;
 }
 
 export async function getRoles() {
@@ -51,18 +65,46 @@ export async function getRoles() {
 
 export async function assignRole(userId: string, roleId: string) {
   const supabase = createClient();
-  return supabase
+  const result = await supabase
     .from('user_roles')
     .insert({ user_id: userId, role_id: roleId } as Omit<UserRole, 'id' | 'assigned_at' | 'assigned_by'>)
     .select('id, user_id, role_id, assigned_at')
     .single();
+
+  if (!result.error) {
+    await logAuditEvent({
+      action: 'user_role.assign',
+      entityType: 'user_roles',
+      entityId: (result.data as Record<string, unknown> | null)?.id as string | null,
+      newValues: (result.data as Record<string, unknown> | null) ?? null,
+    });
+  }
+
+  return result;
 }
 
 export async function removeRole(userId: string, roleId: string) {
   const supabase = createClient();
-  return supabase
+  const oldRole = await supabase
+    .from('user_roles')
+    .select('id, user_id, role_id, assigned_at')
+    .eq('user_id', userId)
+    .eq('role_id', roleId)
+    .maybeSingle();
+  const result = await supabase
     .from('user_roles')
     .delete()
     .eq('user_id', userId)
     .eq('role_id', roleId);
+
+  if (!result.error) {
+    await logAuditEvent({
+      action: 'user_role.remove',
+      entityType: 'user_roles',
+      entityId: (oldRole.data as Record<string, unknown> | null)?.id as string | null,
+      oldValues: (oldRole.data as Record<string, unknown> | null) ?? { user_id: userId, role_id: roleId },
+    });
+  }
+
+  return result;
 }

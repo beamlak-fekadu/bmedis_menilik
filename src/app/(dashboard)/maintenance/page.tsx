@@ -9,8 +9,10 @@ import { UrgencyBadge, WorkOrderStatusBadge, RequestStatusBadge } from '@/compon
 import { getMaintenanceRequests, getWorkOrders } from '@/services/maintenance.service';
 import { getRecommendationFlags } from '@/services/analytics.service';
 import { useToast } from '@/components/ui/Toast';
+import { useRole } from '@/hooks/useRole';
 import type { MaintenanceRequest, WorkOrder } from '@/types/database';
 import { generateAlertSummary } from '@/utils/decision-support/explanations';
+import ExpandableText from '@/components/ui/ExpandableText';
 
 type RequestRow = MaintenanceRequest & {
   equipment_assets?: { id: string; asset_code?: string | null; name?: string | null; serial_number?: string | null } | Array<{ id: string; asset_code?: string | null; name?: string | null; serial_number?: string | null }> | null;
@@ -44,37 +46,14 @@ function safeDisplay(value: string | null | undefined): string | null {
   return /^[0-9a-f-]{32,36}$/i.test(value) ? null : value;
 }
 
-function FaultDescriptionCell({ description }: { description: string }) {
-  const [expanded, setExpanded] = useState(false);
-  const isLong = description.length > 120;
-
-  return (
-    <div className="max-w-[22rem] whitespace-normal">
-      <p className={`text-sm text-[var(--foreground)] ${expanded ? '' : 'line-clamp-2'}`}>
-        {description}
-      </p>
-      {isLong && (
-        <button
-          type="button"
-          className="mt-1 text-xs font-medium text-[var(--brand)] hover:text-[var(--brand-strong)]"
-          onClick={(event) => {
-            event.stopPropagation();
-            setExpanded((current) => !current);
-          }}
-        >
-          {expanded ? 'Show less' : 'Show more'}
-        </button>
-      )}
-    </div>
-  );
-}
-
 export default function MaintenancePage() {
   const router = useRouter();
   const { toast } = useToast();
+  const { canCreateRequests, canManageMaintenance } = useRole();
   const [requests, setRequests] = useState<RequestRow[]>([]);
   const [workOrders, setWorkOrders] = useState<WorkOrderRow[]>([]);
   const [recurringFailures, setRecurringFailures] = useState<RecurringFailureFlag[]>([]);
+  const [acknowledgedRecurringCount, setAcknowledgedRecurringCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -90,9 +69,9 @@ export default function MaintenancePage() {
       setRequests((reqRes.data ?? []) as unknown as RequestRow[]);
       setWorkOrders((woRes.data ?? []) as unknown as WorkOrderRow[]);
       const allFlags = (flagRes.data ?? []) as unknown as Array<RecurringFailureFlag & { flag_type: string; is_acknowledged: boolean }>;
-      setRecurringFailures(
-        allFlags.filter((f) => f.flag_type === 'recurring_failure' && !f.is_acknowledged)
-      );
+      const allRecurring = allFlags.filter((f) => f.flag_type === 'recurring_failure');
+      setRecurringFailures(allRecurring.filter((f) => !f.is_acknowledged));
+      setAcknowledgedRecurringCount(allRecurring.filter((f) => f.is_acknowledged).length);
       setLoading(false);
     }
     load();
@@ -125,7 +104,7 @@ export default function MaintenancePage() {
     {
       key: 'fault_description',
       header: 'Fault Description',
-      render: (row: RequestRow) => <FaultDescriptionCell description={row.fault_description} />,
+      render: (row: RequestRow) => <ExpandableText text={row.fault_description} lines={2} />,
       className: 'max-w-[360px] whitespace-normal align-top',
     },
     {
@@ -222,6 +201,9 @@ export default function MaintenancePage() {
             <Wrench className="h-4 w-4" />
             Recurring failure equipment ({recurringFailures.length})
           </h2>
+          {acknowledgedRecurringCount > 0 && (
+            <p className="mb-2 text-xs text-[var(--text-muted)]">{acknowledgedRecurringCount} acknowledged</p>
+          )}
           <div className="max-h-64 overflow-y-auto divide-y divide-[var(--border-subtle)]/60">
             {recurringFailures.map((flag) => {
               const asset = flag.equipment_assets;
@@ -242,7 +224,7 @@ export default function MaintenancePage() {
                     </p>
                   </div>
                   <Link
-                    href={`/inventory/${assetId}?tab=history`}
+                    href={`/equipment/${assetId}?tab=history`}
                     className="shrink-0 text-xs font-medium text-violet-300 hover:text-violet-200"
                   >
                     View history →
@@ -267,14 +249,14 @@ export default function MaintenancePage() {
                 searchPlaceholder="Search requests…"
                 onRowClick={(row) => router.push(`/maintenance/requests/${row.id}`)}
                 emptyMessage="No maintenance requests found"
-                actions={
+                actions={canCreateRequests ? (
                   <Link href="/maintenance/requests/new">
                     <Button size="sm">
                       <ClipboardList className="h-4 w-4" />
                       New Request
                     </Button>
                   </Link>
-                }
+                ) : undefined}
               />
             ),
           },
@@ -289,14 +271,14 @@ export default function MaintenancePage() {
                 searchPlaceholder="Search work orders…"
                 onRowClick={(row) => router.push(`/maintenance/work-orders/${row.id}`)}
                 emptyMessage="No work orders found"
-                actions={
+                actions={canManageMaintenance ? (
                   <Link href="/maintenance/work-orders/new">
                     <Button size="sm">
                       <Wrench className="h-4 w-4" />
                       New Work Order
                     </Button>
                   </Link>
-                }
+                ) : undefined}
               />
             ),
           },

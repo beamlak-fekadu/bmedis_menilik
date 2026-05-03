@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/client';
 import type { EquipmentAsset } from '@/types/database';
+import { logAuditEvent } from './audit.service';
 
 export interface EquipmentFilters {
   department_id?: string;
@@ -78,7 +79,7 @@ export async function createEquipment(data: Omit<EquipmentAsset, 'id' | 'created
     };
   }
 
-  return supabase
+  const result = await supabase
     .from('equipment_assets')
     .insert({
       ...data,
@@ -87,24 +88,61 @@ export async function createEquipment(data: Omit<EquipmentAsset, 'id' | 'created
     })
     .select(EQUIPMENT_SELECT)
     .single();
+
+  if (!result.error) {
+    await logAuditEvent({
+      action: 'equipment.create',
+      entityType: 'equipment_assets',
+      entityId: (result.data as Record<string, unknown> | null)?.id as string | null,
+      newValues: (result.data as Record<string, unknown> | null) ?? null,
+    });
+  }
+
+  return result;
 }
 
 export async function updateEquipment(id: string, data: Partial<Omit<EquipmentAsset, 'id' | 'created_at' | 'updated_at' | 'deleted_at' | 'department' | 'category' | 'manufacturer' | 'model'>>) {
   const supabase = createClient();
-  return supabase
+  const oldRow = await supabase.from('equipment_assets').select(EQUIPMENT_SELECT).eq('id', id).single();
+  const result = await supabase
     .from('equipment_assets')
     .update(data)
     .eq('id', id)
     .select(EQUIPMENT_SELECT)
     .single();
+
+  if (!result.error) {
+    await logAuditEvent({
+      action: 'equipment.update',
+      entityType: 'equipment_assets',
+      entityId: id,
+      oldValues: (oldRow.data as Record<string, unknown> | null) ?? null,
+      newValues: (result.data as Record<string, unknown> | null) ?? null,
+    });
+  }
+
+  return result;
 }
 
 export async function deleteEquipment(id: string) {
   const supabase = createClient();
-  return supabase
+  const oldRow = await supabase.from('equipment_assets').select(EQUIPMENT_SELECT).eq('id', id).single();
+  const result = await supabase
     .from('equipment_assets')
     .update({ deleted_at: new Date().toISOString() })
     .eq('id', id)
     .select('id')
     .single();
+
+  if (!result.error) {
+    await logAuditEvent({
+      action: 'equipment.delete',
+      entityType: 'equipment_assets',
+      entityId: id,
+      oldValues: (oldRow.data as Record<string, unknown> | null) ?? null,
+      newValues: { deleted_at: true },
+    });
+  }
+
+  return result;
 }

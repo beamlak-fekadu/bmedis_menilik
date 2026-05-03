@@ -9,6 +9,7 @@ import { PMStatusBadge } from '@/components/ui/StatusBadge';
 import { getPMPlans, getPMSchedules, getOverduePMSchedules } from '@/services/pm.service';
 import { getPMComplianceMetrics } from '@/services/analytics.service';
 import { useToast } from '@/components/ui/Toast';
+import { useRole } from '@/hooks/useRole';
 import type { PMPlan, PMSchedule } from '@/types/database';
 
 interface PMComplianceDeptRow {
@@ -49,6 +50,7 @@ interface OverduePM {
 export default function PMPage() {
   const router = useRouter();
   const { toast } = useToast();
+  const { canManageMaintenance } = useRole();
 
   const [plans, setPlans] = useState<PlanWithJoins[]>([]);
   const [schedules, setSchedules] = useState<ScheduleWithJoins[]>([]);
@@ -226,11 +228,12 @@ export default function PMPage() {
       {/* PM Compliance by Department */}
       {deptCompliance.length > 0 && (
         <div className="mb-6 panel-surface rounded-lg p-5">
-          <h2 className="mb-4 text-sm font-semibold text-[var(--foreground)]">PM Compliance by Department</h2>
+          <h2 className="mb-1 text-sm font-semibold text-[var(--foreground)]">PM Compliance by Department (departments with compliance history)</h2>
+          <p className="mb-4 text-xs text-[var(--text-muted)]">Radiology, Inpatient Ward and Pharmacy have no recorded PM compliance history.</p>
           <div className="space-y-2">
             {deptCompliance.map((dept) => (
               <div key={dept.department_id} className="flex items-center gap-3">
-                <span className="w-40 truncate text-sm text-[var(--foreground)]">{dept.department_name}</span>
+                <span className="min-w-0 flex-1 truncate text-sm text-[var(--foreground)] sm:w-40 sm:flex-none">{dept.department_name}</span>
                 <div className="h-2 flex-1 overflow-hidden rounded-full bg-white/5">
                   <div
                     className={`h-full rounded-full ${dept.avg_pmc >= 80 ? 'bg-emerald-500' : dept.avg_pmc >= 60 ? 'bg-amber-500' : 'bg-rose-500'}`}
@@ -259,14 +262,14 @@ export default function PMPage() {
                 data={plans}
                 searchPlaceholder="Search plans…"
                 emptyMessage="No PM plans found"
-                actions={
+                actions={canManageMaintenance ? (
                   <Link href="/pm/plans/new">
                     <Button size="sm">
                       <Plus className="h-4 w-4" />
                       New Plan
                     </Button>
                   </Link>
-                }
+                ) : undefined}
               />
             ),
           },

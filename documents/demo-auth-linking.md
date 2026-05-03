@@ -38,6 +38,15 @@ Use one seeded profile per demo role:
 11. Confirm post-check output shows non-null `profiles.user_id` for all expected demo emails.
 12. Log in with each demo account and verify role-gated access.
 
+## Expected validation results
+
+After running the SQL file:
+
+- The "Any expected profile still missing user_id?" query should return zero rows.
+- The "Duplicate user_id links" query should return zero rows.
+- The role mapping validation should show `has_expected_role = true` for all five demo accounts.
+- Logging in as each demo account should load a non-viewer role where expected in the sidebar and chatbot context.
+
 ## SQL file to run
 
 Run:
@@ -57,3 +66,4 @@ This script includes:
 - Do not insert directly into `auth.users` from standard seed SQL on hosted Supabase.
 - Re-running the linking script is safe when UUID mappings are unchanged (idempotent updates).
 - If you prefer a different seeded person for a role (for example another technician), edit the email mapping in the SQL file accordingly.
+- Keep real Auth UUIDs out of committed seed files unless they are intentionally tied to a disposable demo project.

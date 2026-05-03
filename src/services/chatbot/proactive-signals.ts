@@ -63,7 +63,7 @@ export function buildCrossModuleSnapshot(params: {
     flagsLinkedToOpenWorkOrderAssets: flagsForBusyAssets.slice(0, 8),
     lowStockCount: params.lowStockParts.length,
     procurementInFlight: params.procurementPipeline.filter((row) =>
-      ['requested', 'under_review', 'ordered'].includes(String(row.status ?? ''))
+      ['requested', 'approved', 'ordered', 'in_transit'].includes(String(row.status ?? ''))
     ).length,
   };
 }

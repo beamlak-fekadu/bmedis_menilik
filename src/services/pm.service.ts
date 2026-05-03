@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/client';
 import type { PMPlan, PMCompletion, PMScheduleStatus } from '@/types/database';
 import { recomputeAssetAnalytics } from '@/actions/analytics.actions';
+import { logAuditEvent } from './audit.service';
 
 export interface PMPlanFilters {
   asset_id?: string;
@@ -66,12 +67,23 @@ export async function getPMSchedules(filters: PMScheduleFilters = {}) {
 
 export async function updateScheduleStatus(id: string, status: PMScheduleStatus) {
   const supabase = createClient();
+  const oldRow = await supabase.from('pm_schedules').select(PM_SCHEDULE_SELECT).eq('id', id).single();
   const result = await supabase
     .from('pm_schedules')
     .update({ status })
     .eq('id', id)
     .select(PM_SCHEDULE_SELECT)
     .single();
+
+  if (!result.error) {
+    await logAuditEvent({
+      action: 'pm_schedule.status_update',
+      entityType: 'pm_schedules',
+      entityId: id,
+      oldValues: (oldRow.data as Record<string, unknown> | null) ?? null,
+      newValues: (result.data as Record<string, unknown> | null) ?? null,
+    });
+  }
 
   if (!result.error && status === 'completed') {
     const assetId = (result.data as Record<string, unknown> | null)?.asset_id as string | undefined;
@@ -85,11 +97,22 @@ export async function updateScheduleStatus(id: string, status: PMScheduleStatus)
 
 export async function createPMCompletion(data: Omit<PMCompletion, 'id' | 'created_at'>) {
   const supabase = createClient();
-  return supabase
+  const result = await supabase
     .from('pm_completions')
     .insert(data)
     .select('id, schedule_id, completed_by, completion_date, duration_hours, notes, checklist_results, created_at')
     .single();
+
+  if (!result.error) {
+    await logAuditEvent({
+      action: 'pm_completion.create',
+      entityType: 'pm_completions',
+      entityId: (result.data as Record<string, unknown> | null)?.id as string | null,
+      newValues: (result.data as Record<string, unknown> | null) ?? null,
+    });
+  }
+
+  return result;
 }
 
 export async function getOverduePMSchedules() {

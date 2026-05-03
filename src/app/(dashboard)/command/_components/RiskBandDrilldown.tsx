@@ -50,7 +50,7 @@ export function RiskBandDrilldown({ bands, totalAssessed }: { bands: RiskBand[];
                 <div className="h-3 min-w-[9rem] flex-1 overflow-hidden rounded-full bg-[var(--surface-2)]">
                   <div
                     className={`h-full ${band.colorClass}`}
-                    style={{ width: `${Math.max(widthPct, band.count > 0 ? 4 : 0)}%` }}
+                    style={{ width: band.count > 0 ? `max(${widthPct.toFixed(2)}%, 12px)` : '0' }}
                     aria-hidden
                   />
                 </div>
@@ -76,7 +76,7 @@ export function RiskBandDrilldown({ bands, totalAssessed }: { bands: RiskBand[];
                         <div className="flex items-center gap-3">
                           <span className="text-xs font-medium text-[var(--foreground)]">RPN {asset.rpn}</span>
                           <Link
-                            href={`/inventory/${asset.asset_id}`}
+                            href={`/equipment/${asset.asset_id}`}
                             className="text-xs font-medium text-violet-300 hover:text-violet-200"
                           >
                             View asset →

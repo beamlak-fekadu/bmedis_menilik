@@ -24,7 +24,8 @@ export const ROUTES = {
   ANALYTICS_PERFORMANCE: '/analytics/performance',
   // Active routes
   INVENTORY: '/inventory',
-  EQUIPMENT: '/inventory',
+  EQUIPMENT: '/equipment',
+  EQUIPMENT_NEW: '/equipment/new',
   INVENTORY_NEW: '/inventory/new',
   MAINTENANCE: '/maintenance',
   WORK_ORDERS: '/work-orders',
@@ -47,6 +48,7 @@ export const ROUTES = {
   SETTINGS: '/settings',
   USERS: '/users',
   SECURITY: '/security',
+  AUDIT: '/audit',
   DOCUMENTS: '/documents',
   INSTALLATION: '/installation',
   CHATBOT: '/chatbot',
@@ -113,6 +115,8 @@ export const NAV_SECTIONS = [
   {
     title: 'Administration',
     items: [
+      { label: 'Decision Support Health', href: '/command/health', icon: 'Activity', roles: ['admin'] },
+      { label: 'Audit Log', href: ROUTES.AUDIT, icon: 'FileText', roles: ['admin'] },
       { label: 'Security', href: ROUTES.SECURITY, icon: 'Shield', roles: ['admin'] },
       { label: 'Settings', href: ROUTES.SETTINGS, icon: 'Settings', roles: ['admin'] },
     ],

@@ -1,0 +1,245 @@
+# CLAUDE.md — BMERMS Project Intelligence
+
+Last updated: 2026-05-03
+Branch: BMERMS_V_3
+Deployment: https://project-git-bmermsv3-beamlak-fekadus-projects.vercel.app
+Supabase project ID: fgqyszbxzpmqzpqvdivx
+
+---
+
+## STANDING INSTRUCTION — auto-runs at the end of every session
+
+After completing any task in this project, before ending the session:
+1. Read the current AGENTS.md and CLAUDE.md in full
+2. Update AGENTS.md with any new conventions, file locations, bugs found, or libraries added
+3. Update CLAUDE.md with current prototype status, route map changes, and deferred issues
+4. Show the full diff of both files before writing them
+5. Write both files
+
+Do this automatically without being asked. Keep entries accurate — remove stale information rather than accumulating noise.
+
+---
+
+## What this project is
+
+BMERMS (Biomedical Engineering Resource Management System) is a hospital-level medical
+equipment asset management and decision-support system built for Yekatit-12 Hospital
+Medical College, Addis Ababa, Ethiopia. BSc thesis project for the School of Biomedical
+Engineering at Addis Ababa University.
+
+Thesis contribution: converting routine equipment records into ranked, explainable
+engineering priorities using FMEA-based RPN, MTBF, MTTR, availability, PM compliance,
+and multi-criteria replacement prioritization. The system must feel like a decision-support
+control panel, not a record-keeping tool.
+
+Stack: Next.js 16.2.2 (App Router), React 19, TypeScript 5, Supabase (PostgreSQL + Auth +
+RLS + Storage), Tailwind v4, Chart.js + react-chartjs-2, jsPDF + jspdf-autotable,
+date-fns, Gemini AI provider, Zod validation, lucide-react icons.
+
+---
+
+## 15-step prototype completion plan — current status
+
+DONE:
+- Step 1:  Supabase schema (21 migrations, all applied)
+- Step 2:  Seed data (10 seed files, 80 equipment assets, 8 departments)
+- Step 3:  Fixed 'under_review' procurement status in chatbot task-data-loaders.ts
+- Step 4:  Seed profiles.user_id still NULL — needs Supabase Auth user linking (deferred)
+- Step 5:  Command Center built at /command — unified decision-support landing page
+- Step 6:  Sensitivity sliders placeholder exists at /replacement (TODO comment in place)
+- Step 7:  PDF export implemented — jsPDF + jspdf-autotable installed and wired to /reports/[type]
+- Step 8:  Command Center substantially complete — 6-bug patch prompt written, not yet run
+- Step 14: Supabase TypeScript types generated (src/types/supabase.ts)
+- Step 15: Login page shows "Yekatit-12 Hospital Medical College"
+
+IN PROGRESS:
+- Step 8:  6-bug patch not yet applied (duplicate triage rows, missing reliability cards,
+           /work-orders routing, breadcrumbs, PM departments, recurring failure count)
+
+NOT STARTED:
+- Step 6:  Sensitivity analysis sliders (placeholder exists, sliders not built)
+- Step 9:  Role-gated UI enforcement across all module pages (server-side, not just nav)
+- Step 10: Real audit log data — page exists at /audit but needs verification of RLS and data
+- Step 11: BME usability evaluation instrument design
+- Step 12: Usability testing with BMEs at Yekatit 12
+- Step 13: MEMIS comparison section for thesis
+
+---
+
+## Canonical route map — all 30+ routes
+
+### Decision Support
+  /command                    Unified decision-support home (all roles)
+  /command/health             Asset health scores — admin only, not in sidebar
+  /command/triage             Full triage queue — built, may have bugs
+
+### Equipment (Biomedical Asset Management)
+  /inventory                  Canonical equipment list — canonical URL for biomedical assets
+  /inventory/new              Create asset
+  /inventory/[id]             Asset detail (reliability, risk, maintenance history, flags)
+  /inventory/[id]/edit        Edit asset
+  /equipment                  Redirect alias → /inventory (page exists but is alias)
+  /equipment/new              Redirect alias
+  /equipment/[id]             Redirect alias
+  /equipment/[id]/edit        Redirect alias
+
+### Work
+  /maintenance                Maintenance requests + work order overview
+  /maintenance/requests/new   Create maintenance request
+  /maintenance/requests/[id]  Request detail
+  /maintenance/work-orders/new   Create work order
+  /maintenance/work-orders/[id]  Work order detail
+  /pm                         Preventive maintenance plans + schedules
+  /pm/plans/new               Create PM plan
+  /pm/schedules/[id]          PM schedule detail + checklist
+  /calibration                Calibration records, requests, upcoming due
+  /work-orders                All open work orders (cross-module view)
+
+### Inventory & Logistics
+  /spare-parts                Spare parts management
+  /logistics                  Stock levels, receipts, issues, low-stock alerts
+  /procurement                Procurement requests + status pipeline
+
+### People
+  /training                   Training requests, sessions, attendance
+  /users                      User management + role assignment (admin only)
+
+### Lifecycle
+  /replacement                Replacement priority index + recommendations
+  /disposal                   Disposal requests + disposed assets
+
+### Support
+  /helpdesk                   Help/support page
+  /alerts                     Active recommendation flags
+  /chatbot                    BMERMS AI Copilot (all roles)
+  /documents                  Equipment document library
+  /requests                   All open requests (maintenance + training + disposal + calibration)
+  /installation               Installation records + commissioning
+
+### Reports
+  /reports                    Report type selector
+  /reports/[type]             Equipment / Maintenance / PM / Calibration / Training /
+                              SpareParts / Disposal reports with PDF + CSV export
+
+### Administration (admin only)
+  /audit                      Audit log viewer with filters
+  /security                   Security settings (RLS config, bucket permissions)
+  /settings                   Reference data management (departments, categories, etc.)
+
+### API Routes
+  /api/chat                   Chatbot orchestration endpoint (POST)
+  /api/ai-smoke-test          AI provider health check (GET)
+  /auth/callback              Supabase OAuth callback
+
+### Middleware Redirects
+  /decision-support            → /command
+  /dashboard                   → /command
+  /dashboard/analytical        → /command
+  /dashboard/work-orders       → /work-orders
+  /analytics/reliability       → /command
+  /analytics/risk              → /command
+  /analytics/pmc               → /pm
+  /analytics/performance       → /command
+  /analytics                   → /command
+
+---
+
+## Known deferred issues
+
+1.  profiles.user_id is NULL for all seed users — RLS auth.uid() checks fail for seeded
+    profiles until real Supabase Auth users are created and linked via
+    supabase/seed/99_link_auth_users.sql.
+
+2.  /command/triage page is linked and file exists but may have rendering bugs — full
+    triage queue page needs testing.
+
+3.  Sensitivity sliders at /replacement — placeholder comment only, not implemented.
+
+4.  Server-side role enforcement missing on form/create pages — client-side useRole()
+    hook is not enough; server components need requireRole() calls before rendering
+    mutation UI for equipment/new, maintenance/requests/new, etc.
+
+5.  Triage section shows duplicate rows per asset (same asset appears 3×) — triage_action_queue
+    has multiple rows per asset (one per flag). Always deduplicate by asset_id keeping
+    highest priority_score.
+
+6.  Reliability and PM Compliance cards show "No data" on asset detail — check that column
+    name on join is asset_id (not equipment_id or equipment_asset_id) per migration 00010.
+
+7.  PM Compliance by Department on /pm shows only 5 of 8 departments — investigate
+    pm_compliance_metrics data coverage.
+
+8.  Recurring failure card on /maintenance shows only 1 asset (ICU Ventilator #2) —
+    investigate generate_recommendation_flags recurring_failure logic.
+
+9.  Breadcrumbs on /replacement and other pages still say "Dashboard" not "Command Center".
+
+10. Offline sync transport not implemented — technician-queue.ts enqueues to localStorage
+    but no sync worker exists to POST to server.
+
+11. Audit logging silently fails — logAuditEvent() wraps in try/catch and only
+    console.warn on error; compliance trail may be incomplete.
+
+12. Institution name in seed — currently "St. Peter's Specialized Hospital", should be
+    "Yekatit-12 Hospital" (fix pending, low priority).
+
+---
+
+## Seed data facts (do not modify seed files)
+
+Seed files: supabase/seed/01–11 + 99
+- 80 active equipment assets (seed/03)
+- 8 departments (seed/01)
+- 20 equipment_risk_scores rows (pre-computed, migration 00019 adds baseline for rest)
+- 20 equipment_reliability_metrics rows (pre-computed)
+- 8 replacement_priority_scores rows
+- 16 recommendation_flags across 10 unique assets (8 flag types)
+- Procurement, calibration, PM, training, disposal sample data
+- All profiles.user_id = NULL (see deferred issue #1)
+- seed/99_link_auth_users.sql — run this after creating real Supabase Auth users
+
+---
+
+## Thesis formulas implemented
+
+All 7 required formulas exist in both TypeScript (src/utils/analytics/) and SQL (migration 00011):
+
+  Eq 1: RPN = S × O × D                    → formulas.ts:computeRPN()
+  Eq 2: A = MTBF / (MTBF + MTTR)           → formulas.ts:computeAvailability()
+  Eq 3: MTBF = T_operational / N_failures   → formulas.ts:computeMTBF()
+  Eq 4: MTTR = T_maintenance / N_repairs    → formulas.ts:computeMTTR()
+  Eq 5: PMC = (completed/scheduled) × 100  → formulas.ts:computePMC()
+  Eq 6: Min-Max normalization               → normalization.ts:minMaxNormalize()
+  Eq 7: Weighted sum TS_i = Σ(wj × sij)    → composite-scoring.ts:computeWeightedScore()
+
+SQL equivalents: fn_compute_mttr, fn_compute_mtbf, fn_compute_availability,
+fn_compute_pmc in migration 00011. Full recomputation orchestrated by
+recompute_equipment_analytics() and recompute_all_equipment_analytics() in migration 00018.
+
+---
+
+## Migration history
+
+00001 — Reference/master data tables
+00002 — Auth + profiles + audit_logs
+00003 — Equipment assets + locations + history
+00004 — Maintenance + work orders + events + downtime
+00005 — PM plans + schedules + completions
+00006 — Calibration records + requests
+00007 — Logistics: spare_parts, stock_receipts, stock_issues
+00008 — Training sessions + records
+00009 — Disposal requests + disposed_assets
+00010 — Analytics tables (reliability, risk, PMC, performance, replacement, flags)
+00011 — SQL views + analytics functions
+00012 — RLS policies
+00013 — Decision support tables (triage, health, readiness, workload) + procurement
+00014 — Decision support RLS + refresh_decision_support_snapshots()
+00015 — Chatbot: chat_sessions + chat_messages
+00016 — Copilot memory + telemetry + eval tables
+00017 — Offline sync events + hardening
+00018 — Analytics recompute orchestration RPCs
+00019 — Command center completeness + baseline risk score generation
+00020 — Fix MTBF date_extract bug
+00021 — Decision support read models (new)
+
+NEVER modify 00001–00021. Next migration must be 00022.

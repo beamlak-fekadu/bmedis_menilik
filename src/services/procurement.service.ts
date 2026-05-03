@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/client';
+import { logAuditEvent } from './audit.service';
 
 export interface ProcurementPipelineRow {
   id: string;
@@ -31,7 +32,7 @@ export async function createProcurementRequest(payload: {
 }) {
   const supabase = createClient();
   const requestNumber = `PR-${Date.now().toString(36).toUpperCase()}`;
-  return supabase
+  const result = await supabase
     .from('procurement_requests')
     .insert({
       request_number: requestNumber,
@@ -45,4 +46,15 @@ export async function createProcurementRequest(payload: {
     })
     .select('*')
     .single();
+
+  if (!result.error) {
+    await logAuditEvent({
+      action: 'procurement_request.create',
+      entityType: 'procurement_requests',
+      entityId: (result.data as Record<string, unknown> | null)?.id as string | null,
+      newValues: (result.data as Record<string, unknown> | null) ?? null,
+    });
+  }
+
+  return result;
 }

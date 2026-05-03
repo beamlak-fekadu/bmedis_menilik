@@ -13,9 +13,9 @@ const BASE_PROFILE: UserChatProfile = {
   departmentId: 'dep-1',
 };
 
-const ENGINEER_PROFILE: UserChatProfile = {
+const TECHNICIAN_PROFILE: UserChatProfile = {
   ...BASE_PROFILE,
-  roleNames: ['engineer', 'department_user'],
+  roleNames: ['technician', 'department_user'],
 };
 
 const BASE_EVIDENCE: ChatEvidence = {
@@ -78,12 +78,12 @@ test('summarize this equipment maps to summarize_equipment', () => {
   assert.equal(c.capability, 'summarize_equipment');
 });
 
-test('monitor not powering on stays safe troubleshooting for engineer', () => {
+test('monitor not powering on stays safe troubleshooting for technician', () => {
   const msg = 'patient monitor not powering on';
   const c = classifyChatRequest(msg);
   assert.equal(c.capability, 'safe_troubleshooting');
   assert.equal(c.troubleshootingSubtype, 'safe_general_troubleshooting');
-  const safety = evaluateSafetyDecision(msg, c, ENGINEER_PROFILE, BASE_EVIDENCE);
+  const safety = evaluateSafetyDecision(msg, c, TECHNICIAN_PROFILE, BASE_EVIDENCE);
   assert.equal(safety.blocked, false);
 });
 
@@ -100,7 +100,7 @@ test('unsafe bypass request is classified unsafe and blocked', () => {
   const c = classifyChatRequest(msg);
   assert.equal(c.intent, 'unsafe');
   assert.equal(c.capability, 'unsafe_or_restricted');
-  const safety = evaluateSafetyDecision(msg, c, ENGINEER_PROFILE, BASE_EVIDENCE);
+  const safety = evaluateSafetyDecision(msg, c, TECHNICIAN_PROFILE, BASE_EVIDENCE);
   assert.equal(safety.blocked, true);
 });
 
@@ -109,7 +109,7 @@ test('main board replacement request hits too_detailed', () => {
   const c = classifyChatRequest(msg);
   assert.equal(c.intent, 'too_detailed');
   assert.equal(c.capability, 'unsafe_or_restricted');
-  const safety = evaluateSafetyDecision(msg, c, ENGINEER_PROFILE, BASE_EVIDENCE);
+  const safety = evaluateSafetyDecision(msg, c, TECHNICIAN_PROFILE, BASE_EVIDENCE);
   assert.equal(safety.blocked, true);
   assert.equal(safety.decision, 'check_manual');
 });
