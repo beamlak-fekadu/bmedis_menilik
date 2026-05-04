@@ -25,6 +25,12 @@ export interface RiskBand {
 
 export function RiskBandDrilldown({ bands, totalAssessed }: { bands: RiskBand[]; totalAssessed: number }) {
   const [expanded, setExpanded] = useState<RiskBand['key'] | null>(null);
+  const [showAll, setShowAll] = useState<Record<RiskBand['key'], boolean>>({
+    low: false,
+    medium: false,
+    high: false,
+    critical: false,
+  });
 
   return (
     <div className="space-y-2">
@@ -66,8 +72,9 @@ export function RiskBandDrilldown({ bands, totalAssessed }: { bands: RiskBand[];
                 {band.topAssets.length === 0 ? (
                   <p className="text-sm text-[var(--text-muted)]">No equipment in this band.</p>
                 ) : (
-                  <ul className="divide-y divide-[var(--border-subtle)]/60">
-                    {band.topAssets.map((asset) => (
+                  <>
+                    <ul className="divide-y divide-[var(--border-subtle)]/60">
+                      {(showAll[band.key] ? band.topAssets : band.topAssets.slice(0, 5)).map((asset) => (
                       <li key={asset.asset_id} className="flex items-center justify-between py-2 text-sm">
                         <div>
                           <p className="font-medium text-[var(--foreground)]">{asset.asset_name}</p>
@@ -83,8 +90,23 @@ export function RiskBandDrilldown({ bands, totalAssessed }: { bands: RiskBand[];
                           </Link>
                         </div>
                       </li>
-                    ))}
-                  </ul>
+                      ))}
+                    </ul>
+                    {band.topAssets.length > 5 && (
+                      <button
+                        type="button"
+                        className="mt-3 text-xs font-medium text-violet-300 hover:text-violet-200"
+                        onClick={() =>
+                          setShowAll((prev) => ({
+                            ...prev,
+                            [band.key]: !prev[band.key],
+                          }))
+                        }
+                      >
+                        {showAll[band.key] ? 'Show less' : `Show all (${band.topAssets.length}) →`}
+                      </button>
+                    )}
+                  </>
                 )}
               </div>
             )}

@@ -10,11 +10,15 @@ export function AcknowledgeButton({
   assetId,
   hasActiveFlag,
   label = 'Acknowledge',
+  disabled = false,
+  onAcknowledged,
 }: {
   queueId: string;
   assetId: string;
   hasActiveFlag?: boolean;
   label?: string;
+  disabled?: boolean;
+  onAcknowledged?: () => void;
 }) {
   const [pending, startTransition] = useTransition();
   const { toast } = useToast();
@@ -24,7 +28,7 @@ export function AcknowledgeButton({
   return (
     <button
       type="button"
-      disabled={pending}
+      disabled={pending || disabled}
       onClick={() => {
         startTransition(async () => {
           const result = await acknowledgeTriageItem(queueId);
@@ -36,6 +40,7 @@ export function AcknowledgeButton({
             }
           }
           if (result.success) {
+            onAcknowledged?.();
             toast('success', 'Triage item acknowledged');
           } else {
             toast('error', result.error ?? 'Failed to acknowledge');

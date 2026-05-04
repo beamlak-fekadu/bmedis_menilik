@@ -1,14 +1,13 @@
 import Link from 'next/link';
 import {
-  AlertTriangle, ArrowUpDown, CalendarCheck, CheckCircle2,
-  ClipboardList, Info, ShieldAlert, Wrench,
+  ArrowUpDown, Info, ShieldAlert,
 } from 'lucide-react';
 import { getServerProfile } from '@/lib/auth/helpers';
 import { createClient } from '@/lib/supabase/server';
 import { Badge, Card, CardContent, CardHeader, CardTitle, PageHeader } from '@/components/ui';
 import ExpandableText from '@/components/ui/ExpandableText';
 import { RefreshButton } from './_components/RefreshButton';
-import { AcknowledgeButton } from './_components/AcknowledgeButton';
+import CommandCenterInteractive from './_components/CommandCenterInteractive';
 import { RiskBandDrilldown, type RiskBand } from './_components/RiskBandDrilldown';
 import { generateReplacementDriver, generateTriageReason } from '@/utils/decision-support/explanations';
 
@@ -73,35 +72,6 @@ interface ReplacementRow {
   justification: string | null;
 }
 
-// ─── action button mapping ────────────────────────────────────────────────────
-
-function actionForFlagType(flagType: string, assetId: string): { label: string; href: string } {
-  switch (flagType) {
-    case 'urgent_maintenance':
-      return { label: 'Create work order', href: `/maintenance/work-orders/new?asset=${assetId}` };
-    case 'recurring_failure':
-      return { label: 'Schedule diagnostic', href: `/maintenance?asset=${assetId}` };
-    case 'replacement_candidate':
-      return { label: 'Add to replacement plan', href: `/replacement?asset=${assetId}` };
-    case 'part_shortage':
-      return { label: 'Open procurement', href: `/procurement?asset=${assetId}` };
-    case 'low_stock':
-      return { label: 'Open spare parts', href: `/spare-parts?asset=${assetId}` };
-    case 'overdue_pm':
-      return { label: 'Schedule PM', href: `/pm?asset=${assetId}` };
-    case 'calibrate_soon':
-      return { label: 'Schedule calibration', href: `/calibration?asset=${assetId}` };
-    case 'prioritize_pm':
-      return { label: 'Reschedule PM', href: `/pm?asset=${assetId}` };
-    case 'monitor_closely':
-      return { label: 'View details', href: `/equipment/${assetId}` };
-    case 'low_availability':
-      return { label: 'View maintenance history', href: `/equipment/${assetId}?tab=history` };
-    default:
-      return { label: 'View asset', href: `/equipment/${assetId}` };
-  }
-}
-
 function normalizeRationale(value: unknown): string[] {
   if (Array.isArray(value)) {
     return value.map((item) => String(item)).filter(Boolean);
@@ -113,61 +83,6 @@ function normalizeRationale(value: unknown): string[] {
   }
   if (typeof value === 'string') return [value];
   return [];
-}
-
-function formatRationaleChip(raw: string): { label: string; className: string } | null {
-  const eqIdx = raw.indexOf('=');
-  if (eqIdx === -1) {
-    return { label: raw.replace(/_/g, ' '), className: 'bg-[var(--surface-2)] text-[var(--text-muted)]' };
-  }
-  const key = raw.slice(0, eqIdx);
-  const val = raw.slice(eqIdx + 1);
-
-  if (key === 'open_flags') {
-    const n = Number(val);
-    if (n === 0) return null;
-    return { label: `${val} open flag${n !== 1 ? 's' : ''}`, className: 'bg-blue-500/20 text-blue-300' };
-  }
-  if (key === 'top_flag') {
-    if (val === 'none') return null;
-    const labelMap: Record<string, string> = {
-      recurring_failure: 'Recurring failure',
-      urgent_maintenance: 'Urgent maintenance',
-      replacement_candidate: 'Replacement candidate',
-      overdue_pm: 'Overdue PM',
-      calibrate_soon: 'Calibration due',
-      prioritize_pm: 'PM rescheduling needed',
-      monitor_closely: 'Monitor closely',
-      low_availability: 'Low availability',
-      part_shortage: 'Part shortage',
-    };
-    const label = labelMap[val] ?? val.replace(/_/g, ' ');
-    const highSev = ['recurring_failure', 'urgent_maintenance', 'replacement_candidate', 'part_shortage'];
-    return { label, className: highSev.includes(val) ? 'bg-rose-500/20 text-rose-300' : 'bg-orange-500/20 text-orange-300' };
-  }
-  if (key === 'rpn') {
-    const n = Number(val);
-    const cls = n >= 500 ? 'bg-rose-500/20 text-rose-300' : n >= 200 ? 'bg-orange-500/20 text-orange-300' : n >= 100 ? 'bg-amber-500/20 text-amber-300' : 'bg-[var(--surface-2)] text-[var(--text-muted)]';
-    return { label: `RPN ${val}`, className: cls };
-  }
-  if (key === 'pmc') {
-    const n = Number(val);
-    return { label: `PM compliance ${val}%`, className: n < 70 ? 'bg-amber-500/20 text-amber-300' : 'bg-[var(--surface-2)] text-[var(--text-muted)]' };
-  }
-  if (key === 'replacement_rank') {
-    if (val === '999') return null;
-    const n = Number(val);
-    return { label: `Replacement rank #${val}`, className: n <= 3 ? 'bg-orange-500/20 text-orange-300' : 'bg-[var(--surface-2)] text-[var(--text-muted)]' };
-  }
-  return { label: raw.replace(/_/g, ' ').replace(/=/g, ': '), className: 'bg-[var(--surface-2)] text-[var(--text-muted)]' };
-}
-
-// ─── readiness colour ─────────────────────────────────────────────────────────
-
-function readinessColor(score: number): { ring: string; text: string } {
-  if (score >= 90) return { ring: 'border-emerald-500 bg-emerald-500/10', text: 'text-emerald-300' };
-  if (score >= 70) return { ring: 'border-amber-500 bg-amber-500/10', text: 'text-amber-300' };
-  return { ring: 'border-rose-500 bg-rose-500/10', text: 'text-rose-300' };
 }
 
 // ─── RPN band helpers ─────────────────────────────────────────────────────────
@@ -442,7 +357,7 @@ export default async function CommandCenterPage() {
   for (const row of risk.rows) {
     const band = rpnBand(row.rpn);
     bandCounts[band]++;
-    if (bandAssets[band].length < 5) bandAssets[band].push(row);
+    bandAssets[band].push(row);
   }
   const totalAssessed = risk.rows.length;
 
@@ -472,214 +387,16 @@ export default async function CommandCenterPage() {
         actions={<RefreshButton />}
       />
 
-      {/* ── Section 1: Today's Triage ─────────────────────────────────────── */}
-      <section aria-label="Triage queue">
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle>
-                <span className="inline-flex items-center gap-2">
-                  <AlertTriangle className="h-5 w-5 text-rose-400" />
-                  {triageHeading}
-                </span>
-              </CardTitle>
-              {triage.totalItems > 10 && (
-                <Link href="/command/triage" className="text-xs text-violet-300 hover:text-violet-200">
-                  View all →
-                </Link>
-              )}
-            </div>
-          </CardHeader>
-          <CardContent>
-            {triage.rows.length === 0 ? (
-              <div className="py-8 text-center">
-                <CheckCircle2 className="mx-auto mb-2 h-8 w-8 text-emerald-400" />
-                <p className="text-sm font-medium text-[var(--foreground)]">No urgent items right now</p>
-                <p className="mt-1 text-xs text-[var(--text-muted)]">All systems within normal parameters</p>
-              </div>
-            ) : (
-              <>
-                <div className="overflow-x-auto">
-                  <table className="min-w-[760px] w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-[var(--border-subtle)]/60 text-left">
-                        <th className="pb-2 pr-4 font-medium text-[var(--text-muted)]">Asset</th>
-                        <th className="pb-2 pr-4 font-medium text-[var(--text-muted)]">Department</th>
-                        <th className="pb-2 pr-4 font-medium text-[var(--text-muted)]">Reason</th>
-                        <th className="pb-2 pr-4 font-medium text-[var(--text-muted)]">Score</th>
-                        <th className="pb-2 pr-4 font-medium text-[var(--text-muted)]">Action</th>
-                        {canMutate && <th className="pb-2 font-medium text-[var(--text-muted)]">Ack</th>}
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-[var(--border-subtle)]/60">
-                      {triage.rows.map((row) => {
-                        const action = actionForFlagType(row.flag_type ?? '', row.asset_id);
-                        const isProcurementRelevant = row.flag_type === 'part_shortage' || row.flag_type === 'low_stock';
-                        return (
-                          <tr key={row.id} className="group">
-                            <td className="sticky left-0 z-10 bg-[var(--background)] py-3 pr-4">
-                              <Link href={`/equipment/${row.asset_id}`} className="font-medium text-[var(--foreground)] hover:text-violet-300">
-                                {row.asset_name}
-                              </Link>
-                              <p className="text-xs text-[var(--text-muted)]">{row.asset_code}</p>
-                            </td>
-                            <td className="py-3 pr-4 text-[var(--text-muted)]">{row.department_name}</td>
-                            <td className="max-w-md py-3 pr-4">
-                              <ExpandableText text={row.recommendation} lines={2} />
-                              {row.rationale.length > 0 && (() => {
-                                const chips = row.rationale.slice(0, 5).map(formatRationaleChip).filter(Boolean) as Array<{ label: string; className: string }>;
-                                if (chips.length === 0) return null;
-                                return (
-                                  <div className="mt-1 flex flex-wrap gap-1">
-                                    {chips.map((chip, i) => (
-                                      <span key={i} className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${chip.className}`}>
-                                        {chip.label}
-                                      </span>
-                                    ))}
-                                  </div>
-                                );
-                              })()}
-                            </td>
-                            <td className="py-3 pr-4">
-                              <Badge variant={row.score >= 75 ? 'error' : row.score >= 45 ? 'warning' : 'info'}>
-                                {row.score.toFixed(1)}
-                              </Badge>
-                              {row.flag_severity && (
-                                <p className="mt-1 text-[10px] uppercase text-[var(--text-muted)]">Severity: {row.flag_severity}</p>
-                              )}
-                              <p className="mt-1 text-[10px] text-[var(--text-muted)]">Computed: {now}</p>
-                            </td>
-                            <td className="py-3 pr-4">
-                              <Link
-                                href={action.href}
-                                className={`inline-flex items-center rounded-md border border-[var(--border-subtle)] px-2.5 py-1 text-xs font-medium text-[var(--foreground)] transition hover:border-violet-400 hover:text-violet-300 ${isProcurementRelevant ? 'bg-amber-500/10 text-amber-300' : ''}`}
-                              >
-                                {action.label}
-                              </Link>
-                            </td>
-                            {canMutate && (
-                              <td className="py-3">
-                                <AcknowledgeButton
-                                  queueId={row.id}
-                                  assetId={row.asset_id}
-                                  hasActiveFlag={Boolean(row.flag_id)}
-                                  label={`Acknowledge triage item for ${row.asset_name}`}
-                                />
-                              </td>
-                            )}
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-                <p className="mt-3 text-right text-xs text-[var(--text-muted)]">
-                  Showing top {triage.rows.length} of {triage.totalItems} unique asset{triage.totalItems !== 1 ? 's' : ''}
-                  {triage.totalItems > 10 && (
-                    <> — <Link href="/command/triage" className="text-violet-300 hover:text-violet-200">View all</Link></>
-                  )}
-                </p>
-              </>
-            )}
-          </CardContent>
-        </Card>
-      </section>
-
-      {/* ── Section 2: Hospital Readiness Strip ───────────────────────────── */}
-      <section aria-label="Department readiness">
-        <Card>
-          <CardHeader>
-            <CardTitle>
-              <span className="inline-flex items-center gap-2">
-                <ShieldAlert className="h-5 w-5 text-violet-400" />
-                Department readiness
-              </span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {readiness.length === 0 ? (
-              <p className="py-4 text-center text-sm text-[var(--text-muted)]">No essential equipment data available</p>
-            ) : (
-              <>
-                <div className="flex gap-3 overflow-x-auto pb-2">
-                  {readiness.map((dept) => {
-                    const colors = readinessColor(dept.readiness_score);
-                    const isFocusedDepartment = primaryRole === 'department_user' && departmentId === dept.department_id;
-                    return (
-                      <Link
-                        key={dept.department_id}
-                        href={`/equipment?department=${dept.department_id}`}
-                        className={`flex min-w-[140px] flex-col items-center rounded-lg border p-4 transition hover:opacity-80 ${colors.ring} ${isFocusedDepartment ? 'ring-2 ring-[var(--brand)] ring-offset-2 ring-offset-[var(--background)]' : ''}`}
-                        aria-label={`${dept.department_name}: ${dept.readiness_score}% ready`}
-                      >
-                        <span className={`text-3xl font-bold ${colors.text}`}>{dept.readiness_score}%</span>
-                        <span className="mt-1 text-center text-xs font-medium text-[var(--foreground)]">{dept.department_name}</span>
-                        <span className="mt-1 text-center text-[10px] text-[var(--text-muted)]">
-                          {dept.essential_functional}/{dept.essential_total} essential functional
-                        </span>
-                      </Link>
-                    );
-                  })}
-                </div>
-                <p className="mt-3 text-xs text-[var(--text-muted)]">{readiness.length} departments monitored</p>
-              </>
-            )}
-          </CardContent>
-        </Card>
-      </section>
-
-      {/* ── Section 3: Work In Progress ───────────────────────────────────── */}
-      <section aria-label="Work in progress">
-        <h2 className="mb-3 text-sm font-semibold uppercase tracking-widest text-[var(--text-muted)]">Work in progress</h2>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          {/* Open Work Orders */}
-          <Link href="/work-orders?status=open" className="panel-surface rounded-lg p-5 transition hover:border-[var(--brand)]/50">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-sm font-medium text-[var(--text-muted)]">Open Work Orders</p>
-                <p className="mt-1 text-3xl font-bold text-[var(--foreground)]">{wip.open_work_orders}</p>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {wip.in_progress > 0 && <span className="text-xs text-[var(--text-muted)]">{wip.in_progress} in progress</span>}
-                  {wip.assigned > 0 && <span className="text-xs text-[var(--text-muted)]">{wip.assigned} assigned</span>}
-                  {wip.on_hold > 0 && <span className="text-xs text-amber-400">{wip.on_hold} on hold</span>}
-                </div>
-              </div>
-              <div className="rounded-lg bg-blue-500/15 p-3 text-blue-300">
-                <ClipboardList className="h-6 w-6" />
-              </div>
-            </div>
-          </Link>
-
-          {/* Overdue PM */}
-          <Link href="/pm?status=overdue" className="panel-surface rounded-lg p-5 transition hover:border-[var(--brand)]/50">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-sm font-medium text-[var(--text-muted)]">Overdue PM</p>
-                <p className="mt-1 text-3xl font-bold text-[var(--foreground)]">{wip.overdue_pm}</p>
-                {wip.overdue_pm_gt30 > 0 && (
-                  <p className="mt-2 text-xs text-rose-400">{wip.overdue_pm_gt30} overdue &gt;30 days</p>
-                )}
-              </div>
-              <div className="rounded-lg bg-amber-500/15 p-3 text-amber-300">
-                <CalendarCheck className="h-6 w-6" />
-              </div>
-            </div>
-          </Link>
-
-          {/* Calibration Due */}
-          <Link href="/calibration?due_within=30" className="panel-surface rounded-lg p-5 transition hover:border-[var(--brand)]/50">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-sm font-medium text-[var(--text-muted)]">Calibration Due (30d)</p>
-                <p className="mt-1 text-3xl font-bold text-[var(--foreground)]">{wip.calibration_due_30d}</p>
-              </div>
-              <div className="rounded-lg bg-violet-500/15 p-3 text-violet-300">
-                <Wrench className="h-6 w-6" />
-              </div>
-            </div>
-          </Link>
-        </div>
-      </section>
+      <CommandCenterInteractive
+        triageRows={triage.rows}
+        triageTotalItems={triage.totalItems}
+        triageHeading={triageHeading}
+        canMutate={canMutate}
+        readiness={readiness}
+        wip={wip}
+        primaryRole={primaryRole}
+        departmentId={departmentId}
+      />
 
       {/* ── Section 4: Risk Distribution ──────────────────────────────────── */}
       <section aria-label="Equipment risk distribution">
