@@ -105,7 +105,8 @@ export async function getReplacementPriorities(filters: AnalyticsFilters = {}) {
   const supabase = createClient();
   let query = supabase
     .from('replacement_priority_scores')
-    .select(REPLACEMENT_SELECT);
+    .select(REPLACEMENT_SELECT)
+    .is('weights_profile_id', null);
 
   if (filters.asset_id) query = query.eq('asset_id', filters.asset_id);
   query = applyPeriodFilters(query, filters);

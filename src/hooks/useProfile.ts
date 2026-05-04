@@ -45,7 +45,7 @@ export function useProfile(userId: string | undefined) {
 
       const roles = (userRolesData || []).map((ur: Record<string, unknown>) => ur.roles as unknown as Role).filter(Boolean);
       const roleNames = roles.map((r) => r.name);
-      const rolePriority = ['admin', 'technician', 'store_user', 'department_user', 'viewer'];
+      const rolePriority = ['developer', 'admin', 'technician', 'store_user', 'department_user', 'viewer'];
       const primaryRole = rolePriority.find((r) => roleNames.includes(r as Role['name'])) || roleNames[0] || 'viewer';
 
       setProfile({ ...(profileData as unknown as Profile), roles, roleNames, primaryRole });

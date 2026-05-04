@@ -1,6 +1,6 @@
 # CLAUDE.md — BMERMS Project Intelligence
 
-Last updated: 2026-05-03
+Last updated: 2026-05-04 (session 4)
 Branch: BMERMS_V_3
 Deployment: https://project-git-bmermsv3-beamlak-fekadus-projects.vercel.app
 Supabase project ID: fgqyszbxzpmqzpqvdivx
@@ -41,20 +41,20 @@ date-fns, Gemini AI provider, Zod validation, lucide-react icons.
 ## 15-step prototype completion plan — current status
 
 DONE:
-- Step 1:  Supabase schema (21 migrations, all applied)
+- Step 1:  Supabase schema (24 migrations, all applied — including ghost-migration fix for 00021)
 - Step 2:  Seed data (10 seed files, 80 equipment assets, 8 departments)
 - Step 3:  Fixed 'under_review' procurement status in chatbot task-data-loaders.ts
-- Step 4:  Seed profiles.user_id still NULL — needs Supabase Auth user linking (deferred)
+- Step 4:  DONE — beamlak.work@gmail.com auth user linked to profile (user_id=7d8ac74b-ec15-414d-bfea-e4433eb8bc14)
+           developer role created (00022) and assigned; useRole/useProfile hooks handle 'developer' correctly
 - Step 5:  Command Center built at /command — unified decision-support landing page
 - Step 6:  Sensitivity sliders placeholder exists at /replacement (TODO comment in place)
 - Step 7:  PDF export implemented — jsPDF + jspdf-autotable installed and wired to /reports/[type]
-- Step 8:  Command Center substantially complete — 6-bug patch prompt written, not yet run
+- Step 8:  /command/triage confirmed working — dedup logic in UI, real data, 80 unique assets
 - Step 14: Supabase TypeScript types generated (src/types/supabase.ts)
 - Step 15: Login page shows "Yekatit-12 Hospital Medical College"
 
 IN PROGRESS:
-- Step 8:  6-bug patch not yet applied (duplicate triage rows, missing reliability cards,
-           /work-orders routing, breadcrumbs, PM departments, recurring failure count)
+- Step 8:  Remaining: recurring failure count (only 1 asset returned by generate_recommendation_flags)
 
 NOT STARTED:
 - Step 6:  Sensitivity analysis sliders (placeholder exists, sliders not built)
@@ -71,7 +71,7 @@ NOT STARTED:
 ### Decision Support
   /command                    Unified decision-support home (all roles)
   /command/health             Asset health scores — admin only, not in sidebar
-  /command/triage             Full triage queue — built, may have bugs
+  /command/triage             Full triage queue — confirmed working, real data, 80 assets after dedup
 
 ### Equipment (Biomedical Asset Management)
   /inventory                  Canonical equipment list — canonical URL for biomedical assets
@@ -146,12 +146,12 @@ NOT STARTED:
 
 ## Known deferred issues
 
-1.  profiles.user_id is NULL for all seed users — RLS auth.uid() checks fail for seeded
-    profiles until real Supabase Auth users are created and linked via
-    supabase/seed/99_link_auth_users.sql.
+1.  Seed profiles.user_id is NULL for all seed users (except beamlak.work@gmail.com which
+    is now linked). RLS auth.uid() checks fail for other seeded profiles until real Supabase
+    Auth users are created and linked via supabase/seed/99_link_auth_users.sql.
 
-2.  /command/triage page is linked and file exists but may have rendering bugs — full
-    triage queue page needs testing.
+2.  RESOLVED — /command/triage confirmed working. 80 unique assets displayed after UI
+    deduplication. v_command_center_triage view was in ghost migration 00021 (now fixed).
 
 3.  Sensitivity sliders at /replacement — placeholder comment only, not implemented.
 
@@ -159,15 +159,15 @@ NOT STARTED:
     hook is not enough; server components need requireRole() calls before rendering
     mutation UI for equipment/new, maintenance/requests/new, etc.
 
-5.  Triage section shows duplicate rows per asset (same asset appears 3×) — triage_action_queue
-    has multiple rows per asset (one per flag). Always deduplicate by asset_id keeping
-    highest priority_score.
+5.  RESOLVED (2026-05-04, migration 00023) — Triage accumulation fixed. DELETE now clears ALL
+    'open' rows before re-inserting. triage_action_queue contains exactly 80 open rows.
 
 6.  Reliability and PM Compliance cards show "No data" on asset detail — check that column
     name on join is asset_id (not equipment_id or equipment_asset_id) per migration 00010.
 
-7.  PM Compliance by Department on /pm shows only 5 of 8 departments — investigate
-    pm_compliance_metrics data coverage.
+7.  RESOLVED (2026-05-04, migration 00024) — All 8 departments now have pm_compliance_metrics.
+    PM plans, schedules (2024-2025), completions, and quarterly compliance rows added for
+    Inpatient Ward (71%), Pharmacy (71%), and Radiology (82%). /pm department chart shows 8/8.
 
 8.  Recurring failure card on /maintenance shows only 1 asset (ICU Ventilator #2) —
     investigate generate_recommendation_flags recurring_failure logic.
@@ -183,6 +183,18 @@ NOT STARTED:
 12. Institution name in seed — currently "St. Peter's Specialized Hospital", should be
     "Yekatit-12 Hospital" (fix pending, low priority).
 
+13. RESOLVED (2026-05-04, migration 00023) — compute_replacement_priority_scores_all() implemented.
+    replacement_priority_scores now has 80 computed rows (weights_profile_id IS NULL) plus the 8
+    original seed rows (weights_profile_id = 'b7000001-...'). getReplacementPriorities() in
+    analytics.service.ts filters to computed rows only (.is('weights_profile_id', null)).
+    /replacement page now ranks all 80 active assets.
+
+14. Ghost migration pattern — migration 00021 was marked as applied in supabase_migrations
+    table but its DDL was never executed. Fixed in 2026-05-03 session by repairing 00021
+    and 00022 to 'reverted' then running db push. If future migrations fail similarly,
+    check with: SELECT viewname FROM pg_views WHERE schemaname='public';
+    Fix: supabase migration repair --status reverted <N> --linked && supabase db push --linked
+
 ---
 
 ## Seed data facts (do not modify seed files)
@@ -192,10 +204,11 @@ Seed files: supabase/seed/01–11 + 99
 - 8 departments (seed/01)
 - 20 equipment_risk_scores rows (pre-computed, migration 00019 adds baseline for rest)
 - 20 equipment_reliability_metrics rows (pre-computed)
-- 8 replacement_priority_scores rows
+- 8 replacement_priority_scores rows (seed); 80 system-computed rows (migration 00023)
+- PM schedules: 68 (seed/05) + 81 (migration 00024) = 149 total across all 8 departments
 - 16 recommendation_flags across 10 unique assets (8 flag types)
 - Procurement, calibration, PM, training, disposal sample data
-- All profiles.user_id = NULL (see deferred issue #1)
+- profiles.user_id = NULL for 14 seed profiles; beamlak.work@gmail.com is linked
 - seed/99_link_auth_users.sql — run this after creating real Supabase Auth users
 
 ---
@@ -240,6 +253,11 @@ recompute_equipment_analytics() and recompute_all_equipment_analytics() in migra
 00018 — Analytics recompute orchestration RPCs
 00019 — Command center completeness + baseline risk score generation
 00020 — Fix MTBF date_extract bug
-00021 — Decision support read models (new)
+00021 — Decision support read models: decision_support_refresh_log table + 5 read-model views
+         (v_command_center_triage, v_asset_health_summary, v_department_readiness,
+          v_replacement_decision, v_maintenance_risk_context)
+00022 — Developer role + link beamlak.work@gmail.com auth user to profile
+00023 — Replacement scores for all 80 assets, triage accumulation fix, PMC department_id fix
+00024 — PM plans/schedules/completions/compliance for Inpatient Ward, Pharmacy, Radiology (8/8 depts)
 
-NEVER modify 00001–00021. Next migration must be 00022.
+NEVER modify 00001–00024. Next migration must be 00025.

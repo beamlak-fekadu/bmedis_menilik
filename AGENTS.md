@@ -1,6 +1,6 @@
 # AGENTS.md — BMERMS Codebase Reference for AI Agents
 
-Last updated: 2026-05-03
+Last updated: 2026-05-04 (session 4)
 Branch: BMERMS_V_3
 Supabase project ID: fgqyszbxzpmqzpqvdivx
 
@@ -285,11 +285,11 @@ flag_type enum: urgent_maintenance / monitor_closely / prioritize_pm / calibrate
 ### Decision Support / Command Center (Migration 00013)
 | Table                            | Key columns                                                     |
 |----------------------------------|------------------------------------------------------------------|
-| triage_action_queue              | id, asset_id(FK), priority_score(INT), status(enum), recommendation, rationale(JSONB), snapshot_date |
+| triage_action_queue              | id, asset_id(FK), priority_score(NUMERIC), status(enum), recommendation, rationale(JSONB[]), generated_at, due_by, assigned_to |
 | equipment_health_snapshots       | id, asset_id(FK), snapshot_date, health_score(INT 1-100), explanation(JSONB) |
 | clinical_readiness_snapshots     | id, department_id(FK), snapshot_date, readiness_score(INT), essential_total, essential_functional |
 | workload_capacity_snapshots      | id, assignee_id(FK profiles), snapshot_date, open_assignments, overdue_assignments, estimated_hours |
-| decision_support_refresh_log     | id, scope(asset/all), asset_id(FK), status(running/success/error), started_at, finished_at |
+| decision_support_refresh_log     | id, started_at, finished_at, status(running/success/error), error_message, triggered_by(FK profiles), scope(asset/all), asset_id(FK) — created in 00021 |
 | procurement_requests             | id, request_number(UQ), title, justification, status(enum), priority, requested_by(FK), department_id(FK) |
 
 procurement status enum: requested / approved / ordered / in_transit / delivered / canceled
@@ -314,12 +314,17 @@ RLS: chat_sessions — owner select/insert/update, admin can see all. chat_messa
 
 | View               | Purpose                                                         |
 |--------------------|-----------------------------------------------------------------|
-| v_dashboard_stats  | Aggregates: total_equipment, functional_count, open_work_orders, overdue_pm, calibration_due_soon, low_stock_parts, pending_disposals |
-| v_open_work_orders | Work orders with status IN (open/assigned/in_progress/on_hold) |
-| v_overdue_pm       | PM schedules with status=overdue, includes days_overdue        |
-| v_calibration_due  | Calibration records where next_due_date is approaching          |
-| v_low_stock_parts  | spare_parts where current_stock <= reorder_level               |
-| v_equipment_summary | Equipment with joined department/category/manufacturer/model  |
+| v_dashboard_stats         | Aggregates: total_equipment, functional_count, open_work_orders, overdue_pm, calibration_due_soon, low_stock_parts, pending_disposals |
+| v_open_work_orders        | Work orders with status IN (open/assigned/in_progress/on_hold) |
+| v_overdue_pm              | PM schedules with status=overdue, includes days_overdue        |
+| v_calibration_due         | Calibration records where next_due_date is approaching          |
+| v_low_stock_parts         | spare_parts where current_stock <= reorder_level               |
+| v_equipment_summary       | Equipment with joined department/category/manufacturer/model  |
+| v_command_center_triage   | triage_action_queue + asset/dept context + top open flag per asset (security_invoker) — migration 00021 |
+| v_asset_health_summary    | Latest health snapshot per asset (DISTINCT ON asset_id) — migration 00021 |
+| v_department_readiness    | Latest readiness snapshot per department (DISTINCT ON dept_id) — migration 00021 |
+| v_replacement_decision    | Latest replacement score per asset + joined reliability/risk/PMC — migration 00021 |
+| v_maintenance_risk_context | Per-active-asset: open WOs, overdue PM, failure count, RPN, availability, part shortage flags — migration 00021 |
 
 ---
 
@@ -338,12 +343,14 @@ RLS: chat_sessions — owner select/insert/update, admin can see all. chat_messa
 | compute_equipment_risk_scores(id)          | 00011     | SECURITY DEFINER — writes risk table         |
 | compute_pm_compliance_metrics(id)          | 00011     | SECURITY DEFINER — writes PMC table          |
 | compute_equipment_performance_scores(id)   | 00011     | SECURITY DEFINER — writes performance table  |
-| compute_replacement_priority_scores(id)    | 00011     | SECURITY DEFINER — writes replacement table  |
-| generate_recommendation_flags(id)          | 00011     | SECURITY DEFINER — writes flags table        |
-| recompute_equipment_analytics(p_asset_id)  | 00018     | SECURITY DEFINER — orchestrates all above + refresh |
-| recompute_all_equipment_analytics()        | 00018     | SECURITY DEFINER — loops all assets          |
-| refresh_decision_support_snapshots()       | 00014     | SECURITY DEFINER — rebuilds all snapshot tables |
-| asset_passes_health_criteria(id)           | 00013     | SECURITY DEFINER — health qualification check |
+| generate_recommendation_flags(id)                  | 00011     | SECURITY DEFINER — writes flags table        |
+| _recompute_asset_metrics(p_asset_id)               | 00023     | INTERNAL helper — reliability + PMC (now sets department_id/category_id) |
+| recompute_equipment_analytics(p_asset_id)          | 00019     | SECURITY DEFINER — _recompute + baseline + refresh |
+| recompute_all_equipment_analytics()                | 00023     | SECURITY DEFINER — loops all assets + replacement scores |
+| refresh_decision_support_snapshots()               | 00023     | SECURITY DEFINER — DELETE all 'open' triage rows before re-inserting (fixed accumulation) |
+| _ensure_baseline_risk_scores()                     | 00019     | INTERNAL — ensures every asset has a risk row |
+| compute_replacement_priority_scores_all()          | 00023     | SECURITY DEFINER — scores all 80 active assets; weights_profile_id IS NULL to distinguish from seed |
+| asset_passes_health_criteria(id)                   | 00013     | SECURITY DEFINER — health qualification check |
 
 New SQL functions must use SECURITY DEFINER if they touch analytics or decision support tables.
 
@@ -356,7 +363,7 @@ New SQL functions must use SECURITY DEFINER if they touch analytics or decision 
 - getRiskScores(filters) — queries equipment_risk_scores
 - getPMComplianceMetrics(filters) — queries pm_compliance_metrics, joins departments
 - getPerformanceScores(filters) — queries equipment_performance_scores
-- getReplacementPriorities(filters) — queries replacement_priority_scores ordered by rank
+- getReplacementPriorities(filters) — queries replacement_priority_scores WHERE weights_profile_id IS NULL (computed rows only), ordered by rank
 - getRecommendationFlags(filters) — queries recommendation_flags ordered by generated_at DESC
 - acknowledgeFlag(id, userId) — marks recommendation_flags.is_acknowledged = true
 
@@ -521,6 +528,7 @@ New SQL functions must use SECURITY DEFINER if they touch analytics or decision 
 ## Roles — exact strings used throughout codebase
 
 ```
+'developer'       — super-role for testing: passes all role checks (admin+technician+store_user+dept_user+viewer)
 'admin'           — full access, all CRUD, user management, analytics, audit
 'technician'      — equipment, work orders, PM, calibration, maintenance
 'department_user' — request maintenance/training, view own records
@@ -531,6 +539,9 @@ New SQL functions must use SECURITY DEFINER if they touch analytics or decision 
 NEVER use 'engineer' — caused a silent bug in chatbot task-data-loaders.ts.
 NEVER use 'Admin' (capital A) — role comparison is case-sensitive.
 Viewer role must never see create/edit/delete/approve/acknowledge buttons.
+'developer' role exists in roles table (id b1000001-0000-0000-0000-000000000006).
+useRole() treats developer as true for all isAdmin/isTechnician/etc flags.
+RLS policies do NOT include 'developer' — the profile also has 'admin' to satisfy RLS.
 
 ### Navigation access by role (from src/constants/index.ts NAV_SECTIONS)
 ```
@@ -739,8 +750,8 @@ CHAT_DEBUG_PROVIDER_FLOW "true" to enable debug logging in orchestrator
    manually increment/decrement current_stock with two separate queries (no transaction).
    Known deferred issue — do not copy this pattern elsewhere.
 
-4. triage_action_queue has multiple rows per asset (one per flag). Always deduplicate
-   by asset_id keeping highest priority_score before displaying in UI.
+4. FIXED (migration 00023) — triage_action_queue accumulation resolved. DELETE now removes
+   ALL rows WHERE status='open' before re-inserting. Table now holds exactly 80 open rows.
 
 5. Supabase analytics queries may return "No data" when seed data exists — check column
    names match migration 00010 exactly. The join key is asset_id (not equipment_id).
@@ -757,6 +768,19 @@ CHAT_DEBUG_PROVIDER_FLOW "true" to enable debug logging in orchestrator
    and status history. Equipment uses soft-delete (deleted_at) so physical DELETE
    should never be called on equipment_assets directly.
 
+9. FIXED (migration 00023) — compute_replacement_priority_scores_all() now computes scores for
+   all 80 active assets using min-max normalized weighted sum (weights: age 0.15, failure 0.15,
+   availability 0.20 inverted, burden 0.15, spare 0.10, risk 0.15, cost 0.10). Computed rows use
+   weights_profile_id IS NULL to distinguish from 8 original seed rows. getReplacementPriorities()
+   filters to computed rows. Called automatically by recompute_all_equipment_analytics().
+
+10. Ghost migration risk: if a migration is marked 'applied' in supabase_migrations but
+    the DDL was never executed, the objects won't exist. Verify with:
+      SELECT viewname FROM pg_views WHERE schemaname='public';
+      SELECT tablename FROM pg_tables WHERE schemaname='public';
+    To fix: supabase migration repair --status reverted <N> --linked && supabase db push --linked
+    This happened to migration 00021 (fixed 2026-05-03).
+
 ---
 
 ## What not to do
@@ -768,7 +792,7 @@ CHAT_DEBUG_PROVIDER_FLOW "true" to enable debug logging in orchestrator
 - Do not use useEffect for initial data fetching in server components
 - Do not create a Supabase client outside of src/lib/supabase/
 - Do not modify seed files (supabase/seed/)
-- Do not modify migrations 00001–00021; next migration is 00022
+- Do not modify migrations 00001–00024; next migration is 00025
 - Do not add npm dependencies without checking existing packages first
   (chart.js, jsPDF, jspdf-autotable, lucide-react, zod, date-fns are all available)
 - Do not use rounded-2xl on cards — rounded-lg maximum

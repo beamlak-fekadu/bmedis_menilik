@@ -9,7 +9,7 @@ import { ToastProvider } from '@/components/ui/Toast';
 import { AssistantProvider } from '@/components/assistant/AssistantProvider';
 import { NAV_SECTIONS } from '@/constants';
 
-type RoleName = 'admin' | 'technician' | 'department_user' | 'store_user' | 'viewer';
+type RoleName = 'developer' | 'admin' | 'technician' | 'department_user' | 'store_user' | 'viewer';
 
 const EXTRA_ROUTE_RULES: Array<{ prefix: string; roles: RoleName[] }> = [
   { prefix: '/command/health', roles: ['admin'] },
@@ -74,8 +74,9 @@ export default function DashboardRootLayout({ children }: { children: React.Reac
   };
 
   const userRoles = profile?.roleNames || ['viewer'];
+  const isDeveloper = userRoles.includes('developer');
   const allowedRoles = allowedRolesForPath(pathname);
-  const hasRouteAccess = !allowedRoles || allowedRoles.some((role) => userRoles.includes(role));
+  const hasRouteAccess = isDeveloper || !allowedRoles || allowedRoles.some((role) => userRoles.includes(role));
 
   return (
     <ToastProvider>

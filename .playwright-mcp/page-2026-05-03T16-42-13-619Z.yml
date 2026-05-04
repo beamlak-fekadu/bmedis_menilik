@@ -1,0 +1,37 @@
+- generic [ref=e2]:
+  - generic:
+    - generic:
+      - generic:
+        - generic:
+          - complementary
+          - generic:
+            - banner
+            - main:
+              - generic:
+                - generic:
+                  - generic:
+                    - img
+  - generic [ref=e5]:
+    - banner [ref=e6]:
+      - img "Yekatit-12 Hospital Medical College emblem" [ref=e8]
+      - paragraph [ref=e9]: BMERMS
+      - paragraph [ref=e10]: Yekatit-12 Hospital Medical College
+      - paragraph [ref=e11]: Biomedical Engineering Resource Management System
+      - heading "Sign in to your account" [level=1] [ref=e12]
+      - paragraph [ref=e13]: Secure access to biomedical equipment analytics and operations.
+    - generic [ref=e14]:
+      - generic [ref=e15]:
+        - generic [ref=e16]: Email
+        - textbox "Email" [active] [ref=e18]:
+          - /placeholder: you@yekatit12.gov.et
+      - generic [ref=e19]:
+        - generic [ref=e20]: Password
+        - textbox "Password" [ref=e22]:
+          - /placeholder: Enter your password
+      - generic [ref=e23]:
+        - generic [ref=e24] [cursor=pointer]:
+          - checkbox "Stay signed in on this device" [checked] [ref=e25]
+          - text: Stay signed in on this device
+        - link "Forgot password?" [ref=e26] [cursor=pointer]:
+          - /url: /reset-password
+      - button "Log in" [ref=e28]
