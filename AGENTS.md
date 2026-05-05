@@ -1,6 +1,6 @@
 # AGENTS.md — BMERMS Codebase Reference for AI Agents
 
-Last updated: 2026-05-04 (session 4)
+Last updated: 2026-05-05 (session 5, reliability dedup)
 Branch: BMERMS_V_3
 Supabase project ID: fgqyszbxzpmqzpqvdivx
 
@@ -205,13 +205,12 @@ supabase.rpc('refresh_decision_support_snapshots')
 | roles       | id, name(UQ), description, permissions(JSONB)                                |
 | profiles    | id, user_id(FK auth.users,UQ), full_name, email, phone, department_id(FK), job_title, is_active |
 | user_roles  | id, user_id(FK profiles), role_id(FK roles), assigned_at — unique(user_id,role_id) |
-| audit_logs  | id, user_id(FK profiles), action, entity_type, entity_id, old_values(JSONB), new_values(JSONB), ip_address, created_at |
+| audit_logs  | id, user_id(FK profiles), performed_by(FK profiles), action, entity_type, entity_id, old_values(JSONB), new_values(JSONB), details(JSONB), ip_address, created_at |
 
 ### Assets (Migration 00003)
 | Table                 | Key columns                                                               |
 |-----------------------|---------------------------------------------------------------------------|
-| equipment_assets      | id, asset_code(UQ), serial_number, name, model_id(FK), category_id(FK,NN), department_id(FK,NN), manufacturer_id(FK), vendor_id(FK), supplier_id(FK), installation_date, warranty_expiry, service_contract_expiry, condition(enum), status(enum), purchase_date, purchase_cost, source, deleted_at |
-| equipment_locations   | id, asset_id(FK,CASCADE), department_id(FK), building, floor, room, moved_at |
+| equipment_assets      | id, asset_code (partial UQ: unique among rows where deleted_at IS NULL — migration 00029), serial_number, name, model_id(FK), category_id(FK,NN), department_id(FK,NN), manufacturer_id(FK), vendor_id(FK), supplier_id(FK), installation_date, warranty_expiry, service_contract_expiry, condition(enum), status(enum), purchase_date, purchase_cost, source, deleted_at |
 | asset_status_history  | id, asset_id(FK,CASCADE), old_status, new_status, old_condition, new_condition, changed_by(FK), changed_at |
 | equipment_documents   | id, asset_id(FK,SET NULL), document_type(enum), title, file_path, file_size, mime_type, uploaded_by |
 | installation_records  | id, asset_id(FK), installed_by, installation_date, commissioning_date, acceptance_checklist(JSONB[]) |
@@ -224,8 +223,8 @@ status enum: active / inactive / disposed / in_storage
 |--------------------------|---------------------------------------------------------------------|
 | maintenance_requests     | id, request_number(UQ), asset_id(FK), requested_by(FK), department_id(FK), fault_description, urgency(enum), status(enum) |
 | work_orders              | id, work_order_number(UQ), request_id(FK), asset_id(FK), assigned_to(FK), status(enum), priority(enum), work_type(enum) |
-| maintenance_events       | id, work_order_id(FK), asset_id(FK), event_type(enum), failure_date, downtime_start, downtime_end, repair_duration_hours, failure_code_id(FK), action_code_id(FK), service_cost |
-| downtime_logs            | id, asset_id(FK), event_id(FK), start_time, end_time, duration_hours |
+| maintenance_events       | id, work_order_id(FK), asset_id(FK), event_type(enum), failure_date, downtime_start, downtime_end, repair_duration_hours (CHECK ≥0 when set — migration 00029), failure_code_id(FK), action_code_id(FK), service_cost |
+| downtime_logs            | id, asset_id(FK), event_id(FK), start_time, end_time, duration_hours (CHECK ≥0 when set — migration 00029) |
 | maintenance_parts_used   | id, event_id(FK), spare_part_id(FK), quantity_used, unit_cost       |
 
 maintenance_requests status enum: pending / approved / assigned / in_progress / completed / rejected / canceled
@@ -272,15 +271,15 @@ pm_schedules status enum: scheduled / completed / overdue / skipped / in_progres
 ### Analytics / Computed Metrics (Migration 00010)
 | Table                         | Key columns                                                        |
 |-------------------------------|---------------------------------------------------------------------|
-| equipment_reliability_metrics | id, asset_id(FK,CASCADE), period_start, period_end, mttr_hours, mtbf_hours, availability_ratio, total_downtime_hours, failure_count — UNIQUE(asset_id, period_start, period_end) |
+| equipment_reliability_metrics | id, asset_id(FK,CASCADE), period_start, period_end, mttr_hours, mtbf_hours, **availability_ratio** (DECIMAL 0–1, not availability_percentage), total_downtime_hours, failure_count — **one row per asset**: UNIQUE index idx_reliability_metrics_asset_unique(asset_id) (migrations 00034–00035) |
 | equipment_risk_scores         | id, asset_id(FK,CASCADE), severity(1-10), occurrence(1-10), detectability(1-10), rpn(GENERATED AS S*O*D), risk_level(GENERATED), assessed_at |
-| pm_compliance_metrics         | id, department_id(FK), category_id(FK), asset_id(FK), period_start, period_end, scheduled_count, completed_count, pmc_percentage(GENERATED) |
+| pm_compliance_metrics         | id, department_id(FK), category_id(FK), asset_id(FK), period_start, period_end, scheduled_count, completed_count, pmc_percentage(GENERATED) — UNIQUE grain NULLS NOT DISTINCT (00029) |
 | equipment_performance_scores  | id, asset_id(FK), period_start, period_end, normalized_availability, normalized_mttr, normalized_downtime, normalized_pmc, normalized_failure_rate, composite_score, weights_profile_id(FK) |
 | replacement_priority_scores   | id, asset_id(FK), period_start, period_end, age_score, failure_score, availability_score, maintenance_burden_score, spare_part_score, risk_score, cost_score, replacement_priority_index, rank, justification |
 | recommendation_flags          | id, asset_id(FK), flag_type(enum), severity(enum), message, details(JSONB), is_acknowledged, acknowledged_by(FK), generated_at, expires_at |
 
 risk_level: critical (RPN≥500) / high (≥200) / medium (≥80) / low (<80)
-flag_type enum: urgent_maintenance / monitor_closely / prioritize_pm / calibrate_soon / replacement_candidate / recurring_failure / part_shortage / high_risk / low_availability / overdue_pm / warranty_expiring / contract_expiring
+flag_type enum: urgent_maintenance / monitor_closely / prioritize_pm / calibrate_soon / replacement_candidate / recurring_failure / part_shortage / high_risk / low_availability / overdue_pm / warranty_expiring / contract_expiring / low_stock (00029)
 
 ### Decision Support / Command Center (Migration 00013)
 | Table                            | Key columns                                                     |
@@ -298,7 +297,7 @@ NEVER use 'under_review' — it is not a valid value.
 ### Chatbot (Migration 00015)
 | Table          | Key columns                                                                              |
 |----------------|------------------------------------------------------------------------------------------|
-| chat_sessions  | id, user_id(FK profiles,CASCADE), title, equipment_id(FK,NULL), work_order_id(FK,NULL), department_id(FK,NULL) |
+| chat_sessions  | id, user_id(FK profiles,CASCADE), title, asset_id(FK equipment_assets,NULL), work_order_id(FK,NULL), department_id(FK,NULL) — column renamed from equipment_id in 00033 |
 | chat_messages  | id, session_id(FK,CASCADE), role(user/assistant), content(TEXT), intent, decision(enum), answer_basis, confidence(enum), metadata(JSONB) |
 
 RLS: chat_sessions — owner select/insert/update, admin can see all. chat_messages inherit.
@@ -310,21 +309,21 @@ RLS: chat_sessions — owner select/insert/update, admin can see all. chat_messa
 
 ---
 
-## Database views (do not modify)
+## Database views (alter via new migrations only; 00031 refreshed several read models)
 
 | View               | Purpose                                                         |
 |--------------------|-----------------------------------------------------------------|
 | v_dashboard_stats         | Aggregates: total_equipment, functional_count, open_work_orders, overdue_pm, calibration_due_soon, low_stock_parts, pending_disposals |
-| v_open_work_orders        | Work orders with status IN (open/assigned/in_progress/on_hold) |
-| v_overdue_pm              | PM schedules with status=overdue, includes days_overdue        |
-| v_calibration_due         | Calibration records where next_due_date is approaching          |
+| v_open_work_orders        | Open WOs excluding soft-deleted equipment — migration 00031 |
+| v_overdue_pm              | PM schedules overdue / past scheduled_date; excludes soft-deleted assets — 00031 |
+| v_calibration_due         | Calibration due soon; excludes soft-deleted assets — 00031 |
 | v_low_stock_parts         | spare_parts where current_stock <= reorder_level               |
 | v_equipment_summary       | Equipment with joined department/category/manufacturer/model  |
-| v_command_center_triage   | triage_action_queue + asset/dept context + top open flag per asset (security_invoker) — migration 00021 |
-| v_asset_health_summary    | Latest health snapshot per asset (DISTINCT ON asset_id) — migration 00021 |
-| v_department_readiness    | Latest readiness snapshot per department (DISTINCT ON dept_id) — migration 00021 |
-| v_replacement_decision    | Latest replacement score per asset + joined reliability/risk/PMC — migration 00021 |
-| v_maintenance_risk_context | Per-active-asset: open WOs, overdue PM, failure count, RPN, availability, part shortage flags — migration 00021 |
+| v_command_center_triage   | triage_action_queue + asset/dept context + top open flag per asset (security_invoker) — 00021 |
+| v_asset_health_summary    | Latest health snapshot per asset (DISTINCT ON asset_id) — 00021 |
+| v_department_readiness    | Latest readiness snapshot per department (DISTINCT ON dept_id) — 00021 |
+| v_replacement_decision    | Latest replacement score + COALESCE on joined analytics — 00031 |
+| v_maintenance_risk_context | Per active asset; COALESCE availability; part_shortage/low_stock flags — 00031 |
 
 ---
 
@@ -344,7 +343,7 @@ RLS: chat_sessions — owner select/insert/update, admin can see all. chat_messa
 | compute_pm_compliance_metrics(id)          | 00011     | SECURITY DEFINER — writes PMC table          |
 | compute_equipment_performance_scores(id)   | 00011     | SECURITY DEFINER — writes performance table  |
 | generate_recommendation_flags(id)                  | 00011     | SECURITY DEFINER — writes flags table        |
-| _recompute_asset_metrics(p_asset_id)               | 00023     | INTERNAL helper — reliability + PMC (now sets department_id/category_id) |
+| _recompute_asset_metrics(p_asset_id)               | 00023, 00034 | INTERNAL — reliability UPSERT ON CONFLICT(asset_id); PMC (department_id/category_id) |
 | recompute_equipment_analytics(p_asset_id)          | 00019     | SECURITY DEFINER — _recompute + baseline + refresh |
 | recompute_all_equipment_analytics()                | 00023     | SECURITY DEFINER — loops all assets + replacement scores |
 | refresh_decision_support_snapshots()               | 00023     | SECURITY DEFINER — DELETE all 'open' triage rows before re-inserting (fixed accumulation) |
@@ -365,12 +364,11 @@ New SQL functions must use SECURITY DEFINER if they touch analytics or decision 
 - getPerformanceScores(filters) — queries equipment_performance_scores
 - getReplacementPriorities(filters) — queries replacement_priority_scores WHERE weights_profile_id IS NULL (computed rows only), ordered by rank
 - getRecommendationFlags(filters) — queries recommendation_flags ordered by generated_at DESC
-- acknowledgeFlag(id, userId) — marks recommendation_flags.is_acknowledged = true
+- acknowledgeFlag(id) — marks recommendation_flags.is_acknowledged; sets acknowledged_by to current profile id (not auth.users.id)
 
 ### audit.service.ts
 - getCurrentProfileId() — gets current auth user's profile UUID
-- logAuditEvent(params) — inserts to audit_logs with action, entity_type, old_values, new_values
-  NOTE: wraps in try/catch, failures only console.warn — silent in prod
+- logAuditEvent(params) — inserts audit_logs with user_id, performed_by (same profile), optional details JSONB; returns `{ success, error? }`; failures use console.error in all environments
 
 ### auth.service.ts (client-side only)
 - signIn(email, password), signUp(email, password), signOut()
@@ -756,17 +754,17 @@ CHAT_DEBUG_PROVIDER_FLOW "true" to enable debug logging in orchestrator
 5. Supabase analytics queries may return "No data" when seed data exists — check column
    names match migration 00010 exactly. The join key is asset_id (not equipment_id).
 
-6. Audit logging silently fails — logAuditEvent() catches and only console.warn.
-   Do not assume audit trail is complete without monitoring logs.
+6. RESOLVED (2026-05-05, migrations 00028 + app) — logAuditEvent() now sets performed_by,
+   optional details, returns success flag, and uses console.error on failure. Callers should
+   check the return value when compliance matters.
 
 7. Server-side role enforcement is missing on create/edit form pages. Client-side
    useRole() hook alone is insufficient — server components must call requireRole()
    before rendering mutation UI. Currently only navigation is role-gated.
 
-8. Cascading deletes: equipment_locations and asset_status_history have
-   ON DELETE CASCADE on asset_id — deleting an asset permanently removes location
-   and status history. Equipment uses soft-delete (deleted_at) so physical DELETE
-   should never be called on equipment_assets directly.
+8. Cascading deletes: asset_status_history has ON DELETE CASCADE on asset_id.
+   equipment_locations table removed in migration 00032 (unused). Equipment uses
+   soft-delete (deleted_at) so physical DELETE should never be called on equipment_assets directly.
 
 9. FIXED (migration 00023) — compute_replacement_priority_scores_all() now computes scores for
    all 80 active assets using min-max normalized weighted sum (weights: age 0.15, failure 0.15,
@@ -792,7 +790,7 @@ CHAT_DEBUG_PROVIDER_FLOW "true" to enable debug logging in orchestrator
 - Do not use useEffect for initial data fetching in server components
 - Do not create a Supabase client outside of src/lib/supabase/
 - Do not modify seed files (supabase/seed/)
-- Do not modify migrations 00001–00024; next migration is 00025
+- Do not modify migrations 00001–00035; next migration is 00036
 - Do not add npm dependencies without checking existing packages first
   (chart.js, jsPDF, jspdf-autotable, lucide-react, zod, date-fns are all available)
 - Do not use rounded-2xl on cards — rounded-lg maximum

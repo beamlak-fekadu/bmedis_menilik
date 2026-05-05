@@ -1,6 +1,6 @@
 # CLAUDE.md — BMERMS Project Intelligence
 
-Last updated: 2026-05-04 (session 4)
+Last updated: 2026-05-05 (session 5)
 Branch: BMERMS_V_3
 Deployment: https://project-git-bmermsv3-beamlak-fekadus-projects.vercel.app
 Supabase project ID: fgqyszbxzpmqzpqvdivx
@@ -41,7 +41,7 @@ date-fns, Gemini AI provider, Zod validation, lucide-react icons.
 ## 15-step prototype completion plan — current status
 
 DONE:
-- Step 1:  Supabase schema (24 migrations, all applied — including ghost-migration fix for 00021)
+- Step 1:  Supabase schema (35 migrations, all applied — including ghost-migration fix for 00021)
 - Step 2:  Seed data (10 seed files, 80 equipment assets, 8 departments)
 - Step 3:  Fixed 'under_review' procurement status in chatbot task-data-loaders.ts
 - Step 4:  DONE — beamlak.work@gmail.com auth user linked to profile (user_id=7d8ac74b-ec15-414d-bfea-e4433eb8bc14)
@@ -52,6 +52,9 @@ DONE:
 - Step 8:  /command/triage confirmed working — dedup logic in UI, real data, 80 unique assets
 - Step 14: Supabase TypeScript types generated (src/types/supabase.ts)
 - Step 15: Login page shows "Yekatit-12 Hospital Medical College"
+- Reliability metrics (2026-05-05, migrations 00034–00035): one row per asset in equipment_reliability_metrics; idx_reliability_metrics_asset_unique; recompute upserts on asset_id; Command Center triage detail uses availability_ratio (DB column), not a misnamed percentage field.
+
+- Audit remediation (2026-05-05, migrations 00027–00033): full recompute backfill on deploy; audit performed_by/details + acknowledgeFlag profile FK; constraints (low_stock flag_type, PMC grain unique + dedupe, partial unique asset_code for active rows, non-negative repair/downtime hours); hot-path indexes; read-model views refreshed with deleted_at filters and COALESCE; dropped unused repeat_repair_flags + equipment_locations; chat_sessions column equipment_id → asset_id
 
 IN PROGRESS:
 - Step 8:  Remaining: recurring failure count (only 1 asset returned by generate_recommendation_flags)
@@ -59,7 +62,7 @@ IN PROGRESS:
 NOT STARTED:
 - Step 6:  Sensitivity analysis sliders (placeholder exists, sliders not built)
 - Step 9:  Role-gated UI enforcement across all module pages (server-side, not just nav)
-- Step 10: Real audit log data — page exists at /audit but needs verification of RLS and data
+- Step 10: Real audit log data — /audit RLS verified pattern; confirm rows appear after mutations (writers now populate performed_by)
 - Step 11: BME usability evaluation instrument design
 - Step 12: Usability testing with BMEs at Yekatit 12
 - Step 13: MEMIS comparison section for thesis
@@ -177,8 +180,9 @@ NOT STARTED:
 10. Offline sync transport not implemented — technician-queue.ts enqueues to localStorage
     but no sync worker exists to POST to server.
 
-11. Audit logging silently fails — logAuditEvent() wraps in try/catch and only
-    console.warn on error; compliance trail may be incomplete.
+11. RESOLVED (2026-05-05, migration 00028 + app) — Audit writes: logAuditEvent sets performed_by
+    and optional details; errors surfaced via console.error and return value. acknowledgeFlag
+    uses profiles.id for acknowledged_by (FK-correct).
 
 12. Institution name in seed — currently "St. Peter's Specialized Hospital", should be
     "Yekatit-12 Hospital" (fix pending, low priority).
@@ -189,7 +193,10 @@ NOT STARTED:
     analytics.service.ts filters to computed rows only (.is('weights_profile_id', null)).
     /replacement page now ranks all 80 active assets.
 
-14. Ghost migration pattern — migration 00021 was marked as applied in supabase_migrations
+14. staff_training_records.staff_user_id → clearer column name deferred: seed files reference
+    staff_user_id; renaming would require coordinated seed + app change (do not edit seed ad hoc).
+
+15. Ghost migration pattern — migration 00021 was marked as applied in supabase_migrations
     table but its DDL was never executed. Fixed in 2026-05-03 session by repairing 00021
     and 00022 to 'reverted' then running db push. If future migrations fail similarly,
     check with: SELECT viewname FROM pg_views WHERE schemaname='public';
@@ -259,5 +266,16 @@ recompute_equipment_analytics() and recompute_all_equipment_analytics() in migra
 00022 — Developer role + link beamlak.work@gmail.com auth user to profile
 00023 — Replacement scores for all 80 assets, triage accumulation fix, PMC department_id fix
 00024 — PM plans/schedules/completions/compliance for Inpatient Ward, Pharmacy, Radiology (8/8 depts)
+00025 — Command Center actions: maintenance_requests.request_type, pm_schedules.source_context, audit_logs.performed_by + details
+00026 — Developer role included in RLS alongside admin/technician where appropriate
+00027 — Audit remediation: one-shot recompute_all_equipment_analytics() backfill on deploy
+00028 — Audit performed_by defensive UPDATE
+00029 — Constraints: recommendation_flags low_stock, non-negative repair/downtime durations, partial unique asset_code (active), PMC grain unique + dedupe, drop old global asset_code UQ
+00030 — Hot-path btree indexes (flags, triage, requests, work orders, PM schedules)
+00031 — Recreate v_open_work_orders, v_overdue_pm, v_calibration_due, v_replacement_decision, v_maintenance_risk_context (deleted_at filters + COALESCE)
+00032 — DROP repeat_repair_flags, equipment_locations (unused by app)
+00033 — chat_sessions.equipment_id renamed to asset_id
+00034 — equipment_reliability_metrics: dedupe to latest row per asset_id; UNIQUE(asset_id); _recompute_asset_metrics uses ON CONFLICT (asset_id) DO UPDATE
+00035 — Drop legacy composite UNIQUE on equipment_reliability_metrics (PG-truncated name missed in 00034)
 
-NEVER modify 00001–00024. Next migration must be 00025.
+NEVER modify 00001–00035. Next migration must be 00036.

@@ -61,7 +61,8 @@ type TriageDetail = {
   last_maintenance_date: string | null;
   rpn: number | null;
   pmc_percentage: number | null;
-  availability_percentage: number | null;
+  /** equipment_reliability_metrics.availability_ratio (0–1); display as percent in UI */
+  availability_ratio: number | null;
   mtbf_hours: number | null;
   flag_type: string | null;
   priority_score: number;
@@ -436,7 +437,7 @@ export default function CommandCenterInteractive({
                                       <div className="grid grid-cols-2 gap-3 text-sm md:grid-cols-3 xl:grid-cols-6">
                                         <div className="rounded-md border border-[var(--border-subtle)]/60 p-3"><p className="text-xs text-[var(--text-muted)]">RPN</p><p className="font-semibold">{detail.rpn ?? '—'}</p></div>
                                         <div className="rounded-md border border-[var(--border-subtle)]/60 p-3"><p className="text-xs text-[var(--text-muted)]">PMC</p><p className="font-semibold">{detail.pmc_percentage != null ? `${detail.pmc_percentage.toFixed(1)}%` : '—'}</p></div>
-                                        <div className="rounded-md border border-[var(--border-subtle)]/60 p-3"><p className="text-xs text-[var(--text-muted)]">Availability</p><p className="font-semibold">{detail.availability_percentage != null ? `${detail.availability_percentage.toFixed(1)}%` : '—'}</p></div>
+                                        <div className="rounded-md border border-[var(--border-subtle)]/60 p-3"><p className="text-xs text-[var(--text-muted)]">Availability</p><p className="font-semibold">{detail.availability_ratio != null ? `${(detail.availability_ratio * 100).toFixed(1)}%` : '—'}</p></div>
                                         <div className="rounded-md border border-[var(--border-subtle)]/60 p-3"><p className="text-xs text-[var(--text-muted)]">MTBF</p><p className="font-semibold">{detail.mtbf_hours != null ? `${detail.mtbf_hours.toFixed(1)} h` : '—'}</p></div>
                                         <div className="rounded-md border border-[var(--border-subtle)]/60 p-3"><p className="text-xs text-[var(--text-muted)]">Priority score</p><p className="font-semibold">{detail.priority_score.toFixed(1)}</p></div>
                                         <div className="rounded-md border border-[var(--border-subtle)]/60 p-3"><p className="text-xs text-[var(--text-muted)]">Flag type</p><p className="font-semibold">{detail.flag_type ?? 'none'}</p></div>

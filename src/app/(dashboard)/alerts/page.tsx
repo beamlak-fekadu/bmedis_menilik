@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { getRecommendationFlags, acknowledgeFlag } from '@/services/analytics.service';
 import { useAuth } from '@/hooks/useAuth';
+import { useProfile } from '@/hooks/useProfile';
 import { useRole } from '@/hooks/useRole';
 import { PageHeader, StatCard, Badge, Button, Tabs, FilterBar } from '@/components/ui';
 import { PageLoader } from '@/components/ui/Spinner';
@@ -65,6 +66,7 @@ const FLAG_TYPE_OPTIONS = [
   { value: 'overdue_pm', label: 'Overdue PM' },
   { value: 'warranty_expiring', label: 'Warranty Expiring' },
   { value: 'contract_expiring', label: 'Contract Expiring' },
+  { value: 'low_stock', label: 'Low Stock' },
 ];
 
 function flagTypeLabel(type: string): string {
@@ -91,6 +93,7 @@ function severityOrder(s: Urgency): number {
 
 export default function AlertsPage() {
   const { user } = useAuth();
+  const { profile } = useProfile(user?.id);
   const { primaryRole } = useRole();
   const { toast } = useToast();
   const [data, setData] = useState<AlertRow[]>([]);
@@ -115,13 +118,14 @@ export default function AlertsPage() {
       if (!user) return;
       setAcknowledging(id);
       try {
-        const { error } = await acknowledgeFlag(id, user.id);
+        const { error } = await acknowledgeFlag(id);
         if (error) {
           toast('error', 'Failed to acknowledge alert');
         } else {
+          const ackBy = profile?.id ?? null;
           setData((prev) =>
             prev.map((a) =>
-              a.id === id ? { ...a, is_acknowledged: true, acknowledged_by: user.id, acknowledged_at: new Date().toISOString() } : a
+              a.id === id ? { ...a, is_acknowledged: true, acknowledged_by: ackBy, acknowledged_at: new Date().toISOString() } : a
             )
           );
           toast('success', 'Alert acknowledged');
@@ -130,7 +134,7 @@ export default function AlertsPage() {
         setAcknowledging(null);
       }
     },
-    [user, toast]
+    [profile?.id, toast]
   );
 
   if (loading) return <PageLoader />;

@@ -80,7 +80,7 @@ async function ensureChatSession(params: {
     .insert({
       user_id: profileId,
       title,
-      equipment_id: contextRefs?.equipmentId ?? null,
+      asset_id: contextRefs?.equipmentId ?? null,
       work_order_id: contextRefs?.workOrderId ?? null,
       department_id: contextRefs?.departmentId ?? null,
     })

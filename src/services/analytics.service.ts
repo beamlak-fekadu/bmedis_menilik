@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/client';
+import { getCurrentProfileId } from '@/services/audit.service';
 
 export interface AnalyticsFilters {
   asset_id?: string;
@@ -125,13 +126,20 @@ export async function getRecommendationFlags(filters: AnalyticsFilters = {}) {
   return query.order('generated_at', { ascending: false });
 }
 
-export async function acknowledgeFlag(id: string, userId: string) {
+export async function acknowledgeFlag(id: string) {
+  const profileId = await getCurrentProfileId();
+  if (!profileId) {
+    return {
+      data: null,
+      error: { message: 'Not authenticated or profile not linked' } as { message: string },
+    };
+  }
   const supabase = createClient();
   return supabase
     .from('recommendation_flags')
     .update({
       is_acknowledged: true,
-      acknowledged_by: userId,
+      acknowledged_by: profileId,
       acknowledged_at: new Date().toISOString(),
     })
     .eq('id', id)

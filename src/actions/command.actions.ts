@@ -19,7 +19,8 @@ type TriageAssetDetail = {
   last_maintenance_date: string | null;
   rpn: number | null;
   pmc_percentage: number | null;
-  availability_percentage: number | null;
+  /** equipment_reliability_metrics.availability_ratio (0–1 scale) */
+  availability_ratio: number | null;
   mtbf_hours: number | null;
   flag_type: string | null;
   priority_score: number;
@@ -333,8 +334,8 @@ export async function getTriageAssetDetail(assetId: string, queueId: string): Pr
         last_maintenance_date: maintenanceDate,
         rpn: typeof riskRes.data?.rpn === 'number' ? Number(riskRes.data.rpn) : null,
         pmc_percentage: typeof pmRes.data?.pmc_percentage === 'number' ? Number(pmRes.data.pmc_percentage) : null,
-        availability_percentage: typeof reliabilityRes.data?.availability_ratio === 'number'
-          ? Number(reliabilityRes.data.availability_ratio) * 100
+        availability_ratio: typeof reliabilityRes.data?.availability_ratio === 'number'
+          ? Number(reliabilityRes.data.availability_ratio)
           : null,
         mtbf_hours: typeof reliabilityRes.data?.mtbf_hours === 'number' ? Number(reliabilityRes.data.mtbf_hours) : null,
         flag_type: (triage.top_flag_type as string | null) ?? null,

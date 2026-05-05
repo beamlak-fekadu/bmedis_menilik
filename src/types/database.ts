@@ -26,7 +26,8 @@ export type RiskLevel = 'low' | 'medium' | 'high' | 'critical';
 export type RecommendationFlagType =
   | 'urgent_maintenance' | 'monitor_closely' | 'prioritize_pm' | 'calibrate_soon'
   | 'replacement_candidate' | 'recurring_failure' | 'part_shortage' | 'high_risk'
-  | 'low_availability' | 'overdue_pm' | 'warranty_expiring' | 'contract_expiring';
+  | 'low_availability' | 'overdue_pm' | 'warranty_expiring' | 'contract_expiring'
+  | 'low_stock';
 export type RoleName = 'developer' | 'admin' | 'technician' | 'department_user' | 'store_user' | 'viewer';
 
 // =============================================================================
