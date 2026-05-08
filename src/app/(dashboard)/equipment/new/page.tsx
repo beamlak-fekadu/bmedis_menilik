@@ -9,10 +9,10 @@ import {
   Input, Select, Textarea, Spinner,
 } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
-import { createEquipment } from '@/services/equipment.service';
 import { getAll } from '@/services/settings.service';
 import { ROUTES } from '@/constants';
 import type { EquipmentCondition } from '@/types/database';
+import { createEquipmentAction } from '@/actions/equipment.actions';
 
 interface RefOption {
   value: string;
@@ -134,8 +134,8 @@ export default function NewEquipmentPage() {
         photo_url: null,
       };
 
-      const { error } = await createEquipment(payload);
-      if (error) throw error;
+      const result = await createEquipmentAction(payload);
+      if (!result.success) throw new Error(result.error ?? 'Failed to register equipment');
 
       toast('success', 'Equipment registered successfully');
       router.push(ROUTES.EQUIPMENT);

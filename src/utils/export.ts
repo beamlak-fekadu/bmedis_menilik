@@ -40,8 +40,8 @@ export function exportToCSV<T extends Record<string, unknown>>(
   data: T[],
   columns: ExportColumn<T>[],
   filename: string
-): void {
-  if (data.length === 0) return;
+): { success: boolean; error?: string } {
+  if (data.length === 0) return { success: false, error: 'No rows to export' };
 
   const headers = columns.map((c) => c.header);
   const rows = data.map((row) =>
@@ -64,6 +64,7 @@ export function exportToCSV<T extends Record<string, unknown>>(
   link.click();
   document.body.removeChild(link);
   URL.revokeObjectURL(url);
+  return { success: true };
 }
 
 export function exportToPDF<T extends Record<string, unknown>>({
@@ -78,7 +79,8 @@ export function exportToPDF<T extends Record<string, unknown>>({
   filename: string;
   title: string;
   filters?: Record<string, string>;
-}): void {
+}): { success: boolean; error?: string } {
+  if (data.length === 0) return { success: false, error: 'No rows to export' };
   const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
   const generatedAt = new Date().toLocaleString();
   const activeFilters = Object.entries(filters)
@@ -106,6 +108,7 @@ export function exportToPDF<T extends Record<string, unknown>>({
   });
 
   doc.save(datedFilename(filename, 'pdf'));
+  return { success: true };
 }
 
 /**

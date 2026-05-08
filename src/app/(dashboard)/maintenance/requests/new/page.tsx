@@ -6,7 +6,7 @@ import { ArrowLeft, Save } from 'lucide-react';
 import { PageHeader, Card, CardHeader, CardTitle, CardContent, Button, Select, Textarea } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
 import { getEquipmentList } from '@/services/equipment.service';
-import { createRequest } from '@/services/maintenance.service';
+import { createMaintenanceRequestAction } from '@/actions/maintenance.actions';
 import type { EquipmentAsset, Urgency } from '@/types/database';
 import { maintenanceRequestSchema } from '@/utils/validation/operations';
 
@@ -45,7 +45,7 @@ export default function NewMaintenanceRequestPage() {
     }
 
     setSubmitting(true);
-    const { data, error } = await createRequest({
+    const result = await createMaintenanceRequestAction({
       asset_id: form.asset_id,
       requested_by: null,
       department_id: selectedAsset.department_id,
@@ -57,13 +57,13 @@ export default function NewMaintenanceRequestPage() {
     });
     setSubmitting(false);
 
-    if (error) {
-      toast('error', 'Failed to create maintenance request');
+    if (!result.success) {
+      toast('error', result.error ?? 'Failed to create maintenance request');
       return;
     }
 
     toast('success', 'Maintenance request created');
-    router.push(`/maintenance/requests/${(data as { id: string }).id}`);
+    router.push(`/maintenance/requests/${(result.data as { id: string }).id}`);
   }
 
   return (

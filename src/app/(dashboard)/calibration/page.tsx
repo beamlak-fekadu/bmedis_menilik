@@ -16,11 +16,10 @@ import { PageLoader } from '@/components/ui/Spinner';
 import { useToast } from '@/components/ui/Toast';
 import {
   getCalibrationRecords,
-  createCalibrationRecord,
   getCalibrationRequests,
-  createCalibrationRequest,
   getUpcomingCalibrations,
 } from '@/services/calibration.service';
+import { createCalibrationRecordAction, createCalibrationRequestAction } from '@/actions/calibration.actions';
 import { getEquipmentList } from '@/services/equipment.service';
 import * as settingsService from '@/services/settings.service';
 import type { CalibrationResult, CalibrationRequestStatus, Urgency } from '@/types/database';
@@ -117,7 +116,7 @@ export default function CalibrationPage() {
     }
     setSubmitting(true);
     try {
-      const { error } = await createCalibrationRecord({
+      const result = await createCalibrationRecordAction({
         asset_id: recAssetId,
         calibration_type_id: recTypeId || null,
         calibrated_by: recCalibratedBy || null,
@@ -127,7 +126,7 @@ export default function CalibrationPage() {
         certificate_path: null,
         notes: recNotes || null,
       });
-      if (error) throw error;
+      if (!result.success) throw new Error(result.error ?? 'Failed to create calibration record');
       toast('success', 'Calibration record created');
       setRecordModalOpen(false);
       resetRecordForm();
@@ -146,7 +145,7 @@ export default function CalibrationPage() {
     }
     setSubmitting(true);
     try {
-      const { error } = await createCalibrationRequest({
+      const result = await createCalibrationRequestAction({
         asset_id: reqAssetId,
         requested_by: null,
         calibration_type_id: reqTypeId || null,
@@ -154,7 +153,7 @@ export default function CalibrationPage() {
         status: 'pending' as CalibrationRequestStatus,
         notes: reqNotes || null,
       });
-      if (error) throw error;
+      if (!result.success) throw new Error(result.error ?? 'Failed to create calibration request');
       toast('success', 'Calibration request submitted');
       setRequestModalOpen(false);
       resetRequestForm();

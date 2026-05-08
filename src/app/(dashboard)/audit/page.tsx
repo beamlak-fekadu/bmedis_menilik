@@ -17,7 +17,7 @@ function summarizeValues(value: unknown) {
 }
 
 export default async function AuditLogPage({ searchParams }: { searchParams: SearchParams }) {
-  await requireRole(['admin']);
+  await requireRole(['developer', 'admin']);
   const params = await searchParams;
   const supabase = await createClient();
 

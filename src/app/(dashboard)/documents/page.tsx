@@ -13,7 +13,8 @@ import Select from '@/components/ui/Select';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import { PageLoader } from '@/components/ui/Spinner';
 import { useToast } from '@/components/ui/Toast';
-import { getDocuments, uploadDocument, deleteDocument } from '@/services/documents.service';
+import { getDocuments } from '@/services/documents.service';
+import { deleteDocumentAction, uploadDocumentAction } from '@/actions/documents.actions';
 import { getEquipmentList } from '@/services/equipment.service';
 import type { EquipmentDocument, DocumentType, EquipmentAsset } from '@/types/database';
 import { createClient } from '@/lib/supabase/client';
@@ -93,11 +94,13 @@ export default function DocumentsPage() {
     }
     setSubmitting(true);
     try {
-      const { error } = await uploadDocument(formFile, formAssetId, {
-        document_type: formDocType,
-        title: formTitle,
-      });
-      if (error) throw error;
+      const formData = new FormData();
+      formData.append('assetId', formAssetId);
+      formData.append('document_type', formDocType);
+      formData.append('title', formTitle);
+      formData.append('file', formFile);
+      const result = await uploadDocumentAction(formData);
+      if (!result.success) throw new Error(result.error ?? 'Failed to upload document');
       toast('success', 'Document uploaded successfully');
       setUploadOpen(false);
       resetForm();
@@ -113,8 +116,8 @@ export default function DocumentsPage() {
     if (!deleteTarget) return;
     setSubmitting(true);
     try {
-      const { error } = await deleteDocument(deleteTarget.id);
-      if (error) throw error;
+      const result = await deleteDocumentAction(deleteTarget.id);
+      if (!result.success) throw new Error(result.error ?? 'Failed to delete document');
       toast('success', 'Document deleted');
       setDeleteTarget(null);
       loadData();

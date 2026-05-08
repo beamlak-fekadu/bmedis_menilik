@@ -10,7 +10,8 @@ import {
   ShieldAlert,
   Info,
 } from 'lucide-react';
-import { getRecommendationFlags, acknowledgeFlag } from '@/services/analytics.service';
+import { getRecommendationFlags } from '@/services/analytics.service';
+import { acknowledgeAlertFlagAction } from '@/actions/alerts.actions';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
 import { useRole } from '@/hooks/useRole';
@@ -118,8 +119,8 @@ export default function AlertsPage() {
       if (!user) return;
       setAcknowledging(id);
       try {
-        const { error } = await acknowledgeFlag(id);
-        if (error) {
+        const result = await acknowledgeAlertFlagAction(id);
+        if (!result.success) {
           toast('error', 'Failed to acknowledge alert');
         } else {
           const ackBy = profile?.id ?? null;
@@ -134,7 +135,7 @@ export default function AlertsPage() {
         setAcknowledging(null);
       }
     },
-    [profile?.id, toast]
+    [profile?.id, toast, user]
   );
 
   if (loading) return <PageLoader />;
@@ -269,7 +270,7 @@ export default function AlertsPage() {
         title="Alerts & Recommendations"
         description={`${unacknowledged.length} active alert${unacknowledged.length !== 1 ? 's' : ''} requiring attention`}
         breadcrumbs={[
-          { label: 'Dashboard', href: '/' },
+          { label: 'Command Center', href: '/command' },
           { label: 'Alerts' },
         ]}
       />
@@ -310,6 +311,12 @@ export default function AlertsPage() {
         onChange={(key, value) => setFilters((prev) => ({ ...prev, [key]: value }))}
         onReset={() => setFilters({ severity: '', flag_type: '' })}
       />
+
+      {filters.flag_type === 'recurring_failure' && (
+        <div className="rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-1)] p-3 text-sm text-[var(--text-muted)]">
+          Recurring-failure flags currently appear only after 4 or more failures in the seeded assessment period. Assets with 2-3 events are intentionally below threshold.
+        </div>
+      )}
 
       <Tabs tabs={tabData} defaultTab="all" />
     </div>

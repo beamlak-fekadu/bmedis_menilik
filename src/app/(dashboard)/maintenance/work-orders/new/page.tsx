@@ -7,7 +7,7 @@ import {
   PageHeader, Card, CardHeader, CardTitle, CardContent,
   Button, Input, Select, Textarea, Spinner,
 } from '@/components/ui';
-import { createWorkOrder } from '@/services/maintenance.service';
+import { createWorkOrderAction } from '@/actions/maintenance.actions';
 import { getEquipmentList } from '@/services/equipment.service';
 import { getProfiles } from '@/services/users.service';
 import { useToast } from '@/components/ui/Toast';
@@ -53,7 +53,7 @@ export default function NewWorkOrderPage() {
       return;
     }
     setSubmitting(true);
-    const { data, error } = await createWorkOrder({
+    const result = await createWorkOrderAction({
       asset_id: form.asset_id,
       request_id: form.request_id || null,
       assigned_to: form.assigned_to || null,
@@ -71,13 +71,13 @@ export default function NewWorkOrderPage() {
       completed_at: null,
     });
 
-    if (error) {
-      toast('error', 'Failed to create work order');
+    if (!result.success) {
+      toast('error', result.error ?? 'Failed to create work order');
       setSubmitting(false);
       return;
     }
     toast('success', 'Work order created');
-    router.push(`/maintenance/work-orders/${(data as unknown as Record<string, string>).id}`);
+    router.push(`/maintenance/work-orders/${(result.data as unknown as Record<string, string>).id}`);
   }
 
   if (loading) {
@@ -93,7 +93,7 @@ export default function NewWorkOrderPage() {
       <PageHeader
         title="New Work Order"
         breadcrumbs={[
-          { label: 'Dashboard', href: '/' },
+          { label: 'Command Center', href: '/command' },
           { label: 'Maintenance', href: '/maintenance' },
           { label: 'New Work Order' },
         ]}

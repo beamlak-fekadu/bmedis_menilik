@@ -6,9 +6,10 @@ import {
   AlertTriangle,
   ListOrdered,
   Trophy,
+  RotateCcw,
 } from 'lucide-react';
 import { getReplacementPriorities } from '@/services/analytics.service';
-import { PageHeader, StatCard, DataTable, Badge } from '@/components/ui';
+import { PageHeader, StatCard, DataTable, Badge, Button } from '@/components/ui';
 import { PageLoader } from '@/components/ui/Spinner';
 import Card, { CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { ChartCard, HorizontalBarChart } from '@/components/charts';
@@ -91,6 +92,10 @@ function formatRankDelta(delta: number | null) {
   return delta > 0 ? `Up ${delta}` : `Down ${Math.abs(delta)}`;
 }
 
+function hasMissingScore(row: ReplacementRow) {
+  return SCORE_CRITERIA.some((criterion) => row[criterion.key] == null);
+}
+
 export default function ReplacementPage() {
   const [data, setData] = useState<ReplacementRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -158,7 +163,14 @@ export default function ReplacementPage() {
       key: 'asset_name',
       header: 'Name',
       sortable: true,
-      render: (row: SimulatedReplacementRow) => row.equipment_assets?.name ?? '—',
+      render: (row: SimulatedReplacementRow) => (
+        <div>
+          <p>{row.equipment_assets?.name ?? '—'}</p>
+          {hasMissingScore(row) && (
+            <p className="mt-0.5 text-xs text-amber-600 dark:text-amber-300">missing data — using fallback</p>
+          )}
+        </div>
+      ),
     },
     {
       key: 'age_score',
@@ -299,9 +311,17 @@ export default function ReplacementPage() {
               Adjust criteria weights to simulate replacement priority changes. This does not write to Supabase.
             </p>
           </div>
-          <div className="text-right text-xs text-gray-500 dark:text-gray-400">
-            <p>Total weight</p>
-            <p className="text-lg font-semibold text-gray-900 dark:text-white">{totalWeight}%</p>
+          <div className="flex flex-col items-end gap-2 text-right text-xs text-gray-500 dark:text-gray-400">
+            <div>
+              <p>Total weight</p>
+              <p className={`text-lg font-semibold ${totalWeight === 100 ? 'text-green-700 dark:text-green-300' : 'text-amber-700 dark:text-amber-300'}`}>
+                {totalWeight}%
+              </p>
+            </div>
+            <Button size="sm" variant="outline" onClick={() => setWeights(DEFAULT_WEIGHTS)}>
+              <RotateCcw className="h-4 w-4" />
+              Reset
+            </Button>
           </div>
         </CardHeader>
         <CardContent>

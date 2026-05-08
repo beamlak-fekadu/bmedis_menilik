@@ -44,7 +44,7 @@ export async function requireAuth() {
 export async function requireRole(allowedRoles: string[]) {
   const profile = await getServerProfile();
   if (!profile) redirect('/login');
-  const hasRole = profile.roleNames.some((r: string) => allowedRoles.includes(r));
+  const hasRole = profile.roleNames.includes('developer') || profile.roleNames.some((r: string) => allowedRoles.includes(r));
   if (!hasRole) redirect('/');
   return profile;
 }

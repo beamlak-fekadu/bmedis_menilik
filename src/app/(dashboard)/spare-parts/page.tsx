@@ -16,11 +16,9 @@ import { PageLoader } from '@/components/ui/Spinner';
 import { useToast } from '@/components/ui/Toast';
 import {
   getSpareParts,
-  createSparePart,
-  createStockReceipt,
-  createStockIssue,
   getLowStockParts,
 } from '@/services/spare-parts.service';
+import { createSparePartAction, createStockIssueAction, createStockReceiptAction } from '@/actions/spare-parts.actions';
 import { createClient } from '@/lib/supabase/client';
 
 type PartRow = Record<string, unknown>;
@@ -100,7 +98,7 @@ export default function SparePartsPage() {
     }
     setSubmitting(true);
     try {
-      const { error } = await createSparePart({
+      const result = await createSparePartAction({
         part_code: partCode,
         name: partName,
         description: null,
@@ -112,7 +110,7 @@ export default function SparePartsPage() {
         compatible_categories: [],
         is_active: true,
       });
-      if (error) throw error;
+      if (!result.success) throw new Error(result.error ?? 'Failed to add spare part');
       toast('success', 'Spare part added');
       setAddPartOpen(false);
       resetPartForm();
@@ -131,7 +129,7 @@ export default function SparePartsPage() {
     }
     setSubmitting(true);
     try {
-      const { error } = await createStockReceipt({
+      const result = await createStockReceiptAction({
         part_id: recPartId,
         quantity: parseInt(recQuantity),
         received_by: null,
@@ -141,7 +139,7 @@ export default function SparePartsPage() {
         unit_cost: recUnitCost ? parseFloat(recUnitCost) : null,
         notes: recNotes || null,
       });
-      if (error) throw error;
+      if (!result.success) throw new Error(result.error ?? 'Failed to record receipt');
       toast('success', 'Stock receipt recorded');
       setReceiptOpen(false);
       resetReceiptForm();
@@ -160,7 +158,7 @@ export default function SparePartsPage() {
     }
     setSubmitting(true);
     try {
-      const { error } = await createStockIssue({
+      const result = await createStockIssueAction({
         part_id: issPartId,
         quantity: parseInt(issQuantity),
         issued_to_event_id: null,
@@ -169,7 +167,7 @@ export default function SparePartsPage() {
         department_id: issDepartment || null,
         notes: issNotes || null,
       });
-      if (error) throw error;
+      if (!result.success) throw new Error(result.error ?? 'Failed to record issue');
       toast('success', 'Stock issue recorded');
       setIssueOpen(false);
       resetIssueForm();

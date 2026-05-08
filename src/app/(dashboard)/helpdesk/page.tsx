@@ -5,6 +5,7 @@ import { Headphones, ArrowRight, ShieldAlert, Clock3 } from 'lucide-react';
 import Link from 'next/link';
 import { PageHeader, StatCard, Card, CardHeader, CardTitle, DataTable, Badge, Button } from '@/components/ui';
 import { getRecommendationFlags } from '@/services/analytics.service';
+import { acknowledgeAlertFlagAction } from '@/actions/alerts.actions';
 
 type HelpdeskRow = {
   id: string;
@@ -64,6 +65,22 @@ export default function HelpdeskPage() {
       key: 'is_acknowledged',
       header: 'Follow-up',
       render: (row: HelpdeskRow) => <Badge variant={row.is_acknowledged ? 'success' : 'warning'}>{row.is_acknowledged ? 'Tracked' : 'Pending'}</Badge>,
+    },
+    {
+      key: '_actions',
+      header: '',
+      render: (row: HelpdeskRow) => !row.is_acknowledged ? (
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={async () => {
+            const result = await acknowledgeAlertFlagAction(row.id);
+            if (result.success) setRows((prev) => prev.map((item) => item.id === row.id ? { ...item, is_acknowledged: true } : item));
+          }}
+        >
+          Track
+        </Button>
+      ) : null,
     },
   ];
 

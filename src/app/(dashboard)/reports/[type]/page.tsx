@@ -489,18 +489,26 @@ export default function ReportTypePage() {
   };
 
   const handleExport = () => {
-    exportToCSV(data, config.columns, reportType);
+    const result = exportToCSV(data, config.columns, reportType);
+    if (!result.success) {
+      toast('warning', result.error ?? 'No rows to export');
+      return;
+    }
     toast('success', 'Report exported as CSV');
   };
 
   const handlePdfExport = () => {
-    exportToPDF({
+    const result = exportToPDF({
       data,
       columns: config.columns,
       filename: reportType,
       title: config.title,
       filters: filterValues,
     });
+    if (!result.success) {
+      toast('warning', result.error ?? 'No rows to export');
+      return;
+    }
     toast('success', 'Report exported as PDF');
   };
 

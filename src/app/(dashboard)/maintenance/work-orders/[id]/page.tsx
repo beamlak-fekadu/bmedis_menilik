@@ -7,14 +7,15 @@ import {
 } from 'lucide-react';
 import {
   PageHeader, Card, CardHeader, CardTitle, CardContent, CardFooter,
-  Button, Modal, Table, Input, Select, Textarea, Spinner,
+  Button, Modal, Table, Input, Select, Textarea, Spinner, Badge,
 } from '@/components/ui';
 import { UrgencyBadge, WorkOrderStatusBadge } from '@/components/ui/StatusBadge';
 import {
-  getWorkOrderById, updateWorkOrder, getMaintenanceEvents, createMaintenanceEvent,
+  getWorkOrderById, getMaintenanceEvents,
 } from '@/services/maintenance.service';
-import { logOfflineSyncEvent } from '@/services/offline-sync.service';
-import { enqueueOfflineAction, getOfflineQueue, markOfflineActionFailed, removeOfflineAction } from '@/lib/offline/technician-queue';
+import { createMaintenanceEventAction, updateWorkOrderAction } from '@/actions/maintenance.actions';
+import { syncOfflineWorkOrderActionsAction } from '@/actions/offline-sync.actions';
+import { enqueueOfflineAction, getOfflineQueue, markOfflineActionFailed, removeOfflineAction, type OfflineWorkOrderAction } from '@/lib/offline/technician-queue';
 import { getAll } from '@/services/settings.service';
 import { getProfiles } from '@/services/users.service';
 import { useToast } from '@/components/ui/Toast';
@@ -65,7 +66,11 @@ export default function WorkOrderDetailPage() {
   const [eventForm, setEventForm] = useState(emptyEventForm);
   const [failureCodes, setFailureCodes] = useState<FailureCode[]>([]);
   const [actionCodes, setActionCodes] = useState<MaintenanceActionCode[]>([]);
-  const [queueCount, setQueueCount] = useState(0);
+  const [queuedActions, setQueuedActions] = useState<OfflineWorkOrderAction[]>([]);
+
+  const refreshQueuedActions = useCallback(() => {
+    setQueuedActions(getOfflineQueue().filter((item) => item.workOrderId === id));
+  }, [id]);
 
   const loadWO = useCallback(async () => {
     const { data, error } = await getWorkOrderById(id);
@@ -93,11 +98,11 @@ export default function WorkOrderDetailPage() {
       const woData = data as unknown as WOWithJoins;
       setWO(woData);
       await loadEvents(woData.asset_id);
-      setQueueCount(getOfflineQueue().length);
+      refreshQueuedActions();
       setLoading(false);
     }
     init();
-  }, [id, toast, loadEvents]);
+  }, [id, toast, loadEvents, refreshQueuedActions]);
 
   async function handleStatusUpdate(status: WorkOrderStatus) {
     if (!wo) return;
@@ -106,9 +111,9 @@ export default function WorkOrderDetailPage() {
     if (status === 'in_progress' && !wo.started_at) updates.started_at = new Date().toISOString();
     if (status === 'completed') updates.completed_at = new Date().toISOString();
 
-    const { error } = await updateWorkOrder(id, updates as Parameters<typeof updateWorkOrder>[1]);
-    if (error) {
-      toast('error', `Failed to update work order`);
+    const result = await updateWorkOrderAction(id, updates);
+    if (!result.success) {
+      toast('error', result.error ?? `Failed to update work order`);
     } else {
       toast('success', `Work order ${status.replace(/_/g, ' ')}`);
       await loadWO();
@@ -117,20 +122,12 @@ export default function WorkOrderDetailPage() {
   }
 
   function queueStatusUpdate(status: WorkOrderStatus) {
-    const queued = enqueueOfflineAction({
+    enqueueOfflineAction({
       type: 'update_status',
       workOrderId: id,
       payload: { status, queued_at: new Date().toISOString() },
     });
-    void logOfflineSyncEvent({
-      client_action_id: queued.id,
-      entity_type: 'work_order',
-      entity_id: id,
-      action_type: 'update_status',
-      payload: queued.payload,
-      sync_status: 'pending',
-    });
-    setQueueCount(getOfflineQueue().length);
+    refreshQueuedActions();
     toast('success', 'Status update queued for sync');
   }
 
@@ -142,41 +139,15 @@ export default function WorkOrderDetailPage() {
     }
 
     setActionLoading(true);
-    let failedActions = 0;
-
-    for (const action of queue) {
-      if (action.type === 'update_status') {
-        const status = action.payload.status as WorkOrderStatus;
-        const { error } = await updateWorkOrder(id, { status });
-        if (!error) {
-          removeOfflineAction(action.id);
-          await logOfflineSyncEvent({
-            client_action_id: action.id,
-            entity_type: 'work_order',
-            entity_id: id,
-            action_type: 'update_status',
-            payload: action.payload,
-            sync_status: 'synced',
-          });
-        } else {
-          failedActions += 1;
-          markOfflineActionFailed(action.id, String(error));
-          await logOfflineSyncEvent({
-            client_action_id: action.id,
-            entity_type: 'work_order',
-            entity_id: id,
-            action_type: 'update_status',
-            payload: {
-              ...action.payload,
-              error: String(error),
-            },
-            sync_status: 'failed',
-          });
-        }
-      }
+    const result = await syncOfflineWorkOrderActionsAction(queue);
+    const results = result.data ?? [];
+    const failedActions = results.filter((item) => item.status === 'failed').length;
+    for (const item of results) {
+      if (item.status === 'synced' || item.status === 'skipped') removeOfflineAction(item.id);
+      if (item.status === 'failed') markOfflineActionFailed(item.id, item.error ?? 'Sync failed');
     }
     await loadWO();
-    setQueueCount(getOfflineQueue().length);
+    refreshQueuedActions();
     if (failedActions > 0) {
       toast('warning', `${failedActions} queued action(s) failed to sync`);
     } else {
@@ -196,12 +167,12 @@ export default function WorkOrderDetailPage() {
   async function handleAssign() {
     if (!selectedTechnician) return;
     setActionLoading(true);
-    const { error } = await updateWorkOrder(id, {
+    const result = await updateWorkOrderAction(id, {
       assigned_to: selectedTechnician,
       status: 'assigned',
-    } as Parameters<typeof updateWorkOrder>[1]);
-    if (error) {
-      toast('error', 'Failed to assign work order');
+    });
+    if (!result.success) {
+      toast('error', result.error ?? 'Failed to assign work order');
     } else {
       toast('success', 'Work order assigned');
       setAssignModalOpen(false);
@@ -224,7 +195,7 @@ export default function WorkOrderDetailPage() {
   async function handleCreateEvent() {
     if (!wo) return;
     setActionLoading(true);
-    const { error } = await createMaintenanceEvent({
+    const result = await createMaintenanceEventAction({
       work_order_id: wo.id,
       asset_id: wo.asset_id,
       event_type: eventForm.event_type,
@@ -240,8 +211,8 @@ export default function WorkOrderDetailPage() {
       completed_by: null,
       completion_date: null,
     });
-    if (error) {
-      toast('error', 'Failed to log event');
+    if (!result.success) {
+      toast('error', result.error ?? 'Failed to log event');
     } else {
       toast('success', 'Maintenance event logged');
       setEventModalOpen(false);
@@ -313,7 +284,7 @@ export default function WorkOrderDetailPage() {
         title={wo.work_order_number}
         description="Work Order"
         breadcrumbs={[
-          { label: 'Dashboard', href: '/' },
+          { label: 'Command Center', href: '/command' },
           { label: 'Maintenance', href: '/maintenance' },
           { label: wo.work_order_number },
         ]}
@@ -459,7 +430,7 @@ export default function WorkOrderDetailPage() {
                 </Button>
                 <Button size="sm" variant="outline" onClick={syncQueuedActions} loading={actionLoading}>
                   <RefreshCcw className="h-4 w-4" />
-                  Sync Queue ({queueCount})
+                  Sync Queue ({queuedActions.length})
                 </Button>
                 {!isTerminal && (
                   <Button size="sm" variant="destructive" onClick={() => handleStatusUpdate('canceled')} loading={actionLoading}>
@@ -471,6 +442,31 @@ export default function WorkOrderDetailPage() {
             </CardFooter>
           )}
         </Card>
+
+        {queuedActions.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Pending Offline Actions</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="divide-y divide-[var(--border-subtle)]">
+                {queuedActions.map((action) => (
+                  <div key={action.id} className="flex flex-wrap items-center justify-between gap-3 py-2 text-sm">
+                    <div>
+                      <p className="font-medium text-[var(--foreground)]">{action.type.replace(/_/g, ' ')}</p>
+                      <p className="text-xs text-[var(--text-muted)]">
+                        {new Date(action.createdAt).toLocaleString()}
+                        {action.retryCount ? ` · retries ${action.retryCount}` : ''}
+                        {action.lastError ? ` · ${action.lastError}` : ''}
+                      </p>
+                    </div>
+                    <Badge variant={action.lastError ? 'warning' : 'info'}>{action.lastError ? 'Retry needed' : 'Pending'}</Badge>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Maintenance Event Log */}
         <Card>

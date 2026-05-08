@@ -11,7 +11,8 @@ import {
   Button, Modal, Select, Spinner,
 } from '@/components/ui';
 import { UrgencyBadge, RequestStatusBadge } from '@/components/ui/StatusBadge';
-import { getRequestById, updateRequestStatus } from '@/services/maintenance.service';
+import { getRequestById } from '@/services/maintenance.service';
+import { updateRequestStatusAction } from '@/actions/maintenance.actions';
 import { getProfiles } from '@/services/users.service';
 import { useToast } from '@/components/ui/Toast';
 import type { MaintenanceRequest, MaintenanceRequestStatus, Profile } from '@/types/database';
@@ -53,9 +54,9 @@ export default function RequestDetailPage() {
 
   async function handleStatusUpdate(status: MaintenanceRequestStatus) {
     setActionLoading(true);
-    const { error } = await updateRequestStatus(id, status);
-    if (error) {
-      toast('error', `Failed to ${status} request`);
+    const result = await updateRequestStatusAction(id, status);
+    if (!result.success) {
+      toast('error', result.error ?? `Failed to ${status} request`);
     } else {
       toast('success', `Request ${status}`);
       await load();
@@ -74,9 +75,9 @@ export default function RequestDetailPage() {
   async function handleAssign() {
     if (!selectedTechnician) return;
     setActionLoading(true);
-    const { error } = await updateRequestStatus(id, 'assigned');
-    if (error) {
-      toast('error', 'Failed to assign request');
+    const result = await updateRequestStatusAction(id, 'assigned');
+    if (!result.success) {
+      toast('error', result.error ?? 'Failed to assign request');
     } else {
       toast('success', 'Request assigned');
       setAssignModalOpen(false);
@@ -104,7 +105,7 @@ export default function RequestDetailPage() {
         title={request.request_number}
         description="Maintenance Request"
         breadcrumbs={[
-          { label: 'Dashboard', href: '/' },
+          { label: 'Command Center', href: '/command' },
           { label: 'Maintenance', href: '/maintenance' },
           { label: request.request_number },
         ]}

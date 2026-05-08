@@ -1,9 +1,13 @@
 'use client';
 
 import Link from 'next/link';
+import { useEffect, useState } from 'react';
 import { ArrowRightLeft, Boxes, ClipboardCheck, HandHelping, Warehouse } from 'lucide-react';
-import { PageHeader, Card, Badge } from '@/components/ui';
+import { PageHeader, Card, Badge, StatCard } from '@/components/ui';
 import { AskAiButton } from '@/components/assistant/AskAiButton';
+import { getLowStockParts, getSpareParts } from '@/services/spare-parts.service';
+import { getProcurementPipeline } from '@/services/procurement.service';
+import { createClient } from '@/lib/supabase/client';
 
 const LOGISTICS_AREAS = [
   { title: 'Item Receive', href: '/spare-parts', desc: 'Record inbound stock and supplier receipts.', icon: Warehouse },
@@ -14,6 +18,30 @@ const LOGISTICS_AREAS = [
 ];
 
 export default function LogisticsPage() {
+  const [summary, setSummary] = useState({ lowStock: 0, totalParts: 0, receipts: 0, issues: 0, procurementOpen: 0 });
+
+  useEffect(() => {
+    async function loadSummary() {
+      const supabase = createClient();
+      const [lowRes, partsRes, receiptsRes, issuesRes, procurementRes] = await Promise.all([
+        getLowStockParts(),
+        getSpareParts({ is_active: true }),
+        supabase.from('stock_receipts').select('id').limit(5),
+        supabase.from('stock_issues').select('id').limit(5),
+        getProcurementPipeline(),
+      ]);
+      const procurementRows = (procurementRes.data ?? []) as Array<{ status?: string }>;
+      setSummary({
+        lowStock: lowRes.data?.length ?? 0,
+        totalParts: partsRes.data?.length ?? 0,
+        receipts: receiptsRes.data?.length ?? 0,
+        issues: issuesRes.data?.length ?? 0,
+        procurementOpen: procurementRows.filter((row) => row.status && !['delivered', 'canceled'].includes(row.status)).length,
+      });
+    }
+    void loadSummary();
+  }, []);
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -30,6 +58,13 @@ export default function LogisticsPage() {
           </div>
         }
       />
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+        <StatCard label="Low Stock" value={summary.lowStock} icon={<Boxes className="h-6 w-6" />} color="red" />
+        <StatCard label="Active Parts" value={summary.totalParts} icon={<Warehouse className="h-6 w-6" />} color="blue" />
+        <StatCard label="Recent Receipts" value={summary.receipts} icon={<ClipboardCheck className="h-6 w-6" />} color="green" />
+        <StatCard label="Recent Issues" value={summary.issues} icon={<ArrowRightLeft className="h-6 w-6" />} color="orange" />
+        <StatCard label="Open Procurement" value={summary.procurementOpen} icon={<HandHelping className="h-6 w-6" />} color="purple" />
+      </div>
       <div className="grid gap-4 md:grid-cols-2">
         {LOGISTICS_AREAS.map((area) => (
           <Link key={area.title} href={area.href}>

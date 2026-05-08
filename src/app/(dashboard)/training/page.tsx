@@ -18,14 +18,13 @@ import { PageLoader } from '@/components/ui/Spinner';
 import { useToast } from '@/components/ui/Toast';
 import {
   getTrainingSessions,
-  createTrainingSession,
   getStaffTrainingRecords,
   getTrainingRequests,
-  createTrainingRequest,
 } from '@/services/training.service';
+import { createTrainingRequestAction, createTrainingSessionAction } from '@/actions/training.actions';
 import { getEquipmentList } from '@/services/equipment.service';
 import * as settingsService from '@/services/settings.service';
-import type { TrainingType, TrainingRequestStatus, TrainingAttendance } from '@/types/database';
+import type { TrainingType, TrainingAttendance } from '@/types/database';
 
 type SessionRow = Record<string, unknown>;
 type RequestRow = Record<string, unknown>;
@@ -145,7 +144,7 @@ export default function TrainingPage() {
     }
     setSubmitting(true);
     try {
-      const { error } = await createTrainingSession({
+      const result = await createTrainingSessionAction({
         title: sesTitle,
         asset_id: sesAssetId || null,
         category_id: sesCategoryId || null,
@@ -156,7 +155,7 @@ export default function TrainingPage() {
         description: sesDescription || null,
         max_participants: sesMaxParticipants ? parseInt(sesMaxParticipants) : null,
       });
-      if (error) throw error;
+      if (!result.success) throw new Error(result.error ?? 'Failed to create training session');
       toast('success', 'Training session created');
       setSessionModalOpen(false);
       resetSessionForm();
@@ -175,16 +174,16 @@ export default function TrainingPage() {
     }
     setSubmitting(true);
     try {
-      const { error } = await createTrainingRequest({
+      const result = await createTrainingRequestAction({
         asset_id: reqAssetId || null,
         requested_by: null,
         department_id: null,
         training_type: reqType,
         description: reqDescription,
-        status: 'pending' as TrainingRequestStatus,
+        status: 'pending',
         notes: reqNotes || null,
       });
-      if (error) throw error;
+      if (!result.success) throw new Error(result.error ?? 'Failed to create training request');
       toast('success', 'Training request submitted');
       setRequestModalOpen(false);
       resetRequestForm();

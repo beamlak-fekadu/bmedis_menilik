@@ -3,7 +3,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ClipboardCheck, Truck, Timer, CircleDollarSign } from 'lucide-react';
 import { PageHeader, StatCard, Card, CardHeader, CardTitle, DataTable, Badge, Button, Modal, Input, Select, Textarea } from '@/components/ui';
-import { createProcurementRequest, getProcurementPipeline } from '@/services/procurement.service';
+import { getProcurementPipeline } from '@/services/procurement.service';
+import { createProcurementRequestAction } from '@/actions/procurement.actions';
 import { procurementRequestSchema } from '@/utils/validation/operations';
 import { useToast } from '@/components/ui/Toast';
 import { AskAiButton } from '@/components/assistant/AskAiButton';
@@ -131,7 +132,7 @@ export default function ProcurementPage() {
                   return;
                 }
                 setSubmitting(true);
-                const { error } = await createProcurementRequest({
+                const result = await createProcurementRequestAction({
                   title: parsed.data.title,
                   justification: parsed.data.justification,
                   status: parsed.data.status,
@@ -139,8 +140,8 @@ export default function ProcurementPage() {
                   expected_delivery_date: parsed.data.expected_delivery_date || null,
                 });
                 setSubmitting(false);
-                if (error) {
-                  toast('error', 'Failed to create procurement request');
+                if (!result.success) {
+                  toast('error', result.error ?? 'Failed to create procurement request');
                   return;
                 }
                 toast('success', 'Procurement request created');

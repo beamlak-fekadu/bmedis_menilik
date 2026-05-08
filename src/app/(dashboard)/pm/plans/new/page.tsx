@@ -6,7 +6,7 @@ import { ArrowLeft, Save } from 'lucide-react';
 import { PageHeader, Card, CardHeader, CardTitle, CardContent, Button, Input, Select } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
 import { getEquipmentList } from '@/services/equipment.service';
-import { createPMPlan } from '@/services/pm.service';
+import { createPMPlanAction } from '@/actions/pm.actions';
 import { getAll } from '@/services/settings.service';
 import type { EquipmentAsset, PMTemplate } from '@/types/database';
 import { pmPlanSchema } from '@/utils/validation/operations';
@@ -42,7 +42,7 @@ export default function NewPMPlanPage() {
       return;
     }
     setSubmitting(true);
-    const { error } = await createPMPlan({
+    const result = await createPMPlanAction({
       asset_id: parsed.data.asset_id,
       template_id: parsed.data.template_id || null,
       name: parsed.data.name.trim(),
@@ -54,8 +54,8 @@ export default function NewPMPlanPage() {
     });
     setSubmitting(false);
 
-    if (error) {
-      toast('error', 'Failed to create PM plan');
+    if (!result.success) {
+      toast('error', result.error ?? 'Failed to create PM plan');
       return;
     }
     toast('success', 'PM plan created');

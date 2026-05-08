@@ -8,7 +8,8 @@ import {
   Button, Input, Textarea, Modal, Spinner,
 } from '@/components/ui';
 import { PMStatusBadge } from '@/components/ui/StatusBadge';
-import { getPMSchedules, updateScheduleStatus, createPMCompletion } from '@/services/pm.service';
+import { getPMSchedules } from '@/services/pm.service';
+import { createPMCompletionAction, updateScheduleStatusAction } from '@/actions/pm.actions';
 import { useToast } from '@/components/ui/Toast';
 import type { PMSchedule, PMChecklistItem } from '@/types/database';
 
@@ -84,7 +85,7 @@ export default function PMScheduleDetailPage() {
     if (!schedule) return;
     setActionLoading(true);
 
-    const { error: completionError } = await createPMCompletion({
+    const completionResult = await createPMCompletionAction({
       schedule_id: schedule.id,
       completed_by: null,
       completion_date: completionForm.completion_date,
@@ -93,14 +94,14 @@ export default function PMScheduleDetailPage() {
       checklist_results: checklist,
     });
 
-    if (completionError) {
-      toast('error', 'Failed to record completion');
+    if (!completionResult.success) {
+      toast('error', completionResult.error ?? 'Failed to record completion');
       setActionLoading(false);
       return;
     }
 
-    const { error: statusError } = await updateScheduleStatus(schedule.id, 'completed');
-    if (statusError) {
+    const statusResult = await updateScheduleStatusAction(schedule.id, 'completed');
+    if (!statusResult.success) {
       toast('warning', 'Completion recorded but status update failed');
     } else {
       toast('success', 'PM completed successfully');
@@ -127,7 +128,7 @@ export default function PMScheduleDetailPage() {
         title="PM Schedule"
         description={schedule.pm_plans?.name ?? 'Schedule Detail'}
         breadcrumbs={[
-          { label: 'Dashboard', href: '/' },
+          { label: 'Command Center', href: '/command' },
           { label: 'Preventive Maintenance', href: '/pm' },
           { label: 'Schedule Detail' },
         ]}

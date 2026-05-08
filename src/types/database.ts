@@ -28,7 +28,15 @@ export type RecommendationFlagType =
   | 'replacement_candidate' | 'recurring_failure' | 'part_shortage' | 'high_risk'
   | 'low_availability' | 'overdue_pm' | 'warranty_expiring' | 'contract_expiring'
   | 'low_stock';
-export type RoleName = 'developer' | 'admin' | 'technician' | 'department_user' | 'store_user' | 'viewer';
+export type RoleName =
+  | 'developer'
+  | 'admin'
+  | 'bme_head'
+  | 'technician'
+  | 'department_head'
+  | 'department_user'
+  | 'store_user'
+  | 'viewer';
 
 // =============================================================================
 // Reference / Master Data

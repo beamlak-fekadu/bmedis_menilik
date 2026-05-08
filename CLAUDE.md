@@ -47,9 +47,14 @@ DONE:
 - Step 4:  DONE — beamlak.work@gmail.com auth user linked to profile (user_id=7d8ac74b-ec15-414d-bfea-e4433eb8bc14)
            developer role created (00022) and assigned; useRole/useProfile hooks handle 'developer' correctly
 - Step 5:  Command Center built at /command — unified decision-support landing page
-- Step 6:  Sensitivity sliders placeholder exists at /replacement (TODO comment in place)
+- Step 6:  Sensitivity analysis sliders implemented at /replacement with reset, total-weight cue,
+           simulated ranking, and missing-data annotations
 - Step 7:  PDF export implemented — jsPDF + jspdf-autotable installed and wired to /reports/[type]
 - Step 8:  /command/triage confirmed working — dedup logic in UI, real data, 80 unique assets
+- Step 9:  Server-action hardening added for operational writes across equipment, maintenance,
+           PM, calibration, stock, procurement, training, disposal, documents, users, settings,
+           alerts, installation, and scoped offline sync
+- Step 10: Audit/revalidation coverage added to new server actions; profile IDs are used for audit FK fields
 - Step 14: Supabase TypeScript types generated (src/types/supabase.ts)
 - Step 15: Login page shows "Yekatit-12 Hospital Medical College"
 - Reliability metrics (2026-05-05, migrations 00034–00035): one row per asset in equipment_reliability_metrics; idx_reliability_metrics_asset_unique; recompute upserts on asset_id; Command Center triage detail uses availability_ratio (DB column), not a misnamed percentage field.
@@ -57,12 +62,10 @@ DONE:
 - Audit remediation (2026-05-05, migrations 00027–00033): full recompute backfill on deploy; audit performed_by/details + acknowledgeFlag profile FK; constraints (low_stock flag_type, PMC grain unique + dedupe, partial unique asset_code for active rows, non-negative repair/downtime hours); hot-path indexes; read-model views refreshed with deleted_at filters and COALESCE; dropped unused repeat_repair_flags + equipment_locations; chat_sessions column equipment_id → asset_id
 
 IN PROGRESS:
-- Step 8:  Remaining: recurring failure count (only 1 asset returned by generate_recommendation_flags)
+- Step 8:  Recurring failure count intentionally remains at 1 seeded asset because the thesis
+           threshold is failureCount >= 4; this is documented in the UI and QA notes
 
 NOT STARTED:
-- Step 6:  Sensitivity analysis sliders (placeholder exists, sliders not built)
-- Step 9:  Role-gated UI enforcement across all module pages (server-side, not just nav)
-- Step 10: Real audit log data — /audit RLS verified pattern; confirm rows appear after mutations (writers now populate performed_by)
 - Step 11: BME usability evaluation instrument design
 - Step 12: Usability testing with BMEs at Yekatit 12
 - Step 13: MEMIS comparison section for thesis
@@ -77,14 +80,14 @@ NOT STARTED:
   /command/triage             Full triage queue — confirmed working, real data, 80 assets after dedup
 
 ### Equipment (Biomedical Asset Management)
-  /inventory                  Canonical equipment list — canonical URL for biomedical assets
-  /inventory/new              Create asset
-  /inventory/[id]             Asset detail (reliability, risk, maintenance history, flags)
-  /inventory/[id]/edit        Edit asset
-  /equipment                  Redirect alias → /inventory (page exists but is alias)
-  /equipment/new              Redirect alias
-  /equipment/[id]             Redirect alias
-  /equipment/[id]/edit        Redirect alias
+  /equipment                  Canonical equipment list — canonical URL for biomedical assets
+  /equipment/new              Create asset
+  /equipment/[id]             Asset detail (reliability, risk, maintenance history, flags)
+  /equipment/[id]/edit        Edit asset
+  /inventory                  Deprecated redirect alias → /equipment
+  /inventory/new              Deprecated redirect alias → /equipment/new
+  /inventory/[id]             Deprecated redirect alias → /equipment/[id]
+  /inventory/[id]/edit        Deprecated redirect alias → /equipment/[id]/edit
 
 ### Work
   /maintenance                Maintenance requests + work order overview
@@ -156,11 +159,12 @@ NOT STARTED:
 2.  RESOLVED — /command/triage confirmed working. 80 unique assets displayed after UI
     deduplication. v_command_center_triage view was in ghost migration 00021 (now fixed).
 
-3.  Sensitivity sliders at /replacement — placeholder comment only, not implemented.
+3.  RESOLVED (2026-05-07) — Sensitivity sliders at /replacement are implemented with
+    default reset, total weight cue, simulated RPI ranking, and missing-score annotation.
 
-4.  Server-side role enforcement missing on form/create pages — client-side useRole()
-    hook is not enough; server components need requireRole() calls before rendering
-    mutation UI for equipment/new, maintenance/requests/new, etc.
+4.  RESOLVED/PARTIAL HARDENING (2026-05-07) — Operational writes now use server actions
+    with role checks, audit logging, and revalidation. Interactive pages remain client
+    components where needed, but mutation calls should not bypass src/actions/.
 
 5.  RESOLVED (2026-05-04, migration 00023) — Triage accumulation fixed. DELETE now clears ALL
     'open' rows before re-inserting. triage_action_queue contains exactly 80 open rows.
@@ -172,13 +176,15 @@ NOT STARTED:
     PM plans, schedules (2024-2025), completions, and quarterly compliance rows added for
     Inpatient Ward (71%), Pharmacy (71%), and Radiology (82%). /pm department chart shows 8/8.
 
-8.  Recurring failure card on /maintenance shows only 1 asset (ICU Ventilator #2) —
-    investigate generate_recommendation_flags recurring_failure logic.
+8.  DOCUMENTED (2026-05-07) — Recurring failure card on /maintenance shows only 1 asset
+    because seed data has one asset crossing the configured failureCount >= 4 threshold.
 
-9.  Breadcrumbs on /replacement and other pages still say "Dashboard" not "Command Center".
+9.  RESOLVED (2026-05-07) — Stale "Dashboard" breadcrumbs on key operational pages were
+    updated to "Command Center".
 
-10. Offline sync transport not implemented — technician-queue.ts enqueues to localStorage
-    but no sync worker exists to POST to server.
+10. SCOPED IMPLEMENTATION (2026-05-07) — Offline sync replay exists for work-order status
+    updates and maintenance event logs via src/actions/offline-sync.actions.ts. No background
+    service worker; sync is manual from work-order detail.
 
 11. RESOLVED (2026-05-05, migration 00028 + app) — Audit writes: logAuditEvent sets performed_by
     and optional details; errors surfaced via console.error and return value. acknowledgeFlag

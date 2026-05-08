@@ -204,6 +204,9 @@ export default function MaintenancePage() {
           {acknowledgedRecurringCount > 0 && (
             <p className="mb-2 text-xs text-[var(--text-muted)]">{acknowledgedRecurringCount} acknowledged</p>
           )}
+          <p className="mb-3 text-xs text-[var(--text-muted)]">
+            Seeded recurring-failure flags use the thesis threshold of 4 or more failures in the assessed period. Assets with 2-3 events remain below the threshold until more failures are logged.
+          </p>
           <div className="max-h-64 overflow-y-auto divide-y divide-[var(--border-subtle)]/60">
             {recurringFailures.map((flag) => {
               const asset = flag.equipment_assets;

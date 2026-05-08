@@ -132,9 +132,6 @@ async function fetchTriageData(
   ]);
 
   if (assetIdRes.error || rowsRes.error) {
-    if (process.env.NODE_ENV === 'development') {
-      console.warn('[Command/Section1] triage queue query error:', assetIdRes.error ?? rowsRes.error);
-    }
     return { rows: [], totalItems: 0 };
   }
 
@@ -190,7 +187,6 @@ async function fetchReadinessData(supabase: Awaited<ReturnType<typeof createClie
     .limit(500);
 
   if (error) {
-    if (process.env.NODE_ENV === 'development') console.warn('[Command/Section2] readiness query error:', error);
     return [];
   }
 
@@ -202,10 +198,6 @@ async function fetchReadinessData(supabase: Awaited<ReturnType<typeof createClie
       essential_functional: Number(row.essential_functional ?? 0),
       readiness_score: Math.round(Number(row.readiness_score ?? 0)),
     }));
-
-  if (process.env.NODE_ENV === 'development') {
-    console.log(`[Command/Section2] latest clinical readiness snapshot departments: ${rows.length}`);
-  }
 
   return rows.sort((a, b) => a.department_name.localeCompare(b.department_name));
 }
@@ -235,10 +227,6 @@ async function fetchWorkInProgress(supabase: Awaited<ReturnType<typeof createCli
   const pmRows = (pmRes.data ?? []) as Array<{ id: string; scheduled_date: string }>;
 
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-
-  if (process.env.NODE_ENV === 'development') {
-    console.log(`[Command/Section3] open WOs: ${woRows.length}, overdue PM: ${pmRows.length}, cal due: ${(calRes.data ?? []).length}`);
-  }
 
   return {
     open_work_orders: woRows.length,
@@ -276,10 +264,6 @@ async function fetchRiskData(supabase: Awaited<ReturnType<typeof createClient>>)
     };
   });
 
-  if (process.env.NODE_ENV === 'development') {
-    console.log(`[Command/Section4] risk score rows: ${rows.length}, total assets: ${assetCountRes.count ?? 0}`);
-  }
-
   return { rows, totalAssets: assetCountRes.count ?? 0 };
 }
 
@@ -292,7 +276,6 @@ async function fetchReplacementData(supabase: Awaited<ReturnType<typeof createCl
     .limit(500); // performance guard; returns all candidates for total count
 
   if (error) {
-    if (process.env.NODE_ENV === 'development') console.warn('[Command/Section5] replacement query error:', error);
     return { rows: [], total: 0 };
   }
 
@@ -315,17 +298,13 @@ async function fetchReplacementData(supabase: Awaited<ReturnType<typeof createCl
     };
   });
 
-  if (process.env.NODE_ENV === 'development') {
-    console.log(`[Command/Section5] replacement priority rows: ${all.length}`);
-  }
-
   return { rows: all.slice(0, 5), total: all.length }; // top 5 by design; total for footer
 }
 
 // ─── page ─────────────────────────────────────────────────────────────────────
 
 export default async function CommandCenterPage() {
-  const profile = await requireRole(['developer', 'admin', 'technician', 'department_user', 'store_user', 'viewer']);
+  const profile = await requireRole(['developer', 'admin', 'bme_head', 'technician', 'department_head', 'department_user', 'store_user', 'viewer']);
   const primaryRole = profile.roleNames?.[0] ?? 'viewer';
   const profileId = ((profile as unknown as Record<string, unknown>).id as string | undefined) ?? null;
   const departmentId = ((profile as unknown as Record<string, unknown>).department_id as string | undefined) ?? null;
@@ -347,8 +326,7 @@ export default async function CommandCenterPage() {
       fetchRiskData(supabase),
       fetchReplacementData(supabase),
     ]);
-  } catch (err) {
-    console.error('[Command] Top-level data fetch error:', err);
+  } catch {
   }
 
   // Build RPN bands from the full risk rows set.

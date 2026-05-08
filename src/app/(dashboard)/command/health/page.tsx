@@ -14,7 +14,7 @@ function row(label: string, value: string | number) {
 }
 
 export default async function CommandHealthPage() {
-  await requireRole(['admin']);
+  await requireRole(['developer', 'admin']);
   const supabase = await createClient();
 
   const [activeAssets, riskCoverage, openTriage, readinessRows, replacementCount, flagRows, lastRefreshRes] = await Promise.all([
@@ -53,7 +53,7 @@ export default async function CommandHealthPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Decision Support Health" description="Admin diagnostics for decision-support completeness and freshness." actions={<RefreshButton />} />
+      <PageHeader title="Decision Support Health" description="Developer/admin diagnostics for decision-support completeness and freshness." actions={<RefreshButton />} />
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
         <Card><CardHeader><CardTitle>Coverage</CardTitle></CardHeader><CardContent className="space-y-2">{row('Active assets', activeAssetCount)}{row('Risk coverage', `${riskDistinct}/${activeAssetCount}`)}{row('Open triage items', openTriageCount)}</CardContent></Card>
         <Card><CardHeader><CardTitle>Readiness & Replacement</CardTitle></CardHeader><CardContent className="space-y-2">{row('Latest readiness date', latestSnapshotDate ?? '—')}{row('Departments covered', readinessDeptCount)}{row('Replacement candidates', replacementCandidates)}</CardContent></Card>
@@ -72,6 +72,15 @@ export default async function CommandHealthPage() {
               ))}
             </ul>
           )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader><CardTitle>Developer Thesis Controls</CardTitle></CardHeader>
+        <CardContent>
+          <p className="text-sm text-[var(--text-muted)]">
+            Developer thesis controls will include weight sliders, sensitivity analysis, demo reset, AI telemetry, offline sync debug, and QR test tools.
+          </p>
         </CardContent>
       </Card>
     </div>

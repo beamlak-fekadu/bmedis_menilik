@@ -15,9 +15,8 @@ import { PageLoader } from '@/components/ui/Spinner';
 import { useToast } from '@/components/ui/Toast';
 import {
   getDisposalRequests,
-  createDisposalRequest,
-  updateDisposalRequestStatus,
 } from '@/services/disposal.service';
+import { createDisposalRequestAction, updateDisposalRequestStatusAction } from '@/actions/disposal.actions';
 import { getEquipmentList } from '@/services/equipment.service';
 import { createClient } from '@/lib/supabase/client';
 import type { DisposalMethod, DisposalRequestStatus } from '@/types/database';
@@ -105,7 +104,7 @@ export default function DisposalPage() {
     }
     setSubmitting(true);
     try {
-      const { error } = await createDisposalRequest({
+      const result = await createDisposalRequestAction({
         asset_id: formAssetId,
         requested_by: null,
         reason: formReason,
@@ -113,7 +112,7 @@ export default function DisposalPage() {
         status: 'pending' as DisposalRequestStatus,
         notes: formNotes || null,
       });
-      if (error) throw error;
+      if (!result.success) throw new Error(result.error ?? 'Failed to create disposal request');
       toast('success', 'Disposal request created');
       setCreateOpen(false);
       resetForm();
@@ -129,11 +128,11 @@ export default function DisposalPage() {
     if (!approveTarget) return;
     setSubmitting(true);
     try {
-      const { error } = await updateDisposalRequestStatus(
+      const result = await updateDisposalRequestStatusAction(
         approveTarget.id as string,
         'approved'
       );
-      if (error) throw error;
+      if (!result.success) throw new Error(result.error ?? 'Failed to approve request');
       toast('success', 'Disposal request approved');
       setApproveTarget(null);
       loadData();
@@ -148,11 +147,11 @@ export default function DisposalPage() {
     if (!rejectTarget) return;
     setSubmitting(true);
     try {
-      const { error } = await updateDisposalRequestStatus(
+      const result = await updateDisposalRequestStatusAction(
         rejectTarget.id as string,
         'rejected'
       );
-      if (error) throw error;
+      if (!result.success) throw new Error(result.error ?? 'Failed to reject request');
       toast('success', 'Disposal request rejected');
       setRejectTarget(null);
       loadData();

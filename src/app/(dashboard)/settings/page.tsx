@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Plus, Pencil, Trash2, MoreVertical, Shield } from 'lucide-react';
 import * as settingsService from '@/services/settings.service';
+import { createReferenceRowAction, removeReferenceRowAction, updateReferenceRowAction } from '@/actions/settings.actions';
 import {
   PageHeader,
   DataTable,
@@ -261,16 +262,16 @@ export default function SettingsPage() {
     setSaving(true);
     try {
       if (editingItem) {
-        const { error } = await settingsService.update(
+        const result = await updateReferenceRowAction(
           activeTab,
           editingItem.id as string,
           formData
         );
-        if (error) throw error;
+        if (!result.success) throw new Error(result.error ?? 'Failed to update record');
         toast('success', 'Record updated successfully');
       } else {
-        const { error } = await settingsService.create(activeTab, formData);
-        if (error) throw error;
+        const result = await createReferenceRowAction(activeTab, formData);
+        if (!result.success) throw new Error(result.error ?? 'Failed to create record');
         toast('success', 'Record created successfully');
       }
       setModalOpen(false);
@@ -286,8 +287,8 @@ export default function SettingsPage() {
     if (!deleteTarget) return;
     setDeleting(true);
     try {
-      const { error } = await settingsService.remove(deleteTarget.table, deleteTarget.id);
-      if (error) throw error;
+      const result = await removeReferenceRowAction(deleteTarget.table, deleteTarget.id);
+      if (!result.success) throw new Error(result.error ?? 'Failed to delete record');
       toast('success', 'Record deleted successfully');
       fetchTableData(activeTab);
     } catch {

@@ -1,8 +1,14 @@
 'use client';
 
 import Link from 'next/link';
+import { useEffect, useState } from 'react';
 import { ClipboardList, PackageCheck, FileSearch, GraduationCap, Wrench, Gauge, Trash2 } from 'lucide-react';
-import { PageHeader, Card, Badge } from '@/components/ui';
+import { PageHeader, Card, Badge, StatCard } from '@/components/ui';
+import { getMaintenanceRequests } from '@/services/maintenance.service';
+import { getCalibrationRequests } from '@/services/calibration.service';
+import { getTrainingRequests } from '@/services/training.service';
+import { getDisposalRequests } from '@/services/disposal.service';
+import { getProcurementPipeline } from '@/services/procurement.service';
 
 const REQUEST_MODULES = [
   { label: 'Installation Requests', href: '/installation', icon: PackageCheck, note: 'Track installation planning and completion.' },
@@ -15,6 +21,28 @@ const REQUEST_MODULES = [
 ];
 
 export default function RequestsHubPage() {
+  const [counts, setCounts] = useState({ maintenance: 0, calibration: 0, training: 0, disposal: 0, procurement: 0 });
+
+  useEffect(() => {
+    async function loadCounts() {
+      const [maintenance, calibration, training, disposal, procurement] = await Promise.all([
+        getMaintenanceRequests(),
+        getCalibrationRequests(),
+        getTrainingRequests(),
+        getDisposalRequests(),
+        getProcurementPipeline(),
+      ]);
+      setCounts({
+        maintenance: maintenance.data?.length ?? 0,
+        calibration: calibration.data?.length ?? 0,
+        training: training.data?.length ?? 0,
+        disposal: disposal.data?.length ?? 0,
+        procurement: procurement.data?.length ?? 0,
+      });
+    }
+    void loadCounts();
+  }, []);
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -22,6 +50,14 @@ export default function RequestsHubPage() {
         description="Central request intake aligned with MEMIS 2.0 request categories."
         actions={<Badge variant="info">Role-based visibility enabled</Badge>}
       />
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+        <StatCard label="Maintenance" value={counts.maintenance} icon={<Wrench className="h-6 w-6" />} color="blue" />
+        <StatCard label="Calibration" value={counts.calibration} icon={<Gauge className="h-6 w-6" />} color="purple" />
+        <StatCard label="Training" value={counts.training} icon={<GraduationCap className="h-6 w-6" />} color="green" />
+        <StatCard label="Disposal" value={counts.disposal} icon={<Trash2 className="h-6 w-6" />} color="red" />
+        <StatCard label="Procurement" value={counts.procurement} icon={<ClipboardList className="h-6 w-6" />} color="orange" />
+      </div>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {REQUEST_MODULES.map((item) => (

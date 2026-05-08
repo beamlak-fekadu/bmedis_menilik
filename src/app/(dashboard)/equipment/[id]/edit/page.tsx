@@ -9,10 +9,11 @@ import {
   Input, Select, Textarea, Spinner,
 } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
-import { getEquipmentById, updateEquipment } from '@/services/equipment.service';
+import { getEquipmentById } from '@/services/equipment.service';
 import { getAll } from '@/services/settings.service';
 import { ROUTES } from '@/constants';
 import type { EquipmentCondition } from '@/types/database';
+import { updateEquipmentAction } from '@/actions/equipment.actions';
 
 interface RefOption {
   value: string;
@@ -166,8 +167,8 @@ export default function EditEquipmentPage({ params }: { params: Promise<{ id: st
         notes: form.notes || null,
       };
 
-      const { error } = await updateEquipment(id, payload);
-      if (error) throw error;
+      const result = await updateEquipmentAction(id, payload);
+      if (!result.success) throw new Error(result.error ?? 'Failed to update equipment');
 
       toast('success', 'Equipment updated successfully');
       router.push(`${ROUTES.EQUIPMENT}/${id}`);

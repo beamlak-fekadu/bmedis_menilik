@@ -7,6 +7,8 @@ export const HOSPITAL_NAME = 'Yekatit-12 Hospital Medical College';
 export const CHATBOT_NAME = 'BMERMS AI Chatbot';
 export const ASSISTANT_NAME = 'BMERMS AI Assistant';
 
+export { ROLE_CONFIG } from './roles';
+
 export const ROUTES = {
   LOGIN: '/login',
   RESET_PASSWORD: '/reset-password',
@@ -58,67 +60,68 @@ export const NAV_SECTIONS = [
   {
     title: 'Command',
     items: [
-      { label: 'Command Center', href: ROUTES.COMMAND, icon: 'LayoutDashboard', roles: ['admin', 'technician', 'department_user', 'store_user', 'viewer'] },
+      { label: 'Command Center', href: ROUTES.COMMAND, icon: 'LayoutDashboard', roles: ['developer', 'admin', 'bme_head', 'technician', 'department_head', 'department_user', 'store_user', 'viewer'] },
     ],
   },
   {
     title: 'Equipment',
     items: [
-      { label: 'Equipment', href: ROUTES.EQUIPMENT, icon: 'Monitor', roles: ['admin', 'technician', 'department_user', 'store_user', 'viewer'] },
+      { label: 'Equipment', href: ROUTES.EQUIPMENT, icon: 'Monitor', roles: ['developer', 'admin', 'bme_head', 'technician', 'department_head', 'department_user', 'store_user', 'viewer'] },
     ],
   },
   {
     title: 'Work',
     items: [
-      { label: 'Maintenance', href: ROUTES.MAINTENANCE, icon: 'Wrench', roles: ['admin', 'technician', 'department_user'] },
-      { label: 'Preventive Maintenance', href: ROUTES.PM, icon: 'CalendarCheck', roles: ['admin', 'technician'] },
-      { label: 'Calibration', href: ROUTES.CALIBRATION, icon: 'Gauge', roles: ['admin', 'technician'] },
-      { label: 'Work Orders', href: ROUTES.WORK_ORDERS, icon: 'ClipboardList', roles: ['admin', 'technician', 'department_user', 'viewer'] },
+      { label: 'Maintenance', href: ROUTES.MAINTENANCE, icon: 'Wrench', roles: ['developer', 'admin', 'bme_head', 'technician', 'department_head', 'department_user'] },
+      { label: 'Requests', href: ROUTES.REQUESTS, icon: 'ClipboardList', roles: ['developer', 'admin', 'bme_head', 'technician', 'department_head', 'department_user'] },
+      { label: 'Preventive Maintenance', href: ROUTES.PM, icon: 'CalendarCheck', roles: ['developer', 'admin', 'bme_head', 'technician'] },
+      { label: 'Calibration', href: ROUTES.CALIBRATION, icon: 'Gauge', roles: ['developer', 'admin', 'bme_head', 'technician'] },
+      { label: 'Work Orders', href: ROUTES.WORK_ORDERS, icon: 'ClipboardList', roles: ['developer', 'admin', 'bme_head', 'technician', 'department_head'] },
     ],
   },
   {
     title: 'Inventory',
     items: [
-      { label: 'Spare Parts', href: ROUTES.SPARE_PARTS, icon: 'Package', roles: ['admin', 'technician', 'store_user'] },
-      { label: 'Logistics', href: ROUTES.LOGISTICS, icon: 'Boxes', roles: ['admin', 'technician', 'store_user'] },
-      { label: 'Procurement', href: ROUTES.PROCUREMENT, icon: 'PackageCheck', roles: ['admin', 'technician', 'store_user'] },
+      { label: 'Spare Parts', href: ROUTES.SPARE_PARTS, icon: 'Package', roles: ['developer', 'admin', 'bme_head', 'technician', 'store_user'] },
+      { label: 'Logistics', href: ROUTES.LOGISTICS, icon: 'Boxes', roles: ['developer', 'admin', 'bme_head', 'technician', 'store_user'] },
+      { label: 'Procurement', href: ROUTES.PROCUREMENT, icon: 'PackageCheck', roles: ['developer', 'admin', 'bme_head', 'technician', 'store_user'] },
     ],
   },
   {
     title: 'People',
     items: [
-      { label: 'Training', href: ROUTES.TRAINING, icon: 'GraduationCap', roles: ['admin', 'technician', 'department_user'] },
-      { label: 'Users & Roles', href: ROUTES.USERS, icon: 'Users', roles: ['admin'] },
+      { label: 'Training', href: ROUTES.TRAINING, icon: 'GraduationCap', roles: ['developer', 'admin', 'bme_head', 'technician', 'department_head', 'department_user'] },
+      { label: 'Users & Roles', href: ROUTES.USERS, icon: 'Users', roles: ['developer', 'admin'] },
     ],
   },
   {
     title: 'Lifecycle',
     items: [
-      { label: 'Replacement Priority', href: ROUTES.REPLACEMENT, icon: 'ArrowUpDown', roles: ['admin', 'technician', 'viewer'] },
-      { label: 'Disposal', href: ROUTES.DISPOSAL, icon: 'Trash2', roles: ['admin', 'technician'] },
+      { label: 'Replacement Priority', href: ROUTES.REPLACEMENT, icon: 'ArrowUpDown', roles: ['developer', 'admin', 'bme_head', 'technician', 'viewer'] },
+      { label: 'Disposal', href: ROUTES.DISPOSAL, icon: 'Trash2', roles: ['developer', 'admin', 'bme_head', 'technician'] },
     ],
   },
   {
     title: 'Support',
     items: [
-      { label: 'Helpdesk', href: ROUTES.HELPDESK, icon: 'Headphones', roles: ['admin', 'technician', 'department_user'] },
-      { label: 'Alerts', href: ROUTES.ALERTS, icon: 'Bell', roles: ['admin', 'technician'] },
-      { label: CHATBOT_NAME, href: ROUTES.CHATBOT, icon: 'MessageSquareText', roles: ['admin', 'technician', 'department_user', 'store_user', 'viewer'] },
+      { label: 'Helpdesk', href: ROUTES.HELPDESK, icon: 'Headphones', roles: ['developer', 'admin', 'bme_head', 'technician', 'department_head', 'department_user', 'store_user'] },
+      { label: 'Alerts', href: ROUTES.ALERTS, icon: 'Bell', roles: ['developer', 'admin', 'bme_head', 'technician', 'department_head'] },
+      { label: CHATBOT_NAME, href: ROUTES.CHATBOT, icon: 'MessageSquareText', roles: ['developer', 'admin', 'bme_head', 'technician', 'department_head', 'department_user', 'store_user', 'viewer'] },
     ],
   },
   {
     title: 'Reports',
     items: [
-      { label: 'Reports', href: ROUTES.REPORTS, icon: 'FileBarChart', roles: ['admin', 'technician', 'department_user', 'viewer'] },
+      { label: 'Reports', href: ROUTES.REPORTS, icon: 'FileBarChart', roles: ['developer', 'admin', 'bme_head', 'technician', 'department_head', 'department_user', 'store_user', 'viewer'] },
     ],
   },
   {
     title: 'Administration',
     items: [
-      { label: 'Decision Support Health', href: '/command/health', icon: 'Activity', roles: ['admin'] },
-      { label: 'Audit Log', href: ROUTES.AUDIT, icon: 'FileText', roles: ['admin'] },
-      { label: 'Security', href: ROUTES.SECURITY, icon: 'Shield', roles: ['admin'] },
-      { label: 'Settings', href: ROUTES.SETTINGS, icon: 'Settings', roles: ['admin'] },
+      { label: 'Decision Support Health', href: '/command/health', icon: 'Activity', roles: ['developer', 'admin'] },
+      { label: 'Audit Log', href: ROUTES.AUDIT, icon: 'FileText', roles: ['developer', 'admin'] },
+      { label: 'Security', href: ROUTES.SECURITY, icon: 'Shield', roles: ['developer', 'admin'] },
+      { label: 'Settings', href: ROUTES.SETTINGS, icon: 'Settings', roles: ['developer', 'admin'] },
     ],
   },
 ] as const;

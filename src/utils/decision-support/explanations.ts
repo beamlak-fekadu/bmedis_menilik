@@ -219,7 +219,7 @@ export function generateTriageReason({ flagType, rationale, fallbackRecommendati
     return `Driven by ${joinNatural(drivers)}.`;
   }
 
-  return fallbackRecommendation?.trim() || 'Generated from current triage signals.';
+  return fallbackRecommendation?.trim() || 'Priority is based on the available decision-support signals: RPN risk, availability/MTTR/MTBF reliability, PM compliance, open flags, downtime, and replacement rank where present.';
 }
 
 export function generateReplacementDriver(input: ReplacementExplanationInput): string {
@@ -239,7 +239,7 @@ export function generateReplacementDriver(input: ReplacementExplanationInput): s
     .filter((item) => item.value > 0);
 
   if (topDrivers.length === 0) {
-    return 'Drivers not yet computed.';
+    return 'Replacement drivers are awaiting computed criteria; the model expects age, failure history, availability, maintenance burden, spare-part constraint, risk, and cost scores.';
   }
 
   return `Highest drivers: ${joinNatural(topDrivers.map((item) => `${item.label} ${item.value.toFixed(2)}`))}.`;

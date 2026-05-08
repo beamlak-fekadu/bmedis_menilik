@@ -143,11 +143,19 @@ supabase.rpc('refresh_decision_support_snapshots')
 ## File and directory conventions
 
 ### Server actions — src/actions/
+- _shared.ts — server-action helpers: getActionContext(), logServerAuditEvent(), revalidateMany()
 - analytics.actions.ts — recomputeAssetAnalytics(), recomputeAllAnalytics()
 - command.actions.ts — acknowledgeTriageItem(), acknowledgeAssetFlags(), refreshCommandCenter()
+- equipment.actions.ts, maintenance.actions.ts, pm.actions.ts, calibration.actions.ts,
+  spare-parts.actions.ts, procurement.actions.ts, training.actions.ts,
+  disposal.actions.ts, documents.actions.ts, users.actions.ts, settings.actions.ts,
+  alerts.actions.ts, installation.actions.ts, offline-sync.actions.ts — server-authorized
+  mutation boundary for dashboard workflows
 - Always use 'use server' directive at top of file
 - Return typed result: `{ success: boolean; error?: string }`
 - Always call `revalidatePath()` after mutations
+- Client components may read with existing services, but operational writes should call
+  server actions so authorization, audit, and revalidation happen server-side.
 
 ### Services — src/services/
 - Plain async TypeScript functions — NOT classes
@@ -166,7 +174,7 @@ supabase.rpc('refresh_decision_support_snapshots')
 - NEVER duplicate formula logic elsewhere — always import from these files
 
 ### Decision support utils — src/utils/decision-support/
-- explanations.ts — human-readable explanations for metrics (some placeholders remain)
+- explanations.ts — human-readable explanations for metrics, triage, alerts, and replacement criteria
 
 ### Components
 - Reusable UI: src/components/ui/
@@ -514,12 +522,12 @@ New SQL functions must use SECURITY DEFINER if they touch analytics or decision 
 
 ## Routing rules
 
-- Canonical equipment (biomedical assets) route: /inventory
-- /equipment and /equipment/[id] exist as redirect/alias pages — do NOT add new pages under /equipment
+- Canonical equipment (biomedical assets) route: /equipment
+- /inventory and /inventory/[id] exist as redirect/alias pages to /equipment
 - Sidebar must highlight "Equipment" for both /inventory and /equipment paths
 - /command is the home page — no separate /dashboard page
 - /command/health and /command/triage are sub-pages, not in main sidebar
-- All redirects are defined in src/middleware.ts — do not duplicate in pages
+- Deprecated analytics/dashboard redirects live in src/middleware.ts; /inventory aliases are page-level redirects
 
 ---
 
@@ -684,6 +692,8 @@ Report routes: /reports (selector) → /reports/[type] (Equipment/Maintenance/PM
 
 Location: src/lib/offline/technician-queue.ts
 Storage: localStorage key `memis.offline.workorder.queue.v1`
+Server replay: src/actions/offline-sync.actions.ts
+Scope: work-order `update_status` and `log_event` only; no background service worker.
 
 Queue item shape:
 ```ts
@@ -758,9 +768,10 @@ CHAT_DEBUG_PROVIDER_FLOW "true" to enable debug logging in orchestrator
    optional details, returns success flag, and uses console.error on failure. Callers should
    check the return value when compliance matters.
 
-7. Server-side role enforcement is missing on create/edit form pages. Client-side
-   useRole() hook alone is insufficient — server components must call requireRole()
-   before rendering mutation UI. Currently only navigation is role-gated.
+7. RESOLVED/PARTIAL HARDENING (2026-05-07) — operational writes now route through
+   server actions with server-side role checks, audit logging, and revalidation.
+   Some interactive pages remain client components for read/form UX; do not add new
+   client-side mutation calls that bypass src/actions/.
 
 8. Cascading deletes: asset_status_history has ON DELETE CASCADE on asset_id.
    equipment_locations table removed in migration 00032 (unused). Equipment uses

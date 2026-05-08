@@ -10,6 +10,7 @@ import {
   Users,
 } from 'lucide-react';
 import * as usersService from '@/services/users.service';
+import { assignRoleAction, removeRoleAction, updateProfileAction } from '@/actions/users.actions';
 import {
   PageHeader,
   DataTable,
@@ -110,8 +111,8 @@ export default function UsersPage() {
 
     setSaving(true);
     try {
-      const { error } = await usersService.assignRole(selectedUser.user_id, selectedRoleId);
-      if (error) throw error;
+      const result = await assignRoleAction(selectedUser.id, selectedRoleId);
+      if (!result.success) throw new Error(result.error ?? 'Failed to assign role');
       toast('success', 'Role assigned successfully');
       setRoleModalOpen(false);
       fetchData();
@@ -124,8 +125,8 @@ export default function UsersPage() {
 
   const handleRemoveRole = async (user: ProfileRow, roleId: string) => {
     try {
-      const { error } = await usersService.removeRole(user.user_id, roleId);
-      if (error) throw error;
+      const result = await removeRoleAction(user.id, roleId);
+      if (!result.success) throw new Error(result.error ?? 'Failed to remove role');
       toast('success', 'Role removed successfully');
       fetchData();
     } catch {
@@ -137,10 +138,10 @@ export default function UsersPage() {
     if (!toggleTarget) return;
     setToggling(true);
     try {
-      const { error } = await usersService.updateProfile(toggleTarget.id, {
+      const result = await updateProfileAction(toggleTarget.id, {
         is_active: !toggleTarget.is_active,
       });
-      if (error) throw error;
+      if (!result.success) throw new Error(result.error ?? 'Failed to update user status');
       toast('success', `User ${toggleTarget.is_active ? 'deactivated' : 'activated'} successfully`);
       fetchData();
     } catch {

@@ -14,6 +14,7 @@ import { useToast } from '@/components/ui/Toast';
 import { getEquipmentList } from '@/services/equipment.service';
 import { createClient } from '@/lib/supabase/client';
 import type { InstallationRecord, EquipmentAsset } from '@/types/database';
+import { createInstallationRecordAction } from '@/actions/installation.actions';
 
 type InstallationRow = InstallationRecord & {
   equipment_assets?: Array<{ id: string; asset_code: string; name: string }> | null;
@@ -70,8 +71,7 @@ export default function InstallationPage() {
     }
     setSubmitting(true);
     try {
-      const supabase = createClient();
-      const { error } = await supabase.from('installation_records').insert({
+      const result = await createInstallationRecordAction({
         asset_id: formAssetId,
         installed_by: formInstalledBy || null,
         installation_date: formInstallDate,
@@ -81,7 +81,7 @@ export default function InstallationPage() {
         notes: formNotes || null,
         acceptance_checklist: [],
       });
-      if (error) throw error;
+      if (!result.success) throw new Error(result.error ?? 'Failed to create installation record');
       toast('success', 'Installation record created');
       setModalOpen(false);
       resetForm();
