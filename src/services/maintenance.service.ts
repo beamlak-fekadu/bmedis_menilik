@@ -21,7 +21,9 @@ export interface WorkOrderFilters {
 
 const REQUEST_SELECT = `
   id, request_number, asset_id, requested_by, department_id,
-  fault_description, urgency, status, resolved_at, notes, created_at, updated_at,
+  fault_description, urgency, status, resolved_at, notes,
+  reported_condition, reported_condition_source,
+  created_at, updated_at,
   equipment_assets(id, asset_code, name, serial_number),
   departments(id, name, code)
 `;
@@ -30,6 +32,7 @@ const WORK_ORDER_SELECT = `
   id, work_order_number, request_id, asset_id, assigned_to, status, priority,
   work_type, root_cause, action_taken, external_vendor, external_vendor_name,
   closure_notes, estimated_hours, actual_hours, started_at, completed_at,
+  completion_outcome, final_equipment_condition,
   created_at, updated_at,
   equipment_assets(id, asset_code, name),
   profiles(id, full_name, email)
@@ -145,6 +148,73 @@ export async function updateWorkOrder(id: string, data: Partial<Omit<WorkOrder, 
   }
 
   return result;
+}
+
+export interface OpenRequestRow {
+  id: string;
+  asset_id: string;
+  status: string;
+  urgency: string;
+  created_at: string;
+}
+
+export interface OpenWorkOrderRow {
+  id: string;
+  asset_id: string;
+  status: string;
+  priority: string;
+  assigned_to: string | null;
+  created_at: string;
+}
+
+export async function getOpenMaintenanceRequests() {
+  const supabase = createClient();
+  return supabase
+    .from('maintenance_requests')
+    .select('id, asset_id, status, urgency, created_at')
+    .in('status', ['pending', 'approved', 'assigned', 'in_progress'])
+    .order('created_at', { ascending: false });
+}
+
+export async function getOpenWorkOrders() {
+  const supabase = createClient();
+  return supabase
+    .from('work_orders')
+    .select('id, asset_id, status, priority, assigned_to, created_at')
+    .in('status', ['open', 'assigned', 'in_progress', 'on_hold'])
+    .order('created_at', { ascending: false });
+}
+
+export async function getOpenRequestsForAsset(assetId: string) {
+  const supabase = createClient();
+  return supabase
+    .from('maintenance_requests')
+    .select('id, asset_id, status, urgency, reported_condition, reported_condition_source, created_at')
+    .eq('asset_id', assetId)
+    .in('status', ['pending', 'approved', 'assigned', 'in_progress'])
+    .order('created_at', { ascending: false });
+}
+
+export async function getOpenWorkOrdersForAsset(assetId: string) {
+  const supabase = createClient();
+  return supabase
+    .from('work_orders')
+    .select('id, asset_id, status, priority, assigned_to, created_at')
+    .eq('asset_id', assetId)
+    .in('status', ['open', 'assigned', 'in_progress', 'on_hold'])
+    .order('created_at', { ascending: false });
+}
+
+export async function getLastCompletedWorkOrderForAsset(assetId: string) {
+  const supabase = createClient();
+  return supabase
+    .from('work_orders')
+    .select('id, asset_id, status, completion_outcome, final_equipment_condition, completed_at')
+    .eq('asset_id', assetId)
+    .eq('status', 'completed')
+    .order('completed_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
 }
 
 export async function getMaintenanceEvents(assetId: string) {

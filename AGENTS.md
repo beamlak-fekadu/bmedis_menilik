@@ -1,6 +1,6 @@
 # AGENTS.md — BMERMS Codebase Reference for AI Agents
 
-Last updated: 2026-05-09 (session 8, Command Center action accuracy)
+Last updated: 2026-05-09 (session 10, Equipment condition auditability + completion outcome)
 Branch: BMERMS_V4
 Supabase project ID: fgqyszbxzpmqzpqvdivx
 
@@ -234,6 +234,37 @@ supabase.rpc('refresh_decision_support_snapshots')
 6. Future triage categories: new triage categories must define record IDs, exact routes, and prefilled fallback flows before being shown in the Command Center.
 7. BME Head principle: the system recommends/explains; the BME Head decides.
 
+### Equipment Section Semantics (session 9)
+1. Condition is the primary operational state. Status (active/inactive/disposed) is NOT shown in the main Equipment list or table; it stays in the DB and admin/edit forms only.
+2. Canonical condition labels: functional→"Functional", needs_repair→"Needs repair", non_functional→"Non-functional", under_maintenance→"Under maintenance". Always import from `src/utils/equipment/condition-labels.ts`.
+3. Maintenance state is derived from open requests/work orders and shown in the Equipment table.
+   - Maintenance state values: no_issue / no_request / request_pending / wo_open / wo_assigned / wo_in_progress / wo_on_hold
+   - Open request: status in pending/approved/assigned/in_progress. Open WO: status in open/assigned/in_progress/on_hold.
+4. Condition synchronization rules (session 10 corrected):
+   - reported_condition on maintenance_requests is stored in DB (migration 00038). Values: functional_issue (no condition change), needs_repair (sync), non_functional (sync).
+   - When maintenance request is created with reported_condition=needs_repair or non_functional: updateEquipmentConditionAction() syncs equipment_assets.condition.
+   - When work order status → in_progress: equipment condition set to under_maintenance.
+   - When work order status → completed: condition set to final_equipment_condition from completion modal, defaulting from completion_outcome (resolved→functional, partially_resolved→needs_repair, not_resolved→non_functional, awaiting_parts_or_vendor→under_maintenance). Never unconditionally sets functional.
+   - When work order status → on_hold: condition unchanged (remains under_maintenance or needs_repair).
+   - completion_outcome and final_equipment_condition are stored in work_orders (migration 00039).
+   - Reported condition source is stored in reported_condition_source column for audit trail.
+5. Equipment list page state-aware row actions:
+   - Open WO (on_hold) → Resolve Blocker → workOrderDetail(id, 'resolve-blocker')
+   - Open WO (in_progress) → View Progress → workOrderDetail(id)
+   - Open WO (assigned) → Open Work Order → workOrderDetail(id, 'reassign')
+   - Open WO (open) → Open Work Order → workOrderDetail(id)
+   - Open request → Open Request → maintenanceRequestDetail(id)
+   - needs_repair / non_functional + no request + canCreateRequests → Create Request → createMaintenanceRequestFromAsset(...)
+   - High/critical risk, functional → Review Risk → /equipment/${id}
+   - Replacement candidate (RPN > 200) → Evidence → replacementEvidence(id)
+   - Default → View → /equipment/${id}
+6. Create Request from equipment always uses source=equipment (not command-center) and passes reportedCondition in the URL.
+7. Reliability display rules: never show "Availability: 0 failures". If failure_count=0 → "No recorded failures". If availability_ratio is null but failures exist → "Insufficient downtime data". If no failures at all → "100% (no failures)". Always show formula explanation.
+8. Every composite score on equipment detail is explainable: RPN (S×O×D, drivers, method), RPI (weighted sum, 7 criteria, /100), PMC (completed/scheduled, formula), reliability (operational/failure count, formula), calibration (last/next/result).
+9. Equipment list page loads all data at mount and filters entirely client-side (80 assets; no re-fetch on filter change).
+10. Summary cards on equipment list are clickable and apply quick filters to the table.
+11. updateEquipmentConditionAction() in equipment.actions.ts — lightweight action only updating condition; allowed by admin/bme_head/technician/department_head/department_user.
+
 ### Components
 - Reusable UI: src/components/ui/
 - Layout: src/components/layout/ (Sidebar.tsx, Topbar.tsx, DashboardLayout.tsx)
@@ -298,8 +329,8 @@ status enum: active / inactive / disposed / in_storage
 ### Maintenance (Migration 00004)
 | Table                    | Key columns                                                         |
 |--------------------------|---------------------------------------------------------------------|
-| maintenance_requests     | id, request_number(UQ), asset_id(FK), requested_by(FK), department_id(FK), fault_description, urgency(enum), status(enum) |
-| work_orders              | id, work_order_number(UQ), request_id(FK), asset_id(FK), assigned_to(FK), status(enum), priority(enum), work_type(enum) |
+| maintenance_requests     | id, request_number(UQ), asset_id(FK), requested_by(FK), department_id(FK), fault_description, urgency(enum), status(enum), reported_condition(text,nullable CHECK functional_issue/needs_repair/non_functional — 00038), reported_condition_source(text,nullable — 00038) |
+| work_orders              | id, work_order_number(UQ), request_id(FK), asset_id(FK), assigned_to(FK), status(enum), priority(enum), work_type(enum), completion_outcome(text,nullable CHECK resolved/partially_resolved/not_resolved/awaiting_parts_or_vendor — 00039), final_equipment_condition(text,nullable CHECK functional/needs_repair/non_functional/under_maintenance — 00039) |
 | maintenance_events       | id, work_order_id(FK), asset_id(FK), event_type(enum), failure_date, downtime_start, downtime_end, repair_duration_hours (CHECK ≥0 when set — migration 00029), failure_code_id(FK), action_code_id(FK), service_cost |
 | downtime_logs            | id, asset_id(FK), event_id(FK), start_time, end_time, duration_hours (CHECK ≥0 when set — migration 00029) |
 | maintenance_parts_used   | id, event_id(FK), spare_part_id(FK), quantity_used, unit_cost       |
@@ -483,6 +514,12 @@ New SQL functions must use SECURITY DEFINER if they touch analytics or decision 
 - getEquipmentById(id), createEquipment(data), updateEquipment(id, data), deleteEquipment(id)
 - asset_code auto-uppercased, createEquipment checks for duplicates, all mutations log audit
 
+### Equipment utilities — src/utils/equipment/
+- condition-labels.ts: formatEquipmentCondition(condition), getConditionBadgeClass(condition), EQUIPMENT_CONDITION_OPTIONS, isFaulted(condition)
+- maintenance-state.ts: getMaintenanceState(condition, openRequest?, openWO?), formatMaintenanceState(state), getMaintenanceStateBadgeClass(state), types MaintenanceState/OpenRequestInfo/OpenWorkOrderInfo
+- Canonical condition labels: functional→"Functional", needs_repair→"Needs repair", non_functional→"Non-functional", under_maintenance→"Under maintenance", decommissioned→"Decommissioned"
+- NEVER use "Non Functional" (no hyphen), "none functional", or "not functional"
+
 ### maintenance.service.ts
 - getMaintenanceRequests(filters), getRequestById(id)
 - createRequest(data) — request_number: MR-{timestamp}
@@ -491,6 +528,11 @@ New SQL functions must use SECURITY DEFINER if they touch analytics or decision 
 - createWorkOrder(data) — work_order_number: WO-{timestamp}
 - updateWorkOrder(id, data) — triggers recomputeAssetAnalytics if status='completed'
 - getMaintenanceEvents(assetId), createMaintenanceEvent(data)
+- getOpenMaintenanceRequests() — all requests with status in pending/approved/assigned/in_progress (no filters)
+- getOpenWorkOrders() — all work orders with status in open/assigned/in_progress/on_hold (no filters)
+- getOpenRequestsForAsset(assetId) — open requests for a specific asset; includes reported_condition + reported_condition_source
+- getOpenWorkOrdersForAsset(assetId) — open work orders for a specific asset
+- getLastCompletedWorkOrderForAsset(assetId) — last completed WO; returns completion_outcome + final_equipment_condition
 
 ### pm.service.ts
 - getPMPlans(filters), createPMPlan(data)

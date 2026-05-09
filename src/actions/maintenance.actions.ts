@@ -2,6 +2,7 @@
 
 import { z } from 'zod';
 import { recomputeAssetAnalytics } from './analytics.actions';
+import { updateEquipmentConditionAction } from './equipment.actions';
 import { getActionContext, logServerAuditEvent, revalidateMany, actionError, nullIfEmpty, type ActionResult } from './_shared';
 
 const requestSchema = z.object({
@@ -12,6 +13,11 @@ const requestSchema = z.object({
   urgency: z.enum(['low', 'medium', 'high', 'critical']),
   status: z.enum(['pending', 'approved', 'assigned', 'in_progress', 'completed', 'rejected', 'canceled']).optional(),
   notes: z.string().optional().nullable(),
+  // Stored for audit: what condition the requester observed at time of request creation.
+  // functional_issue = equipment works but has a problem (no condition change to equipment_assets).
+  // needs_repair / non_functional = synced to equipment_assets.condition.
+  reported_condition: z.enum(['functional_issue', 'needs_repair', 'non_functional']).optional().nullable(),
+  reported_condition_source: z.string().optional().nullable(),
 });
 
 const workOrderSchema = z.object({
@@ -30,6 +36,9 @@ const workOrderSchema = z.object({
   actual_hours: z.coerce.number().optional().nullable(),
   started_at: z.string().optional().nullable(),
   completed_at: z.string().optional().nullable(),
+  // Completion outcome fields (migration 00039)
+  completion_outcome: z.enum(['resolved', 'partially_resolved', 'not_resolved', 'awaiting_parts_or_vendor']).optional().nullable(),
+  final_equipment_condition: z.enum(['functional', 'needs_repair', 'non_functional', 'under_maintenance']).optional().nullable(),
 });
 
 const eventSchema = z.object({
@@ -49,7 +58,18 @@ const eventSchema = z.object({
   notes: z.string().optional().nullable(),
 });
 
-const maintenancePaths = ['/maintenance', '/work-orders', '/command', '/reports/maintenance'];
+const maintenancePaths = ['/maintenance', '/work-orders', '/command', '/reports/maintenance', '/equipment'];
+
+// Completion outcome → default final equipment condition
+function outcomeToCondition(outcome: string): 'functional' | 'needs_repair' | 'non_functional' | 'under_maintenance' {
+  switch (outcome) {
+    case 'resolved': return 'functional';
+    case 'partially_resolved': return 'needs_repair';
+    case 'not_resolved': return 'non_functional';
+    case 'awaiting_parts_or_vendor': return 'under_maintenance';
+    default: return 'functional';
+  }
+}
 
 function normalizeWorkOrder(payload: Record<string, unknown>) {
   const parsed = workOrderSchema.parse(payload);
@@ -66,6 +86,8 @@ function normalizeWorkOrder(payload: Record<string, unknown>) {
     actual_hours: parsed.actual_hours ?? null,
     started_at: nullIfEmpty(parsed.started_at),
     completed_at: nullIfEmpty(parsed.completed_at),
+    completion_outcome: parsed.completion_outcome ?? null,
+    final_equipment_condition: parsed.final_equipment_condition ?? null,
   };
 }
 
@@ -98,12 +120,26 @@ export async function createMaintenanceRequestAction(payload: Record<string, unk
       department_id: nullIfEmpty(parsed.department_id) ?? profile.department_id,
       notes: nullIfEmpty(parsed.notes),
       status: parsed.status ?? 'pending',
+      reported_condition: parsed.reported_condition ?? null,
+      reported_condition_source: nullIfEmpty(parsed.reported_condition_source),
     };
 
     const result = await supabase.from('maintenance_requests').insert(data as never).select('*').single();
     if (result.error) return { success: false, error: result.error.message };
-    await logServerAuditEvent({ supabase, profileId: profile.id, action: 'maintenance_request.create', entityType: 'maintenance_requests', entityId: (result.data as { id?: string }).id ?? null, newValues: result.data as Record<string, unknown> });
-    revalidateMany(maintenancePaths);
+    await logServerAuditEvent({
+      supabase, profileId: profile.id, action: 'maintenance_request.create',
+      entityType: 'maintenance_requests', entityId: (result.data as { id?: string }).id ?? null,
+      newValues: result.data as Record<string, unknown>,
+    });
+
+    // Sync equipment condition from reported_condition.
+    // functional_issue = equipment still functional, no condition change needed.
+    // needs_repair / non_functional = sync to equipment_assets.condition.
+    if (parsed.reported_condition === 'needs_repair' || parsed.reported_condition === 'non_functional') {
+      await updateEquipmentConditionAction(parsed.asset_id, parsed.reported_condition).catch(() => undefined);
+    }
+
+    revalidateMany([...maintenancePaths, `/equipment/${parsed.asset_id}`]);
     return { success: true, data: result.data };
   } catch (err) {
     return actionError(err, 'Failed to create maintenance request');
@@ -147,16 +183,37 @@ export async function updateWorkOrderAction(id: string, payload: Record<string, 
   try {
     const { supabase, profile, error } = await getActionContext(['admin', 'bme_head', 'technician']);
     if (error || !profile) return { success: false, error };
+
+    // Parse completion fields separately (not in normalizePartialWorkOrder to keep schema stable)
+    const completionOutcome = payload.completion_outcome as string | undefined;
+    const finalEquipmentCondition = payload.final_equipment_condition as string | undefined;
+
     const data = normalizePartialWorkOrder(payload);
+    const updatePayload: Record<string, unknown> = { ...data };
+    if (completionOutcome !== undefined) updatePayload.completion_outcome = completionOutcome || null;
+    if (finalEquipmentCondition !== undefined) updatePayload.final_equipment_condition = finalEquipmentCondition || null;
+
     const oldRow = await supabase.from('work_orders').select('*').eq('id', id).maybeSingle();
-    const result = await supabase.from('work_orders').update(data as never).eq('id', id).select('*').single();
+    const result = await supabase.from('work_orders').update(updatePayload as never).eq('id', id).select('*').single();
     if (result.error) return { success: false, error: result.error.message };
     await logServerAuditEvent({ supabase, profileId: profile.id, action: data.status ? 'work_order.status_update' : 'work_order.update', entityType: 'work_orders', entityId: id, oldValues: oldRow.data as Record<string, unknown> | null, newValues: result.data as Record<string, unknown> });
-    if (data.status === 'completed') {
-      const assetId = (result.data as Record<string, unknown>).asset_id as string | undefined;
-      if (assetId) await recomputeAssetAnalytics(assetId).catch(() => undefined);
+
+    const assetId = (result.data as Record<string, unknown>).asset_id as string | undefined;
+    if (assetId) {
+      if (data.status === 'in_progress') {
+        // Starting work: set equipment to under_maintenance
+        await updateEquipmentConditionAction(assetId, 'under_maintenance').catch(() => undefined);
+      } else if (data.status === 'completed') {
+        // Completion: use explicit final_equipment_condition if provided, else derive from outcome
+        const conditionToSet = (finalEquipmentCondition as 'functional' | 'needs_repair' | 'non_functional' | 'under_maintenance' | undefined)
+          ?? (completionOutcome ? outcomeToCondition(completionOutcome) : 'functional');
+        await updateEquipmentConditionAction(assetId, conditionToSet).catch(() => undefined);
+        await recomputeAssetAnalytics(assetId).catch(() => undefined);
+      }
+      // on_hold: do not change condition — equipment remains under_maintenance or needs_repair
     }
-    revalidateMany([...maintenancePaths, `/maintenance/work-orders/${id}`]);
+
+    revalidateMany([...maintenancePaths, `/maintenance/work-orders/${id}`, ...(assetId ? [`/equipment/${assetId}`] : [])]);
     return { success: true, data: result.data };
   } catch (err) {
     return actionError(err, 'Failed to update work order');

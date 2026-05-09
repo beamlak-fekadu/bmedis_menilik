@@ -110,6 +110,30 @@ export async function updateEquipmentAction(id: string, payload: Record<string, 
   }
 }
 
+export async function updateEquipmentConditionAction(
+  assetId: string,
+  condition: 'functional' | 'needs_repair' | 'non_functional' | 'under_maintenance' | 'decommissioned',
+): Promise<ActionResult> {
+  try {
+    const { supabase, profile, error } = await getActionContext(['admin', 'bme_head', 'technician', 'department_head', 'department_user']);
+    if (error || !profile) return { success: false, error };
+    const parsedCondition = z.enum(['functional', 'needs_repair', 'non_functional', 'under_maintenance', 'decommissioned']).parse(condition);
+    const oldRow = await supabase.from('equipment_assets').select('condition').eq('id', assetId).maybeSingle();
+    const result = await supabase.from('equipment_assets').update({ condition: parsedCondition } as never).eq('id', assetId).select('id').single();
+    if (result.error) return { success: false, error: result.error.message };
+    await logServerAuditEvent({
+      supabase, profileId: profile.id, action: 'equipment.condition_update',
+      entityType: 'equipment_assets', entityId: assetId,
+      oldValues: oldRow.data as Record<string, unknown> | null,
+      newValues: { condition: parsedCondition },
+    });
+    revalidateMany([...equipmentRevalidatePaths, `/equipment/${assetId}`]);
+    return { success: true };
+  } catch (err) {
+    return actionError(err, 'Failed to update equipment condition');
+  }
+}
+
 export async function softDeleteEquipmentAction(id: string): Promise<ActionResult> {
   try {
     const { supabase, profile, error } = await getActionContext(['admin', 'bme_head', 'technician']);

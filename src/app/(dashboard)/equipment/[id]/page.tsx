@@ -4,6 +4,7 @@ import { useEffect, useState, use } from 'react';
 import Link from 'next/link';
 import {
   Activity, ArrowUpDown, CalendarCheck, Pencil, ShieldAlert,
+  Wrench, CalendarClock, AlertTriangle,
 } from 'lucide-react';
 import {
   PageHeader, Button, Card, CardHeader, CardTitle, CardContent,
@@ -11,13 +12,26 @@ import {
 } from '@/components/ui';
 import { ConditionBadge, PMStatusBadge, RiskBadge } from '@/components/ui/StatusBadge';
 import { getEquipmentById } from '@/services/equipment.service';
-import { getMaintenanceEvents } from '@/services/maintenance.service';
+import { getMaintenanceEvents, getOpenRequestsForAsset, getOpenWorkOrdersForAsset, getLastCompletedWorkOrderForAsset } from '@/services/maintenance.service';
 import { getPMSchedules } from '@/services/pm.service';
 import { getCalibrationRecords } from '@/services/calibration.service';
 import { getReliabilityMetrics, getRiskScores, getPMComplianceMetrics, getReplacementPriorities } from '@/services/analytics.service';
 import { explainRiskScore, type RiskExplanation } from '@/services/risk-assessment.service';
 import { ROUTES } from '@/constants';
 import { AskAiButton } from '@/components/assistant/AskAiButton';
+import {
+  workOrderDetail,
+  maintenanceRequestDetail,
+  createMaintenanceRequestFromAsset,
+  replacementEvidence,
+} from '@/app/(dashboard)/command/_lib/command-center-routes';
+import { formatEquipmentCondition } from '@/utils/equipment/condition-labels';
+import {
+  getMaintenanceState,
+  formatMaintenanceState,
+  getMaintenanceStateBadgeClass,
+} from '@/utils/equipment/maintenance-state';
+import { useRole } from '@/hooks/useRole';
 import type {
   EquipmentCondition, PMScheduleStatus, CalibrationResult, RiskLevel,
 } from '@/types/database';
@@ -76,6 +90,9 @@ interface ReliabilityRow {
   mtbf_hours: number | null;
   availability_ratio: number | null;
   failure_count: number;
+  repair_count?: number | null;
+  total_downtime_hours?: number | null;
+  total_operational_hours?: number | null;
   [key: string]: unknown;
 }
 
@@ -107,6 +124,22 @@ interface ReplacementRow {
   [key: string]: unknown;
 }
 
+interface OpenRecord {
+  id: string;
+  status: string;
+  urgency?: string;
+  assigned_to?: string | null;
+  reported_condition?: string | null;
+  reported_condition_source?: string | null;
+}
+
+interface LastCompletedWO {
+  id: string;
+  completion_outcome?: string | null;
+  final_equipment_condition?: string | null;
+  completed_at?: string | null;
+}
+
 function formatDate(val: string | null): string {
   if (!val) return '—';
   return new Date(val).toLocaleDateString();
@@ -128,16 +161,14 @@ function DetailRow({ label, value }: { label: string; value: React.ReactNode }) 
   );
 }
 
-function HealthMetricCard({
+function HealthCard({
   title,
   icon,
   children,
-  hasData,
 }: {
   title: string;
   icon: React.ReactNode;
   children: React.ReactNode;
-  hasData: boolean;
 }) {
   return (
     <div className="panel-surface rounded-lg p-4">
@@ -145,11 +176,7 @@ function HealthMetricCard({
         <span className="rounded-md bg-[var(--surface-2)] p-2 text-[var(--brand)]">{icon}</span>
         <h2 className="text-sm font-semibold text-[var(--foreground)]">{title}</h2>
       </div>
-      {hasData ? (
-        <div className="space-y-2">{children}</div>
-      ) : (
-        <p className="text-sm text-[var(--text-muted)]">No data yet — complete one work order to compute</p>
-      )}
+      <div className="space-y-2">{children}</div>
     </div>
   );
 }
@@ -161,6 +188,10 @@ function MetricLine({ label, value }: { label: string; value: React.ReactNode })
       <span className="font-semibold text-[var(--foreground)]">{value}</span>
     </div>
   );
+}
+
+function MetricExplain({ text }: { text: string }) {
+  return <p className="text-xs leading-5 text-[var(--text-muted)] italic">{text}</p>;
 }
 
 function RiskReasonLine({ label, score, reason }: { label: string; score: number; reason: string }) {
@@ -175,8 +206,13 @@ function RiskReasonLine({ label, score, reason }: { label: string; score: number
   );
 }
 
+function EmptyMetric({ message }: { message: string }) {
+  return <p className="text-sm text-[var(--text-muted)]">{message}</p>;
+}
+
 export default function EquipmentDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
+  const { canCreateRequests } = useRole();
   const [equipment, setEquipment] = useState<EquipmentDetail | null>(null);
   const [events, setEvents] = useState<MaintenanceEventRow[]>([]);
   const [schedules, setSchedules] = useState<PMScheduleRow[]>([]);
@@ -185,6 +221,9 @@ export default function EquipmentDetailPage({ params }: { params: Promise<{ id: 
   const [risk, setRisk] = useState<RiskRow | null>(null);
   const [pmCompliance, setPmCompliance] = useState<PMComplianceRow | null>(null);
   const [replacement, setReplacement] = useState<ReplacementRow | null>(null);
+  const [openRequest, setOpenRequest] = useState<OpenRecord | null>(null);
+  const [openWorkOrder, setOpenWorkOrder] = useState<OpenRecord | null>(null);
+  const [lastCompletedWO, setLastCompletedWO] = useState<LastCompletedWO | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -199,7 +238,7 @@ export default function EquipmentDetailPage({ params }: { params: Promise<{ id: 
       }
       setEquipment(data as unknown as EquipmentDetail);
 
-      const [eventsRes, pmRes, calRes, relRes, riskRes, pmcRes, repRes] = await Promise.all([
+      const [eventsRes, pmRes, calRes, relRes, riskRes, pmcRes, repRes, reqRes, woRes, lastWORes] = await Promise.all([
         getMaintenanceEvents(id),
         getPMSchedules({ asset_id: id }),
         getCalibrationRecords({ asset_id: id }),
@@ -207,6 +246,9 @@ export default function EquipmentDetailPage({ params }: { params: Promise<{ id: 
         getRiskScores({ asset_id: id }),
         getPMComplianceMetrics({ asset_id: id }),
         getReplacementPriorities({ asset_id: id }),
+        getOpenRequestsForAsset(id),
+        getOpenWorkOrdersForAsset(id),
+        getLastCompletedWorkOrderForAsset(id),
       ]);
 
       setEvents((eventsRes.data as unknown as MaintenanceEventRow[]) ?? []);
@@ -215,8 +257,6 @@ export default function EquipmentDetailPage({ params }: { params: Promise<{ id: 
 
       const relData = relRes.data as unknown as ReliabilityRow[] | null;
       if (relData?.length) {
-        // Prefer the row with real MTBF/MTTR data over the most-recent recomputed row
-        // that may have NULLs (rolling window misses historical seed data).
         const best = relData.find(r => r.mtbf_hours != null && r.availability_ratio != null)
           ?? relData.find(r => r.availability_ratio != null)
           ?? relData[0];
@@ -230,8 +270,6 @@ export default function EquipmentDetailPage({ params }: { params: Promise<{ id: 
       if (pmcData?.length) {
         setPmCompliance(pmcData[0]);
       } else {
-        // Seeded pm_compliance_metrics rows are department-level (no asset_id).
-        // Fall back to the most recent department-level row for this asset's department.
         const equip = data as unknown as EquipmentDetail;
         const deptId = equip.departments?.id;
         if (deptId) {
@@ -243,6 +281,14 @@ export default function EquipmentDetailPage({ params }: { params: Promise<{ id: 
 
       const repData = repRes.data as unknown as ReplacementRow[] | null;
       if (repData?.length) setReplacement(repData[0]);
+
+      const reqData = reqRes.data as unknown as OpenRecord[] | null;
+      if (reqData?.length) setOpenRequest(reqData[0]);
+
+      const woData = woRes.data as unknown as OpenRecord[] | null;
+      if (woData?.length) setOpenWorkOrder(woData[0]);
+
+      if (lastWORes.data) setLastCompletedWO(lastWORes.data as unknown as LastCompletedWO);
 
       setLoading(false);
     }
@@ -268,6 +314,141 @@ export default function EquipmentDetailPage({ params }: { params: Promise<{ id: 
     );
   }
 
+  // Convert to shape expected by utility — urgency may be absent on WO records
+  const openReqForState = openRequest ? { id: openRequest.id, status: openRequest.status, urgency: openRequest.urgency ?? 'medium' } : undefined;
+  const openWoForState = openWorkOrder ? { id: openWorkOrder.id, status: openWorkOrder.status, assigned_to: openWorkOrder.assigned_to ?? null } : undefined;
+
+  const maintState = getMaintenanceState(equipment.condition, openReqForState, openWoForState);
+  const riskReasons = explainRiskScore(risk);
+
+  // Determine primary action for page header
+  function getPrimaryAction(): React.ReactNode {
+    if (!equipment) return null;
+    if (openWorkOrder) {
+      const woStatus = openWorkOrder.status;
+      const label = woStatus === 'on_hold' ? 'Resolve Blocker' : woStatus === 'in_progress' ? 'View Progress' : 'Open Work Order';
+      const action = woStatus === 'on_hold' ? 'resolve-blocker' : undefined;
+      return (
+        <Link href={workOrderDetail(openWorkOrder.id, action)}>
+          <Button variant={woStatus === 'on_hold' ? 'destructive' : 'outline'} size="sm">{label}</Button>
+        </Link>
+      );
+    }
+    if (openRequest) {
+      return (
+        <Link href={maintenanceRequestDetail(openRequest.id)}>
+          <Button variant="outline" size="sm">Open Request</Button>
+        </Link>
+      );
+    }
+    if ((equipment.condition === 'needs_repair' || equipment.condition === 'non_functional') && canCreateRequests) {
+      const urgency = equipment.condition === 'non_functional' ? 'high' : 'medium';
+      const desc = `Equipment detail: ${equipment.name} is ${formatEquipmentCondition(equipment.condition)} with no open corrective request.`;
+      return (
+        <Link href={createMaintenanceRequestFromAsset(id, {
+          departmentId: equipment.departments?.id,
+          urgency,
+          description: desc,
+          type: 'corrective',
+        }).replace('source=command-center', 'source=equipment') + `&reportedCondition=${equipment.condition}`}>
+          <Button size="sm">Create Request</Button>
+        </Link>
+      );
+    }
+    if (risk && (risk.risk_level === 'high' || risk.risk_level === 'critical')) {
+      return (
+        <Link href={replacementEvidence(id)}>
+          <Button variant="outline" size="sm">View Evidence</Button>
+        </Link>
+      );
+    }
+    return null;
+  }
+
+  // Last calibration / next due
+  const lastCalibration = calibrations[0] ?? null;
+  const calNextDue = lastCalibration?.next_due_date ?? null;
+  const calOverdue = calNextDue ? new Date(calNextDue) < new Date() : false;
+
+  // Next PM schedule
+  const nextPM = schedules.find(s => s.status === 'scheduled') ?? null;
+  const pmOverdue = nextPM ? new Date(nextPM.scheduled_date) < new Date() : false;
+
+  const hasRisk = Boolean(risk && risk.rpn != null && risk.risk_level && risk.severity != null);
+  const hasPmCompliance = Boolean(pmCompliance && pmCompliance.scheduled_count > 0 && pmCompliance.pmc_percentage != null);
+  const hasReplacement = Boolean(replacement && replacement.rank != null && replacement.replacement_priority_index != null);
+
+  // --- Reliability display helpers ---
+  const failureCount = reliability?.failure_count ?? 0;
+  const repairCount = reliability?.repair_count ?? 0;
+
+  function renderMTBF(): React.ReactNode {
+    if (!reliability || reliability.mtbf_hours == null) {
+      return (
+        <>
+          <MetricLine label="MTBF" value="No recorded failures" />
+          <MetricExplain text={`Formula: Operational time ÷ failure count. ${failureCount === 0 ? 'No failure events recorded.' : `Failure count: ${failureCount}.`}`} />
+        </>
+      );
+    }
+    return (
+      <>
+        <MetricLine label="MTBF" value={`${reliability.mtbf_hours.toFixed(1)} h`} />
+        <MetricExplain text={`Operational time ÷ ${failureCount} failure${failureCount !== 1 ? 's' : ''}. ${reliability.total_operational_hours != null ? `Total operational: ${(reliability.total_operational_hours as number).toFixed(0)} h.` : ''}`} />
+      </>
+    );
+  }
+
+  function renderMTTR(): React.ReactNode {
+    if (!reliability || reliability.mttr_hours == null) {
+      return (
+        <>
+          <MetricLine label="MTTR" value="No completed corrective repairs" />
+          <MetricExplain text={`Formula: Total repair time ÷ repair count. ${repairCount === 0 ? 'No repair events recorded.' : `Repair count: ${repairCount}.`}`} />
+        </>
+      );
+    }
+    return (
+      <>
+        <MetricLine label="MTTR" value={`${reliability.mttr_hours.toFixed(1)} h`} />
+        <MetricExplain text={`Total repair time ÷ ${repairCount} repair${repairCount !== 1 ? 's' : ''}.`} />
+      </>
+    );
+  }
+
+  function renderAvailability(): React.ReactNode {
+    if (!reliability) {
+      return (
+        <>
+          <MetricLine label="Availability" value="Insufficient data" />
+          <MetricExplain text="Computed as MTBF ÷ (MTBF + MTTR). Requires at least one failure event." />
+        </>
+      );
+    }
+    if (reliability.availability_ratio != null) {
+      return (
+        <>
+          <MetricLine label="Availability" value={`${(reliability.availability_ratio * 100).toFixed(1)}%`} />
+          <MetricExplain text={`Formula: MTBF ÷ (MTBF + MTTR). ${reliability.total_downtime_hours != null ? `Total downtime: ${(reliability.total_downtime_hours as number).toFixed(1)} h.` : ''}`} />
+        </>
+      );
+    }
+    if (failureCount === 0) {
+      return (
+        <>
+          <MetricLine label="Availability" value="100% (no failures)" />
+          <MetricExplain text="No failure events recorded in the observation period. Cannot compute MTBF/MTTR basis." />
+        </>
+      );
+    }
+    return (
+      <>
+        <MetricLine label="Availability" value="Insufficient downtime data" />
+        <MetricExplain text={`${failureCount} failure event${failureCount !== 1 ? 's' : ''} recorded but downtime hours not captured. Complete work orders to compute availability.`} />
+      </>
+    );
+  }
+
   const overviewContent = (
     <Card>
       <CardHeader>
@@ -285,10 +466,6 @@ export default function EquipmentDetailPage({ params }: { params: Promise<{ id: 
           <DetailRow
             label="Condition"
             value={<ConditionBadge condition={equipment.condition} />}
-          />
-          <DetailRow
-            label="Status"
-            value={equipment.status.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
           />
           <DetailRow label="Installation Date" value={formatDate(equipment.installation_date)} />
           <DetailRow label="Warranty Expiry" value={formatDate(equipment.warranty_expiry)} />
@@ -335,14 +512,6 @@ export default function EquipmentDetailPage({ params }: { params: Promise<{ id: 
     },
   ];
 
-  const maintenanceContent = (
-    <Table
-      columns={maintenanceColumns}
-      data={events}
-      emptyMessage="No maintenance events recorded for this equipment."
-    />
-  );
-
   const pmColumns = [
     {
       key: 'scheduled_date',
@@ -361,14 +530,6 @@ export default function EquipmentDetailPage({ params }: { params: Promise<{ id: 
       render: (row: PMScheduleRow) => row.profiles?.full_name ?? '—',
     },
   ];
-
-  const pmContent = (
-    <Table
-      columns={pmColumns}
-      data={schedules}
-      emptyMessage="No PM schedules found for this equipment."
-    />
-  );
 
   const calibrationColumns = [
     {
@@ -396,32 +557,12 @@ export default function EquipmentDetailPage({ params }: { params: Promise<{ id: 
     { key: 'calibrated_by', header: 'Calibrated By' },
   ];
 
-  const calibrationContent = (
-    <Table
-      columns={calibrationColumns}
-      data={calibrations}
-      emptyMessage="No calibration records found for this equipment."
-    />
-  );
-
   const tabs = [
     { id: 'overview', label: 'Overview', content: overviewContent },
-    { id: 'maintenance', label: 'Maintenance History', count: events.length, content: maintenanceContent },
-    { id: 'pm', label: 'PM Records', count: schedules.length, content: pmContent },
-    { id: 'calibration', label: 'Calibration', count: calibrations.length, content: calibrationContent },
+    { id: 'maintenance', label: 'Maintenance History', count: events.length, content: <Table columns={maintenanceColumns} data={events} emptyMessage="No maintenance events recorded for this equipment." /> },
+    { id: 'pm', label: 'PM Records', count: schedules.length, content: <Table columns={pmColumns} data={schedules} emptyMessage="No PM schedules found for this equipment." /> },
+    { id: 'calibration', label: 'Calibration', count: calibrations.length, content: <Table columns={calibrationColumns} data={calibrations} emptyMessage="No calibration records found for this equipment." /> },
   ];
-
-  const hasReliability = Boolean(
-    reliability && (
-      reliability.mtbf_hours != null
-      || reliability.availability_ratio != null
-      || reliability.failure_count != null
-    )
-  );
-  const hasRisk = Boolean(risk && risk.rpn != null && risk.risk_level && risk.severity != null && risk.occurrence != null && risk.detectability != null);
-  const hasPmCompliance = Boolean(pmCompliance && pmCompliance.scheduled_count > 0 && pmCompliance.pmc_percentage != null);
-  const hasReplacement = Boolean(replacement && replacement.rank != null && replacement.replacement_priority_index != null);
-  const riskReasons = explainRiskScore(risk);
 
   return (
     <div>
@@ -433,6 +574,7 @@ export default function EquipmentDetailPage({ params }: { params: Promise<{ id: 
         ]}
         actions={
           <div className="flex items-center gap-2">
+            {getPrimaryAction()}
             <AskAiButton
               moduleLabel="Equipment"
               label="Ask AI about this equipment"
@@ -449,55 +591,218 @@ export default function EquipmentDetailPage({ params }: { params: Promise<{ id: 
         }
       />
 
-      <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <HealthMetricCard title="Reliability" icon={<Activity className="h-4 w-4" />} hasData={hasReliability}>
-          <MetricLine label="MTBF" value={reliability?.mtbf_hours != null ? `${reliability.mtbf_hours.toFixed(1)}h` : 'N/A (0 failures)'} />
-          <MetricLine label="MTTR" value={reliability?.mttr_hours != null ? `${reliability.mttr_hours.toFixed(1)}h` : 'N/A'} />
-          <MetricLine label="Availability" value={reliability?.availability_ratio != null ? `${(reliability.availability_ratio * 100).toFixed(1)}%` : `${reliability?.failure_count ?? 0} failures`} />
-        </HealthMetricCard>
+      {/* Metric cards */}
+      <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
 
-        <HealthMetricCard title="Risk" icon={<ShieldAlert className="h-4 w-4" />} hasData={hasRisk}>
-          <MetricLine label="RPN" value={risk?.rpn} />
-          <MetricLine label="Band" value={risk ? <RiskBadge level={risk.risk_level} /> : null} />
-          {risk && (
+        {/* 1. Maintenance Status */}
+        <HealthCard title="Maintenance Status" icon={<Wrench className="h-4 w-4" />}>
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-[var(--text-muted)]">Condition</span>
+            <ConditionBadge condition={equipment.condition} />
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-[var(--text-muted)]">State</span>
+            <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${getMaintenanceStateBadgeClass(maintState)}`}>
+              {formatMaintenanceState(maintState)}
+            </span>
+          </div>
+          {openWorkOrder && (
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-[var(--text-muted)]">Work Order</span>
+              <a href={workOrderDetail(openWorkOrder.id)} className="text-xs text-[var(--brand)] hover:underline">
+                View WO →
+              </a>
+            </div>
+          )}
+          {openRequest && !openWorkOrder && (
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-[var(--text-muted)]">Request</span>
+              <a href={maintenanceRequestDetail(openRequest.id)} className="text-xs text-[var(--brand)] hover:underline">
+                View request →
+              </a>
+            </div>
+          )}
+          {openRequest?.reported_condition && (
+            <div className="rounded-md bg-[var(--surface-2)] px-3 py-2 text-xs text-[var(--text-muted)]">
+              <span className="font-medium text-[var(--foreground)]">Reported condition: </span>
+              {openRequest.reported_condition === 'functional_issue'
+                ? 'Functional (issue observed)'
+                : openRequest.reported_condition === 'needs_repair'
+                ? 'Needs repair'
+                : 'Non-functional'}
+              {openRequest.reported_condition_source && (
+                <span className="ml-1 text-[var(--text-muted)]">· Source: {openRequest.reported_condition_source}</span>
+              )}
+            </div>
+          )}
+          {!openRequest && !openWorkOrder && (equipment.condition === 'needs_repair' || equipment.condition === 'non_functional') && canCreateRequests && (
+            <a
+              href={createMaintenanceRequestFromAsset(id, {
+                departmentId: equipment.departments?.id,
+                urgency: equipment.condition === 'non_functional' ? 'high' : 'medium',
+                type: 'corrective',
+              }).replace('source=command-center', 'source=equipment') + `&reportedCondition=${equipment.condition}`}
+              className="mt-1 block rounded-md bg-[var(--brand)]/10 px-3 py-2 text-xs font-medium text-[var(--brand)] hover:bg-[var(--brand)]/20 text-center"
+            >
+              + Create maintenance request
+            </a>
+          )}
+          {lastCompletedWO?.completion_outcome && (
+            <div className="rounded-md border border-[var(--surface-3)] bg-[var(--surface-2)] px-3 py-2 text-xs">
+              <p className="font-medium text-[var(--text-muted)]">Last completion</p>
+              <p className="text-[var(--foreground)]">
+                {lastCompletedWO.completion_outcome.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
+                {lastCompletedWO.final_equipment_condition && (
+                  <span className="ml-1 text-[var(--text-muted)]">
+                    → {lastCompletedWO.final_equipment_condition.replace(/_/g, ' ')}
+                  </span>
+                )}
+              </p>
+              {lastCompletedWO.completed_at && (
+                <p className="text-[var(--text-muted)]">{formatDate(lastCompletedWO.completed_at)}</p>
+              )}
+            </div>
+          )}
+          {events.length > 0 && (
+            <MetricLine label="Last maintenance event" value={formatDate(events[0].completion_date)} />
+          )}
+        </HealthCard>
+
+        {/* 2. Reliability */}
+        <HealthCard title="Reliability" icon={<Activity className="h-4 w-4" />}>
+          {renderMTBF()}
+          {renderMTTR()}
+          {renderAvailability()}
+          {!reliability && (
+            <MetricExplain text="Complete at least one corrective work order with repair duration to start computing reliability metrics." />
+          )}
+        </HealthCard>
+
+        {/* 3. Risk */}
+        <HealthCard title="Risk (FMEA)" icon={<ShieldAlert className="h-4 w-4" />}>
+          {hasRisk ? (
             <>
-              <MetricLine label="Formula" value={`${risk.severity} × ${risk.occurrence} × ${risk.detectability}`} />
-              <RiskReasonLine label="Severity" score={risk.severity} reason={riskReasons.severity} />
-              <RiskReasonLine label="Occurrence" score={risk.occurrence} reason={riskReasons.occurrence} />
-              <RiskReasonLine label="Detectability" score={risk.detectability} reason={riskReasons.detectability} />
-              <MetricLine label="Last computed" value={formatDate(risk.computed_at ?? risk.assessed_at)} />
+              <MetricLine label="RPN" value={risk!.rpn} />
+              <MetricLine label="Band" value={<RiskBadge level={risk!.risk_level} />} />
+              <MetricLine label="Formula" value={`${risk!.severity} × ${risk!.occurrence} × ${risk!.detectability}`} />
+              <RiskReasonLine label="Severity" score={risk!.severity} reason={riskReasons.severity} />
+              <RiskReasonLine label="Occurrence" score={risk!.occurrence} reason={riskReasons.occurrence} />
+              <RiskReasonLine label="Detectability" score={risk!.detectability} reason={riskReasons.detectability} />
+              <MetricLine label="Last computed" value={formatDate(risk!.computed_at ?? risk!.assessed_at)} />
               <MetricLine
                 label="Method"
                 value={
-                  <span className={risk.assignment_method === 'manual_override' ? 'text-amber-400' : undefined}>
-                    {(risk.assignment_method ?? 'computed').replace(/_/g, ' ')}
+                  <span className={risk!.assignment_method === 'manual_override' ? 'text-amber-400' : undefined}>
+                    {(risk!.assignment_method ?? 'computed').replace(/_/g, ' ')}
                   </span>
                 }
               />
-              {risk.assignment_method === 'manual_override' && (
+              {risk!.assignment_method === 'manual_override' && (
                 <p className="rounded-md border border-amber-400/30 bg-amber-400/10 p-2 text-xs leading-5 text-amber-200">
-                  Override reason: {risk.override_reason ?? 'No reason recorded'}
+                  Override: {risk!.override_reason ?? 'No reason recorded'}
                 </p>
               )}
-              {/* TODO: wire a Developer/BME Head edit modal to fn_set_fmea_risk_manual_override. */}
-              <p className="text-xs leading-5 text-[var(--text-muted)]">
-                Methodology: FMEA Risk Priority Number uses Severity × Occurrence × Detectability.
-                Severity reflects clinical/service impact, occurrence reflects failure history, and higher detectability means weaker PM, calibration, or inspection controls.
-              </p>
+              <MetricExplain text="FMEA RPN = Severity × Occurrence × Detectability. Higher detectability score means weaker PM/calibration controls." />
+            </>
+          ) : (
+            <EmptyMetric message="No risk score computed. Register FMEA values to compute RPN." />
+          )}
+        </HealthCard>
+
+        {/* 4. PM Compliance */}
+        <HealthCard title="PM Compliance" icon={<CalendarCheck className="h-4 w-4" />}>
+          {hasPmCompliance ? (
+            <>
+              <MetricLine label="Compliance" value={`${pmCompliance!.pmc_percentage.toFixed(1)}%`} />
+              <MetricLine label="Completed / Scheduled" value={`${pmCompliance!.completed_count} / ${pmCompliance!.scheduled_count}`} />
+              <MetricExplain text="PMC = (completed ÷ scheduled) × 100. Includes all schedules for this asset or department." />
+            </>
+          ) : (
+            <EmptyMetric message="No PM schedules found." />
+          )}
+          {nextPM && (
+            <MetricLine
+              label="Next PM"
+              value={
+                <span className={pmOverdue ? 'text-rose-400' : undefined}>
+                  {formatDate(nextPM.scheduled_date)} {pmOverdue ? '(overdue)' : ''}
+                </span>
+              }
+            />
+          )}
+        </HealthCard>
+
+        {/* 5. Calibration */}
+        <HealthCard title="Calibration" icon={<CalendarClock className="h-4 w-4" />}>
+          {lastCalibration ? (
+            <>
+              <MetricLine label="Last calibration" value={formatDate(lastCalibration.calibration_date)} />
+              <MetricLine label="Result" value={lastCalibration.result.replace(/\b\w/g, c => c.toUpperCase())} />
+              {calNextDue && (
+                <MetricLine
+                  label="Next due"
+                  value={
+                    <span className={calOverdue ? 'text-rose-400' : undefined}>
+                      {formatDate(calNextDue)} {calOverdue ? '(overdue)' : ''}
+                    </span>
+                  }
+                />
+              )}
+              {lastCalibration.calibration_types?.name && (
+                <MetricLine label="Type" value={lastCalibration.calibration_types.name} />
+              )}
+            </>
+          ) : (
+            <EmptyMetric message="No calibration records found." />
+          )}
+        </HealthCard>
+
+        {/* 6. Replacement Priority */}
+        <HealthCard title="Replacement Priority" icon={<ArrowUpDown className="h-4 w-4" />}>
+          {hasReplacement ? (
+            <>
+              <MetricLine label="Rank" value={`#${replacement!.rank}`} />
+              <MetricLine label="Priority Index" value={`${replacement!.replacement_priority_index.toFixed(2)} / 100`} />
+              {replacement!.justification && (
+                <MetricExplain text={replacement!.justification} />
+              )}
+              <MetricExplain text="RPI weighted sum: Availability 20%, Age 15%, Failure rate 15%, Maintenance burden 15%, Risk/RPN 15%, Spare parts 10%, Cost 10%." />
+              <a href={replacementEvidence(id)} className="mt-1 block text-center text-xs text-[var(--brand)] hover:underline">
+                View replacement evidence →
+              </a>
+            </>
+          ) : (
+            <>
+              <EmptyMetric message="No replacement priority computed for this asset." />
+              <MetricExplain text="Replacement priority is computed system-wide. Ensure reliability and risk data is available." />
             </>
           )}
-        </HealthMetricCard>
-
-        <HealthMetricCard title="PM Compliance" icon={<CalendarCheck className="h-4 w-4" />} hasData={hasPmCompliance}>
-          <MetricLine label="Compliance" value={`${pmCompliance?.pmc_percentage.toFixed(1)}%`} />
-          <MetricLine label="Completed / Scheduled" value={`${pmCompliance?.completed_count} / ${pmCompliance?.scheduled_count}`} />
-        </HealthMetricCard>
-
-        <HealthMetricCard title="Replacement Priority" icon={<ArrowUpDown className="h-4 w-4" />} hasData={hasReplacement}>
-          <MetricLine label="Rank" value={`#${replacement?.rank}`} />
-          <MetricLine label="Priority Index" value={replacement?.replacement_priority_index.toFixed(2)} />
-        </HealthMetricCard>
+        </HealthCard>
       </div>
+
+      {/* Risk watch banner if high/critical */}
+      {risk && (risk.risk_level === 'high' || risk.risk_level === 'critical') && !openWorkOrder && !openRequest && (
+        <div className="mb-4 flex items-start gap-3 rounded-lg border border-orange-400/30 bg-orange-400/10 px-4 py-3">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-orange-300" />
+          <div className="text-sm">
+            <span className="font-semibold text-orange-200">Risk watch:</span>{' '}
+            <span className="text-orange-100">{equipment.name} has a {risk.risk_level} RPN of {risk.rpn}. No corrective request or work order is open.</span>
+            {canCreateRequests && (
+              <a
+                href={createMaintenanceRequestFromAsset(id, {
+                  departmentId: equipment.departments?.id,
+                  urgency: 'high',
+                  description: `Risk watch: ${equipment.name} has ${risk.risk_level} RPN ${risk.rpn}. Review and determine if corrective action is required.`,
+                  type: 'corrective',
+                }).replace('source=command-center', 'source=equipment')}
+                className="ml-2 text-orange-300 underline hover:text-orange-100"
+              >
+                Create request
+              </a>
+            )}
+          </div>
+        </div>
+      )}
 
       <Tabs tabs={tabs} defaultTab="overview" />
     </div>

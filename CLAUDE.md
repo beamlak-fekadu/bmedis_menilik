@@ -1,6 +1,6 @@
 # CLAUDE.md — BMERMS Project Intelligence
 
-Last updated: 2026-05-09 (session 8)
+Last updated: 2026-05-09 (session 10)
 Branch: BMERMS_V4
 Deployment: https://project-git-bmermsv3-beamlak-fekadus-projects.vercel.app
 Supabase project ID: fgqyszbxzpmqzpqvdivx
@@ -60,6 +60,8 @@ DONE:
 - Reliability metrics (2026-05-05, migrations 00034–00035): one row per asset in equipment_reliability_metrics; idx_reliability_metrics_asset_unique; recompute upserts on asset_id; Command Center triage detail uses availability_ratio (DB column), not a misnamed percentage field.
 - Command Center redesign (2026-05-09, session 6): Full redesign for developer/admin/bme_head roles. New sections: live header with 10s auto-refresh, 10-card summary strip, critical action strip (top 6 scored cross-category actions), 8-tab categorized triage center (corrective/calibration/PM/stock/installation/replacement/procurement/training), technician workload (green/amber/red), improved risk distribution (summarizeRiskDrivers instead of raw JSON), improved replacement watchlist (buildReplacementReason). Other roles keep existing CommandCenterInteractive layout. No scoring-lab or sensitivity sliders on this page. No DB migrations required. Developer scoring lab deferred to /developer/scoring-lab (future route).
 - Command Center action accuracy (2026-05-09, session 8): Row-level actions now follow exact-record semantics: existing work orders open `/maintenance/work-orders/[id]` with state-aware action queries, existing requests open `/maintenance/requests/[id]`, PM uses `/pm/schedules/[id]`, procurement uses `/command/drilldown/procurement/[id]`, and replacement evidence uses `/command/drilldown/replacement/[assetId]`. Needs Request and stock actions open prefilled creation flows with `source=command-center`. Summary cards use `/command/drilldown/[type]` and counts share the same fetchers as triage/drilldowns. Risk Watch can be acknowledged via `command_center_acknowledgements` signal hashes and reappears when the signal changes. Training triage is hidden from the BME Head control room pending a future Department Head workflow.
+- Equipment section redesign (2026-05-09, session 9): Equipment list page: Status filter/column removed, Condition is the sole operational field; standardized condition labels via `src/utils/equipment/condition-labels.ts`; 8 summary cards (Total/Functional/Needs Repair/Non-functional/Under Maintenance/Faulted No Request/High Risk/Replacement Watch) clickable to filter table; Department (bar) + Condition (donut) charts; 7 quick-filter chips; Maintenance State column with badge (derived from open requests/work orders); state-aware Actions column (Resolve Blocker/View Progress/Open Work Order/Open Request/Create Request/Review Risk/Evidence/View); all filtering client-side over loaded dataset of 80 assets. Equipment detail page: Maintenance Status card (condition + state + exact WO/request links + create-request call-to-action); Reliability card with honest empty states (no "Availability: 0 failures" - replaced with "No recorded failures" / "Insufficient downtime data" / "100% (no failures)" based on actual data); Calibration card added; Replacement card adds formula explanation and evidence link; primary header action is state-aware. Condition sync: maintenance request creation with reported_condition updates equipment_assets.condition; WO start (in_progress) sets under_maintenance; WO complete sets functional. Maintenance request form adds "Reported Equipment Condition" field, prefills from URL param reportedCondition. New service functions: getOpenMaintenanceRequests(), getOpenWorkOrders(), getOpenRequestsForAsset(), getOpenWorkOrdersForAsset(). New action: updateEquipmentConditionAction(). No DB migrations required.
+- Equipment condition auditability + completion outcome (2026-05-09, session 10): Migration 00038 adds `reported_condition` (functional_issue/needs_repair/non_functional) and `reported_condition_source` to `maintenance_requests`. Migration 00039 adds `completion_outcome` (resolved/partially_resolved/not_resolved/awaiting_parts_or_vendor) and `final_equipment_condition` to `work_orders`. Work order completion now requires a completion modal — technician selects outcome and final condition before completing. Outcome defaults: resolved→functional, partially_resolved→needs_repair, not_resolved→non_functional, awaiting_parts_or_vendor→under_maintenance. Equipment detail Maintenance Status card shows reported_condition from open request and last completion outcome from last completed WO. AssistantLauncher moved from `bottom-20 right-4 z-[70]` to `bottom-6 right-4 z-[50]` — no longer overlaps Equipment table action column. DashboardLayout main bottom padding reduced from pb-28/lg:pb-24 to pb-24/lg:pb-20 to match new button position. getLastCompletedWorkOrderForAsset() added to maintenance.service.ts.
 
 - Audit remediation (2026-05-05, migrations 00027–00033): full recompute backfill on deploy; audit performed_by/details + acknowledgeFlag profile FK; constraints (low_stock flag_type, PMC grain unique + dedupe, partial unique asset_code for active rows, non-negative repair/downtime hours); hot-path indexes; read-model views refreshed with deleted_at filters and COALESCE; dropped unused repeat_repair_flags + equipment_locations; chat_sessions column equipment_id → asset_id
 
@@ -85,9 +87,9 @@ NOT STARTED:
   /command/drilldown/replacement/[assetId]  Exact replacement evidence view
 
 ### Equipment (Biomedical Asset Management)
-  /equipment                  Canonical equipment list — canonical URL for biomedical assets
+  /equipment                  Operational control center: 8 summary cards, 2 charts, quick-filter chips, maintenance state column, state-aware row actions
   /equipment/new              Create asset
-  /equipment/[id]             Asset detail (reliability, risk, maintenance history, flags)
+  /equipment/[id]             Asset profile: Maintenance Status + Reliability + Risk + PM + Calibration + Replacement cards; state-aware primary action
   /equipment/[id]/edit        Edit asset
   /inventory                  Deprecated redirect alias → /equipment
   /inventory/new              Deprecated redirect alias → /equipment/new
@@ -185,8 +187,7 @@ NOT STARTED:
 5.  RESOLVED (2026-05-04, migration 00023) — Triage accumulation fixed. DELETE now clears ALL
     'open' rows before re-inserting. triage_action_queue contains exactly 80 open rows.
 
-6.  Reliability and PM Compliance cards show "No data" on asset detail — check that column
-    name on join is asset_id (not equipment_id or equipment_asset_id) per migration 00010.
+6.  RESOLVED (2026-05-09, session 9) — Reliability card now shows honest empty states instead of "Availability: 0 failures". Equipment detail now has 6 metric cards including Maintenance Status and Calibration. Condition label standardized.
 
 7.  RESOLVED (2026-05-04, migration 00024) — All 8 departments now have pm_compliance_metrics.
     PM plans, schedules (2024-2025), completions, and quarterly compliance rows added for
@@ -311,5 +312,9 @@ recompute_equipment_analytics() and recompute_all_equipment_analytics() in migra
 00033 — chat_sessions.equipment_id renamed to asset_id
 00034 — equipment_reliability_metrics: dedupe to latest row per asset_id; UNIQUE(asset_id); _recompute_asset_metrics uses ON CONFLICT (asset_id) DO UPDATE
 00035 — Drop legacy composite UNIQUE on equipment_reliability_metrics (PG-truncated name missed in 00034)
+00036 — FMEA risk engine (risk explanation JSONB, assignment methods, override capabilities)
+00037 — command_center_acknowledgements table (item_type, item_key, asset_id, signal_hash, acknowledged_at, snoozed_until)
+00038 — maintenance_requests.reported_condition (functional_issue/needs_repair/non_functional) + reported_condition_source
+00039 — work_orders.completion_outcome (resolved/partially_resolved/not_resolved/awaiting_parts_or_vendor) + final_equipment_condition
 
-NEVER modify 00001–00035. Next migration must be 00036.
+NEVER modify 00001–00035. Next migration must be 00040.

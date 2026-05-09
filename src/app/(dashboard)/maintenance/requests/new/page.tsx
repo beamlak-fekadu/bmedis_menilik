@@ -10,6 +10,15 @@ import { createMaintenanceRequestAction } from '@/actions/maintenance.actions';
 import type { EquipmentAsset, Urgency } from '@/types/database';
 import { maintenanceRequestSchema } from '@/utils/validation/operations';
 
+// Reported condition options stored in maintenance_requests.reported_condition (migration 00038).
+// functional_issue = equipment operates but issue observed (no condition sync to equipment_assets).
+// needs_repair / non_functional = condition synced to equipment_assets.condition.
+const REPORTED_CONDITION_OPTIONS = [
+  { value: 'functional_issue', label: 'Functional (issue observed)' },
+  { value: 'needs_repair', label: 'Needs repair' },
+  { value: 'non_functional', label: 'Non-functional' },
+];
+
 export default function NewMaintenanceRequestPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -17,15 +26,24 @@ export default function NewMaintenanceRequestPage() {
   const [assets, setAssets] = useState<EquipmentAsset[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState(() => {
-    const source = searchParams.get('source');
+    const source = searchParams.get('source') ?? '';
     const type = searchParams.get('type');
     const urgency = searchParams.get('urgency') as Urgency | null;
+    // reportedCondition from URL may be an equipment condition value ('needs_repair', 'non_functional').
+    // Map 'functional' → 'functional_issue' for the DB enum; leave others as-is.
+    const rawReportedCond = searchParams.get('reportedCondition') ?? '';
+    const VALID_REPORTED = ['functional_issue', 'needs_repair', 'non_functional'];
+    const reported_condition = rawReportedCond === 'functional'
+      ? 'functional_issue'
+      : VALID_REPORTED.includes(rawReportedCond) ? rawReportedCond : '';
     return {
       asset_id: searchParams.get('assetId') ?? searchParams.get('asset_id') ?? '',
       urgency: urgency && ['low', 'medium', 'high', 'critical'].includes(urgency) ? urgency : 'medium' as Urgency,
       fault_description: searchParams.get('description') ?? '',
-      notes: source === 'command-center'
-        ? ['Source: Command Center', type ? `Request type: ${type}` : null].filter(Boolean).join('\n')
+      reported_condition,
+      source,
+      notes: source === 'command-center' || source === 'equipment'
+        ? ['Source: ' + (source === 'equipment' ? 'Equipment page' : 'Command Center'), type ? `Request type: ${type}` : null].filter(Boolean).join('\n')
         : '',
     };
   });
@@ -60,8 +78,9 @@ export default function NewMaintenanceRequestPage() {
       fault_description: parsed.data.fault_description.trim(),
       urgency: parsed.data.urgency,
       status: 'pending',
-      resolved_at: null,
       notes: parsed.data.notes?.trim() || null,
+      reported_condition: form.reported_condition || null,
+      reported_condition_source: form.source || 'manual',
     });
     setSubmitting(false);
 
@@ -78,7 +97,7 @@ export default function NewMaintenanceRequestPage() {
     <div className="space-y-6">
       <PageHeader
         title="New Maintenance Request"
-        description="Submit a curative maintenance request for equipment support."
+        description="Submit a corrective maintenance request for equipment support."
         actions={
           <Button variant="outline" size="sm" onClick={() => router.back()}>
             <ArrowLeft className="h-4 w-4" />
@@ -102,6 +121,13 @@ export default function NewMaintenanceRequestPage() {
                 value: asset.id,
                 label: `${asset.asset_code} - ${asset.name}`,
               }))}
+            />
+            <Select
+              label="Reported Equipment Condition *"
+              placeholder="Select current condition"
+              value={form.reported_condition}
+              onChange={(e) => setForm((prev) => ({ ...prev, reported_condition: e.target.value }))}
+              options={REPORTED_CONDITION_OPTIONS}
             />
             <Select
               label="Urgency"

@@ -28,6 +28,8 @@ import type {
 type WOWithJoins = WorkOrder & {
   equipment_assets?: { id: string; asset_code: string; name: string };
   profiles?: { id: string; full_name: string; email: string };
+  completion_outcome?: string | null;
+  final_equipment_condition?: string | null;
 };
 
 type EventWithJoins = MaintenanceEvent & {
@@ -66,6 +68,10 @@ export default function WorkOrderDetailPage() {
   const [technicians, setTechnicians] = useState<Profile[]>([]);
   const [selectedTechnician, setSelectedTechnician] = useState('');
   const [assignmentMode, setAssignmentMode] = useState<'assign' | 'reassign'>('assign');
+
+  const [completionModalOpen, setCompletionModalOpen] = useState(false);
+  const [completionOutcome, setCompletionOutcome] = useState('resolved');
+  const [finalCondition, setFinalCondition] = useState('functional');
 
   const [eventModalOpen, setEventModalOpen] = useState(false);
   const [eventForm, setEventForm] = useState(emptyEventForm);
@@ -124,6 +130,42 @@ export default function WorkOrderDetailPage() {
       await loadWO();
     }
     setActionLoading(false);
+  }
+
+  // Outcome → default final condition mapping
+  function outcomeToCondition(outcome: string): string {
+    switch (outcome) {
+      case 'resolved': return 'functional';
+      case 'partially_resolved': return 'needs_repair';
+      case 'not_resolved': return 'non_functional';
+      case 'awaiting_parts_or_vendor': return 'under_maintenance';
+      default: return 'functional';
+    }
+  }
+
+  function openCompletionModal() {
+    setCompletionOutcome('resolved');
+    setFinalCondition('functional');
+    setCompletionModalOpen(true);
+  }
+
+  async function handleCompleteWorkOrder() {
+    if (!wo) return;
+    setActionLoading(true);
+    const result = await updateWorkOrderAction(id, {
+      status: 'completed',
+      completed_at: new Date().toISOString(),
+      completion_outcome: completionOutcome,
+      final_equipment_condition: finalCondition,
+    });
+    setActionLoading(false);
+    if (!result.success) {
+      toast('error', result.error ?? 'Failed to complete work order');
+    } else {
+      toast('success', 'Work order completed');
+      setCompletionModalOpen(false);
+      await loadWO();
+    }
   }
 
   function queueStatusUpdate(status: WorkOrderStatus) {
@@ -417,6 +459,22 @@ export default function WorkOrderDetailPage() {
                   </dd>
                 </div>
               )}
+              {wo.completion_outcome && (
+                <div>
+                  <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Completion Outcome</dt>
+                  <dd className="mt-1 text-sm text-gray-900 dark:text-white">
+                    {wo.completion_outcome.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase())}
+                  </dd>
+                </div>
+              )}
+              {wo.final_equipment_condition && (
+                <div>
+                  <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Final Equipment Condition</dt>
+                  <dd className="mt-1 text-sm text-gray-900 dark:text-white">
+                    {wo.final_equipment_condition.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase())}
+                  </dd>
+                </div>
+              )}
             </dl>
           </CardContent>
           {!isTerminal && (
@@ -441,7 +499,7 @@ export default function WorkOrderDetailPage() {
                   </Button>
                 )}
                 {(wo.status === 'in_progress' || wo.status === 'assigned') && (
-                  <Button size="sm" onClick={() => handleStatusUpdate('completed')} loading={actionLoading}>
+                  <Button size="sm" onClick={openCompletionModal} loading={actionLoading}>
                     <CheckCircle className="h-4 w-4" />
                     Complete
                   </Button>
@@ -539,6 +597,56 @@ export default function WorkOrderDetailPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Completion Modal */}
+      <Modal
+        open={completionModalOpen}
+        onClose={() => setCompletionModalOpen(false)}
+        title="Complete Work Order"
+        footer={
+          <>
+            <Button variant="outline" onClick={() => setCompletionModalOpen(false)}>Cancel</Button>
+            <Button onClick={handleCompleteWorkOrder} loading={actionLoading}>
+              <CheckCircle className="h-4 w-4" />
+              Confirm Completion
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-[var(--text-muted)]">
+            Select the resolution outcome and the equipment&apos;s final condition. This is used to update the equipment record and analytics.
+          </p>
+          <Select
+            label="Completion Outcome *"
+            value={completionOutcome}
+            onChange={(e) => {
+              setCompletionOutcome(e.target.value);
+              setFinalCondition(outcomeToCondition(e.target.value));
+            }}
+            options={[
+              { value: 'resolved', label: 'Resolved — issue fully fixed' },
+              { value: 'partially_resolved', label: 'Partially resolved — some issues remain' },
+              { value: 'not_resolved', label: 'Not resolved — equipment still non-functional' },
+              { value: 'awaiting_parts_or_vendor', label: 'Awaiting parts or vendor — blocked' },
+            ]}
+          />
+          <Select
+            label="Final Equipment Condition *"
+            value={finalCondition}
+            onChange={(e) => setFinalCondition(e.target.value)}
+            options={[
+              { value: 'functional', label: 'Functional' },
+              { value: 'needs_repair', label: 'Needs repair' },
+              { value: 'non_functional', label: 'Non-functional' },
+              { value: 'under_maintenance', label: 'Under maintenance (awaiting next step)' },
+            ]}
+          />
+          <p className="rounded-md bg-[var(--surface-2)] px-3 py-2 text-xs text-[var(--text-muted)]">
+            Equipment condition will be updated to <strong className="text-[var(--foreground)]">{finalCondition.replace(/_/g, ' ')}</strong> after completion.
+          </p>
+        </div>
+      </Modal>
 
       {/* Assign Modal */}
       <Modal

@@ -1,17 +1,81 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Plus } from 'lucide-react';
-import { PageHeader, Button, DataTable, FilterBar, Spinner } from '@/components/ui';
-import { ConditionBadge } from '@/components/ui/StatusBadge';
-import { getEquipmentList, type EquipmentFilters } from '@/services/equipment.service';
+import {
+  Plus, Activity, ShieldAlert, AlertTriangle, Wrench, CheckCircle2,
+  Clock, AlertCircle, TrendingUp,
+} from 'lucide-react';
+import { PageHeader, Button, Spinner } from '@/components/ui';
+import StatCard from '@/components/ui/StatCard';
+import { BarChart, DoughnutChart, ChartCard } from '@/components/charts';
+import { getEquipmentList } from '@/services/equipment.service';
 import { getAll } from '@/services/settings.service';
 import { getRiskScores } from '@/services/analytics.service';
+import { getOpenMaintenanceRequests, getOpenWorkOrders } from '@/services/maintenance.service';
 import { ROUTES } from '@/constants';
 import { useRole } from '@/hooks/useRole';
-import type { EquipmentCondition, EquipmentStatus } from '@/types/database';
+import {
+  formatEquipmentCondition,
+  getConditionBadgeClass,
+  EQUIPMENT_CONDITION_OPTIONS,
+  isFaulted,
+} from '@/utils/equipment/condition-labels';
+import {
+  getMaintenanceState,
+  formatMaintenanceState,
+  getMaintenanceStateBadgeClass,
+  type OpenRequestInfo,
+  type OpenWorkOrderInfo,
+} from '@/utils/equipment/maintenance-state';
+import {
+  workOrderDetail,
+  maintenanceRequestDetail,
+  createMaintenanceRequestFromAsset,
+  replacementEvidence,
+} from '@/app/(dashboard)/command/_lib/command-center-routes';
+import type { EquipmentCondition } from '@/types/database';
+
+interface EquipmentRow {
+  id: string;
+  asset_code: string;
+  name: string;
+  condition: EquipmentCondition;
+  status: string;
+  installation_date: string | null;
+  departments: { id: string; name: string } | null;
+  equipment_categories: { id: string; name: string } | null;
+  manufacturers: { id: string; name: string } | null;
+  equipment_models: { id: string; name: string } | null;
+  [key: string]: unknown;
+}
+
+interface RiskInfo {
+  rpn: number;
+  risk_level: string;
+}
+
+interface EnrichedRow extends EquipmentRow {
+  riskInfo?: RiskInfo;
+  openRequest?: OpenRequestInfo;
+  openWorkOrder?: OpenWorkOrderInfo;
+}
+
+interface RefOption {
+  value: string;
+  label: string;
+}
+
+type QuickFilter =
+  | ''
+  | 'needs_attention'
+  | 'faulted_no_request'
+  | 'needs_repair'
+  | 'non_functional'
+  | 'under_maintenance'
+  | 'high_risk'
+  | 'replacement_candidate';
 
 function rpnBandLabel(rpn: number): string {
   if (rpn <= 100) return 'Low';
@@ -27,168 +91,258 @@ function rpnBandClass(rpn: number): string {
   return 'bg-rose-500/15 text-rose-300';
 }
 
-interface EquipmentRow {
-  id: string;
-  asset_code: string;
-  name: string;
-  condition: EquipmentCondition;
-  status: EquipmentStatus;
-  installation_date: string | null;
-  departments: { id: string; name: string } | null;
-  equipment_categories: { id: string; name: string } | null;
-  manufacturers: { id: string; name: string } | null;
-  [key: string]: unknown;
+function isHighRisk(risk?: RiskInfo): boolean {
+  if (!risk) return false;
+  return risk.risk_level === 'high' || risk.risk_level === 'critical' || risk.rpn > 500;
 }
 
-interface RefOption {
-  value: string;
-  label: string;
+const QUICK_FILTERS: { key: QuickFilter; label: string }[] = [
+  { key: 'needs_attention', label: 'Needs attention' },
+  { key: 'faulted_no_request', label: 'Faulted, no request' },
+  { key: 'needs_repair', label: 'Needs repair' },
+  { key: 'non_functional', label: 'Non-functional' },
+  { key: 'under_maintenance', label: 'Under maintenance' },
+  { key: 'high_risk', label: 'High / Critical risk' },
+  { key: 'replacement_candidate', label: 'Replacement candidate' },
+];
+
+function SortHeader({
+  label, sortable, colKey, sortKey, sortAsc, onSort,
+}: { label: string; sortable?: boolean; colKey?: string; sortKey?: string; sortAsc?: boolean; onSort?: (key: string) => void }) {
+  return (
+    <th
+      className={`px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] ${sortable && colKey ? 'cursor-pointer select-none hover:text-[var(--foreground)]' : ''}`}
+      onClick={sortable && colKey && onSort ? () => onSort(colKey) : undefined}
+    >
+      {label}
+      {sortable && colKey && sortKey === colKey && (
+        <span className="ml-1 text-[var(--brand)]">{sortAsc ? '↑' : '↓'}</span>
+      )}
+    </th>
+  );
 }
 
-const CONDITION_OPTIONS: RefOption[] = [
-  { value: 'functional', label: 'Functional' },
-  { value: 'needs_repair', label: 'Needs Repair' },
-  { value: 'non_functional', label: 'Non Functional' },
-  { value: 'under_maintenance', label: 'Under Maintenance' },
-  { value: 'decommissioned', label: 'Decommissioned' },
-];
-
-const STATUS_OPTIONS: RefOption[] = [
-  { value: 'active', label: 'Active' },
-  { value: 'inactive', label: 'Inactive' },
-  { value: 'disposed', label: 'Disposed' },
-  { value: 'in_storage', label: 'In Storage' },
-];
+const CONDITION_CHART_COLORS: Record<string, string> = {
+  functional: 'rgb(16, 185, 129)',
+  needs_repair: 'rgb(245, 158, 11)',
+  non_functional: 'rgb(239, 68, 68)',
+  under_maintenance: 'rgb(99, 102, 241)',
+  decommissioned: 'rgb(107, 114, 128)',
+};
 
 export default function EquipmentListPage() {
   const router = useRouter();
-  const { canManageEquipment } = useRole();
-  const [data, setData] = useState<EquipmentRow[]>([]);
+  const { canManageEquipment, canCreateRequests } = useRole();
+
+  const [allRows, setAllRows] = useState<EnrichedRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [riskByAsset, setRiskByAsset] = useState<Map<string, number>>(new Map());
   const [departments, setDepartments] = useState<RefOption[]>([]);
   const [categories, setCategories] = useState<RefOption[]>([]);
-  const [filters, setFilters] = useState<Record<string, string>>({
-    department_id: '',
-    category_id: '',
-    condition: '',
-    status: '',
-  });
+  const [search, setSearch] = useState('');
+  const [filterDept, setFilterDept] = useState('');
+  const [filterCat, setFilterCat] = useState('');
+  const [filterCondition, setFilterCondition] = useState('');
+  const [quickFilter, setQuickFilter] = useState<QuickFilter>('');
+  const [sortKey, setSortKey] = useState<string>('name');
+  const [sortAsc, setSortAsc] = useState(true);
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 20;
 
-  const loadReferenceData = useCallback(async () => {
-    const [deptRes, catRes] = await Promise.all([
-      getAll('departments'),
-      getAll('equipment_categories'),
-    ]);
-    if (deptRes.data) {
-      setDepartments(deptRes.data.map((d: { id: string; name: string }) => ({ value: d.id, label: d.name })));
+  useEffect(() => {
+    let cancelled = false;
+    async function fetchAll() {
+      const [equipRes, riskRes, reqRes, woRes, deptRes, catRes] = await Promise.all([
+        getEquipmentList(),
+        getRiskScores(),
+        getOpenMaintenanceRequests(),
+        getOpenWorkOrders(),
+        getAll('departments'),
+        getAll('equipment_categories'),
+      ]);
+      if (cancelled) return;
+
+      const equipment = (equipRes.data ?? []) as unknown as EquipmentRow[];
+
+      const riskMap = new Map<string, RiskInfo>();
+      for (const r of (riskRes.data as Array<{ asset_id: string; rpn: number; risk_level: string }> | null) ?? []) {
+        if (!riskMap.has(r.asset_id)) riskMap.set(r.asset_id, { rpn: r.rpn, risk_level: r.risk_level });
+      }
+
+      const reqMap = new Map<string, OpenRequestInfo>();
+      for (const r of (reqRes.data as Array<{ id: string; asset_id: string; status: string; urgency: string }> | null) ?? []) {
+        if (!reqMap.has(r.asset_id)) reqMap.set(r.asset_id, { id: r.id, status: r.status, urgency: r.urgency });
+      }
+
+      const woMap = new Map<string, OpenWorkOrderInfo>();
+      for (const r of (woRes.data as Array<{ id: string; asset_id: string; status: string; assigned_to: string | null }> | null) ?? []) {
+        if (!woMap.has(r.asset_id)) woMap.set(r.asset_id, { id: r.id, status: r.status, assigned_to: r.assigned_to });
+      }
+
+      const enriched: EnrichedRow[] = equipment.map((eq) => ({
+        ...eq,
+        riskInfo: riskMap.get(eq.id),
+        openRequest: reqMap.get(eq.id),
+        openWorkOrder: woMap.get(eq.id),
+      }));
+
+      setAllRows(enriched);
+      if (deptRes.data) setDepartments(deptRes.data.map((d: { id: string; name: string }) => ({ value: d.id, label: d.name })));
+      if (catRes.data) setCategories(catRes.data.map((c: { id: string; name: string }) => ({ value: c.id, label: c.name })));
+      setLoading(false);
     }
-    if (catRes.data) {
-      setCategories(catRes.data.map((c: { id: string; name: string }) => ({ value: c.id, label: c.name })));
-    }
+    void fetchAll();
+    return () => { cancelled = true; };
   }, []);
 
-  const loadEquipment = useCallback(async () => {
-    setLoading(true);
-    const activeFilters: EquipmentFilters = {};
-    if (filters.department_id) activeFilters.department_id = filters.department_id;
-    if (filters.category_id) activeFilters.category_id = filters.category_id;
-    if (filters.condition) activeFilters.condition = filters.condition;
-    if (filters.status) activeFilters.status = filters.status;
-
-    const [{ data: equipment }, riskRes] = await Promise.all([
-      getEquipmentList(activeFilters),
-      getRiskScores(),
-    ]);
-    setData((equipment as unknown as EquipmentRow[]) ?? []);
-
-    const map = new Map<string, number>();
-    for (const row of (riskRes.data as Array<{ asset_id: string; rpn: number }> | null) ?? []) {
-      if (!map.has(row.asset_id)) map.set(row.asset_id, row.rpn);
+  // Computed summary counts from all rows
+  const counts = useMemo(() => {
+    let functional = 0, needsRepair = 0, nonFunctional = 0, underMaintenance = 0, faultedNoReq = 0, highRisk = 0;
+    for (const row of allRows) {
+      if (row.condition === 'functional') functional++;
+      if (row.condition === 'needs_repair') needsRepair++;
+      if (row.condition === 'non_functional') nonFunctional++;
+      if (row.condition === 'under_maintenance') underMaintenance++;
+      if (isFaulted(row.condition) && !row.openRequest && !row.openWorkOrder) faultedNoReq++;
+      if (isHighRisk(row.riskInfo)) highRisk++;
     }
-    setRiskByAsset(map);
-    setLoading(false);
-  }, [filters]);
+    return { total: allRows.length, functional, needsRepair, nonFunctional, underMaintenance, faultedNoReq, highRisk };
+  }, [allRows]);
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      void loadReferenceData();
-    }, 0);
-    return () => clearTimeout(timer);
-  }, [loadReferenceData]);
+  // Chart data derived from all rows
+  const deptChartData = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const row of allRows) {
+      const dept = row.departments?.name ?? 'Unknown';
+      map.set(dept, (map.get(dept) ?? 0) + 1);
+    }
+    const entries = Array.from(map.entries()).sort((a, b) => b[1] - a[1]);
+    return { labels: entries.map(([k]) => k), values: entries.map(([, v]) => v) };
+  }, [allRows]);
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      void loadEquipment();
-    }, 0);
-    return () => clearTimeout(timer);
-  }, [loadEquipment]);
+  const conditionChartData = useMemo(() => {
+    const ORDER = ['functional', 'needs_repair', 'non_functional', 'under_maintenance', 'decommissioned'];
+    const map = new Map<string, number>();
+    for (const row of allRows) { map.set(row.condition, (map.get(row.condition) ?? 0) + 1); }
+    const entries = ORDER.map((k) => [k, map.get(k) ?? 0] as [string, number]).filter(([, v]) => v > 0);
+    return {
+      labels: entries.map(([k]) => formatEquipmentCondition(k)),
+      values: entries.map(([, v]) => v),
+      colors: entries.map(([k]) => CONDITION_CHART_COLORS[k] ?? 'rgb(107,114,128)'),
+    };
+  }, [allRows]);
 
-  const handleFilterChange = (key: string, value: string) => {
-    setFilters((prev) => ({ ...prev, [key]: value }));
-  };
+  // Filtered + sorted rows
+  const filteredRows = useMemo(() => {
+    let rows = allRows;
 
-  const handleFilterReset = () => {
-    setFilters({ department_id: '', category_id: '', condition: '', status: '' });
-  };
+    // Standard filters
+    if (filterDept) rows = rows.filter((r) => r.departments?.id === filterDept);
+    if (filterCat) rows = rows.filter((r) => r.equipment_categories?.id === filterCat);
+    if (filterCondition) rows = rows.filter((r) => r.condition === filterCondition);
+    if (search) {
+      const q = search.toLowerCase();
+      rows = rows.filter((r) =>
+        r.name.toLowerCase().includes(q) ||
+        r.asset_code.toLowerCase().includes(q) ||
+        (typeof r.serial_number === 'string' && r.serial_number.toLowerCase().includes(q)),
+      );
+    }
 
-  const columns = [
-    { key: 'asset_code', header: 'Asset Code', sortable: true },
-    { key: 'name', header: 'Name', sortable: true },
-    {
-      key: 'department_name',
-      header: 'Department',
-      sortable: true,
-      render: (row: EquipmentRow) => row.departments?.name ?? '—',
-    },
-    {
-      key: 'category_name',
-      header: 'Category',
-      sortable: true,
-      render: (row: EquipmentRow) => row.equipment_categories?.name ?? '—',
-    },
-    {
-      key: 'condition',
-      header: 'Condition',
-      render: (row: EquipmentRow) => <ConditionBadge condition={row.condition} />,
-    },
-    {
-      key: 'status',
-      header: 'Status',
-      sortable: true,
-      render: (row: EquipmentRow) =>
-        row.status.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
-    },
-    {
-      key: 'manufacturer_name',
-      header: 'Manufacturer',
-      render: (row: EquipmentRow) => row.manufacturers?.name ?? '—',
-    },
-    {
-      key: 'installation_date',
-      header: 'Installation Date',
-      sortable: true,
-      render: (row: EquipmentRow) =>
-        row.installation_date
-          ? new Date(row.installation_date).toLocaleDateString()
-          : '—',
-    },
-    {
-      key: 'rpn_band',
-      header: 'Risk Band',
-      render: (row: EquipmentRow) => {
-        const rpn = riskByAsset.get(row.id);
-        if (rpn == null) return <span className="text-xs text-gray-400">Not assessed</span>;
-        return (
-          <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${rpnBandClass(rpn)}`}>
-            {rpnBandLabel(rpn)} ({rpn})
-          </span>
-        );
-      },
-    },
-  ];
+    // Quick filters
+    if (quickFilter === 'needs_attention') {
+      rows = rows.filter((r) =>
+        isFaulted(r.condition) || isHighRisk(r.riskInfo) ||
+        r.openRequest !== undefined || r.openWorkOrder !== undefined,
+      );
+    } else if (quickFilter === 'faulted_no_request') {
+      rows = rows.filter((r) => isFaulted(r.condition) && !r.openRequest && !r.openWorkOrder);
+    } else if (quickFilter === 'needs_repair') {
+      rows = rows.filter((r) => r.condition === 'needs_repair');
+    } else if (quickFilter === 'non_functional') {
+      rows = rows.filter((r) => r.condition === 'non_functional');
+    } else if (quickFilter === 'under_maintenance') {
+      rows = rows.filter((r) => r.condition === 'under_maintenance');
+    } else if (quickFilter === 'high_risk') {
+      rows = rows.filter((r) => isHighRisk(r.riskInfo));
+    } else if (quickFilter === 'replacement_candidate') {
+      rows = rows.filter((r) => r.riskInfo && r.riskInfo.rpn > 200);
+    }
 
-  if (loading && data.length === 0) {
+    // Sort
+    rows = [...rows].sort((a, b) => {
+      let av: string | number = '', bv: string | number = '';
+      if (sortKey === 'name') { av = a.name; bv = b.name; }
+      else if (sortKey === 'asset_code') { av = a.asset_code; bv = b.asset_code; }
+      else if (sortKey === 'department') { av = a.departments?.name ?? ''; bv = b.departments?.name ?? ''; }
+      else if (sortKey === 'category') { av = a.equipment_categories?.name ?? ''; bv = b.equipment_categories?.name ?? ''; }
+      else if (sortKey === 'condition') { av = a.condition; bv = b.condition; }
+      else if (sortKey === 'rpn') { av = a.riskInfo?.rpn ?? 0; bv = b.riskInfo?.rpn ?? 0; }
+      if (av < bv) return sortAsc ? -1 : 1;
+      if (av > bv) return sortAsc ? 1 : -1;
+      return 0;
+    });
+
+    return rows;
+  }, [allRows, filterDept, filterCat, filterCondition, search, quickFilter, sortKey, sortAsc]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredRows.length / PAGE_SIZE));
+  const pageRows = filteredRows.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  function handleCardFilter(qf: QuickFilter) {
+    setQuickFilter((prev) => (prev === qf ? '' : qf));
+    setFilterCondition('');
+    setPage(1);
+  }
+
+  function handleSort(key: string) {
+    if (sortKey === key) setSortAsc((p) => !p);
+    else { setSortKey(key); setSortAsc(true); }
+    setPage(1);
+  }
+
+  function handleFilterChange(key: string, value: string) {
+    if (key === 'department_id') setFilterDept(value);
+    if (key === 'category_id') setFilterCat(value);
+    if (key === 'condition') setFilterCondition(value);
+    setQuickFilter('');
+    setPage(1);
+  }
+
+  function getRowAction(row: EnrichedRow): { label: string; href: string; variant: string } {
+    const { openWorkOrder, openRequest, condition, riskInfo, id, departments, riskInfo: ri } = row;
+
+    if (openWorkOrder) {
+      const woStatus = openWorkOrder.status;
+      if (woStatus === 'on_hold') return { label: 'Resolve Blocker', href: workOrderDetail(openWorkOrder.id, 'resolve-blocker'), variant: 'danger' };
+      if (woStatus === 'in_progress') return { label: 'View Progress', href: workOrderDetail(openWorkOrder.id), variant: 'outline' };
+      if (woStatus === 'assigned') return { label: 'Open Work Order', href: workOrderDetail(openWorkOrder.id, 'reassign'), variant: 'outline' };
+      return { label: 'Open Work Order', href: workOrderDetail(openWorkOrder.id), variant: 'outline' };
+    }
+
+    if (openRequest) return { label: 'Open Request', href: maintenanceRequestDetail(openRequest.id), variant: 'outline' };
+
+    if ((condition === 'needs_repair' || condition === 'non_functional') && canCreateRequests) {
+      const urgency = condition === 'non_functional' ? 'high' : 'medium';
+      const desc = `Equipment page detected ${row.name} is ${formatEquipmentCondition(condition)}${ri ? ` with RPN ${ri.rpn} (${ri.risk_level} risk)` : ''} and no open corrective request.`;
+      return {
+        label: 'Create Request',
+        href: createMaintenanceRequestFromAsset(id, {
+          departmentId: departments?.id,
+          urgency,
+          description: desc,
+          type: 'corrective',
+        }).replace('source=command-center', 'source=equipment').replace('reportedCondition=', '') + `&reportedCondition=${condition}`,
+        variant: 'primary',
+      };
+    }
+
+    if (isHighRisk(riskInfo)) return { label: 'Review Risk', href: `/equipment/${id}`, variant: 'outline' };
+    if (ri && ri.rpn > 200) return { label: 'Evidence', href: replacementEvidence(id), variant: 'outline' };
+
+    return { label: 'View', href: `/equipment/${id}`, variant: 'ghost' };
+  }
+
+  if (loading) {
     return (
       <div className="flex h-64 items-center justify-center">
         <Spinner />
@@ -196,11 +350,22 @@ export default function EquipmentListPage() {
     );
   }
 
+  const summaryCards = [
+    { label: 'Total Equipment', value: counts.total, icon: <Activity className="h-5 w-5" />, color: 'blue', qf: '' as QuickFilter },
+    { label: 'Functional', value: counts.functional, icon: <CheckCircle2 className="h-5 w-5" />, color: 'green', qf: '' as QuickFilter, conditionFilter: 'functional' },
+    { label: 'Needs Repair', value: counts.needsRepair, icon: <Wrench className="h-5 w-5" />, color: 'yellow', qf: 'needs_repair' as QuickFilter },
+    { label: 'Non-functional', value: counts.nonFunctional, icon: <AlertCircle className="h-5 w-5" />, color: 'red', qf: 'non_functional' as QuickFilter },
+    { label: 'Under Maintenance', value: counts.underMaintenance, icon: <Clock className="h-5 w-5" />, color: 'purple', qf: 'under_maintenance' as QuickFilter },
+    { label: 'Faulted, No Request', value: counts.faultedNoReq, icon: <AlertTriangle className="h-5 w-5" />, color: 'orange', qf: 'faulted_no_request' as QuickFilter },
+    { label: 'High / Critical Risk', value: counts.highRisk, icon: <ShieldAlert className="h-5 w-5" />, color: 'red', qf: 'high_risk' as QuickFilter },
+    { label: 'Replacement Watch', value: allRows.filter((r) => r.riskInfo && r.riskInfo.rpn > 200).length, icon: <TrendingUp className="h-5 w-5" />, color: 'orange', qf: 'replacement_candidate' as QuickFilter },
+  ];
+
   return (
-    <div>
+    <div className="space-y-6">
       <PageHeader
         title="Equipment"
-        description="Manage and track all hospital equipment assets"
+        description="Asset-level operational control — condition, maintenance state, risk, and actions"
         actions={
           canManageEquipment ? (
             <Link href={ROUTES.EQUIPMENT_NEW}>
@@ -213,28 +378,227 @@ export default function EquipmentListPage() {
         }
       />
 
-      <div className="mb-6">
-        <FilterBar
-          filters={[
-            { key: 'department_id', label: 'Department', options: departments },
-            { key: 'category_id', label: 'Category', options: categories },
-            { key: 'condition', label: 'Condition', options: CONDITION_OPTIONS },
-            { key: 'status', label: 'Status', options: STATUS_OPTIONS },
-          ]}
-          values={filters}
-          onChange={handleFilterChange}
-          onReset={handleFilterReset}
-        />
+      {/* Summary Cards */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 xl:grid-cols-8">
+        {summaryCards.map(({ label, value, icon, color, qf, conditionFilter }) => (
+          <StatCard
+            key={label}
+            label={label}
+            value={value}
+            icon={icon}
+            color={color}
+            onClick={() => {
+              if (conditionFilter) {
+                setFilterCondition((prev) => (prev === conditionFilter ? '' : conditionFilter));
+                setQuickFilter('');
+              } else if (qf) {
+                handleCardFilter(qf);
+              }
+              setPage(1);
+            }}
+          />
+        ))}
       </div>
 
-      <DataTable
-        columns={columns}
-        data={data}
-        searchPlaceholder="Search by name, asset code, or serial number..."
-        onRowClick={(row) => router.push(`${ROUTES.EQUIPMENT}/${row.id}`)}
-        loading={loading}
-        emptyMessage="No equipment found. Adjust your filters or register new equipment."
-      />
+      {/* Charts */}
+      <div className="grid gap-4 xl:grid-cols-2">
+        <ChartCard title="Equipment by Department" description="Asset distribution across departments">
+          <BarChart
+            labels={deptChartData.labels}
+            datasets={[{ label: 'Assets', data: deptChartData.values }]}
+            height={200}
+          />
+        </ChartCard>
+        <ChartCard title="Equipment by Condition" description="Current operational condition breakdown">
+          <DoughnutChart
+            labels={conditionChartData.labels}
+            data={conditionChartData.values}
+            colors={conditionChartData.colors}
+            height={200}
+          />
+        </ChartCard>
+      </div>
+
+      {/* Quick Filter Chips */}
+      <div className="flex flex-wrap gap-2">
+        {QUICK_FILTERS.map(({ key, label }) => (
+          <button
+            key={key}
+            onClick={() => { setQuickFilter((prev) => (prev === key ? '' : key)); setPage(1); }}
+            className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+              quickFilter === key
+                ? 'bg-[var(--brand)] text-white'
+                : 'bg-[var(--surface-2)] text-[var(--text-muted)] hover:text-[var(--foreground)]'
+            }`}
+          >
+            {label}
+            {key === 'faulted_no_request' && counts.faultedNoReq > 0 && (
+              <span className="ml-1 rounded-full bg-rose-500/20 px-1.5 text-rose-300">{counts.faultedNoReq}</span>
+            )}
+            {key === 'high_risk' && counts.highRisk > 0 && (
+              <span className="ml-1 rounded-full bg-orange-500/20 px-1.5 text-orange-300">{counts.highRisk}</span>
+            )}
+          </button>
+        ))}
+      </div>
+
+      {/* Filters */}
+      <div className="flex flex-wrap items-center gap-3">
+        <input
+          type="text"
+          placeholder="Search by name, asset code, serial number…"
+          value={search}
+          onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+          className="h-9 w-64 rounded-md border border-[var(--surface-3)] bg-[var(--surface-1)] px-3 text-sm text-[var(--foreground)] placeholder-[var(--text-muted)] focus:outline-none focus:ring-1 focus:ring-[var(--brand)]"
+        />
+        <select
+          value={filterDept}
+          onChange={(e) => handleFilterChange('department_id', e.target.value)}
+          className="h-9 rounded-md border border-[var(--surface-3)] bg-[var(--surface-1)] px-2 text-sm text-[var(--foreground)] focus:outline-none focus:ring-1 focus:ring-[var(--brand)]"
+        >
+          <option value="">All Departments</option>
+          {departments.map((d) => <option key={d.value} value={d.value}>{d.label}</option>)}
+        </select>
+        <select
+          value={filterCat}
+          onChange={(e) => handleFilterChange('category_id', e.target.value)}
+          className="h-9 rounded-md border border-[var(--surface-3)] bg-[var(--surface-1)] px-2 text-sm text-[var(--foreground)] focus:outline-none focus:ring-1 focus:ring-[var(--brand)]"
+        >
+          <option value="">All Categories</option>
+          {categories.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
+        </select>
+        <select
+          value={filterCondition}
+          onChange={(e) => handleFilterChange('condition', e.target.value)}
+          className="h-9 rounded-md border border-[var(--surface-3)] bg-[var(--surface-1)] px-2 text-sm text-[var(--foreground)] focus:outline-none focus:ring-1 focus:ring-[var(--brand)]"
+        >
+          <option value="">All Conditions</option>
+          {EQUIPMENT_CONDITION_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+        </select>
+        {(search || filterDept || filterCat || filterCondition || quickFilter) && (
+          <button
+            onClick={() => { setSearch(''); setFilterDept(''); setFilterCat(''); setFilterCondition(''); setQuickFilter(''); setPage(1); }}
+            className="text-xs text-[var(--text-muted)] hover:text-[var(--foreground)] underline"
+          >
+            Clear filters
+          </button>
+        )}
+        <span className="ml-auto text-xs text-[var(--text-muted)]">
+          {filteredRows.length} of {allRows.length} assets
+        </span>
+      </div>
+
+      {/* Table */}
+      <div className="panel-surface overflow-hidden rounded-lg">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="border-b border-[var(--surface-3)] bg-[var(--surface-2)]">
+              <tr>
+                <SortHeader label="Asset Code" sortable colKey="asset_code" sortKey={sortKey} sortAsc={sortAsc} onSort={handleSort} />
+                <SortHeader label="Equipment" sortable colKey="name" sortKey={sortKey} sortAsc={sortAsc} onSort={handleSort} />
+                <SortHeader label="Department" sortable colKey="department" sortKey={sortKey} sortAsc={sortAsc} onSort={handleSort} />
+                <SortHeader label="Category" sortable colKey="category" sortKey={sortKey} sortAsc={sortAsc} onSort={handleSort} />
+                <SortHeader label="Condition" sortable colKey="condition" sortKey={sortKey} sortAsc={sortAsc} onSort={handleSort} />
+                <SortHeader label="Maintenance State" />
+                <SortHeader label="Risk" sortable colKey="rpn" sortKey={sortKey} sortAsc={sortAsc} onSort={handleSort} />
+                <SortHeader label="Actions" />
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[var(--surface-3)]">
+              {pageRows.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="px-4 py-12 text-center text-sm text-[var(--text-muted)]">
+                    No equipment found. Adjust your filters or register new equipment.
+                  </td>
+                </tr>
+              ) : (
+                pageRows.map((row) => {
+                  const maintState = getMaintenanceState(row.condition, row.openRequest, row.openWorkOrder);
+                  const action = getRowAction(row);
+                  return (
+                    <tr
+                      key={row.id}
+                      className="cursor-pointer transition-colors hover:bg-[var(--surface-2)]"
+                      onClick={() => router.push(`/equipment/${row.id}`)}
+                    >
+                      <td className="px-4 py-3 font-mono text-xs text-[var(--text-muted)]">{row.asset_code}</td>
+                      <td className="px-4 py-3">
+                        <div className="font-medium text-[var(--foreground)]">{row.name}</div>
+                        {row.equipment_models?.name && (
+                          <div className="text-xs text-[var(--text-muted)]">{row.equipment_models.name}</div>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-[var(--text-muted)]">{row.departments?.name ?? '—'}</td>
+                      <td className="px-4 py-3 text-[var(--text-muted)]">{row.equipment_categories?.name ?? '—'}</td>
+                      <td className="px-4 py-3">
+                        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${getConditionBadgeClass(row.condition)}`}>
+                          {formatEquipmentCondition(row.condition)}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${getMaintenanceStateBadgeClass(maintState)}`}>
+                          {formatMaintenanceState(maintState)}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        {row.riskInfo != null ? (
+                          <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${rpnBandClass(row.riskInfo.rpn)}`}>
+                            {rpnBandLabel(row.riskInfo.rpn)} ({row.riskInfo.rpn})
+                          </span>
+                        ) : (
+                          <span className="text-xs text-[var(--text-muted)]">Not assessed</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        <a
+                          href={action.href}
+                          onClick={(e) => e.stopPropagation()}
+                          className={`inline-flex items-center rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+                            action.variant === 'primary'
+                              ? 'bg-[var(--brand)] text-white hover:opacity-90'
+                              : action.variant === 'danger'
+                              ? 'bg-rose-500/15 text-rose-300 hover:bg-rose-500/25'
+                              : action.variant === 'ghost'
+                              ? 'text-[var(--text-muted)] hover:text-[var(--foreground)]'
+                              : 'border border-[var(--surface-3)] bg-[var(--surface-2)] text-[var(--foreground)] hover:bg-[var(--surface-3)]'
+                          }`}
+                        >
+                          {action.label}
+                        </a>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between border-t border-[var(--surface-3)] px-4 py-3">
+            <span className="text-xs text-[var(--text-muted)]">
+              Page {page} of {totalPages} — {filteredRows.length} assets
+            </span>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page === 1}
+                className="rounded-md border border-[var(--surface-3)] px-3 py-1 text-xs disabled:opacity-40"
+              >
+                Previous
+              </button>
+              <button
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page === totalPages}
+                className="rounded-md border border-[var(--surface-3)] px-3 py-1 text-xs disabled:opacity-40"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
