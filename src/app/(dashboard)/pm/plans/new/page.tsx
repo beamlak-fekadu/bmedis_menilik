@@ -8,7 +8,7 @@ import { useToast } from '@/components/ui/Toast';
 import { getEquipmentList } from '@/services/equipment.service';
 import { createPMPlanAction } from '@/actions/pm.actions';
 import { getAll } from '@/services/settings.service';
-import type { EquipmentAsset, PMTemplate } from '@/types/database';
+import type { EquipmentAsset, PMTemplate } from '@/types/domain';
 import { pmPlanSchema } from '@/utils/validation/operations';
 
 export default function NewPMPlanPage() {

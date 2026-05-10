@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/client';
-import type { RiskLevel } from '@/types/database';
+import type { RiskLevel } from '@/types/domain';
 
 export interface RiskDimensionExplanation {
   score: number;

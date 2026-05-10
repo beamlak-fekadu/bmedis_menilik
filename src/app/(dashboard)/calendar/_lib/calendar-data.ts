@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
-import type { RoleName } from '@/types/database';
+import type { RoleName } from '@/types/roles';
 import {
   calibrationCalendarHref,
   disposedAssetCalendarHref,

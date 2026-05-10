@@ -48,6 +48,7 @@ export const ROUTES = {
   REPLACEMENT: '/replacement',
   ALERTS: '/alerts',
   HELPDESK: '/helpdesk',
+  DEVELOPER_LAB: '/developer-lab',
   SETTINGS: '/settings',
   USERS: '/users',
   SECURITY: '/security',
@@ -93,7 +94,6 @@ export const NAV_SECTIONS = [
     title: 'People',
     items: [
       { label: 'Training', href: ROUTES.TRAINING, icon: 'GraduationCap', roles: ['developer', 'admin', 'bme_head', 'technician', 'department_head', 'department_user'] },
-      { label: 'Users & Roles', href: ROUTES.USERS, icon: 'Users', roles: ['developer', 'admin'] },
     ],
   },
   {
@@ -106,7 +106,6 @@ export const NAV_SECTIONS = [
   {
     title: 'Support',
     items: [
-      { label: 'Helpdesk', href: ROUTES.HELPDESK, icon: 'Headphones', roles: ['developer', 'admin', 'bme_head', 'technician', 'department_head', 'department_user', 'store_user'] },
       { label: 'Alerts', href: ROUTES.ALERTS, icon: 'Bell', roles: ['developer', 'admin', 'bme_head', 'technician', 'department_head'] },
       { label: CHATBOT_NAME, href: ROUTES.CHATBOT, icon: 'MessageSquareText', roles: ['developer', 'admin', 'bme_head', 'technician', 'department_head', 'department_user', 'store_user', 'viewer'] },
     ],
@@ -120,10 +119,9 @@ export const NAV_SECTIONS = [
   {
     title: 'Administration',
     items: [
-      { label: 'Decision Support Health', href: '/command/health', icon: 'Activity', roles: ['developer', 'admin'] },
-      { label: 'Audit Log', href: ROUTES.AUDIT, icon: 'FileText', roles: ['developer', 'admin'] },
-      { label: 'Security', href: ROUTES.SECURITY, icon: 'Shield', roles: ['developer', 'admin'] },
-      { label: 'Settings', href: ROUTES.SETTINGS, icon: 'Settings', roles: ['developer', 'admin'] },
+      { label: 'Settings', href: ROUTES.SETTINGS, icon: 'Settings', roles: ['developer', 'admin', 'bme_head'] },
+      { label: 'Audit Log', href: ROUTES.AUDIT, icon: 'FileText', roles: ['developer', 'admin', 'bme_head'] },
+      { label: 'Developer Lab', href: ROUTES.DEVELOPER_LAB, icon: 'Activity', roles: ['developer'] },
     ],
   },
 ] as const;

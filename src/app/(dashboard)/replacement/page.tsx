@@ -1,20 +1,27 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import {
-  Replace,
   AlertTriangle,
-  ListOrdered,
-  Trophy,
-  RotateCcw,
+  ClipboardList,
+  FileBarChart,
+  PackageCheck,
+  Replace,
+  SlidersHorizontal,
+  Trash2,
 } from 'lucide-react';
 import { getReplacementPriorities } from '@/services/analytics.service';
 import { PageHeader, StatCard, DataTable, Badge, Button } from '@/components/ui';
 import { PageLoader } from '@/components/ui/Spinner';
-import Card, { CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
+import Card, { CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { ChartCard, HorizontalBarChart } from '@/components/charts';
+import { ScoreExplanation } from '@/app/(dashboard)/command/_components/ScoreExplanation';
+import type { ScoreExplanation as ScoreExplanationData } from '@/app/(dashboard)/command/_lib/command-center-data';
+import { equipmentDetail, replacementEvidence } from '@/app/(dashboard)/command/_lib/command-center-routes';
 import { generateReplacementDriver } from '@/utils/decision-support/explanations';
-import ExpandableText from '@/components/ui/ExpandableText';
+import { useRole } from '@/hooks/useRole';
+import { ROUTES } from '@/constants';
 
 interface AssetInfo {
   id: string;
@@ -37,37 +44,23 @@ interface ReplacementRow {
   rank: number | null;
   justification: string | null;
   computed_at?: string | null;
-  equipment_assets: AssetInfo;
+  equipment_assets: AssetInfo | null;
   [key: string]: unknown;
 }
 
 const SCORE_CRITERIA = [
-  { key: 'age_score', label: 'Age', color: '#6366f1' },
-  { key: 'failure_score', label: 'Failure', color: '#ef4444' },
-  { key: 'availability_score', label: 'Availability', color: '#f97316' },
-  { key: 'maintenance_burden_score', label: 'Maint. Burden', color: '#eab308' },
-  { key: 'spare_part_score', label: 'Spare Parts', color: '#14b8a6' },
-  { key: 'risk_score', label: 'Risk', color: '#dc2626' },
-  { key: 'cost_score', label: 'Cost', color: '#8b5cf6' },
+  { key: 'age_score', label: 'Age', weight: '15%', color: '#2563eb' },
+  { key: 'failure_score', label: 'Failure frequency', weight: '20%', color: '#ef4444' },
+  { key: 'availability_score', label: 'Availability impact', weight: '15%', color: '#f97316' },
+  { key: 'maintenance_burden_score', label: 'Maintenance burden', weight: '15%', color: '#eab308' },
+  { key: 'spare_part_score', label: 'Spare support', weight: '10%', color: '#14b8a6' },
+  { key: 'risk_score', label: 'FMEA risk', weight: '15%', color: '#dc2626' },
+  { key: 'cost_score', label: 'Lifecycle cost', weight: '10%', color: '#8b5cf6' },
 ] as const;
 
-type ScoreKey = typeof SCORE_CRITERIA[number]['key'];
-
-type SimulatedReplacementRow = ReplacementRow & {
-  simulated_rpi: number;
-  simulated_rank: number;
-  rank_delta: number | null;
-};
-
-const DEFAULT_WEIGHTS: Record<ScoreKey, number> = {
-  age_score: 15,
-  failure_score: 20,
-  availability_score: 15,
-  maintenance_burden_score: 15,
-  spare_part_score: 10,
-  risk_score: 15,
-  cost_score: 10,
-};
+function rpiValue(row: ReplacementRow) {
+  return row.replacement_priority_index ?? 0;
+}
 
 function rpiColor(index: number): string {
   if (index >= 0.7) return '#ef4444';
@@ -75,21 +68,81 @@ function rpiColor(index: number): string {
   return '#22c55e';
 }
 
-function computeSimulatedRpi(row: ReplacementRow, weights: Record<ScoreKey, number>): number {
-  const totalWeight = SCORE_CRITERIA.reduce((sum, criterion) => sum + weights[criterion.key], 0);
-  if (totalWeight <= 0) return 0;
-
-  const weightedScore = SCORE_CRITERIA.reduce((sum, criterion) => {
-    const value = row[criterion.key] as number | null;
-    return sum + (value ?? 0) * weights[criterion.key];
-  }, 0);
-
-  return weightedScore / totalWeight;
+function rpiLabel(value: number | null | undefined) {
+  if (value == null) return 'Not scored';
+  return `${Math.round(value * 100)}/100`;
 }
 
-function formatRankDelta(delta: number | null) {
-  if (delta == null || delta === 0) return 'No change';
-  return delta > 0 ? `Up ${delta}` : `Down ${Math.abs(delta)}`;
+function scoreBand(value: number | null | undefined) {
+  if (value == null) return 'Not available';
+  if (value >= 0.7) return 'High';
+  if (value >= 0.4) return 'Moderate';
+  return 'Low';
+}
+
+function procurementPrefill(row: ReplacementRow) {
+  const asset = row.equipment_assets;
+  const params = new URLSearchParams({
+    source: 'replacement',
+    assetId: row.asset_id,
+    itemName: asset ? `${asset.asset_code} ${asset.name}` : 'replacement equipment',
+    reason: generateReplacementDriver(row),
+  });
+  return `/procurement/requests/new?${params.toString()}`;
+}
+
+function disposalPrefill(row: ReplacementRow) {
+  const params = new URLSearchParams({
+    source: 'replacement',
+    action: 'new-request',
+    assetId: row.asset_id,
+    reason: generateReplacementDriver(row),
+  });
+  return `/disposal?${params.toString()}`;
+}
+
+function reportPrefill(row: ReplacementRow) {
+  const params = new URLSearchParams({
+    source: 'replacement',
+    assetId: row.asset_id,
+    rank: String(row.rank ?? ''),
+    rpi: String(row.replacement_priority_index ?? ''),
+  });
+  return `/reports/replacement-planning?${params.toString()}`;
+}
+
+function rpiExplanation(row: ReplacementRow): ScoreExplanationData {
+  const values = SCORE_CRITERIA.map((criterion) => ({
+    label: criterion.label,
+    value: row[criterion.key] == null ? null : Number(row[criterion.key]).toFixed(2),
+  }));
+  const calculation = SCORE_CRITERIA
+    .map((criterion) => `${criterion.weight} x ${row[criterion.key] == null ? '0' : Number(row[criterion.key]).toFixed(2)}`)
+    .join(' + ');
+
+  return {
+    title: 'Replacement Priority Index',
+    scoreLabel: rpiLabel(row.replacement_priority_index),
+    formula: 'RPI = sum(weight_i x normalized criterion_i), scaled to 0-100 for display',
+    criteria: SCORE_CRITERIA.map((criterion) => criterion.label),
+    weights: SCORE_CRITERIA.map((criterion) => ({ label: criterion.label, value: criterion.weight })),
+    rawValues: values,
+    normalizedValues: values,
+    calculation: `${calculation} = ${rpiLabel(row.replacement_priority_index)}`,
+    generatedReason: generateReplacementDriver(row),
+    timestamp: row.computed_at ?? null,
+    source: 'replacement_priority_scores, equipment analytics, FMEA risk, reliability, maintenance, and spare-part evidence',
+    assignmentMethod: 'Computed snapshot',
+    actionSuggestion: 'Review evidence, then decide whether to start procurement, disposal, or management reporting.',
+  };
+}
+
+function mainDriver(row: ReplacementRow) {
+  const top = SCORE_CRITERIA
+    .map((criterion) => ({ ...criterion, value: row[criterion.key] as number | null }))
+    .filter((item) => item.value != null)
+    .sort((a, b) => (b.value ?? 0) - (a.value ?? 0))[0];
+  return top ? `${top.label} (${scoreBand(top.value)})` : 'Insufficient score evidence';
 }
 
 function hasMissingScore(row: ReplacementRow) {
@@ -97,9 +150,9 @@ function hasMissingScore(row: ReplacementRow) {
 }
 
 export default function ReplacementPage() {
+  const { isDeveloper } = useRole();
   const [data, setData] = useState<ReplacementRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [weights, setWeights] = useState<Record<ScoreKey, number>>(DEFAULT_WEIGHTS);
 
   useEffect(() => {
     async function load() {
@@ -110,339 +163,171 @@ export default function ReplacementPage() {
         setLoading(false);
       }
     }
-    load();
+    void load();
   }, []);
 
   const ranked = useMemo(() => [...data]
     .filter((d) => d.replacement_priority_index != null)
-    .sort((a, b) => (a.rank ?? 999) - (b.rank ?? 999)), [data]);
+    .sort((a, b) => (a.rank ?? 9999) - (b.rank ?? 9999)), [data]);
 
-  const simulatedRanked = useMemo<SimulatedReplacementRow[]>(() => {
-    const withScores = ranked.map((row) => ({
-      ...row,
-      simulated_rpi: computeSimulatedRpi(row, weights),
-      simulated_rank: 0,
-      rank_delta: null,
-    }));
-
-    return withScores
-      .sort((a, b) => b.simulated_rpi - a.simulated_rpi)
-      .map((row, idx) => {
-        const simulatedRank = idx + 1;
-        const baselineRank = row.rank ?? null;
-        return {
-          ...row,
-          simulated_rank: simulatedRank,
-          rank_delta: baselineRank == null ? null : baselineRank - simulatedRank,
-        };
-      });
-  }, [ranked, weights]);
-
-  const totalWeight = SCORE_CRITERIA.reduce((sum, criterion) => sum + weights[criterion.key], 0);
-  const simulatedRecommendedRows = simulatedRanked.filter((d) => d.simulated_rpi >= 0.7);
-  const top3 = simulatedRanked.filter((d) => d.simulated_rpi >= 0.7).slice(0, 3);
+  const topCandidates = ranked.slice(0, 3);
+  const highPriority = ranked.filter((row) => rpiValue(row) >= 0.7);
+  const criticalClinicalImpact = ranked.filter((row) => (row.risk_score ?? 0) >= 0.7);
+  const poorSpareSupport = ranked.filter((row) => (row.spare_part_score ?? 0) >= 0.7);
+  const highMaintenanceBurden = ranked.filter((row) => (row.maintenance_burden_score ?? 0) >= 0.7);
 
   if (loading) return <PageLoader />;
 
   const columns = [
     {
       key: 'rank',
-      header: '#',
+      header: 'Rank',
       sortable: true,
-      render: (row: SimulatedReplacementRow) => (
-        <span className="font-bold text-gray-700 dark:text-gray-300">{row.rank ?? '—'}</span>
-      ),
+      render: (row: ReplacementRow) => <span className="font-semibold">#{row.rank ?? '—'}</span>,
     },
     {
-      key: 'asset_code',
-      header: 'Asset Code',
+      key: 'asset',
+      header: 'Asset',
       sortable: true,
-      render: (row: SimulatedReplacementRow) => row.equipment_assets?.asset_code ?? '—',
-    },
-    {
-      key: 'asset_name',
-      header: 'Name',
-      sortable: true,
-      render: (row: SimulatedReplacementRow) => (
+      render: (row: ReplacementRow) => (
         <div>
-          <p>{row.equipment_assets?.name ?? '—'}</p>
-          {hasMissingScore(row) && (
-            <p className="mt-0.5 text-xs text-amber-600 dark:text-amber-300">missing data — using fallback</p>
-          )}
+          <Link href={equipmentDetail(row.asset_id)} className="font-medium text-[var(--foreground)] hover:text-[var(--brand)]">
+            {row.equipment_assets?.asset_code ?? row.asset_id}
+          </Link>
+          <p className="text-xs text-[var(--text-muted)]">{row.equipment_assets?.name ?? 'Unknown asset'}</p>
+          {hasMissingScore(row) && <p className="text-xs text-amber-500">Missing evidence in one or more criteria</p>}
         </div>
       ),
-    },
-    {
-      key: 'age_score',
-      header: 'Age',
-      sortable: true,
-      render: (row: SimulatedReplacementRow) => row.age_score?.toFixed(2) ?? '—',
-    },
-    {
-      key: 'failure_score',
-      header: 'Failure',
-      sortable: true,
-      render: (row: SimulatedReplacementRow) => row.failure_score?.toFixed(2) ?? '—',
-    },
-    {
-      key: 'availability_score',
-      header: 'Avail.',
-      sortable: true,
-      render: (row: SimulatedReplacementRow) => row.availability_score?.toFixed(2) ?? '—',
-    },
-    {
-      key: 'maintenance_burden_score',
-      header: 'Maint.',
-      sortable: true,
-      render: (row: SimulatedReplacementRow) => row.maintenance_burden_score?.toFixed(2) ?? '—',
-    },
-    {
-      key: 'spare_part_score',
-      header: 'Parts',
-      sortable: true,
-      render: (row: SimulatedReplacementRow) => row.spare_part_score?.toFixed(2) ?? '—',
-    },
-    {
-      key: 'risk_score',
-      header: 'Risk',
-      sortable: true,
-      render: (row: SimulatedReplacementRow) => row.risk_score?.toFixed(2) ?? '—',
     },
     {
       key: 'replacement_priority_index',
       header: 'RPI',
       sortable: true,
-      render: (row: SimulatedReplacementRow) => {
-        if (row.replacement_priority_index == null) return '—';
-        const rpi = row.replacement_priority_index;
-        return (
-          <Badge variant={rpi >= 0.7 ? 'error' : rpi >= 0.4 ? 'warning' : 'success'}>
-            {rpi.toFixed(3)}
+      render: (row: ReplacementRow) => (
+        <ScoreExplanation details={rpiExplanation(row)}>
+          <Badge variant={rpiValue(row) >= 0.7 ? 'error' : rpiValue(row) >= 0.4 ? 'warning' : 'success'}>
+            {rpiLabel(row.replacement_priority_index)}
           </Badge>
-        );
-      },
+        </ScoreExplanation>
+      ),
     },
     {
-      key: 'simulated_rpi',
-      header: 'Sim. RPI',
+      key: 'main_driver',
+      header: 'Main Driver',
+      render: (row: ReplacementRow) => <span className="text-sm">{mainDriver(row)}</span>,
+    },
+    {
+      key: 'risk_score',
+      header: 'Risk',
       sortable: true,
-      render: (row: SimulatedReplacementRow) => (
-        <Badge variant={row.simulated_rpi >= 0.7 ? 'error' : row.simulated_rpi >= 0.4 ? 'warning' : 'success'}>
-          {row.simulated_rpi.toFixed(3)}
-        </Badge>
-      ),
+      render: (row: ReplacementRow) => scoreBand(row.risk_score),
     },
     {
-      key: 'simulated_rank',
-      header: 'Sim. Rank',
+      key: 'maintenance_burden_score',
+      header: 'Maintenance Burden',
       sortable: true,
-      render: (row: SimulatedReplacementRow) => (
-        <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">#{row.simulated_rank}</span>
-      ),
+      render: (row: ReplacementRow) => scoreBand(row.maintenance_burden_score),
     },
     {
-      key: 'rank_delta',
-      header: 'Rank Change',
-      render: (row: SimulatedReplacementRow) => (
-        <span className={row.rank_delta && row.rank_delta > 0 ? 'text-green-600 dark:text-green-400' : row.rank_delta && row.rank_delta < 0 ? 'text-orange-600 dark:text-orange-400' : 'text-gray-500'}>
-          {formatRankDelta(row.rank_delta)}
-        </span>
-      ),
+      key: 'age_score',
+      header: 'Age',
+      sortable: true,
+      render: (row: ReplacementRow) => scoreBand(row.age_score),
     },
     {
-      key: 'justification',
-      header: 'Key Driver',
-      render: (row: SimulatedReplacementRow) => (
-        <span className="max-w-[250px] text-sm text-gray-600 dark:text-gray-400">
-          <ExpandableText text={generateReplacementDriver(row)} lines={2} />
-        </span>
-      ),
+      key: 'spare_part_score',
+      header: 'Spare Support',
+      sortable: true,
+      render: (row: ReplacementRow) => scoreBand(row.spare_part_score),
     },
     {
-      key: 'computed_at',
-      header: 'Computed',
-      render: (row: SimulatedReplacementRow) => row.computed_at ? new Date(row.computed_at).toLocaleString() : '—',
+      key: 'actions',
+      header: 'Next Action',
+      render: (row: ReplacementRow) => (
+        <div className="flex flex-wrap gap-2">
+          <Link href={replacementEvidence(row.asset_id)} className="rounded-lg border border-[var(--border-subtle)] px-2 py-1 text-xs hover:bg-[var(--surface-2)]">Evidence</Link>
+          <Link href={procurementPrefill(row)} className="rounded-lg border border-[var(--border-subtle)] px-2 py-1 text-xs hover:bg-[var(--surface-2)]">Procurement</Link>
+          <Link href={disposalPrefill(row)} className="rounded-lg border border-[var(--border-subtle)] px-2 py-1 text-xs hover:bg-[var(--surface-2)]">Disposal</Link>
+        </div>
+      ),
     },
   ];
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Replacement Priority Ranking"
-        description="Multi-criteria replacement model: RPI = Σ(wᵢ × criterionᵢ) based on age, failures, availability, maintenance burden, risk, and cost"
+        title="Replacement Priority"
+        description="Replacement planning evidence for BME Head decisions. Scoring sliders and sensitivity testing live in Developer Lab."
         breadcrumbs={[
-          { label: 'Command Center', href: '/command' },
-          { label: 'Replacement Priority Ranking' },
+          { label: 'Command Center', href: ROUTES.COMMAND },
+          { label: 'Replacement Priority' },
         ]}
+        actions={isDeveloper ? (
+          <Link href="/developer-lab">
+            <Button variant="outline" size="sm">
+              <SlidersHorizontal className="h-4 w-4" />
+              Open in Developer Lab
+            </Button>
+          </Link>
+        ) : undefined}
       />
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard
-          label="Assets Ranked"
-          value={ranked.length}
-          icon={<ListOrdered className="h-6 w-6" />}
-          color="blue"
-        />
-        <StatCard
-          label="Top Priority RPI"
-          value={ranked[0]?.replacement_priority_index?.toFixed(3) ?? '—'}
-          icon={<AlertTriangle className="h-6 w-6" />}
-          color="red"
-        />
-        <StatCard
-          label="Simulated Recommended"
-          value={simulatedRecommendedRows.length}
-          icon={<Replace className="h-6 w-6" />}
-          color="orange"
-        />
-        <StatCard
-          label="Lowest RPI"
-          value={ranked[ranked.length - 1]?.replacement_priority_index?.toFixed(3) ?? '—'}
-          icon={<Trophy className="h-6 w-6" />}
-          color="green"
-        />
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <StatCard label="Total Candidates" value={ranked.length} icon={<Replace className="h-6 w-6" />} color="blue" />
+        <StatCard label="High Priority" value={highPriority.length} icon={<AlertTriangle className="h-6 w-6" />} color="red" />
+        <StatCard label="Critical Clinical Impact" value={criticalClinicalImpact.length} icon={<ClipboardList className="h-6 w-6" />} color="orange" />
+        <StatCard label="Poor Spare Support" value={poorSpareSupport.length} icon={<PackageCheck className="h-6 w-6" />} color="yellow" />
+        <StatCard label="High Maintenance Burden" value={highMaintenanceBurden.length} icon={<AlertTriangle className="h-6 w-6" />} color="purple" />
+        <StatCard label="Procurement Linked" value="Action ready" icon={<PackageCheck className="h-6 w-6" />} color="green" />
+        <StatCard label="Disposal Linked" value="Action ready" icon={<Trash2 className="h-6 w-6" />} color="gray" />
+        <StatCard label="Management Report Candidates" value={highPriority.length} icon={<FileBarChart className="h-6 w-6" />} color="blue" />
       </div>
 
-      <Card>
-        <CardHeader className="items-start">
-          <div>
-            <CardTitle>Sensitivity Analysis</CardTitle>
-            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              Adjust criteria weights to simulate replacement priority changes. This does not write to Supabase.
-            </p>
-          </div>
-          <div className="flex flex-col items-end gap-2 text-right text-xs text-gray-500 dark:text-gray-400">
-            <div>
-              <p>Total weight</p>
-              <p className={`text-lg font-semibold ${totalWeight === 100 ? 'text-green-700 dark:text-green-300' : 'text-amber-700 dark:text-amber-300'}`}>
-                {totalWeight}%
-              </p>
-            </div>
-            <Button size="sm" variant="outline" onClick={() => setWeights(DEFAULT_WEIGHTS)}>
-              <RotateCcw className="h-4 w-4" />
-              Reset
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {SCORE_CRITERIA.map((criterion) => (
-              <label key={criterion.key} className="rounded-lg border border-[var(--border-subtle)] p-3">
-                <div className="mb-2 flex items-center justify-between gap-3">
-                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{criterion.label}</span>
-                  <span className="text-sm font-semibold text-gray-900 dark:text-white">{weights[criterion.key]}%</span>
+      {topCandidates.length > 0 && (
+        <div className="grid gap-4 md:grid-cols-3">
+          {topCandidates.map((item) => (
+            <Card key={item.id} className="border-rose-500/30">
+              <CardHeader>
+                <CardTitle>#{item.rank ?? '—'} {item.equipment_assets?.asset_code ?? item.asset_id}</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3 text-sm">
+                <p className="font-medium text-[var(--foreground)]">{item.equipment_assets?.name ?? 'Unknown asset'}</p>
+                <p className="text-[var(--text-muted)]">{generateReplacementDriver(item)}</p>
+                <div className="flex items-center justify-between">
+                  <span className="text-[var(--text-muted)]">RPI</span>
+                  <ScoreExplanation details={rpiExplanation(item)}>
+                    <Badge variant="error">{rpiLabel(item.replacement_priority_index)}</Badge>
+                  </ScoreExplanation>
                 </div>
-                <input
-                  type="range"
-                  min={0}
-                  max={40}
-                  step={1}
-                  value={weights[criterion.key]}
-                  onChange={(event) => {
-                    const value = Number(event.target.value);
-                    setWeights((prev) => ({ ...prev, [criterion.key]: value }));
-                  }}
-                  className="w-full accent-[var(--brand)]"
-                  aria-label={`${criterion.label} weight`}
-                />
-              </label>
-            ))}
-          </div>
-          <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
-            Scores with missing values contribute 0 in the simulation; weights are normalized automatically by total weight.
-          </p>
-        </CardContent>
-      </Card>
-
-      {top3.length > 0 && (
-        <div>
-          <h2 className="mb-3 flex items-center gap-2 text-lg font-semibold text-red-700 dark:text-red-400">
-            <Replace className="h-5 w-5" />
-            Recommended for Replacement
-          </h2>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-            {top3.map((item, idx) => (
-              <Card key={item.id} className="border-red-200 dark:border-red-800">
-                <CardHeader>
-                  <CardTitle>
-                    <span className="flex items-center gap-2">
-                      <span className="flex h-7 w-7 items-center justify-center rounded-full bg-red-100 text-sm font-bold text-red-700 dark:bg-red-900/30 dark:text-red-400">
-                        {idx + 1}
-                      </span>
-                      {item.equipment_assets?.asset_code ?? item.asset_id}
-                    </span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="mb-2 text-sm font-medium text-gray-900 dark:text-white">
-                    {item.equipment_assets?.name ?? 'Unknown Asset'}
-                  </p>
-                  <p className="mb-3 text-xs text-gray-500 dark:text-gray-400">
-                    {generateReplacementDriver(item)}
-                  </p>
-                  <div className="mb-2 flex items-center justify-between text-sm">
-                    <span className="text-gray-500">RPI</span>
-                    <Badge variant="error">
-                    {item.simulated_rpi.toFixed(3)}
-                    </Badge>
-                  </div>
-                  <div className="mb-3 flex items-center justify-between text-sm">
-                    <span className="text-gray-500">Baseline RPI</span>
-                    <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
-                      {item.replacement_priority_index?.toFixed(3) ?? '—'} · {formatRankDelta(item.rank_delta)}
-                    </span>
-                  </div>
-                  <div className="space-y-1.5">
-                    {SCORE_CRITERIA.map((c) => {
-                      const val = item[c.key as keyof ReplacementRow] as number | null;
-                      return (
-                        <div key={c.key} className="flex items-center gap-2">
-                          <span className="w-20 text-xs text-gray-500">{c.label}</span>
-                          <div className="h-2 flex-1 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800">
-                            <div
-                              className="h-full rounded-full transition-all"
-                              style={{
-                                width: `${((val ?? 0) * 100).toFixed(0)}%`,
-                                backgroundColor: c.color,
-                              }}
-                            />
-                          </div>
-                          <span className="w-10 text-right text-xs font-medium text-gray-700 dark:text-gray-300">
-                            {val?.toFixed(2) ?? '—'}
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+                <div className="flex flex-wrap gap-2">
+                  <Link href={replacementEvidence(item.asset_id)} className="rounded-lg bg-[var(--brand)] px-3 py-1.5 text-xs font-medium text-white">View Evidence</Link>
+                  <Link href={reportPrefill(item)} className="rounded-lg border border-[var(--border-subtle)] px-3 py-1.5 text-xs font-medium">Report</Link>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
         </div>
       )}
 
-      <ChartCard
-        title="Replacement Priority Index"
-        description="All ranked assets by simulated replacement priority"
-      >
-        {simulatedRanked.length > 0 ? (
+      <ChartCard title="Replacement Priority Index" description="Current live ranking snapshot. Sandbox comparisons are developer-only.">
+        {ranked.length > 0 ? (
           <HorizontalBarChart
-            labels={simulatedRanked.map((d) => d.equipment_assets?.asset_code ?? d.asset_id)}
-            values={simulatedRanked.map((d) => d.simulated_rpi)}
-            colors={simulatedRanked.map((d) => rpiColor(d.simulated_rpi))}
-            height={Math.max(300, simulatedRanked.length * 28)}
+            labels={ranked.map((d) => d.equipment_assets?.asset_code ?? d.asset_id)}
+            values={ranked.map((d) => rpiValue(d))}
+            colors={ranked.map((d) => rpiColor(rpiValue(d)))}
+            height={Math.max(300, ranked.length * 28)}
           />
         ) : (
-          <p className="py-12 text-center text-sm text-gray-500">No replacement data</p>
+          <p className="py-12 text-center text-sm text-[var(--text-muted)]">No replacement priority scores found. Run analytics recompute from Developer Lab if this is unexpected.</p>
         )}
       </ChartCard>
 
-      <DataTable<SimulatedReplacementRow>
+      <DataTable<ReplacementRow>
         columns={columns}
-        data={simulatedRanked}
+        data={ranked}
         keyField="id"
-        searchPlaceholder="Search assets..."
-        emptyMessage="No replacement priorities found"
+        searchPlaceholder="Search replacement candidates..."
+        emptyMessage="No replacement candidates found"
         pageSize={15}
       />
     </div>

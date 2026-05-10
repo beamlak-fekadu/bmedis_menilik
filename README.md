@@ -133,6 +133,26 @@ rank, score, and explain, but final operational decisions remain with the BME He
 6. Future triage categories: new triage categories must define record IDs, exact routes, and prefilled fallback flows before being shown in the Command Center.
 7. BME Head principle: the system recommends/explains; the BME Head decides.
 
+## Final Navigation and Administration Architecture
+
+- Helpdesk has been removed from primary navigation. `/helpdesk` redirects to `/requests`; support is handled by Requests Hub, Alerts, Maintenance Requests, and BMERMS AI Chatbot.
+- Users & Roles is embedded in `/settings?tab=staff-access` as Staff & Access. `/users` redirects there.
+- Security is embedded in `/settings?tab=security-access` as Security & Access. `/security` redirects there.
+- Decision Support Health is renamed Developer Lab at `/developer-lab`. `/command/health` and `/decision-support-health` redirect there.
+- Developer Lab is developer-only and contains scoring methodology, sensitivity sandbox sliders, ranking comparison, data health checks, refresh/debug tools, and thesis/demo tools.
+- BME Head operational pages must not show scoring sliders, sandbox weights, thesis debug controls, or raw developer diagnostics.
+- Settings is the administration center for Hospital Profile, Departments, Equipment Categories, Staff & Access, Security & Access, Notifications, Reference Data, System Preferences, and Data Import/Export.
+
+## Final Workflow Rules
+
+- Show the operational situation, explain why it matters, show the next action, open exact records, and preserve evidence.
+- Existing record actions open exact routes. Missing workflow records open prefilled creation flows with source context.
+- Informational signals use evidence, acknowledge/snooze, or convert-to-workflow actions.
+- Composite scores must be explainable with formula, criteria, weights, source data, current calculation, interpretation, and BME Head decision ownership.
+- Replacement Priority is a planning/evidence page only; scoring sliders belong in Developer Lab.
+- Disposal requests are formal workflow rows; replacement candidates are related evidence, not disposal requests.
+- Reports is the evidence/export center across operations, inventory, maintenance, work orders, PM, calibration, risk/FMEA, replacement, readiness, stock, procurement, training, disposal, workload, audit/security, and demo reporting.
+
 ## Requests Hub Semantics
 
 The `/requests` page is the central intake and tracking layer for hospital requests. It does not replace the full Maintenance, Calibration, Training, Procurement, Disposal, Installation, or Documents modules.

@@ -1,12 +1,15 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, PackagePlus, PackageMinus, AlertTriangle } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
+import Link from 'next/link';
+import { Plus, PackagePlus, PackageMinus, AlertTriangle, Boxes, ClipboardList, DollarSign, Wrench } from 'lucide-react';
 import PageHeader from '@/components/ui/PageHeader';
 import DataTable from '@/components/ui/DataTable';
 import Tabs from '@/components/ui/Tabs';
 import Button from '@/components/ui/Button';
 import Badge from '@/components/ui/Badge';
+import StatCard from '@/components/ui/StatCard';
 import Modal from '@/components/ui/Modal';
 import Input from '@/components/ui/Input';
 import Select from '@/components/ui/Select';
@@ -18,8 +21,11 @@ import {
   getSpareParts,
   getLowStockParts,
 } from '@/services/spare-parts.service';
+import { getProcurementPipeline } from '@/services/procurement.service';
 import { createSparePartAction, createStockIssueAction, createStockReceiptAction } from '@/actions/spare-parts.actions';
 import { createClient } from '@/lib/supabase/client';
+import { useRole } from '@/hooks/useRole';
+import { procurementDetail } from '@/app/(dashboard)/command/_lib/command-center-routes';
 
 type PartRow = Record<string, unknown>;
 type ReceiptRow = Record<string, unknown>;
@@ -28,10 +34,13 @@ type LowStockRow = Record<string, unknown>;
 
 export default function SparePartsPage() {
   const { toast } = useToast();
+  const searchParams = useSearchParams();
+  const { canManageParts, primaryRole } = useRole();
   const [parts, setParts] = useState<PartRow[]>([]);
   const [receipts, setReceipts] = useState<ReceiptRow[]>([]);
   const [issues, setIssues] = useState<IssueRow[]>([]);
   const [lowStock, setLowStock] = useState<LowStockRow[]>([]);
+  const [procurementRows, setProcurementRows] = useState<Record<string, unknown>[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
@@ -77,11 +86,13 @@ export default function SparePartsPage() {
           .order('issue_date', { ascending: false }),
         getLowStockParts(),
       ]);
+      const procurementRes = await getProcurementPipeline();
 
       setParts((partsRes.data || []) as PartRow[]);
       setReceipts((receiptsRes.data || []) as ReceiptRow[]);
       setIssues((issuesRes.data || []) as IssueRow[]);
       setLowStock((lowRes.data || []) as LowStockRow[]);
+      setProcurementRows((procurementRes.data || []) as Record<string, unknown>[]);
     } catch {
       toast('error', 'Failed to load spare parts data');
     } finally {
@@ -90,6 +101,16 @@ export default function SparePartsPage() {
   }, [toast]);
 
   useEffect(() => { loadData(); }, [loadData]);
+
+  useEffect(() => {
+    const partId = searchParams.get('partId') ?? searchParams.get('sparePartId');
+    if (partId) {
+      setRecPartId(partId);
+      setIssPartId(partId);
+    }
+    if (searchParams.get('action') === 'issue') setIssueOpen(true);
+    if (searchParams.get('action') === 'receive') setReceiptOpen(true);
+  }, [searchParams]);
 
   const handleAddPart = async () => {
     if (!partCode || !partName) {
@@ -199,6 +220,27 @@ export default function SparePartsPage() {
     label: `${p.part_code} — ${p.name}`,
   }));
 
+  function openProcurementForPart(row: Record<string, unknown>) {
+    const haystack = `${row.part_code ?? ''} ${row.name ?? ''}`.toLowerCase();
+    return procurementRows.find((request) => {
+      if (['delivered', 'canceled'].includes(String(request.status ?? ''))) return false;
+      const text = `${request.title ?? ''} ${request.justification ?? ''}`.toLowerCase();
+      return haystack.split(/\s+/).filter(Boolean).some((token) => token.length > 3 && text.includes(token));
+    });
+  }
+
+  function procurementParams(row: Record<string, unknown>, stock: number, reorder: number) {
+    return new URLSearchParams({
+      source: stock <= 0 ? 'spare-parts-stockout' : 'spare-parts-low-stock',
+      partId: row.id as string,
+      itemName: String(row.name ?? row.part_code ?? 'spare part'),
+      currentStock: String(stock),
+      reorderLevel: String(reorder),
+      suggestedQuantity: String(Math.max(reorder * 2 - stock, 1)),
+      reason: stock <= 0 ? 'Stockout blocks maintenance readiness' : 'Stock below reorder level',
+    });
+  }
+
   const catalogColumns = [
     { key: 'part_code', header: 'Part Code', sortable: true },
     { key: 'name', header: 'Name', sortable: true },
@@ -220,6 +262,17 @@ export default function SparePartsPage() {
       },
     },
     {
+      key: 'stock_state',
+      header: 'State',
+      render: (row: PartRow) => {
+        const stock = Number(row.current_stock ?? 0);
+        const reorder = Number(row.reorder_level ?? 0);
+        if (stock <= 0) return <Badge variant="error">Stockout</Badge>;
+        if (stock <= reorder) return <Badge variant="warning">Low</Badge>;
+        return <Badge variant="success">Normal</Badge>;
+      },
+    },
+    {
       key: 'reorder_level',
       header: 'Reorder Level',
     },
@@ -228,6 +281,27 @@ export default function SparePartsPage() {
       header: 'Unit Cost',
       render: (row: PartRow) =>
         row.unit_cost != null ? `$${(row.unit_cost as number).toFixed(2)}` : '—',
+    },
+    {
+      key: 'action',
+      header: 'Action',
+      render: (row: PartRow) => {
+        const stock = Number(row.current_stock ?? 0);
+        const reorder = Number(row.reorder_level ?? 0);
+        if (stock <= reorder) {
+          const existing = openProcurementForPart(row);
+          if (existing?.id) {
+            return <Link className="rounded-lg border border-[var(--border-subtle)] px-2 py-1 text-xs font-medium hover:bg-[var(--surface-2)]" href={procurementDetail(existing.id as string)}>Open Procurement</Link>;
+          }
+          const params = procurementParams(row, stock, reorder);
+          return <Link className="rounded-lg border border-[var(--border-subtle)] px-2 py-1 text-xs font-medium hover:bg-[var(--surface-2)]" href={`/procurement/requests/new?${params.toString()}`}>{stock <= 0 ? 'Urgent Procurement' : 'Request Procurement'}</Link>;
+        }
+        return canManageParts ? (
+          <button type="button" className="rounded-lg border border-[var(--border-subtle)] px-2 py-1 text-xs font-medium hover:bg-[var(--surface-2)]" onClick={() => { setIssPartId(row.id as string); setIssueOpen(true); }}>
+            Issue Part
+          </button>
+        ) : <span className="text-xs text-[var(--text-muted)]">View</span>;
+      },
     },
   ];
 
@@ -254,6 +328,15 @@ export default function SparePartsPage() {
       sortable: true,
       render: (row: ReceiptRow) => new Date(row.received_date as string).toLocaleDateString(),
     },
+    {
+      key: 'action',
+      header: 'Action',
+      render: (row: ReceiptRow) => (
+        <Link className="rounded-lg border border-[var(--border-subtle)] px-2 py-1 text-xs font-medium hover:bg-[var(--surface-2)]" href={`/spare-parts?receiptId=${row.id as string}`}>
+          View Receipt
+        </Link>
+      ),
+    },
   ];
 
   const issueColumns = [
@@ -279,6 +362,15 @@ export default function SparePartsPage() {
       header: 'Date',
       sortable: true,
       render: (row: IssueRow) => new Date(row.issue_date as string).toLocaleDateString(),
+    },
+    {
+      key: 'action',
+      header: 'Action',
+      render: (row: IssueRow) => (
+        <Link className="rounded-lg border border-[var(--border-subtle)] px-2 py-1 text-xs font-medium hover:bg-[var(--surface-2)]" href={`/spare-parts?issueId=${row.id as string}`}>
+          View Issue
+        </Link>
+      ),
     },
   ];
 
@@ -307,9 +399,36 @@ export default function SparePartsPage() {
       render: (row: LowStockRow) =>
         row.unit_cost != null ? `$${(row.unit_cost as number).toFixed(2)}` : '—',
     },
+    {
+      key: 'action',
+      header: 'Action',
+      render: (row: LowStockRow) => {
+        const stock = Number(row.current_stock ?? 0);
+        const reorder = Number(row.reorder_level ?? 0);
+        const existing = openProcurementForPart(row);
+        if (existing?.id) {
+          return <Link className="rounded-lg border border-[var(--border-subtle)] px-2 py-1 text-xs font-medium hover:bg-[var(--surface-2)]" href={procurementDetail(existing.id as string)}>Open Procurement</Link>;
+        }
+        const params = procurementParams(row, stock, reorder);
+        return <Link className="rounded-lg border border-[var(--border-subtle)] px-2 py-1 text-xs font-medium hover:bg-[var(--surface-2)]" href={`/procurement/requests/new?${params.toString()}`}>{stock <= 0 ? 'Create Urgent Procurement' : 'Request Procurement'}</Link>;
+      },
+    },
   ];
 
   if (loading) return <PageLoader />;
+
+  const stockouts = lowStock.filter((row) => Number(row.current_stock ?? 0) <= 0);
+  const recentReceipts = receipts.filter((row) => {
+    if (!row.received_date) return false;
+    return Date.now() - new Date(row.received_date as string).getTime() <= 30 * 86_400_000;
+  });
+  const recentIssues = issues.filter((row) => {
+    if (!row.issue_date) return false;
+    return Date.now() - new Date(row.issue_date as string).getTime() <= 30 * 86_400_000;
+  });
+  const openProcurement = procurementRows.filter((row) => !['delivered', 'canceled'].includes(String(row.status ?? 'requested')));
+  const highCostStock = parts.filter((row) => Number(row.current_stock ?? 0) * Number(row.unit_cost ?? 0) >= 1000);
+  const defaultTab = searchParams.get('tab') || (stockouts.length > 0 ? 'blockers' : lowStock.length > 0 ? 'lowstock' : 'catalog');
 
   const tabs = [
     {
@@ -322,12 +441,12 @@ export default function SparePartsPage() {
           data={parts}
           searchPlaceholder="Search parts..."
           emptyMessage="No spare parts in catalog"
-          actions={
+          actions={canManageParts ? (
             <Button onClick={() => setAddPartOpen(true)}>
               <Plus className="h-4 w-4" />
               Add Part
             </Button>
-          }
+          ) : undefined}
         />
       ),
     },
@@ -341,12 +460,12 @@ export default function SparePartsPage() {
           data={receipts}
           searchPlaceholder="Search receipts..."
           emptyMessage="No stock receipts recorded"
-          actions={
+          actions={canManageParts ? (
             <Button onClick={() => setReceiptOpen(true)}>
               <PackagePlus className="h-4 w-4" />
               Record Receipt
             </Button>
-          }
+          ) : undefined}
         />
       ),
     },
@@ -360,12 +479,12 @@ export default function SparePartsPage() {
           data={issues}
           searchPlaceholder="Search issues..."
           emptyMessage="No stock issues recorded"
-          actions={
+          actions={canManageParts ? (
             <Button onClick={() => setIssueOpen(true)}>
               <PackageMinus className="h-4 w-4" />
               Record Issue
             </Button>
-          }
+          ) : undefined}
         />
       ),
     },
@@ -381,16 +500,68 @@ export default function SparePartsPage() {
         />
       ),
     },
+    {
+      id: 'blockers',
+      label: 'Blockers',
+      count: stockouts.length,
+      content: (
+        <Table
+          columns={lowStockColumns}
+          data={stockouts}
+          emptyMessage="No stockout blockers found"
+        />
+      ),
+    },
   ];
 
   return (
-    <div>
+    <div className="space-y-6">
       <PageHeader
-        title="Spare Parts Management"
-        description="Manage spare parts catalog, stock receipts, issues, and low-stock alerts"
+        title="Spare Parts"
+        description="Stock-control and maintenance support center for availability, low stock, receipts, issues, and procurement blockers."
+        actions={canManageParts ? (
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" onClick={() => setReceiptOpen(true)}><PackagePlus className="h-4 w-4" /> Receive</Button>
+            <Button variant="outline" onClick={() => setIssueOpen(true)}><PackageMinus className="h-4 w-4" /> Issue</Button>
+            <Button onClick={() => setAddPartOpen(true)}><Plus className="h-4 w-4" /> Add Part</Button>
+          </div>
+        ) : <Badge variant="info">{primaryRole === 'viewer' ? 'Read-only' : 'View access'}</Badge>}
       />
 
-      <Tabs tabs={tabs} />
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <StatCard label="Total Parts" value={parts.length} icon={<Boxes className="h-6 w-6" />} color="blue" />
+        <StatCard label="Low Stock" value={lowStock.length} icon={<AlertTriangle className="h-6 w-6" />} color="orange" />
+        <StatCard label="Stockout" value={stockouts.length} icon={<AlertTriangle className="h-6 w-6" />} color="red" />
+        <StatCard label="Stockout Blockers" value={stockouts.length} icon={<Wrench className="h-6 w-6" />} color="purple" />
+        <StatCard label="Recently Received" value={recentReceipts.length} icon={<PackagePlus className="h-6 w-6" />} color="green" />
+        <StatCard label="Recently Issued" value={recentIssues.length} icon={<PackageMinus className="h-6 w-6" />} color="yellow" />
+        <StatCard label="Pending Procurement" value={openProcurement.length} icon={<ClipboardList className="h-6 w-6" />} color="purple" />
+        <StatCard label="High-Cost Stock" value={highCostStock.length} icon={<DollarSign className="h-6 w-6" />} color="gray" />
+      </div>
+
+      <section className="panel-surface rounded-lg p-4">
+        <h2 className="text-base font-semibold text-[var(--foreground)]">Stock State and Next Action</h2>
+        <p className="mt-1 text-sm text-[var(--text-muted)]">Stock blockers are parts preventing reliable work-order completion. Low-stock rows open procurement unless an active procurement request already exists.</p>
+        <div className="mt-3 grid gap-3 md:grid-cols-3">
+          <div className="rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-1)] p-3">
+            <p className="text-sm font-medium text-[var(--foreground)]">Stockouts</p>
+            <p className="mt-1 text-2xl font-bold text-red-300">{stockouts.length}</p>
+            <p className="text-xs text-[var(--text-muted)]">Open urgent procurement or review linked blockers.</p>
+          </div>
+          <div className="rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-1)] p-3">
+            <p className="text-sm font-medium text-[var(--foreground)]">Low stock</p>
+            <p className="mt-1 text-2xl font-bold text-orange-300">{lowStock.length}</p>
+            <p className="text-xs text-[var(--text-muted)]">Reorder before work is blocked.</p>
+          </div>
+          <div className="rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-1)] p-3">
+            <p className="text-sm font-medium text-[var(--foreground)]">Procurement pending</p>
+            <p className="mt-1 text-2xl font-bold text-violet-300">{openProcurement.length}</p>
+            <p className="text-xs text-[var(--text-muted)]">Track orders instead of creating duplicates.</p>
+          </div>
+        </div>
+      </section>
+
+      <Tabs tabs={tabs} defaultTab={defaultTab} />
 
       {/* Add Part Modal */}
       <Modal

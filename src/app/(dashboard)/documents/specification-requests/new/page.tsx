@@ -8,7 +8,7 @@ import { useToast } from '@/components/ui/Toast';
 import { getEquipmentList } from '@/services/equipment.service';
 import { createClient } from '@/lib/supabase/client';
 import { createSpecificationRequestAction } from '@/actions/documents.actions';
-import type { EquipmentAsset } from '@/types/database';
+import type { EquipmentAsset } from '@/types/domain';
 
 type SelectRow = { id: string; label: string };
 

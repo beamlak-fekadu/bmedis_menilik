@@ -25,7 +25,7 @@ import { AskAiButton } from '@/components/assistant/AskAiButton';
 import { useRole } from '@/hooks/useRole';
 import type {
   WorkOrder, WorkOrderStatus, MaintenanceEvent, FailureCode, MaintenanceActionCode, Profile,
-} from '@/types/database';
+} from '@/types/domain';
 
 type WOWithJoins = WorkOrder & {
   equipment_assets?: { id: string; asset_code: string; name: string };

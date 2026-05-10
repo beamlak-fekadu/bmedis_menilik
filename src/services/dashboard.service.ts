@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/client';
-import type { DashboardStats, RecommendationFlag } from '@/types/database';
+import type { DashboardStats, RecommendationFlag } from '@/types/domain';
 
 export async function getDashboardStats() {
   const supabase = createClient();

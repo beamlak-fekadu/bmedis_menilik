@@ -2,12 +2,14 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Plus, CheckCircle, XCircle } from 'lucide-react';
+import Link from 'next/link';
+import { AlertTriangle, CheckCircle, ClipboardList, FileWarning, Plus, Recycle, Trash2, XCircle } from 'lucide-react';
 import PageHeader from '@/components/ui/PageHeader';
 import DataTable from '@/components/ui/DataTable';
 import Tabs from '@/components/ui/Tabs';
 import Button from '@/components/ui/Button';
 import Badge from '@/components/ui/Badge';
+import StatCard from '@/components/ui/StatCard';
 import Modal from '@/components/ui/Modal';
 import Select from '@/components/ui/Select';
 import Textarea from '@/components/ui/Textarea';
@@ -17,13 +19,17 @@ import { useToast } from '@/components/ui/Toast';
 import {
   getDisposalRequests,
 } from '@/services/disposal.service';
+import { getReplacementPriorities } from '@/services/analytics.service';
 import { createDisposalRequestAction, updateDisposalRequestStatusAction } from '@/actions/disposal.actions';
 import { getEquipmentList } from '@/services/equipment.service';
 import { createClient } from '@/lib/supabase/client';
-import type { DisposalMethod, DisposalRequestStatus } from '@/types/database';
+import type { DisposalMethod, DisposalRequestStatus } from '@/types/domain';
+import { replacementEvidence } from '@/app/(dashboard)/command/_lib/command-center-routes';
+import { useRole } from '@/hooks/useRole';
 
 type DisposalRow = Record<string, unknown>;
 type DisposedRow = Record<string, unknown>;
+type CandidateRow = Record<string, unknown>;
 
 const disposalMethodOptions: { value: DisposalMethod; label: string }[] = [
   { value: 'auction', label: 'Auction' },
@@ -48,9 +54,11 @@ function formatLabel(val: string) {
 
 export default function DisposalPage() {
   const { toast } = useToast();
+  const { canManageMaintenance, primaryRole } = useRole();
   const searchParams = useSearchParams();
   const [disposalRequests, setDisposalRequests] = useState<DisposalRow[]>([]);
   const [disposedAssets, setDisposedAssets] = useState<DisposedRow[]>([]);
+  const [candidates, setCandidates] = useState<CandidateRow[]>([]);
   const [assets, setAssets] = useState<{ value: string; label: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -69,7 +77,7 @@ export default function DisposalPage() {
     setLoading(true);
     try {
       const supabase = createClient();
-      const [reqRes, disposedRes, assetRes] = await Promise.all([
+      const [reqRes, disposedRes, assetRes, replacementRes] = await Promise.all([
         getDisposalRequests(),
         supabase
           .from('disposed_assets')
@@ -80,10 +88,28 @@ export default function DisposalPage() {
           `)
           .order('disposal_date', { ascending: false }),
         getEquipmentList(),
+        getReplacementPriorities(),
       ]);
 
       setDisposalRequests((reqRes.data || []) as DisposalRow[]);
       setDisposedAssets((disposedRes.data || []) as DisposedRow[]);
+      const requestsByAsset = new Set((reqRes.data || []).map((row: Record<string, unknown>) => row.asset_id));
+      const replacementRows = ((replacementRes.data || []) as CandidateRow[])
+        .filter((row) => Number(row.replacement_priority_index ?? 0) >= 0.7 || Number(row.maintenance_burden_score ?? 0) >= 0.7 || Number(row.risk_score ?? 0) >= 0.7)
+        .map((row) => ({ ...row, existing_request: requestsByAsset.has(row.asset_id) }));
+      const nonRepairableAssets = ((assetRes.data || []) as CandidateRow[])
+        .filter((row) => ['non_functional', 'decommissioned'].includes(String(row.condition)))
+        .map((row) => ({
+          id: `asset-${row.id as string}`,
+          asset_id: row.id,
+          replacement_priority_index: null,
+          risk_score: null,
+          maintenance_burden_score: null,
+          reason: row.condition === 'non_functional' ? 'Non-functional equipment should be reviewed for disposal evidence.' : 'Decommissioned asset requires disposal evidence if still retained.',
+          equipment_assets: row,
+          existing_request: requestsByAsset.has(row.id),
+        }));
+      setCandidates([...replacementRows, ...nonRepairableAssets]);
       setAssets(
         (assetRes.data || []).map((a: Record<string, unknown>) => ({
           value: a.id as string,
@@ -103,6 +129,9 @@ export default function DisposalPage() {
     if (searchParams.get('source') === 'requests-hub' && searchParams.get('action') === 'new-request') {
       setCreateOpen(true);
     }
+    if (searchParams.get('action') === 'new-request') setCreateOpen(true);
+    if (searchParams.get('assetId')) setFormAssetId(searchParams.get('assetId') ?? '');
+    if (searchParams.get('reason')) setFormReason(searchParams.get('reason') ?? '');
   }, [searchParams]);
 
   const handleCreate = async () => {
@@ -217,7 +246,20 @@ export default function DisposalPage() {
       key: 'actions',
       header: 'Actions',
       render: (row: DisposalRow) => {
-        if (row.status !== 'pending') return null;
+        if (row.status === 'approved') {
+          return (
+            <Link className="rounded-lg border border-[var(--border-subtle)] px-2 py-1 text-xs font-medium hover:bg-[var(--surface-2)]" href={`/disposal?requestId=${row.id as string}&action=record-disposal`}>
+              Record Disposal
+            </Link>
+          );
+        }
+        if (row.status !== 'pending' || !canManageMaintenance) {
+          return (
+            <Link className="rounded-lg border border-[var(--border-subtle)] px-2 py-1 text-xs font-medium hover:bg-[var(--surface-2)]" href={`/disposal?requestId=${row.id as string}`}>
+              View
+            </Link>
+          );
+        }
         return (
           <div className="flex items-center gap-1">
             <Button
@@ -269,9 +311,98 @@ export default function DisposalPage() {
         row.disposal_value != null ? `$${(row.disposal_value as number).toFixed(2)}` : '—',
     },
     { key: 'disposed_by', header: 'Disposed By' },
+    {
+      key: 'action',
+      header: 'Action',
+      render: (row: DisposedRow) => (
+        <Link className="rounded-lg border border-[var(--border-subtle)] px-2 py-1 text-xs font-medium hover:bg-[var(--surface-2)]" href={`/disposal?disposedId=${row.id as string}`}>
+          View Evidence
+        </Link>
+      ),
+    },
   ];
 
   if (loading) return <PageLoader />;
+
+  const pending = disposalRequests.filter((row) => row.status === 'pending');
+  const approved = disposalRequests.filter((row) => row.status === 'approved');
+  const completed = disposalRequests.filter((row) => row.status === 'completed');
+  const missingEvidence = approved.filter((row) => !disposedAssets.some((asset) => asset.disposal_request_id === row.id));
+  const nonRepairable = candidates.filter((row) => {
+    const asset = row.equipment_assets as { condition?: string } | null;
+    return ['non_functional', 'decommissioned'].includes(String(asset?.condition ?? ''));
+  });
+  const highMaintenance = candidates.filter((row) => Number(row.maintenance_burden_score ?? 0) >= 0.7);
+  const requestedTab = searchParams.get('tab');
+  const defaultTab = requestedTab && ['requests', 'candidates', 'disposed'].includes(requestedTab)
+    ? requestedTab
+    : disposalRequests.length === 0 && candidates.length > 0 ? 'candidates' : 'requests';
+
+  const candidateColumns = [
+    {
+      key: 'asset',
+      header: 'Asset',
+      render: (row: CandidateRow) => {
+        const asset = row.equipment_assets as { id?: string; asset_code?: string; name?: string; departments?: { name?: string } | null; condition?: string } | null;
+        return (
+          <div>
+            <p className="font-medium">{asset?.asset_code ?? String(row.asset_id ?? 'Unknown asset')}</p>
+            <p className="text-xs text-[var(--text-muted)]">{asset?.name ?? 'Unknown asset'} · {asset?.departments?.name ?? 'No department'}</p>
+          </div>
+        );
+      },
+    },
+    {
+      key: 'reason',
+      header: 'Reason',
+      render: (row: CandidateRow) => String(row.reason ?? (Number(row.replacement_priority_index ?? 0) >= 0.7 ? 'High replacement priority with lifecycle evidence.' : 'Lifecycle evidence requires review.')),
+    },
+    {
+      key: 'rpi',
+      header: 'RPI',
+      render: (row: CandidateRow) => row.replacement_priority_index == null ? '—' : <Badge variant="error">{Math.round(Number(row.replacement_priority_index) * 100)}/100</Badge>,
+    },
+    {
+      key: 'condition',
+      header: 'Condition',
+      render: (row: CandidateRow) => {
+        const asset = row.equipment_assets as { condition?: string } | null;
+        return asset?.condition ? asset.condition.replace(/_/g, ' ') : '—';
+      },
+    },
+    {
+      key: 'maintenance_burden_score',
+      header: 'Maintenance Burden',
+      render: (row: CandidateRow) => Number(row.maintenance_burden_score ?? 0) >= 0.7 ? 'High' : row.maintenance_burden_score == null ? '—' : 'Moderate/low',
+    },
+    {
+      key: 'risk_score',
+      header: 'Risk',
+      render: (row: CandidateRow) => Number(row.risk_score ?? 0) >= 0.7 ? 'High' : row.risk_score == null ? '—' : 'Moderate/low',
+    },
+    {
+      key: 'action',
+      header: 'Action',
+      render: (row: CandidateRow) => {
+        const assetId = String(row.asset_id ?? '');
+        return (
+          <div className="flex flex-wrap gap-1.5">
+            {row.existing_request ? (
+              <Link className="rounded-lg border border-[var(--border-subtle)] px-2 py-1 text-xs font-medium hover:bg-[var(--surface-2)]" href={`/disposal?assetId=${assetId}`}>Request</Link>
+            ) : canManageMaintenance ? (
+              <button type="button" className="rounded-lg border border-[var(--border-subtle)] px-2 py-1 text-xs font-medium hover:bg-[var(--surface-2)]" onClick={() => { setFormAssetId(assetId); setFormReason(String(row.reason ?? 'Lifecycle evidence supports disposal review.')); setCreateOpen(true); }}>
+                Request
+              </button>
+            ) : null}
+            <Link className="rounded-lg border border-[var(--border-subtle)] px-2 py-1 text-xs font-medium hover:bg-[var(--surface-2)]" href={replacementEvidence(assetId)}>Evidence</Link>
+            {assetId && (
+              <Link className="rounded-lg border border-[var(--border-subtle)] px-2 py-1 text-xs font-medium hover:bg-[var(--surface-2)]" href={`/equipment/${assetId}`}>Asset</Link>
+            )}
+          </div>
+        );
+      },
+    },
+  ];
 
   const tabs = [
     {
@@ -284,12 +415,25 @@ export default function DisposalPage() {
           data={disposalRequests}
           searchPlaceholder="Search disposal requests..."
           emptyMessage="No disposal requests found"
-          actions={
+          actions={canManageMaintenance ? (
             <Button onClick={() => setCreateOpen(true)}>
               <Plus className="h-4 w-4" />
               New Request
             </Button>
-          }
+          ) : undefined}
+        />
+      ),
+    },
+    {
+      id: 'candidates',
+      label: 'Candidates',
+      count: candidates.length,
+      content: (
+        <DataTable
+          columns={candidateColumns}
+          data={candidates}
+          searchPlaceholder="Search disposal candidates..."
+          emptyMessage="No disposal candidates found"
         />
       ),
     },
@@ -309,13 +453,42 @@ export default function DisposalPage() {
   ];
 
   return (
-    <div>
+    <div className="space-y-6">
       <PageHeader
-        title="Disposal Management"
-        description="Manage equipment disposal requests, approvals, and completed disposals"
+        title="Disposal"
+        description="End-of-life workflow for formal disposal requests, lifecycle candidates, approvals, and disposal evidence."
+        actions={canManageMaintenance ? (
+          <Button onClick={() => setCreateOpen(true)}>
+            <Plus className="h-4 w-4" />
+            New Disposal Request
+          </Button>
+        ) : <Badge variant="info">{primaryRole === 'viewer' ? 'Read-only' : 'View access'}</Badge>}
       />
 
-      <Tabs tabs={tabs} />
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <StatCard label="Disposal Requests" value={disposalRequests.length} icon={<ClipboardList className="h-6 w-6" />} color="blue" />
+        <StatCard label="Pending Review" value={pending.length} icon={<AlertTriangle className="h-6 w-6" />} color="yellow" />
+        <StatCard label="Approved Disposal" value={approved.length} icon={<CheckCircle className="h-6 w-6" />} color="purple" />
+        <StatCard label="Completed Disposal" value={disposedAssets.length || completed.length} icon={<Trash2 className="h-6 w-6" />} color="green" />
+        <StatCard label="Replacement Candidates" value={candidates.length} icon={<Recycle className="h-6 w-6" />} color="orange" />
+        <StatCard label="Non-repairable Assets" value={nonRepairable.length} icon={<FileWarning className="h-6 w-6" />} color="red" />
+        <StatCard label="High Maintenance Burden" value={highMaintenance.length} icon={<AlertTriangle className="h-6 w-6" />} color="red" />
+        <StatCard label="Missing Evidence" value={missingEvidence.length} icon={<FileWarning className="h-6 w-6" />} color="gray" />
+      </div>
+
+      {disposalRequests.length === 0 && candidates.length > 0 && (
+        <section className="panel-surface rounded-lg p-4">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 className="text-base font-semibold text-[var(--foreground)]">No Formal Disposal Requests Yet</h2>
+              <p className="mt-1 text-sm text-[var(--text-muted)]">Replacement candidates are planning evidence, not disposal requests. Review the candidate evidence, then create a formal request when the BME Head is ready to start approval.</p>
+            </div>
+            <Badge variant="warning">Review {candidates.length} candidates</Badge>
+          </div>
+        </section>
+      )}
+
+      <Tabs tabs={tabs} defaultTab={defaultTab} />
 
       {/* New Request Modal */}
       <Modal

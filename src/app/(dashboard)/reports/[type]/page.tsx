@@ -41,8 +41,38 @@ const statusVariant: Record<string, 'default' | 'success' | 'warning' | 'error' 
   under_maintenance: 'purple', decommissioned: 'default',
 };
 
+function normalizeReportType(type: string) {
+  return ({
+    'biomedical-operations': 'equipment',
+    'department-readiness': 'equipment',
+    'evaluation-demo': 'equipment',
+    evaluation: 'equipment',
+    'maintenance-performance': 'maintenance',
+    'pm-compliance': 'pm',
+    'calibration-compliance': 'calibration',
+    'spare-parts-stock': 'spare-parts',
+    'training-competency': 'training',
+    'disposal-lifecycle': 'disposal',
+    'technician-workload': 'work-orders',
+    replacement: 'replacement-planning',
+    procurement: 'procurement-pipeline',
+  } as Record<string, string>)[type] ?? type;
+}
+
+function methodologyFor(type: string) {
+  const normalized = normalizeReportType(type);
+  if (normalized === 'pm') return 'PM compliance evidence comes from generated schedule rows. Completed schedules count as completed evidence; skipped/deferred/overdue rows remain visible for audit.';
+  if (normalized === 'calibration') return 'Calibration compliance uses calibration records, result status, and next due dates. Failed or adjusted results remain evidence for follow-up work.';
+  if (normalized === 'replacement-planning') return 'Replacement planning uses RPI component scores and supporting lifecycle evidence. The report supports BME Head review; it does not approve replacement automatically.';
+  if (normalized === 'risk-fmea') return 'FMEA reporting uses severity, occurrence, detectability, and RPN with assignment method and explanation evidence where available.';
+  if (normalized === 'procurement-pipeline') return 'Procurement evidence follows each request through status, priority, expected delivery, delay, and justification.';
+  return 'Rows come from the operational source tables for this module. Filters narrow evidence; exports use the same filtered row set shown on screen.';
+}
+
 function getReportConfig(type: string): ReportConfig | null {
-  switch (type) {
+  const normalizedType = normalizeReportType(type);
+
+  switch (normalizedType) {
     case 'equipment':
       return {
         title: 'Equipment Report',
@@ -359,6 +389,168 @@ function getReportConfig(type: string): ReportConfig | null {
         ],
       };
 
+    case 'work-orders':
+      return {
+        title: 'Work Order Report',
+        description: 'Technical execution report for open, assigned, in-progress, on-hold, completed, and vendor work orders',
+        filterDefs: ['status', 'date_range'],
+        fetchData: reportsService.getWorkOrderReport,
+        columns: [
+          { key: 'work_order_number', header: 'WO #', sortable: true },
+          {
+            key: 'asset',
+            header: 'Asset',
+            render: (row: Row) => {
+              const asset = row.equipment_assets as { asset_code: string; name: string } | null;
+              return asset ? `${asset.asset_code} — ${asset.name}` : '—';
+            },
+          },
+          {
+            key: 'priority',
+            header: 'Priority',
+            render: (row: Row) => <Badge variant={row.priority === 'critical' ? 'error' : row.priority === 'high' ? 'warning' : 'info'}>{formatLabel(row.priority as string)}</Badge>,
+          },
+          {
+            key: 'status',
+            header: 'Status',
+            render: (row: Row) => <Badge variant={statusVariant[row.status as string] || 'default'}>{formatLabel(row.status as string)}</Badge>,
+          },
+          {
+            key: 'assigned_to',
+            header: 'Assigned To',
+            render: (row: Row) => {
+              const profile = row.profiles as { full_name?: string } | null;
+              return profile?.full_name ?? 'Unassigned';
+            },
+          },
+          {
+            key: 'created_at',
+            header: 'Created',
+            sortable: true,
+            render: (row: Row) => new Date(row.created_at as string).toLocaleDateString(),
+          },
+          {
+            key: 'completed_at',
+            header: 'Completed',
+            render: (row: Row) => row.completed_at ? new Date(row.completed_at as string).toLocaleDateString() : '—',
+          },
+        ],
+      };
+
+    case 'procurement-pipeline':
+      return {
+        title: 'Procurement Pipeline Report',
+        description: 'Procurement request pipeline with priority, status, expected delivery, and contextual justification',
+        filterDefs: ['status', 'date_range'],
+        fetchData: reportsService.getProcurementReport,
+        columns: [
+          { key: 'request_number', header: 'Request #', sortable: true },
+          { key: 'title', header: 'Title', sortable: true },
+          {
+            key: 'priority',
+            header: 'Priority',
+            render: (row: Row) => <Badge variant={row.priority === 'critical' ? 'error' : row.priority === 'high' ? 'warning' : 'info'}>{formatLabel(row.priority as string)}</Badge>,
+          },
+          {
+            key: 'status',
+            header: 'Status',
+            render: (row: Row) => <Badge variant="purple">{formatLabel(row.status as string)}</Badge>,
+          },
+          {
+            key: 'expected_delivery_date',
+            header: 'Expected Delivery',
+            render: (row: Row) => row.expected_delivery_date ? new Date(row.expected_delivery_date as string).toLocaleDateString() : 'TBD',
+          },
+          { key: 'justification', header: 'Justification' },
+        ],
+      };
+
+    case 'replacement-planning':
+      return {
+        title: 'Replacement Planning Report',
+        description: 'Replacement priority ranking with RPI component scores and generated justification',
+        filterDefs: [],
+        fetchData: () => reportsService.getReplacementReport(),
+        columns: [
+          { key: 'rank', header: 'Rank', sortable: true },
+          {
+            key: 'asset',
+            header: 'Asset',
+            render: (row: Row) => {
+              const asset = row.equipment_assets as { asset_code: string; name: string } | null;
+              return asset ? `${asset.asset_code} — ${asset.name}` : '—';
+            },
+          },
+          {
+            key: 'replacement_priority_index',
+            header: 'RPI',
+            render: (row: Row) => row.replacement_priority_index == null ? '—' : `${Math.round(Number(row.replacement_priority_index) * 100)}/100`,
+          },
+          { key: 'failure_score', header: 'Failure' },
+          { key: 'availability_score', header: 'Availability' },
+          { key: 'maintenance_burden_score', header: 'Maintenance' },
+          { key: 'spare_part_score', header: 'Spare Support' },
+          { key: 'risk_score', header: 'Risk' },
+          { key: 'justification', header: 'Justification' },
+        ],
+      };
+
+    case 'risk-fmea':
+      return {
+        title: 'Risk and FMEA Report',
+        description: 'FMEA risk score report with severity, occurrence, detectability, RPN, risk band, and explanation',
+        filterDefs: [],
+        fetchData: () => reportsService.getRiskFmeaReport(),
+        columns: [
+          {
+            key: 'asset',
+            header: 'Asset',
+            render: (row: Row) => {
+              const asset = row.equipment_assets as { asset_code: string; name: string } | null;
+              return asset ? `${asset.asset_code} — ${asset.name}` : '—';
+            },
+          },
+          { key: 'severity', header: 'S', sortable: true },
+          { key: 'occurrence', header: 'O', sortable: true },
+          { key: 'detectability', header: 'D', sortable: true },
+          { key: 'rpn', header: 'RPN', sortable: true },
+          {
+            key: 'risk_level',
+            header: 'Risk Band',
+            render: (row: Row) => <Badge variant={statusVariant[row.risk_level as string] || 'default'}>{formatLabel(row.risk_level as string)}</Badge>,
+          },
+          { key: 'assignment_method', header: 'Method' },
+          { key: 'explanation', header: 'Explanation' },
+        ],
+      };
+
+    case 'audit-security':
+      return {
+        title: 'Audit / Security Report',
+        description: 'Audit evidence for security, roles, settings, equipment, and workflow changes',
+        filterDefs: ['date_range'],
+        fetchData: reportsService.getAuditSecurityReport,
+        columns: [
+          {
+            key: 'created_at',
+            header: 'Timestamp',
+            sortable: true,
+            render: (row: Row) => new Date(row.created_at as string).toLocaleString(),
+          },
+          {
+            key: 'actor',
+            header: 'Actor',
+            render: (row: Row) => {
+              const profile = row.profiles as { full_name?: string; email?: string } | null;
+              return profile?.full_name ?? profile?.email ?? 'System / unknown';
+            },
+          },
+          { key: 'action', header: 'Action' },
+          { key: 'entity_type', header: 'Entity' },
+          { key: 'entity_id', header: 'Record' },
+        ],
+      };
+
     default:
       return null;
   }
@@ -369,6 +561,7 @@ export default function ReportTypePage() {
   const router = useRouter();
   const { toast } = useToast();
   const reportType = params.type as string;
+  const effectiveReportType = normalizeReportType(reportType);
 
   const [data, setData] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
@@ -458,6 +651,22 @@ export default function ReportTypePage() {
     { value: 'disposed', label: 'Disposed' },
     { value: 'in_storage', label: 'In Storage' },
   ];
+  const workOrderStatusOptions = [
+    { value: 'open', label: 'Open' },
+    { value: 'assigned', label: 'Assigned' },
+    { value: 'in_progress', label: 'In Progress' },
+    { value: 'on_hold', label: 'On Hold' },
+    { value: 'completed', label: 'Completed' },
+    { value: 'canceled', label: 'Canceled' },
+  ];
+  const procurementStatusOptions = [
+    { value: 'requested', label: 'Requested' },
+    { value: 'approved', label: 'Approved' },
+    { value: 'ordered', label: 'Ordered' },
+    { value: 'in_transit', label: 'In Transit' },
+    { value: 'delivered', label: 'Delivered' },
+    { value: 'canceled', label: 'Canceled' },
+  ];
 
   const filterDefs = config.filterDefs.flatMap((f) => {
     switch (f) {
@@ -469,9 +678,11 @@ export default function ReportTypePage() {
         return [{
           key: 'status',
           label: 'Status',
-          options: reportType === 'pm' ? pmStatusOptions
-            : reportType === 'disposal' ? disposalStatusOptions
-            : reportType === 'equipment' ? equipmentStatusOptions
+          options: effectiveReportType === 'pm' ? pmStatusOptions
+            : effectiveReportType === 'disposal' ? disposalStatusOptions
+            : effectiveReportType === 'equipment' ? equipmentStatusOptions
+            : effectiveReportType === 'work-orders' ? workOrderStatusOptions
+            : effectiveReportType === 'procurement-pipeline' ? procurementStatusOptions
             : [],
         }];
       case 'date_range':
@@ -545,6 +756,26 @@ export default function ReportTypePage() {
           </div>
         }
       />
+
+      <section className="mb-6 grid gap-3 md:grid-cols-3">
+        <div className="panel-surface rounded-lg p-4">
+          <p className="text-sm text-[var(--text-muted)]">Rows in evidence set</p>
+          <p className="mt-1 text-2xl font-bold text-[var(--foreground)]">{loading ? '…' : data.length}</p>
+        </div>
+        <div className="panel-surface rounded-lg p-4">
+          <p className="text-sm text-[var(--text-muted)]">Export status</p>
+          <p className="mt-1 text-lg font-semibold text-[var(--foreground)]">CSV/PDF ready</p>
+        </div>
+        <div className="panel-surface rounded-lg p-4">
+          <p className="text-sm text-[var(--text-muted)]">Evidence scope</p>
+          <p className="mt-1 text-lg font-semibold text-[var(--foreground)]">{Object.keys(filterValues).filter((key) => filterValues[key]).length || 'All'} active filter{Object.keys(filterValues).filter((key) => filterValues[key]).length === 1 ? '' : 's'}</p>
+        </div>
+      </section>
+
+      <section className="mb-6 rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-1)] p-4">
+        <h2 className="text-base font-semibold text-[var(--foreground)]">Methodology</h2>
+        <p className="mt-2 text-sm text-[var(--text-muted)]">{methodologyFor(reportType)}</p>
+      </section>
 
       <div className="mb-6 space-y-4">
         {(filterDefs.length > 0 || showDateFilters) && (

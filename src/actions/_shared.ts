@@ -1,6 +1,6 @@
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
-import type { RoleName } from '@/types/database';
+import type { RoleName } from '@/types/roles';
 
 export type ActionResult<T = unknown> = {
   success: boolean;

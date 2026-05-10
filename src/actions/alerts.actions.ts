@@ -2,7 +2,7 @@
 
 import { getActionContext, logServerAuditEvent, revalidateMany, actionError, type ActionResult } from './_shared';
 
-const alertPaths = ['/alerts', '/command', '/command/triage', '/command/health', '/helpdesk'];
+const alertPaths = ['/alerts', '/command', '/command/triage', '/developer-lab'];
 
 export async function acknowledgeAlertFlagAction(id: string): Promise<ActionResult> {
   try {

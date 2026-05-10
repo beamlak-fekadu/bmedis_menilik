@@ -2,7 +2,7 @@
 
 import { getActionContext, logServerAuditEvent, revalidateMany, actionError, type ActionResult } from './_shared';
 
-const userPaths = ['/users', '/settings', '/audit'];
+const userPaths = ['/settings', '/audit'];
 
 export async function updateProfileAction(id: string, payload: Record<string, unknown>): Promise<ActionResult> {
   try {

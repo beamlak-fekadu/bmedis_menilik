@@ -10,6 +10,8 @@ This document maps database tables to roles in the system and defines the **cano
 4. **Prioritized worklist** — `triage_action_queue` is **derived** by `refresh_decision_support_snapshots` from risk, PM, replacement, and open flags. Powers Command Center triage. **Triage is driven by this queue**, not by raw flag count.
 5. **Daily snapshots** — `equipment_health_snapshots`, `clinical_readiness_snapshots`, `workload_capacity_snapshots` roll up metrics for the command center and reporting.
 6. **Command Center action semantics** — operational rows must preserve record identity. If a row is an existing work order, request, PM schedule, procurement request, or replacement candidate, its primary action opens that exact record/evidence route. If no workflow record exists, the action opens a prefilled creation flow with source context. Informational Risk Watch signals are acknowledged/snoozed with a signal hash or converted into real workflow items.
+7. **Developer Lab boundary** — scoring methodology, sandbox sliders, sensitivity testing, debug tools, data health checks, refresh tools, and thesis/demo tools live in `/developer-lab` and are developer-only. Sandbox controls do not affect live decision outputs unless a developer explicitly runs a real refresh action.
+8. **Operational-page boundary** — BME Head pages show the situation, evidence, explanations, and next actions, but not developer-only sliders or debug controls. Replacement Priority is a planning/evidence page; scoring sliders belong only in Developer Lab.
 
 **Overlap note:** `recommendation_flags` and `triage_action_queue` are related but not redundant: flags are evidence; the queue is the ordered action list. `repeat_repair_flags` (schema) overlaps intent with `recommendation_flags` of type `recurring_failure` — a future PR may deprecate the separate table; **do not delete without a migration plan**.
 
@@ -100,6 +102,28 @@ Every composite score surfaced in the Command Center must be explainable in UI: 
 weights when applicable, raw inputs, normalized inputs where applicable, generated reason,
 source/method, timestamp/history if available, and a decision note. The system supports decisions;
 the BME Head makes final operational decisions.
+
+## Final system-page source-of-truth rules
+
+| Page | Source/evidence rule |
+| --- | --- |
+| Developer Lab | Developer-only; owns scoring methodology, sandbox weights, ranking comparison, data health, refresh/debug, and thesis/demo tools |
+| Settings | Administration center for hospital profile, departments, categories, Staff & Access, Security & Access, notifications, reference data, preferences, import/export |
+| Staff & Access | Uses `profiles`, `user_roles`, `roles`, and `departments`; profile-only staff and auth-linked login users are both shown |
+| Security & Access | Uses roles/profile/audit evidence; shows role matrix, users per role, RLS/audit posture, risky accounts, and recent governance events |
+| Calibration | Uses `calibration_records`, `calibration_requests`, and `v_calibration_due`; failed/adjusted and overdue rows must be visible |
+| Work Orders | Uses `work_orders`; row actions open exact `/maintenance/work-orders/[id]` with state-aware action query where needed |
+| Spare Parts | Uses `spare_parts`, `stock_receipts`, `stock_issues`, and procurement prefill links for low-stock/stockout blockers |
+| Logistics | Uses real receipt, issue, spare part, and procurement rows; workflow cards must not fake unimplemented stock-request tables |
+| Procurement | Uses `procurement_requests`; exact detail/status route is `/command/drilldown/procurement/[id]` |
+| Training | Uses `training_requests`, `training_sessions`, and `staff_training_records`; coverage is derived from available session/category evidence |
+| Replacement | Uses `replacement_priority_scores` and `v_replacement_decision`; no sliders on BME Head page |
+| Disposal | Uses formal `disposal_requests` and `disposed_assets`; replacement/non-repairable candidates are evidence prompts, not request counts |
+| Alerts | Uses `recommendation_flags` today; richer notification/escalation subsystem is deferred |
+| Reports | Uses table-backed report services; do not claim export/report data that is not implemented |
+| Audit | Uses `audit_logs`; page must degrade gracefully if the table is empty or inaccessible |
+
+Route compatibility rules: `/helpdesk` redirects to `/requests`, `/users` redirects to `/settings?tab=staff-access`, `/security` redirects to `/settings?tab=security-access`, and `/command/health` plus `/decision-support-health` redirect to `/developer-lab`.
 
 ## Requests Hub source-of-truth rules
 

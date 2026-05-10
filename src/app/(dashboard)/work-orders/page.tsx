@@ -1,16 +1,17 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { Wrench } from 'lucide-react';
-import { PageHeader, DataTable, Button, Spinner } from '@/components/ui';
+import { AlertTriangle, CheckCircle, Clock, Factory, UserPlus, Wrench } from 'lucide-react';
+import { PageHeader, DataTable, Button, Spinner, StatCard, Badge } from '@/components/ui';
 import { UrgencyBadge, WorkOrderStatusBadge } from '@/components/ui/StatusBadge';
 import { getWorkOrders } from '@/services/maintenance.service';
 import { useToast } from '@/components/ui/Toast';
 import { useRole } from '@/hooks/useRole';
-import type { WorkOrder } from '@/types/database';
+import type { WorkOrder, WorkOrderStatus } from '@/types/domain';
 import { ROUTES } from '@/constants';
+import { maintenanceRequestDetail, workOrderDetail } from '@/app/(dashboard)/command/_lib/command-center-routes';
 
 type WorkOrderRow = WorkOrder & {
   equipment_assets?: { id: string; asset_code?: string | null; name?: string | null } | Array<{ id: string; asset_code?: string | null; name?: string | null }> | null;
@@ -18,17 +19,79 @@ type WorkOrderRow = WorkOrder & {
   [key: string]: unknown;
 };
 
+const FILTERS = [
+  { id: 'active', label: 'Active' },
+  { id: 'all', label: 'All' },
+  { id: 'unassigned', label: 'Unassigned' },
+  { id: 'assigned', label: 'Assigned' },
+  { id: 'in_progress', label: 'In Progress' },
+  { id: 'on_hold', label: 'On Hold' },
+  { id: 'completed', label: 'Completed' },
+  { id: 'external', label: 'External Vendor' },
+  { id: 'critical', label: 'Critical/High' },
+] as const;
+
+type FilterId = typeof FILTERS[number]['id'];
+
 function firstRelation<T>(value: T | T[] | null | undefined): T | null {
   if (!value) return null;
   return Array.isArray(value) ? (value[0] ?? null) : value;
 }
 
+function ageDays(row: WorkOrderRow) {
+  const start = row.created_at ? new Date(row.created_at).getTime() : Date.now();
+  return Math.max(0, Math.floor((Date.now() - start) / 86_400_000));
+}
+
+function durationDays(row: WorkOrderRow) {
+  if (!row.completed_at || !row.created_at) return ageDays(row);
+  const start = new Date(row.created_at).getTime();
+  const end = new Date(row.completed_at).getTime();
+  return Math.max(0, Math.ceil((end - start) / 86_400_000));
+}
+
+function timelineLabel(row: WorkOrderRow) {
+  return row.status === 'completed' ? `${durationDays(row)}d duration` : `${ageDays(row)}d open`;
+}
+
+function isActiveWork(row: WorkOrderRow) {
+  return ['open', 'assigned', 'in_progress', 'on_hold'].includes(row.status);
+}
+
+function priorityRank(row: WorkOrderRow) {
+  return ({ critical: 0, high: 1, medium: 2, low: 3 } as Record<string, number>)[row.priority] ?? 4;
+}
+
+function nextAction(row: WorkOrderRow, canMutate: boolean) {
+  if (row.status === 'completed') return { label: 'Evidence', href: workOrderDetail(row.id) };
+  if (row.status === 'canceled') return { label: 'Record', href: workOrderDetail(row.id) };
+  if (!canMutate) return { label: 'View', href: workOrderDetail(row.id) };
+  if (row.status === 'on_hold') return { label: 'Resolve', href: workOrderDetail(row.id, 'resolve-blocker') };
+  if (row.status === 'in_progress') return { label: 'Complete', href: workOrderDetail(row.id, 'complete') };
+  if (row.status === 'open' && !row.assigned_to) return { label: 'Assign', href: workOrderDetail(row.id, 'assign') };
+  if (row.status === 'assigned') return { label: 'Start', href: workOrderDetail(row.id, 'start') };
+  return { label: 'Open', href: workOrderDetail(row.id) };
+}
+
+function matchesFilter(row: WorkOrderRow, filter: FilterId) {
+  if (filter === 'active') return isActiveWork(row);
+  if (filter === 'all') return true;
+  if (filter === 'unassigned') return ['open', 'assigned'].includes(row.status) && !row.assigned_to;
+  if (filter === 'external') return Boolean(row.external_vendor || row.external_vendor_name);
+  if (filter === 'critical') return ['critical', 'high'].includes(row.priority);
+  return row.status === filter;
+}
+
 export default function WorkOrdersPage() {
-  const router = useRouter();
+  const searchParams = useSearchParams();
   const { toast } = useToast();
   const { canManageMaintenance } = useRole();
   const [workOrders, setWorkOrders] = useState<WorkOrderRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState<FilterId>(() => {
+    const requested = searchParams.get('filter') as FilterId | null;
+    return requested && FILTERS.some((item) => item.id === requested) ? requested : 'active';
+  });
 
   useEffect(() => {
     async function load() {
@@ -38,8 +101,33 @@ export default function WorkOrdersPage() {
       setWorkOrders((data ?? []) as unknown as WorkOrderRow[]);
       setLoading(false);
     }
-    load();
+    void load();
   }, [toast]);
+
+  const summary = useMemo(() => {
+    const open = workOrders.filter(isActiveWork);
+    const thisMonth = new Date();
+    return {
+      open: open.length,
+      unassigned: open.filter((wo) => !wo.assigned_to).length,
+      assigned: workOrders.filter((wo) => wo.status === 'assigned').length,
+      inProgress: workOrders.filter((wo) => wo.status === 'in_progress').length,
+      onHold: workOrders.filter((wo) => wo.status === 'on_hold').length,
+      criticalHigh: workOrders.filter((wo) => ['critical', 'high'].includes(wo.priority)).length,
+      completedMonth: workOrders.filter((wo) => {
+        if (!wo.completed_at) return false;
+        const date = new Date(wo.completed_at);
+        return date.getMonth() === thisMonth.getMonth() && date.getFullYear() === thisMonth.getFullYear();
+      }).length,
+      external: workOrders.filter((wo) => wo.external_vendor || wo.external_vendor_name).length,
+    };
+  }, [workOrders]);
+
+  const filteredRows = useMemo(() => workOrders.filter((row) => matchesFilter(row, filter)), [filter, workOrders]);
+  const activeQueue = useMemo(
+    () => workOrders.filter(isActiveWork).sort((a, b) => priorityRank(a) - priorityRank(b) || ageDays(b) - ageDays(a)).slice(0, 4),
+    [workOrders]
+  );
 
   const columns = [
     { key: 'work_order_number', header: 'WO #', sortable: true },
@@ -49,13 +137,22 @@ export default function WorkOrdersPage() {
       sortable: true,
       render: (row: WorkOrderRow) => {
         const asset = firstRelation(row.equipment_assets);
-        return asset?.name ?? asset?.asset_code ?? '—';
+        return (
+          <div>
+            <p className="font-medium">{asset?.asset_code ?? '—'}</p>
+            <p className="text-xs text-[var(--text-muted)]">{asset?.name ?? 'Unknown asset'}</p>
+          </div>
+        );
       },
     },
     {
-      key: 'assigned_to_name',
-      header: 'Assigned To',
-      render: (row: WorkOrderRow) => firstRelation(row.profiles)?.full_name ?? 'Unassigned',
+      key: 'originating_request',
+      header: 'Request',
+      render: (row: WorkOrderRow) => row.request_id ? (
+        <Link className="text-[var(--brand)] hover:underline" href={maintenanceRequestDetail(row.request_id)}>
+          Request
+        </Link>
+      ) : <span className="text-[var(--text-muted)]">Standalone</span>,
     },
     {
       key: 'priority',
@@ -67,28 +164,35 @@ export default function WorkOrdersPage() {
       key: 'status',
       header: 'Status',
       sortable: true,
-      render: (row: WorkOrderRow) => <WorkOrderStatusBadge status={row.status} />,
+      render: (row: WorkOrderRow) => <WorkOrderStatusBadge status={row.status as WorkOrderStatus} />,
     },
     {
-      key: 'work_type',
-      header: 'Type',
-      sortable: true,
-      render: (row: WorkOrderRow) =>
-        row.work_type.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
+      key: 'assigned_to_name',
+      header: 'Assigned To',
+      render: (row: WorkOrderRow) => firstRelation(row.profiles)?.full_name ?? 'Unassigned',
     },
     {
-      key: 'started_at',
-      header: 'Started',
+      key: 'age',
+      header: filter === 'completed' ? 'Duration' : 'Age',
       sortable: true,
-      render: (row: WorkOrderRow) =>
-        row.started_at ? new Date(row.started_at).toLocaleDateString() : '—',
+      render: (row: WorkOrderRow) => timelineLabel(row),
     },
     {
-      key: 'completed_at',
-      header: 'Completed',
-      sortable: true,
-      render: (row: WorkOrderRow) =>
-        row.completed_at ? new Date(row.completed_at).toLocaleDateString() : '—',
+      key: 'blocker',
+      header: 'Blocker',
+      render: (row: WorkOrderRow) => row.status === 'on_hold' ? (row.closure_notes ?? 'On hold') : row.external_vendor_name ? `Vendor: ${row.external_vendor_name}` : '—',
+    },
+    {
+      key: 'next_action',
+      header: 'Next Action',
+      render: (row: WorkOrderRow) => {
+        const action = nextAction(row, canManageMaintenance);
+        return (
+          <Link className="rounded-lg border border-[var(--border-subtle)] px-2 py-1 text-xs font-medium hover:bg-[var(--surface-2)]" href={action.href}>
+            {action.label}
+          </Link>
+        );
+      },
     },
   ];
 
@@ -101,10 +205,10 @@ export default function WorkOrdersPage() {
   }
 
   return (
-    <div>
+    <div className="space-y-6">
       <PageHeader
         title="Work Orders"
-        description="Track and manage all corrective and preventive work orders"
+        description="Technical execution center for open, assigned, blocked, and completed biomedical work."
         breadcrumbs={[{ label: 'Command Center', href: ROUTES.COMMAND }, { label: 'Work Orders' }]}
         actions={
           canManageMaintenance ? (
@@ -114,16 +218,71 @@ export default function WorkOrdersPage() {
                 New Work Order
               </Button>
             </Link>
-          ) : undefined
+          ) : <Badge variant="info">Read-only</Badge>
         }
       />
 
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <StatCard label="Active Work Orders" value={summary.open} icon={<Wrench className="h-6 w-6" />} color="blue" onClick={() => setFilter('active')} />
+        <StatCard label="Unassigned" value={summary.unassigned} icon={<UserPlus className="h-6 w-6" />} color="yellow" onClick={() => setFilter('unassigned')} />
+        <StatCard label="Assigned" value={summary.assigned} icon={<Clock className="h-6 w-6" />} color="purple" onClick={() => setFilter('assigned')} />
+        <StatCard label="In Progress" value={summary.inProgress} icon={<Clock className="h-6 w-6" />} color="orange" onClick={() => setFilter('in_progress')} />
+        <StatCard label="On Hold" value={summary.onHold} icon={<AlertTriangle className="h-6 w-6" />} color="red" onClick={() => setFilter('on_hold')} />
+        <StatCard label="Critical/High" value={summary.criticalHigh} icon={<AlertTriangle className="h-6 w-6" />} color="red" onClick={() => setFilter('critical')} />
+        <StatCard label="Completed This Month" value={summary.completedMonth} icon={<CheckCircle className="h-6 w-6" />} color="green" onClick={() => setFilter('completed')} />
+        <StatCard label="External Vendor" value={summary.external} icon={<Factory className="h-6 w-6" />} color="gray" onClick={() => setFilter('external')} />
+      </div>
+
+      {activeQueue.length > 0 && (
+        <section className="panel-surface rounded-lg p-4">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-base font-semibold text-[var(--foreground)]">Active Work Queue</h2>
+              <p className="text-sm text-[var(--text-muted)]">Open age is shown only for unfinished work. Completed records keep duration as evidence.</p>
+            </div>
+            <Button variant="outline" size="sm" onClick={() => setFilter('active')}>Show Active</Button>
+          </div>
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            {activeQueue.map((row) => {
+              const asset = firstRelation(row.equipment_assets);
+              const action = nextAction(row, canManageMaintenance);
+              return (
+                <Link key={row.id} href={action.href} className="rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-1)] p-3 transition hover:border-[var(--brand)]/50">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-sm font-semibold text-[var(--foreground)]">{row.work_order_number}</p>
+                    <UrgencyBadge urgency={row.priority} />
+                  </div>
+                  <p className="mt-2 text-sm text-[var(--foreground)]">{asset?.asset_code ?? 'Unknown asset'}</p>
+                  <p className="truncate text-xs text-[var(--text-muted)]">{asset?.name ?? 'No asset context'}</p>
+                  <div className="mt-3 flex items-center justify-between text-xs text-[var(--text-muted)]">
+                    <span>{timelineLabel(row)}</span>
+                    <span className="font-medium text-[var(--brand)]">{action.label}</span>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      <div className="flex flex-wrap gap-2">
+        {FILTERS.map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            onClick={() => setFilter(item.id)}
+            className={`rounded-lg border px-3 py-1.5 text-sm transition ${filter === item.id ? 'border-[var(--brand)] bg-[var(--surface-2)] text-[var(--foreground)]' : 'border-[var(--border-subtle)] text-[var(--text-muted)] hover:border-[var(--brand)]/50'}`}
+          >
+            {item.label}
+          </button>
+        ))}
+      </div>
+
       <DataTable<WorkOrderRow>
         columns={columns}
-        data={workOrders}
-        searchPlaceholder="Search work orders…"
-        onRowClick={(row) => router.push(`${ROUTES.MAINTENANCE_WORK_ORDERS}/${row.id}`)}
-        emptyMessage="No work orders found"
+        data={filteredRows}
+        searchPlaceholder="Search work orders..."
+        emptyMessage="No work orders found for this filter"
         pageSize={25}
       />
     </div>

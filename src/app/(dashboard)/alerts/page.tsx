@@ -20,9 +20,10 @@ import { PageLoader } from '@/components/ui/Spinner';
 import { useToast } from '@/components/ui/Toast';
 import { UrgencyBadge } from '@/components/ui/StatusBadge';
 import Card, { CardContent } from '@/components/ui/Card';
-import type { Urgency, RecommendationFlagType } from '@/types/database';
+import type { Urgency, RecommendationFlagType } from '@/types/domain';
 import { generateAlertSummary } from '@/utils/decision-support/explanations';
 import ExpandableText from '@/components/ui/ExpandableText';
+import { replacementEvidence } from '@/app/(dashboard)/command/_lib/command-center-routes';
 
 interface AssetInfo {
   id: string;
@@ -92,6 +93,32 @@ function severityOrder(s: Urgency): number {
   return map[s] ?? 4;
 }
 
+function sourceHref(alert: AlertRow) {
+  if (alert.flag_type === 'replacement_candidate') return replacementEvidence(alert.asset_id);
+  if (['calibrate_soon'].includes(alert.flag_type)) return `/calibration?assetId=${alert.asset_id}&action=record-result&source=alerts`;
+  if (['prioritize_pm', 'overdue_pm'].includes(alert.flag_type)) return `/pm?assetId=${alert.asset_id}&filter=overdue&source=alerts`;
+  if (['part_shortage', 'low_stock'].includes(alert.flag_type)) return '/spare-parts?tab=blockers&source=alerts';
+  if (['urgent_maintenance', 'recurring_failure'].includes(alert.flag_type)) return `/maintenance/requests/new?assetId=${alert.asset_id}&source=alerts&urgency=${alert.severity}`;
+  return `/equipment/${alert.asset_id}`;
+}
+
+function sourceActionLabel(alert: AlertRow) {
+  if (alert.flag_type === 'replacement_candidate') return 'Evidence';
+  if (['calibrate_soon'].includes(alert.flag_type)) return 'Calibration';
+  if (['prioritize_pm', 'overdue_pm'].includes(alert.flag_type)) return 'PM';
+  if (['part_shortage', 'low_stock'].includes(alert.flag_type)) return 'Stock';
+  if (['urgent_maintenance', 'recurring_failure'].includes(alert.flag_type)) return 'Request';
+  return 'Source';
+}
+
+function alertGroup(alert: AlertRow) {
+  if (['critical', 'high'].includes(alert.severity) && ['urgent_maintenance', 'recurring_failure', 'overdue_pm', 'calibrate_soon'].includes(alert.flag_type)) return 'act_now';
+  if (['overdue_pm', 'calibrate_soon'].includes(alert.flag_type)) return 'overdue';
+  if (['part_shortage', 'low_stock'].includes(alert.flag_type)) return 'stock';
+  if (['replacement_candidate', 'high_risk', 'low_availability'].includes(alert.flag_type)) return 'risk';
+  return 'monitoring';
+}
+
 export default function AlertsPage() {
   const { user } = useAuth();
   const { profile } = useProfile(user?.id);
@@ -150,9 +177,17 @@ export default function AlertsPage() {
   const criticalCount = unacknowledged.filter((d) => d.severity === 'critical').length;
   const highCount = unacknowledged.filter((d) => d.severity === 'high').length;
   const mediumCount = unacknowledged.filter((d) => d.severity === 'medium').length;
+  const infoCount = unacknowledged.filter((d) => d.severity === 'low').length;
+  const acknowledgedCount = data.filter((d) => d.is_acknowledged).length;
 
-  const filterByTab = (severity: Urgency | null) =>
-    (severity ? filtered.filter((d) => d.severity === severity) : filtered);
+  const filterByGroup = (group: string) => {
+    if (group === 'acknowledged') return data.filter((d) => d.is_acknowledged);
+    if (group === 'all') return filtered;
+    if (group === 'overdue') return filtered.filter((d) => ['overdue_pm', 'calibrate_soon'].includes(d.flag_type));
+    if (group === 'stock') return filtered.filter((d) => ['part_shortage', 'low_stock'].includes(d.flag_type));
+    if (group === 'risk') return filtered.filter((d) => ['replacement_candidate', 'high_risk', 'low_availability'].includes(d.flag_type));
+    return filtered.filter((d) => alertGroup(d) === group);
+  };
 
   const renderAlertList = (alerts: AlertRow[]) => {
     if (alerts.length === 0) {
@@ -197,7 +232,7 @@ export default function AlertsPage() {
                   {alert.details && Object.keys(alert.details).length > 0 && (
                     <div className="mt-2 rounded-md bg-gray-50 p-2 dark:bg-gray-800/50">
                       <div className="flex flex-wrap gap-1 text-xs text-gray-600 dark:text-gray-400">
-                        {Object.entries(alert.details).map(([k, v]) => (
+                        {Object.entries(alert.details).slice(0, 4).map(([k, v]) => (
                           <span key={k} className="rounded-full bg-[var(--surface-2)] px-2 py-0.5">
                             <span className="font-medium">{k.replace(/_/g, ' ')}:</span> {String(v)}
                           </span>
@@ -205,28 +240,35 @@ export default function AlertsPage() {
                       </div>
                     </div>
                   )}
-                  <div className="mt-2 flex items-center justify-between">
+                  <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
                     <div className="text-xs text-gray-400">
                       <div>Generated: {new Date(alert.generated_at).toLocaleString()}</div>
                       {alert.acknowledged_at && <div>Acknowledged: {new Date(alert.acknowledged_at).toLocaleString()}</div>}
                     </div>
-                    {primaryRole !== 'viewer' && (
-                      <Button
-                        onClick={() => handleAcknowledge(alert.id)}
-                        disabled={acknowledging === alert.id}
-                        variant="outline"
-                        size="sm"
-                      >
-                        {acknowledging === alert.id ? (
-                          'Acknowledging...'
-                        ) : (
-                          <>
-                            <CheckCircle className="mr-1.5 h-3.5 w-3.5" />
-                            Acknowledge
-                          </>
-                        )}
-                      </Button>
-                    )}
+                    <div className="flex flex-wrap gap-2">
+                      <Link href={sourceHref(alert)} className="rounded-lg border border-[var(--border-subtle)] px-3 py-1.5 text-xs font-medium hover:bg-[var(--surface-2)]">
+                        {sourceActionLabel(alert)}
+                      </Link>
+                      {alert.is_acknowledged ? (
+                        <Badge variant="success">Acknowledged</Badge>
+                      ) : primaryRole !== 'viewer' && (
+                        <Button
+                          onClick={() => handleAcknowledge(alert.id)}
+                          disabled={acknowledging === alert.id}
+                          variant="outline"
+                          size="sm"
+                        >
+                          {acknowledging === alert.id ? (
+                            'Acknowledging...'
+                          ) : (
+                            <>
+                              <CheckCircle className="mr-1.5 h-3.5 w-3.5" />
+                              Acknowledge
+                            </>
+                          )}
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -239,22 +281,40 @@ export default function AlertsPage() {
 
   const tabData = [
     {
-      id: 'critical',
-      label: 'Critical',
-      count: criticalCount,
-      content: renderAlertList(filterByTab('critical')),
+      id: 'act_now',
+      label: 'Act Now',
+      count: filterByGroup('act_now').length,
+      content: renderAlertList(filterByGroup('act_now')),
     },
     {
-      id: 'high',
-      label: 'High',
-      count: highCount,
-      content: renderAlertList(filterByTab('high')),
+      id: 'overdue',
+      label: 'Overdue',
+      count: filterByGroup('overdue').length,
+      content: renderAlertList(filterByGroup('overdue')),
     },
     {
-      id: 'medium',
-      label: 'Medium',
-      count: mediumCount,
-      content: renderAlertList(filterByTab('medium')),
+      id: 'stock',
+      label: 'Stock',
+      count: filterByGroup('stock').length,
+      content: renderAlertList(filterByGroup('stock')),
+    },
+    {
+      id: 'risk',
+      label: 'Risk',
+      count: filterByGroup('risk').length,
+      content: renderAlertList(filterByGroup('risk')),
+    },
+    {
+      id: 'monitoring',
+      label: 'Monitoring',
+      count: filterByGroup('monitoring').length,
+      content: renderAlertList(filterByGroup('monitoring')),
+    },
+    {
+      id: 'acknowledged',
+      label: 'Acknowledged',
+      count: acknowledgedCount,
+      content: renderAlertList(filterByGroup('acknowledged')),
     },
     {
       id: 'all',
@@ -275,30 +335,58 @@ export default function AlertsPage() {
         ]}
       />
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
           label="Critical"
           value={criticalCount}
           icon={<ShieldAlert className="h-6 w-6" />}
           color="red"
+          onClick={() => setFilters((prev) => ({ ...prev, severity: 'critical' }))}
         />
         <StatCard
           label="High"
           value={highCount}
           icon={<AlertTriangle className="h-6 w-6" />}
           color="orange"
+          onClick={() => setFilters((prev) => ({ ...prev, severity: 'high' }))}
         />
         <StatCard
           label="Medium"
           value={mediumCount}
           icon={<Clock className="h-6 w-6" />}
           color="yellow"
+          onClick={() => setFilters((prev) => ({ ...prev, severity: 'medium' }))}
         />
         <StatCard
           label="Unacknowledged"
           value={unacknowledged.length}
           icon={<Bell className="h-6 w-6" />}
           color="blue"
+          onClick={() => setFilters({ severity: '', flag_type: '' })}
+        />
+        <StatCard
+          label="Info"
+          value={infoCount}
+          icon={<Info className="h-6 w-6" />}
+          color="blue"
+        />
+        <StatCard
+          label="Acknowledged"
+          value={acknowledgedCount}
+          icon={<CheckCircle className="h-6 w-6" />}
+          color="green"
+        />
+        <StatCard
+          label="Monitoring"
+          value={filterByGroup('monitoring').length}
+          icon={<Clock className="h-6 w-6" />}
+          color="gray"
+        />
+        <StatCard
+          label="Overdue"
+          value={unacknowledged.filter((d) => ['overdue_pm', 'calibrate_soon'].includes(d.flag_type)).length}
+          icon={<AlertTriangle className="h-6 w-6" />}
+          color="orange"
         />
       </div>
 
@@ -318,7 +406,11 @@ export default function AlertsPage() {
         </div>
       )}
 
-      <Tabs tabs={tabData} defaultTab="all" />
+      <div className="rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-1)] p-3 text-sm text-[var(--text-muted)]">
+        Acknowledged alerts hide from the active queue until the underlying signal changes. Informational signals should be acknowledged or converted into a real workflow item when action is needed.
+      </div>
+
+      <Tabs tabs={tabData} defaultTab="act_now" />
     </div>
   );
 }

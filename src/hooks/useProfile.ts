@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import type { Profile, Role } from '@/types/database';
+import type { Profile, Role } from '@/types/domain';
 
 interface UserProfile extends Profile {
   roles: Role[];

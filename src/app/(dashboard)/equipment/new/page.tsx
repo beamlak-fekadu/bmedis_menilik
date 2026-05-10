@@ -11,7 +11,7 @@ import {
 import { useToast } from '@/components/ui/Toast';
 import { getAll } from '@/services/settings.service';
 import { ROUTES } from '@/constants';
-import type { EquipmentCondition } from '@/types/database';
+import type { EquipmentCondition } from '@/types/domain';
 import { createEquipmentAction } from '@/actions/equipment.actions';
 
 interface RefOption {

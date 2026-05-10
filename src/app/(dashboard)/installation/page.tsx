@@ -15,7 +15,7 @@ import { PageLoader } from '@/components/ui/Spinner';
 import { useToast } from '@/components/ui/Toast';
 import { getEquipmentList } from '@/services/equipment.service';
 import { createClient } from '@/lib/supabase/client';
-import type { InstallationRecord, EquipmentAsset } from '@/types/database';
+import type { InstallationRecord, EquipmentAsset } from '@/types/domain';
 import { createInstallationRecordAction } from '@/actions/installation.actions';
 
 type InstallationRow = InstallationRecord & {

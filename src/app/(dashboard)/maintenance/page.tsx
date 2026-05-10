@@ -13,7 +13,7 @@ import { getMaintenanceRequests, getWorkOrders } from '@/services/maintenance.se
 import { getRecommendationFlags } from '@/services/analytics.service';
 import { useToast } from '@/components/ui/Toast';
 import { useRole } from '@/hooks/useRole';
-import type { MaintenanceRequest, WorkOrder } from '@/types/database';
+import type { MaintenanceRequest, WorkOrder } from '@/types/domain';
 import { generateAlertSummary } from '@/utils/decision-support/explanations';
 import { createMaintenanceRequestFromAsset } from '@/app/(dashboard)/command/_lib/command-center-routes';
 import { isOpenMaintenanceRequestStatus } from '@/utils/maintenance/request-status';

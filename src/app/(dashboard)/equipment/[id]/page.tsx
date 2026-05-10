@@ -34,7 +34,7 @@ import {
 import { useRole } from '@/hooks/useRole';
 import type {
   EquipmentCondition, PMScheduleStatus, CalibrationResult, RiskLevel,
-} from '@/types/database';
+} from '@/types/domain';
 
 interface EquipmentDetail {
   id: string;

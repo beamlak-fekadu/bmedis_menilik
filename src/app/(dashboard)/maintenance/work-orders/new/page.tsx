@@ -11,7 +11,7 @@ import { createWorkOrderAction } from '@/actions/maintenance.actions';
 import { getEquipmentList } from '@/services/equipment.service';
 import { getActiveTechnicians } from '@/services/users.service';
 import { useToast } from '@/components/ui/Toast';
-import type { EquipmentAsset, Profile, WorkType, Urgency } from '@/types/database';
+import type { EquipmentAsset, Profile, WorkType, Urgency } from '@/types/domain';
 
 export default function NewWorkOrderPage() {
   const router = useRouter();

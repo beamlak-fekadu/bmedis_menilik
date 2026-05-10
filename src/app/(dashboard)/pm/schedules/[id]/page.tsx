@@ -33,7 +33,7 @@ import {
 } from '@/actions/pm.actions';
 import { useToast } from '@/components/ui/Toast';
 import { useRole } from '@/hooks/useRole';
-import type { EquipmentCondition, PMChecklistItem, PMScheduleStatus, RiskLevel } from '@/types/database';
+import type { EquipmentCondition, PMChecklistItem, PMScheduleStatus, RiskLevel } from '@/types/domain';
 import { ScoreExplanation } from '../../../command/_components/ScoreExplanation';
 import { getPMScheduleStatusExplanation } from '@/utils/pm/semantics';
 

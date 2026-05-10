@@ -8,13 +8,15 @@ import { PageLoader } from '@/components/ui/Spinner';
 import { ToastProvider } from '@/components/ui/Toast';
 import { AssistantProvider } from '@/components/assistant/AssistantProvider';
 import { NAV_SECTIONS } from '@/constants';
-import type { RoleName } from '@/types/database';
+import type { RoleName } from '@/types/roles';
 
 const EXTRA_ROUTE_RULES: Array<{ prefix: string; roles: RoleName[] }> = [
-  { prefix: '/command/health', roles: ['developer', 'admin'] },
-  { prefix: '/users', roles: ['developer', 'admin'] },
-  { prefix: '/settings', roles: ['developer', 'admin'] },
-  { prefix: '/security', roles: ['developer', 'admin'] },
+  { prefix: '/developer-lab', roles: ['developer'] },
+  { prefix: '/command/health', roles: ['developer'] },
+  { prefix: '/users', roles: ['developer', 'admin', 'bme_head'] },
+  { prefix: '/settings', roles: ['developer', 'admin', 'bme_head'] },
+  { prefix: '/security', roles: ['developer', 'admin', 'bme_head'] },
+  { prefix: '/audit', roles: ['developer', 'admin', 'bme_head'] },
   { prefix: '/equipment/new', roles: ['developer', 'admin', 'bme_head', 'technician'] },
   { prefix: '/equipment/', roles: ['developer', 'admin', 'bme_head', 'technician', 'department_head', 'department_user', 'store_user', 'viewer'] },
   { prefix: '/inventory/new', roles: ['developer', 'admin', 'bme_head', 'technician'] },

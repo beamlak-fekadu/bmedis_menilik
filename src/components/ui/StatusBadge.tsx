@@ -1,5 +1,5 @@
 import Badge from './Badge';
-import type { EquipmentCondition, Urgency, WorkOrderStatus, MaintenanceRequestStatus, PMScheduleStatus, RiskLevel } from '@/types/database';
+import type { EquipmentCondition, Urgency, WorkOrderStatus, MaintenanceRequestStatus, PMScheduleStatus, RiskLevel } from '@/types/domain';
 
 type BadgeVariant = 'default' | 'success' | 'warning' | 'error' | 'info' | 'purple';
 

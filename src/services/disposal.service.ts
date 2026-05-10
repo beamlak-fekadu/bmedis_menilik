@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/client';
-import type { DisposalRequest, DisposalRequestStatus, DisposedAsset } from '@/types/database';
+import type { DisposalRequest, DisposalRequestStatus, DisposedAsset } from '@/types/domain';
 
 export interface DisposalFilters {
   status?: DisposalRequestStatus;

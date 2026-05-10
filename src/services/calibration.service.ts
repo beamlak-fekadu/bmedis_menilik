@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/client';
-import type { CalibrationRecord, CalibrationRequest } from '@/types/database';
+import type { CalibrationRecord, CalibrationRequest } from '@/types/domain';
 
 export interface CalibrationFilters {
   asset_id?: string;
@@ -10,14 +10,14 @@ export interface CalibrationFilters {
 const RECORD_SELECT = `
   id, asset_id, calibration_type_id, calibrated_by, calibration_date,
   next_due_date, result, certificate_path, notes, created_at, updated_at,
-  equipment_assets(id, asset_code, name),
+  equipment_assets(id, asset_code, name, department_id, category_id, departments(id, name, code), equipment_categories(id, name, code, criticality_level)),
   calibration_types(id, name, interval_months)
 `;
 
 const REQUEST_SELECT = `
   id, request_number, asset_id, requested_by, calibration_type_id,
   urgency, status, notes, created_at, updated_at,
-  equipment_assets(id, asset_code, name),
+  equipment_assets(id, asset_code, name, department_id, category_id, departments(id, name, code), equipment_categories(id, name, code, criticality_level)),
   calibration_types(id, name, interval_months)
 `;
 

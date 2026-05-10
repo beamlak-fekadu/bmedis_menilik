@@ -34,7 +34,7 @@ import {
   createMaintenanceRequestFromAsset,
   replacementEvidence,
 } from '@/app/(dashboard)/command/_lib/command-center-routes';
-import type { EquipmentCondition } from '@/types/database';
+import type { EquipmentCondition } from '@/types/domain';
 
 interface EquipmentRow {
   id: string;

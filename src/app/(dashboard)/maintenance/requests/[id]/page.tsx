@@ -17,7 +17,7 @@ import { updateRequestStatusAction } from '@/actions/maintenance.actions';
 import { useToast } from '@/components/ui/Toast';
 import { useRole } from '@/hooks/useRole';
 import { formatEquipmentCondition, getConditionBadgeClass } from '@/utils/equipment/condition-labels';
-import type { MaintenanceRequest, MaintenanceRequestStatus, WorkOrder } from '@/types/database';
+import type { MaintenanceRequest, MaintenanceRequestStatus, WorkOrder } from '@/types/domain';
 
 type RequestWithJoins = MaintenanceRequest & {
   equipment_assets?: { id: string; asset_code: string; name: string };

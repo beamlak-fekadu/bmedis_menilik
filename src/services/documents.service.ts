@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/client';
-import type { DocumentType } from '@/types/database';
+import type { DocumentType } from '@/types/domain';
 
 const DOCUMENT_SELECT = `
   id, asset_id, document_type, title, description,

@@ -9,7 +9,7 @@ import { getEquipmentList } from '@/services/equipment.service';
 import { getOpenCorrectiveRequestForAsset } from '@/services/maintenance.service';
 import { createMaintenanceRequestAction } from '@/actions/maintenance.actions';
 import { formatRequestStatus } from '@/utils/maintenance/request-status';
-import type { EquipmentAsset, Urgency } from '@/types/database';
+import type { EquipmentAsset, Urgency } from '@/types/domain';
 import { maintenanceRequestSchema } from '@/utils/validation/operations';
 
 // Reported condition options stored in maintenance_requests.reported_condition (migration 00038).

@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/client';
-import type { TrainingSession, StaffTrainingRecord, TrainingRequest } from '@/types/database';
+import type { TrainingSession, StaffTrainingRecord, TrainingRequest } from '@/types/domain';
 
 export interface TrainingSessionFilters {
   category_id?: string;

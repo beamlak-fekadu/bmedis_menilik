@@ -23,7 +23,7 @@ import { getPMPlans, getPMSchedules, getOverduePMSchedules } from '@/services/pm
 import { generateNextPMScheduleAction, pausePMPlanAction, resumePMPlanAction } from '@/actions/pm.actions';
 import { useToast } from '@/components/ui/Toast';
 import { useRole } from '@/hooks/useRole';
-import type { PMScheduleStatus } from '@/types/database';
+import type { PMScheduleStatus } from '@/types/domain';
 import { AskAiButton } from '@/components/assistant/AskAiButton';
 import { ScoreExplanation } from '../command/_components/ScoreExplanation';
 import {

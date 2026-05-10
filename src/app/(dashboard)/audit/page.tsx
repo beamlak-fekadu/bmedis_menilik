@@ -1,6 +1,7 @@
 import { requireRole } from '@/lib/auth/helpers';
 import { createClient } from '@/lib/supabase/server';
-import { PageHeader, Badge, Card } from '@/components/ui';
+import { Activity, CalendarClock, KeyRound, Monitor, ShieldAlert, Wrench } from 'lucide-react';
+import { PageHeader, Badge, Card, StatCard } from '@/components/ui';
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
@@ -17,7 +18,7 @@ function summarizeValues(value: unknown) {
 }
 
 export default async function AuditLogPage({ searchParams }: { searchParams: SearchParams }) {
-  await requireRole(['developer', 'admin']);
+  const profile = await requireRole(['developer', 'admin', 'bme_head']);
   const params = await searchParams;
   const supabase = await createClient();
 
@@ -51,14 +52,31 @@ export default async function AuditLogPage({ searchParams }: { searchParams: Sea
 
   const totalPages = Math.max(1, Math.ceil((count ?? 0) / pageSize));
   const uniqueEntityTypes = [...new Set((entityTypes ?? []).map((row) => row.entity_type as string).filter(Boolean))].sort();
+  const visibleRows = rows ?? [];
+  const today = new Date().toISOString().slice(0, 10);
+  const todayEvents = visibleRows.filter((row) => String(row.created_at).startsWith(today)).length;
+  const roleSecurityEvents = visibleRows.filter((row) => String(row.entity_type).match(/role|profile|security|settings|auth/i) || String(row.action).match(/role|profile|security|reference/i)).length;
+  const equipmentEvents = visibleRows.filter((row) => String(row.entity_type).includes('equipment')).length;
+  const workflowEvents = visibleRows.filter((row) => String(row.entity_type).match(/maintenance|work_order|pm_|calibration/i)).length;
+  const criticalEvents = visibleRows.filter((row) => String(row.action).match(/delete|deactivate|reject|security|role|dispose|complete/i)).length;
+  const canSeeDiagnostics = profile.roleNames?.some((role: string) => ['developer', 'admin'].includes(role));
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="Audit Log"
-        description="Admin governance view of critical user, equipment, maintenance, and settings changes."
-        actions={<Badge variant="purple">Admin Only</Badge>}
+        description="Governance view of who changed what, when, and which record was affected."
+        actions={<Badge variant={canSeeDiagnostics ? 'purple' : 'info'}>{canSeeDiagnostics ? 'Admin diagnostics' : 'BME Head governance'}</Badge>}
       />
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
+        <StatCard label="Total Events" value={count ?? 0} icon={<Activity className="h-6 w-6" />} color="blue" />
+        <StatCard label="Today" value={todayEvents} icon={<CalendarClock className="h-6 w-6" />} color="green" />
+        <StatCard label="Critical Actions" value={criticalEvents} icon={<ShieldAlert className="h-6 w-6" />} color="red" />
+        <StatCard label="Role/Security Events" value={roleSecurityEvents} icon={<KeyRound className="h-6 w-6" />} color="purple" />
+        <StatCard label="Equipment Changes" value={equipmentEvents} icon={<Monitor className="h-6 w-6" />} color="orange" />
+        <StatCard label="Maintenance/PM/Calibration" value={workflowEvents} icon={<Wrench className="h-6 w-6" />} color="gray" />
+      </div>
 
       <Card>
         <form className="grid gap-3 md:grid-cols-5">
@@ -84,9 +102,16 @@ export default async function AuditLogPage({ searchParams }: { searchParams: Sea
 
       <Card padding={false}>
         {error ? (
-          <p className="p-6 text-sm text-red-300">Failed to load audit logs: {error.message}</p>
+          <div className="p-6 text-sm">
+            <p className="font-medium text-red-300">Audit log could not be loaded.</p>
+            <p className="mt-1 text-[var(--text-muted)]">Audit evidence is unavailable for this view right now. Workflow pages remain usable.</p>
+            {canSeeDiagnostics && <p className="mt-2 rounded-md bg-red-500/10 p-2 text-red-200">Diagnostic: {error.message}</p>}
+          </div>
         ) : !rows || rows.length === 0 ? (
-          <p className="p-6 text-sm text-[var(--text-muted)]">No audit entries match the current filters.</p>
+          <div className="p-6 text-sm text-[var(--text-muted)]">
+            <p>No audit entries match the current filters.</p>
+            <p className="mt-1">This can be normal in a fresh demo dataset, or it can indicate audit logging has not been exercised yet.</p>
+          </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-[900px] w-full text-sm">

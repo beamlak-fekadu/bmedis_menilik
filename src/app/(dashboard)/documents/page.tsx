@@ -17,7 +17,7 @@ import { useToast } from '@/components/ui/Toast';
 import { getDocuments } from '@/services/documents.service';
 import { deleteDocumentAction, uploadDocumentAction } from '@/actions/documents.actions';
 import { getEquipmentList } from '@/services/equipment.service';
-import type { EquipmentDocument, DocumentType, EquipmentAsset } from '@/types/database';
+import type { EquipmentDocument, DocumentType, EquipmentAsset } from '@/types/domain';
 import { createClient } from '@/lib/supabase/client';
 
 type DocumentRow = EquipmentDocument & { [key: string]: unknown };

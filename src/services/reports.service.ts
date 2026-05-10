@@ -131,3 +131,74 @@ export async function getDisposalReport(filters: ReportFilters = {}) {
 
   return query.order('created_at', { ascending: false });
 }
+
+export async function getWorkOrderReport(filters: ReportFilters = {}) {
+  const supabase = createClient();
+  let query = supabase
+    .from('work_orders')
+    .select(`
+      id, work_order_number, request_id, status, priority, work_type,
+      external_vendor, external_vendor_name, estimated_hours, actual_hours,
+      started_at, completed_at, completion_outcome, final_equipment_condition,
+      created_at,
+      equipment_assets(id, asset_code, name, departments(id, name)),
+      profiles(id, full_name)
+    `);
+
+  if (filters.status) query = query.eq('status', filters.status);
+  if (filters.date_from) query = query.gte('created_at', filters.date_from);
+  if (filters.date_to) query = query.lte('created_at', filters.date_to);
+
+  return query.order('created_at', { ascending: false });
+}
+
+export async function getProcurementReport(filters: ReportFilters = {}) {
+  const supabase = createClient();
+  let query = supabase
+    .from('procurement_requests')
+    .select('id, request_number, title, justification, status, priority, expected_delivery_date, created_at, updated_at');
+
+  if (filters.status) query = query.eq('status', filters.status);
+  if (filters.date_from) query = query.gte('created_at', filters.date_from);
+  if (filters.date_to) query = query.lte('created_at', filters.date_to);
+
+  return query.order('created_at', { ascending: false });
+}
+
+export async function getReplacementReport() {
+  const supabase = createClient();
+  return supabase
+    .from('replacement_priority_scores')
+    .select(`
+      id, asset_id, age_score, failure_score, availability_score,
+      maintenance_burden_score, spare_part_score, risk_score, cost_score,
+      replacement_priority_index, rank, justification, computed_at,
+      equipment_assets(id, asset_code, name, departments(id, name))
+    `)
+    .is('weights_profile_id', null)
+    .order('rank', { ascending: true });
+}
+
+export async function getRiskFmeaReport() {
+  const supabase = createClient();
+  return supabase
+    .from('equipment_risk_scores')
+    .select(`
+      id, asset_id, severity, occurrence, detectability, rpn, risk_level,
+      explanation, assignment_method, assessed_at, computed_at,
+      equipment_assets(id, asset_code, name, departments(id, name))
+    `)
+    .order('rpn', { ascending: false });
+}
+
+export async function getAuditSecurityReport(filters: ReportFilters = {}) {
+  const supabase = createClient();
+  let query = supabase
+    .from('audit_logs')
+    .select('id, action, entity_type, entity_id, old_values, new_values, created_at, profiles(full_name, email)');
+
+  if (filters.date_from) query = query.gte('created_at', filters.date_from);
+  if (filters.date_to) query = query.lte('created_at', filters.date_to);
+
+  return query.order('created_at', { ascending: false }).limit(1000);
+}

@@ -28,7 +28,7 @@ import Table from '@/components/ui/Table';
 import Card, { CardHeader, CardTitle } from '@/components/ui/Card';
 import { ChartCard, BarChart, DoughnutChart } from '@/components/charts';
 import { UrgencyBadge, WorkOrderStatusBadge } from '@/components/ui/StatusBadge';
-import type { DashboardStats } from '@/types/database';
+import type { DashboardStats } from '@/types/domain';
 import { AskAiButton } from '@/components/assistant/AskAiButton';
 import { generateAlertSummary } from '@/utils/decision-support/explanations';
 

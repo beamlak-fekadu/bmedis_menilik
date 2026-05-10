@@ -3,7 +3,7 @@
  * Converts analytics outputs into actionable hospital-level decisions.
  */
 
-import type { RecommendationFlagType, Urgency } from '@/types/database';
+import type { RecommendationFlagType, Urgency } from '@/types/domain';
 
 export interface RecommendationInput {
   assetId: string;

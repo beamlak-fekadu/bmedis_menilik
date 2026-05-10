@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/client';
-import type { PMPlan, PMCompletion, PMScheduleStatus } from '@/types/database';
+import type { PMPlan, PMCompletion, PMScheduleStatus } from '@/types/domain';
 import { recomputeAssetAnalytics } from '@/actions/analytics.actions';
 import { logAuditEvent } from './audit.service';
 

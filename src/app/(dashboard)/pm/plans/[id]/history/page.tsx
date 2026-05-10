@@ -21,7 +21,7 @@ import {
   isOverduePMTask,
   type PlanScheduleState,
 } from '@/utils/pm/semantics';
-import type { PMScheduleStatus } from '@/types/database';
+import type { PMScheduleStatus } from '@/types/domain';
 
 type MaybeArray<T> = T | T[] | null | undefined;
 type ProfileLite = { id: string; full_name: string | null; email?: string | null };

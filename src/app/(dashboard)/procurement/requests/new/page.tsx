@@ -21,9 +21,10 @@ export default function NewProcurementRequestPage() {
     const suggestedQuantity = searchParams.get('suggestedQuantity');
     const reason = searchParams.get('reason') ?? 'Stock below reorder level';
     const source = searchParams.get('source');
+    const hasPrefill = Boolean(source);
     return {
-      title: source === 'command-center' ? `Procure ${itemName}` : '',
-      justification: source === 'command-center'
+      title: hasPrefill ? `Procure ${itemName}` : '',
+      justification: hasPrefill
         ? [
             reason,
             currentStock ? `Current stock: ${currentStock}` : null,
@@ -32,10 +33,10 @@ export default function NewProcurementRequestPage() {
             searchParams.get('partId') ? `Linked spare part: ${searchParams.get('partId')}` : null,
             searchParams.get('workOrderId') ? `Linked work order: ${searchParams.get('workOrderId')}` : null,
             searchParams.get('assetId') ? `Linked asset: ${searchParams.get('assetId')}` : null,
-            source === 'command-center' ? 'Source: Command Center' : null,
+            source ? `Source: ${source.replace(/-/g, ' ')}` : null,
           ].filter(Boolean).join('\n')
         : '',
-      priority: source === 'command-center' && currentStock === '0' ? 'critical' : source === 'command-center' ? 'high' : 'medium',
+      priority: currentStock === '0' ? 'critical' : hasPrefill ? 'high' : 'medium',
     };
   }, [searchParams]);
 

@@ -5,7 +5,7 @@ import type {
   WorkOrder,
   WorkOrderStatus,
   MaintenanceEvent,
-} from '@/types/database';
+} from '@/types/domain';
 import { recomputeAssetAnalytics } from '@/actions/analytics.actions';
 import { logAuditEvent } from './audit.service';
 import { OPEN_MAINTENANCE_REQUEST_STATUSES } from '@/utils/maintenance/request-status';

@@ -1,6 +1,6 @@
 # BMERMS Demo Workflow QA
 
-Last updated: 2026-05-07
+Last updated: 2026-05-10
 
 Scope: app hardening and demo readiness with seed data. Real Yekatit-12 production data migration is intentionally excluded.
 
@@ -35,22 +35,23 @@ Scope: app hardening and demo readiness with seed data. Real Yekatit-12 producti
 | Equipment | `/equipment` | admin/technician | Client service reads | Server actions | Existing UI | Equipment/report/command revalidation | Code verified |
 | Maintenance requests | `/maintenance`, `/maintenance/requests/*` | admin/technician/department_user | Client service reads | Server actions | Existing UI | Maintenance/report/command revalidation | Code verified |
 | Requests Hub | `/requests`, `/requests/[type]/[id]` | all operational/request roles + viewer | Shared normalized server fetcher | Type-specific links into module actions | Empty categories show 0/not configured | N/A | Code verified |
-| Work orders | `/work-orders`, `/maintenance/work-orders/*` | admin/technician | Client service reads | Server actions | Existing UI | Maintenance/report/command revalidation | Code verified |
+| Work orders | `/work-orders`, `/maintenance/work-orders/*` | admin/technician | Client service reads | Server actions | Summary/filter execution center, exact WO actions | Maintenance/report/command revalidation | Typecheck verified |
 | Preventive maintenance | `/pm`, `/pm/*` | admin/technician | Client service reads | Evidence-based server actions | Control-center cards/tabs with empty states | PM/equipment/command/risk revalidation | Code verified |
-| Calibration | `/calibration` | admin/technician | Client service reads | Server actions | Existing UI | Calibration/report/command revalidation | Code verified |
-| Spare parts | `/spare-parts` | admin/technician/store_user | Client service reads | Server actions | Existing UI | Spare/logistics/command revalidation | Code verified |
-| Logistics | `/logistics` | admin/technician/store_user | Live summary cards | Links to spare/procurement | Summary defaults to zero | N/A | Build verified |
-| Procurement | `/procurement` | admin/store_user/technician | Client service reads | Server action create/status | Existing UI | Procurement/logistics/command revalidation | Code verified |
-| Training | `/training` | admin/technician/department_user | Client service reads | Server actions | Existing UI | Training/report revalidation | Code verified |
-| Disposal | `/disposal` | admin/technician | Client service reads | Server actions | Existing UI | Disposal/replacement/report revalidation | Code verified |
-| Replacement | `/replacement` | admin/technician/viewer | Client service reads | No DB writes | Empty chart/table | N/A | Polished |
-| Alerts | `/alerts` | admin/technician | Client service reads | Server action acknowledge | Empty tabs | Alerts/command/helpdesk revalidation | Code verified |
-| Helpdesk | `/helpdesk` | ops roles | Live alert queue | Server action acknowledge | Empty queue | Alerts/command/helpdesk revalidation | Polished |
+| Calibration | `/calibration` | admin/technician | Client service reads | Server actions | Control-center cards, contextual actions, due/overdue empty states | Calibration/report/command revalidation | Typecheck verified |
+| Spare parts | `/spare-parts` | admin/technician/store_user | Client service reads | Server actions | Inventory/low-stock/stockout/blocker tabs | Spare/logistics/command revalidation | Typecheck verified |
+| Logistics | `/logistics` | admin/technician/store_user | Live summary/workflow cards | Contextual links to spare/procurement/work orders | Summary defaults to zero | N/A | Typecheck verified |
+| Procurement | `/procurement` | admin/store_user/technician | Client service reads | Server action create/status | Pipeline states, delay/impact/source actions | Procurement/logistics/command revalidation | Typecheck verified |
+| Training | `/training` | admin/technician/department_user | Client service reads | Server actions | Sessions/requests/upcoming/coverage tabs | Training/report revalidation | Typecheck verified |
+| Disposal | `/disposal` | admin/technician | Client service reads | Server actions | Requests/candidates/disposed tabs | Disposal/replacement/report revalidation | Typecheck verified |
+| Replacement | `/replacement` | admin/technician/viewer | Client service reads | No DB writes | No sliders; evidence/action planning page | N/A | Typecheck verified |
+| Alerts | `/alerts` | admin/technician | Client service reads | Server action acknowledge | Command Center-style alert inbox with source actions | Alerts/command revalidation | Typecheck verified |
+| Helpdesk | `/helpdesk` | deprecated | Redirect | None | Redirects to Requests Hub | N/A | Typecheck verified |
 | Documents | `/documents` | admin/technician | Client service reads | Server action upload/delete | Existing UI | Docs/equipment revalidation | Code verified |
-| Reports | `/reports/[type]` | reporting roles | Client service reads | Export only | No rows toast | N/A | Build verified |
-| Users | `/users` | admin | Client service reads | Server actions | Existing UI | Users/settings/audit revalidation | Code verified |
-| Settings | `/settings` | admin | Client service reads | Server actions | Existing UI | Settings/audit revalidation | Code verified |
-| Security | `/security` | admin | Server live summary | Links only | Empty audit text | N/A | Server-protected |
+| Reports | `/reports/[type]` | reporting roles | Client service reads | Export only | Expanded evidence/export report catalog | N/A | Typecheck verified |
+| Users | `/users` | deprecated | Redirect | None | Redirects to Settings → Staff & Access | Users/settings/audit revalidation | Typecheck verified |
+| Settings | `/settings` | developer/admin/BME Head | Client service reads | Server actions where allowed | Administration tabs with staff/security/reference data | Settings/audit revalidation | Typecheck verified |
+| Security | `/security` | deprecated | Redirect | None | Redirects to Settings → Security & Access | N/A | Typecheck verified |
+| Developer Lab | `/developer-lab` | developer | Server/client reads | Explicit developer refresh actions only | Sandbox-only sliders, data health, demo tools | Developer/audit/command/report revalidation | Typecheck verified |
 | Chatbot | `/chatbot` | all roles | Client chat session reads | Existing chat service/API | Existing UI | Chatbot test suite | 111 tests passing |
 | Installation | `/installation` | admin/technician | Client service reads | Server action create | Existing UI | Installation/equipment/command revalidation | Code verified |
 
@@ -59,6 +60,15 @@ Scope: app hardening and demo readiness with seed data. Real Yekatit-12 producti
 - Recurring-failure flags keep the thesis threshold of `failureCount >= 4`. In the seeded period, currently one asset crosses that threshold. Assets with 2-3 events are below threshold and will appear after additional failures are logged.
 - Supabase Storage bucket required for document workflows: create bucket `equipment-documents`, allow authenticated upload/read/delete according to project RLS/storage policy, and ensure environment variables point to the active Supabase project.
 - Offline sync is intentionally scoped to work-order status updates and maintenance event logs. There is no background service worker; users sync manually from the work-order detail page.
+
+## Final Polish Semantics
+
+1. Developer Lab is the only place for scoring sliders, sensitivity testing, thesis/debug tools, data health, and explicit refresh controls.
+2. BME Head sees operational control pages but not Developer Lab, scoring sandbox weights, or debug/thesis controls.
+3. Staff & Access and Security & Access are Settings tabs; `/users` and `/security` are compatibility redirects.
+4. Helpdesk is removed; `/helpdesk` redirects to Requests Hub.
+5. Existing records open exact routes, missing workflows open prefilled creation, informational signals open evidence/acknowledge/convert actions, and composite scores expose explanations.
+6. Reports is the defense evidence/export center and includes operations, inventory, maintenance, work orders, PM, calibration, risk/FMEA, replacement, readiness, stock, procurement, training, disposal, workload, audit/security, and demo reports.
 
 ## Command Center Action Semantics
 

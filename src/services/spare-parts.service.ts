@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/client';
-import type { SparePart, StockReceipt, StockIssue } from '@/types/database';
+import type { SparePart, StockReceipt, StockIssue } from '@/types/domain';
 
 export interface SparePartFilters {
   category?: string;

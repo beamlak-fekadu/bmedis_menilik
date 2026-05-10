@@ -12,7 +12,7 @@ import { useToast } from '@/components/ui/Toast';
 import { getEquipmentById } from '@/services/equipment.service';
 import { getAll } from '@/services/settings.service';
 import { ROUTES } from '@/constants';
-import type { EquipmentCondition } from '@/types/database';
+import type { EquipmentCondition } from '@/types/domain';
 import { updateEquipmentAction } from '@/actions/equipment.actions';
 
 interface RefOption {

@@ -1,4 +1,4 @@
-import type { RoleName } from '@/types/database';
+import type { RoleName } from '@/types/roles';
 
 export interface RoleConfig {
   label: string;

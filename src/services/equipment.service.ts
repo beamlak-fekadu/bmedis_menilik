@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/client';
-import type { EquipmentAsset } from '@/types/database';
+import type { EquipmentAsset } from '@/types/domain';
 import { logAuditEvent } from './audit.service';
 
 export interface EquipmentFilters {

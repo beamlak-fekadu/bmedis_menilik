@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/client';
-import type { Profile, UserRole } from '@/types/database';
+import type { Profile, UserRole } from '@/types/domain';
 import { logAuditEvent } from './audit.service';
 
 const PROFILE_SELECT = `
@@ -20,6 +20,14 @@ export async function getProfiles() {
     .from('profiles')
     .select(PROFILE_SELECT)
     .eq('is_active', true)
+    .order('full_name', { ascending: true });
+}
+
+export async function getAllProfiles() {
+  const supabase = createClient();
+  return supabase
+    .from('profiles')
+    .select(PROFILE_SELECT)
     .order('full_name', { ascending: true });
 }
 

@@ -113,7 +113,7 @@ export function replacementReportPrefill(
   assetId: string,
   context: { reason?: string | null; rank?: number | null; rpi?: number | null } = {},
 ): string {
-  return withParams('/reports/replacement', {
+  return withParams('/reports/replacement-planning', {
     assetId,
     source: 'command-center',
     reason: context.reason,

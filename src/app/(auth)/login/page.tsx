@@ -62,7 +62,8 @@ export default function LoginPage() {
           appearance="minimal"
           label="Email"
           labelClassName="!text-sky-700/95 dark:!text-sky-400/90"
-          type="email"
+          type="text"
+          inputMode="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           placeholder="you@yekatit12.gov.et"

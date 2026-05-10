@@ -7,6 +7,7 @@ export interface ProcurementPipelineRow {
   title: string;
   status: string;
   priority: string;
+  justification?: string | null;
   requested_by: string | null;
   department_id: string | null;
   expected_delivery_date: string | null;
@@ -17,7 +18,7 @@ export async function getProcurementPipeline() {
   const supabase = createClient();
   return supabase
     .from('procurement_requests')
-    .select('id, request_number, title, status, priority, requested_by, department_id, expected_delivery_date, created_at')
+    .select('id, request_number, title, justification, status, priority, requested_by, department_id, expected_delivery_date, created_at')
     .order('created_at', { ascending: false });
 }
 

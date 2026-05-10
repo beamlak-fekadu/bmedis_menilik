@@ -1,4 +1,4 @@
-import type { RecommendationFlagType } from '@/types/database';
+import type { RecommendationFlagType } from '@/types/domain';
 
 type AlertExplanationInput = {
   assetName?: string | null;
