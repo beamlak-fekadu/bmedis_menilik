@@ -3,7 +3,7 @@
 import { z } from 'zod';
 import { getActionContext, logServerAuditEvent, revalidateMany, actionError, nullIfEmpty, type ActionResult } from './_shared';
 
-const procurementPaths = ['/procurement', '/logistics', '/command'];
+const procurementPaths = ['/procurement', '/logistics', '/calendar', '/command'];
 const procurementStatus = z.enum(['requested', 'approved', 'ordered', 'in_transit', 'delivered', 'canceled']);
 
 export async function createProcurementRequestAction(payload: Record<string, unknown>): Promise<ActionResult> {

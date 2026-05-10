@@ -190,7 +190,8 @@ function getReportConfig(type: string): ReportConfig | null {
             key: 'assigned_to',
             header: 'Assigned To',
             render: (row: Row) => {
-              const profile = row.profiles as { full_name: string } | null;
+              const relation = row.assigned_to_profile as { full_name: string } | { full_name: string }[] | null;
+              const profile = Array.isArray(relation) ? relation[0] : relation;
               return profile?.full_name || '—';
             },
           },

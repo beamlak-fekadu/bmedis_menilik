@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Plus, ClipboardList } from 'lucide-react';
 import PageHeader from '@/components/ui/PageHeader';
 import DataTable from '@/components/ui/DataTable';
@@ -48,6 +49,7 @@ type CalRequest = Record<string, unknown>;
 
 export default function CalibrationPage() {
   const { toast } = useToast();
+  const searchParams = useSearchParams();
   const [records, setRecords] = useState<CalRecord[]>([]);
   const [requests, setRequests] = useState<CalRequest[]>([]);
   const [upcoming, setUpcoming] = useState<CalRecord[]>([]);
@@ -108,6 +110,12 @@ export default function CalibrationPage() {
   }, [toast]);
 
   useEffect(() => { loadData(); }, [loadData]);
+
+  useEffect(() => {
+    if (searchParams.get('source') === 'requests-hub' && searchParams.get('action') === 'new-request') {
+      setRequestModalOpen(true);
+    }
+  }, [searchParams]);
 
   const handleCreateRecord = async () => {
     if (!recAssetId || !recDate) {

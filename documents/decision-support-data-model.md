@@ -101,6 +101,70 @@ weights when applicable, raw inputs, normalized inputs where applicable, generat
 source/method, timestamp/history if available, and a decision note. The system supports decisions;
 the BME Head makes final operational decisions.
 
+## Requests Hub source-of-truth rules
+
+The Requests Hub is a cross-category intake and tracking layer. It must not replace operational modules or invent request data.
+
+| Category | Requests Hub source | Routing rule |
+| --- | --- | --- |
+| Corrective maintenance | `maintenance_requests` plus linked `work_orders` for next action | Existing request/work order opens exact `/maintenance/...` route; new requests use `/maintenance/requests/new?type=corrective&source=requests-hub` |
+| Calibration | `calibration_requests` | Uses lightweight `/requests/calibration/[id]` detail when no dedicated calibration request detail page exists |
+| Training | `training_requests` | Uses lightweight `/requests/training/[id]` detail when no dedicated training request detail page exists |
+| Procurement | `procurement_requests` | Opens exact `/command/drilldown/procurement/[id]` status/evidence route |
+| Disposal | `disposal_requests` | Formal disposal requests only; replacement candidates are linked evidence and are not counted |
+| Installation | `installation_requests` | Request rows open `/installation/requests/[id]`; `installation_records` remain completion evidence only |
+| Specification | `specification_requests` | Request rows open `/documents/specification-requests/[id]`; `equipment_documents` remain output/evidence only |
+
+Cards, workflow summaries, and the unified table must share the same normalized Requests Hub fetcher so counts do not drift.
+
+Installation Request = intake/workflow item. Installation Record = completion evidence. The expected flow is submitted → reviewed/approved → scheduled or assigned → in progress → installation/commissioning completed → installation record created → go-live.
+
+Specification Request = request/tracking item. Specification Document = output/evidence. Requests may be reviewed, assigned, linked to uploaded specification documents, completed, rejected, and retrieved from the Documents workflow.
+
+## Hospital Operations Calendar source-of-truth rules
+
+The Hospital Operations Calendar at `/calendar` is a fully internal BMERMS read/overview surface. It is not Google Calendar integration and must not create external events, request Google OAuth, or store external calendar tokens.
+
+| Event family | Calendar source | Routing rule |
+| --- | --- | --- |
+| Preventive maintenance | `pm_schedules` with `pm_plans` and asset context | Opens exact `/pm/schedules/[id]` |
+| Calibration | `calibration_records` and `calibration_requests` | Uses calibration context query because no dedicated calibration detail route exists |
+| Work orders | `work_orders` | Opens exact `/maintenance/work-orders/[id]` |
+| Maintenance requests | `maintenance_requests` | Opens exact `/maintenance/requests/[id]` |
+| Training | `training_sessions` and `training_requests` | Uses training context query because no dedicated training detail route exists |
+| Installation | `installation_requests` and `installation_records` | Requests open exact `/installation/requests/[id]`; records use contextual `/installation` route |
+| Procurement | `procurement_requests` | Opens exact `/command/drilldown/procurement/[id]` |
+| Disposal | `disposal_requests` and `disposed_assets` | Uses contextual `/disposal` route because no dedicated disposal detail route exists |
+| Specification/document | `specification_requests.required_by` when present | Opens exact `/documents/specification-requests/[id]` |
+
+Calendar events are normalized from real date fields only. Source tables remain authoritative; calendar sync means internal revalidation/refresh after source-module actions. Viewer is read-only. Future external Google Calendar sync would require OAuth, token storage, duplicate prevention, and conflict handling.
+
+## Preventive Maintenance source-of-truth rules
+
+| Concept | Source | Rule |
+| --- | --- | --- |
+| PM Plan | `pm_plans` | Recurring PM rule/program with asset, frequency, checklist expectation, next due date, and active state |
+| PM Schedule | `pm_schedules` | One planned task instance with exact `/pm/schedules/[id]` route, status, assignment, and completion/defer evidence |
+| PM Completion | `pm_completions` plus schedule evidence fields | Evidence that work was performed: result, checklist, notes, technician, completion date, final condition |
+| PM Compliance | `pm_schedules` / `pm_compliance_metrics` | Completed scheduled PM tasks ÷ total scheduled PM tasks. Skipped/deferred are separate and not completed |
+| Overdue PM | `fetchPMTriage()` / `v_overdue_pm` | PM page overdue tab, Command Center PM triage, and critical action counts share this source |
+
+PM completion updates equipment condition, schedule evidence, completion evidence, PM compliance, Command Center overdue PM, Equipment detail context, and FMEA detectability through the existing recompute/trigger pipeline where available. If PM finds an issue, the completion flow can create/open a corrective request while respecting duplicate prevention.
+
+## PM Count and Action Semantics
+
+| Concept | Definition |
+| --- | --- |
+| PM Schedule Records | All generated `pm_schedules` rows, including historical completed/skipped/deferred/canceled rows and active unfinished rows |
+| Active PM Tasks | Unfinished rows requiring action: `scheduled`, `in_progress`, `overdue`, or `deferred` |
+| Plan Status | `pm_plans.is_active`; Active means future tasks can be generated, Paused means generation is disabled |
+| Asset Criticality | Equipment category/risk context; separate from PM plan state |
+| Needs next task | No unfinished upcoming/active schedule exists for the plan; this does not imply no history |
+| Generate Next Task | Creates one next schedule only when no unfinished task exists; otherwise returns/opens the existing unfinished task |
+| Pause Plan | Sets `is_active=false`, preserves history, and does not mark existing tasks complete/canceled |
+| History | `/pm/plans/[id]/history` exact plan schedule/evidence drilldown |
+| Compliance | Completed scheduled tasks ÷ total scheduled tasks × 100; skipped/deferred tracked separately |
+
 ## Command Center Action Semantics
 
 1. Exact record rule: row-level actions must open exact records when records exist.

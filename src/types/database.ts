@@ -11,7 +11,8 @@ export type MaintenanceRequestStatus = 'pending' | 'approved' | 'assigned' | 'in
 export type WorkOrderStatus = 'open' | 'assigned' | 'in_progress' | 'on_hold' | 'completed' | 'canceled';
 export type WorkType = 'corrective' | 'preventive' | 'inspection' | 'calibration' | 'installation';
 export type MaintenanceEventType = 'corrective' | 'preventive' | 'inspection' | 'emergency';
-export type PMScheduleStatus = 'scheduled' | 'completed' | 'overdue' | 'skipped' | 'in_progress';
+export type PMScheduleStatus = 'scheduled' | 'completed' | 'overdue' | 'skipped' | 'deferred' | 'in_progress' | 'canceled';
+export type PMCompletionResult = 'pass' | 'issue_found' | 'failed';
 export type CalibrationResult = 'pass' | 'fail' | 'adjusted';
 export type CalibrationRequestStatus = 'pending' | 'approved' | 'in_progress' | 'completed' | 'rejected' | 'canceled';
 export type TrainingType = 'equipment_operation' | 'maintenance' | 'safety' | 'calibration' | 'refresher' | 'other';
@@ -432,6 +433,17 @@ export interface PMSchedule {
   status: PMScheduleStatus;
   assigned_to: string | null;
   notes: string | null;
+  result?: PMCompletionResult | null;
+  completion_checklist?: PMChecklistItem[] | null;
+  completion_notes?: string | null;
+  final_equipment_condition?: EquipmentCondition | null;
+  corrective_action_needed?: boolean;
+  skipped_reason?: string | null;
+  deferred_until?: string | null;
+  deferred_reason?: string | null;
+  completed_by?: string | null;
+  completed_at?: string | null;
+  started_at?: string | null;
   created_at: string;
   updated_at: string;
   plan?: PMPlan;

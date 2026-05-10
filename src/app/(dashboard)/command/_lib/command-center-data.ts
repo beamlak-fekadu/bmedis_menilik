@@ -1026,7 +1026,7 @@ export async function fetchPMTriage(
         reason: buildPMReason({ daysOverdue, pmcPercentage: null }),
         detailHref: pmDetail(row.id as string),
         assignHref: pmDetail(row.id as string, 'assign'),
-        checklistHref: pmDetail(row.id as string, 'checklist'),
+        checklistHref: pmDetail(row.id as string, 'complete'),
       };
     });
 
@@ -1520,8 +1520,8 @@ export function buildCriticalActions(params: {
       score,
       reason: item.reason,
       scoreBreakdown: [`Base ${CATEGORY_WEIGHTS.pm}`, `PM priority ${Math.round(item.score)}`, `${item.daysOverdue} days overdue`],
-      primaryAction: 'Schedule PM',
-      primaryActionHref: item.detailHref,
+      primaryAction: 'Complete PM',
+      primaryActionHref: item.checklistHref,
       secondaryAction: 'Assign PM',
       secondaryActionHref: item.assignHref,
       urgency: urgencyFor(score),

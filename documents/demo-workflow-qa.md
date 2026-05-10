@@ -30,11 +30,13 @@ Scope: app hardening and demo readiness with seed data. Real Yekatit-12 producti
 | Module | Route | Primary role | Read | Write | Empty/error behavior | Audit/revalidation | Demo status |
 |---|---|---|---|---|---|---|---|
 | Command Center | `/command` | all roles | Shared typed fetchers | Refresh/ack/exact record links/prefilled flows | Empty cards | Revalidates command routes | Build verified |
+| Hospital Calendar | `/calendar` | all roles | Normalized internal event fetcher | Opens exact/contextual source records | Empty period/filter state and source warnings | Source actions revalidate calendar | Code verified |
 | Triage queue | `/command/triage` | ops roles | Client read view | Existing command actions | Empty table | Revalidates command/health | Build verified |
 | Equipment | `/equipment` | admin/technician | Client service reads | Server actions | Existing UI | Equipment/report/command revalidation | Code verified |
 | Maintenance requests | `/maintenance`, `/maintenance/requests/*` | admin/technician/department_user | Client service reads | Server actions | Existing UI | Maintenance/report/command revalidation | Code verified |
+| Requests Hub | `/requests`, `/requests/[type]/[id]` | all operational/request roles + viewer | Shared normalized server fetcher | Type-specific links into module actions | Empty categories show 0/not configured | N/A | Code verified |
 | Work orders | `/work-orders`, `/maintenance/work-orders/*` | admin/technician | Client service reads | Server actions | Existing UI | Maintenance/report/command revalidation | Code verified |
-| Preventive maintenance | `/pm`, `/pm/*` | admin/technician | Client service reads | Server actions | Existing UI | PM/report/command revalidation | Code verified |
+| Preventive maintenance | `/pm`, `/pm/*` | admin/technician | Client service reads | Evidence-based server actions | Control-center cards/tabs with empty states | PM/equipment/command/risk revalidation | Code verified |
 | Calibration | `/calibration` | admin/technician | Client service reads | Server actions | Existing UI | Calibration/report/command revalidation | Code verified |
 | Spare parts | `/spare-parts` | admin/technician/store_user | Client service reads | Server actions | Existing UI | Spare/logistics/command revalidation | Code verified |
 | Logistics | `/logistics` | admin/technician/store_user | Live summary cards | Links to spare/procurement | Summary defaults to zero | N/A | Build verified |
@@ -67,6 +69,46 @@ Scope: app hardening and demo readiness with seed data. Real Yekatit-12 producti
 5. State-aware action labels: Assign for unassigned work, Reassign for assigned work, View Progress for in-progress work, Resolve Blocker for on-hold work.
 6. Future triage categories: new triage categories must define record IDs, exact routes, and prefilled fallback flows before being shown in the Command Center.
 7. BME Head principle: the system recommends/explains; the BME Head decides.
+
+## Requests Hub Semantics
+
+1. Requests Hub is the central intake/tracking front door, not a replacement for operational modules.
+2. Categories are corrective maintenance, calibration, training, procurement, disposal, installation, and specification/document support.
+3. The unified request table uses one normalized data source for cards, filters, and counts.
+4. Existing request rows open exact records where available; categories without dedicated module detail pages use `/requests/[type]/[id]`.
+5. New request actions route to type-specific creation or module modal flows with `source=requests-hub`.
+6. Viewer is read-only; BME Head/developer/admin see all hospital request activity; department roles are scoped to own/department rows where context exists.
+7. Installation requests use `installation_requests`; installation records remain completion evidence and are not request counts.
+8. Specification requests use `specification_requests`; specification documents remain output/evidence and are not request counts.
+9. Disposal counts formal disposal requests only; replacement candidates are linked evidence, not disposal requests.
+
+## Hospital Operations Calendar Semantics
+
+1. `/calendar` is fully internal and is not Google Calendar integration.
+2. Events are normalized from real BMERMS date fields across PM, calibration, maintenance, training, installation, procurement, disposal, and dated specification requests.
+3. Source workflow tables remain the source of truth; internal sync means route revalidation/refresh after source actions.
+4. Exact records open exact routes where available. Contextual module routes are reserved for sources without detail pages.
+5. Viewer is read-only. External Google Calendar sync is intentionally deferred because it requires OAuth, token storage, duplicate prevention, and conflict handling.
+
+## Preventive Maintenance Semantics
+
+1. PM Plan is the recurring PM rule/program; PM Schedule is one generated task; PM Completion is the evidence that work was performed.
+2. PM Compliance = completed scheduled PM tasks ÷ total scheduled PM tasks. Skipped/deferred PM is tracked separately and does not count as completed.
+3. Completion evidence records result, checklist, notes/findings, technician, completion date, and final equipment condition.
+4. PM issue findings can create/open corrective maintenance requests with duplicate prevention.
+5. PM completion updates `/pm`, Equipment detail, Command Center overdue PM, and FMEA detectability through the existing analytics refresh path.
+6. Existing PM schedule actions open exact `/pm/schedules/[id]` records. Viewer remains read-only.
+
+## PM Count and Action Semantics
+
+1. PM Schedule Records = all generated `pm_schedules` rows, including historical completed/skipped/deferred rows and active unfinished rows.
+2. Active PM Tasks = unfinished PM tasks requiring action: scheduled, in progress, overdue, or deferred.
+3. PM Plan status is different from asset criticality. Active/Paused is plan generation state; criticality is equipment risk/context.
+4. `Needs next task` means no unfinished upcoming task exists for that plan, not that there is no history.
+5. Generate Next Task creates the next schedule only when no unfinished task exists; otherwise it opens the existing unfinished task.
+6. Pause Plan disables future generation but does not delete history or alter existing task completion state. Resume Plan re-enables generation.
+7. History opens exact `/pm/plans/[id]/history` with schedule/evidence drilldown and exact schedule links.
+8. Compliance = completed scheduled tasks ÷ total scheduled tasks × 100; skipped/deferred remain separate.
 
 ## Verification Results
 

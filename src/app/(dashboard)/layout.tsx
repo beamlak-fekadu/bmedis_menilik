@@ -24,8 +24,9 @@ const EXTRA_ROUTE_RULES: Array<{ prefix: string; roles: RoleName[] }> = [
   { prefix: '/maintenance/requests/new', roles: ['developer', 'admin', 'bme_head', 'technician', 'department_head', 'department_user'] },
   { prefix: '/maintenance/requests/', roles: ['developer', 'admin', 'bme_head', 'technician', 'department_head', 'department_user'] },
   { prefix: '/pm/plans/new', roles: ['developer', 'admin', 'bme_head', 'technician'] },
-  { prefix: '/pm/schedules/', roles: ['developer', 'admin', 'bme_head', 'technician'] },
-  { prefix: '/requests', roles: ['developer', 'admin', 'bme_head', 'technician', 'department_head', 'department_user'] },
+  { prefix: '/pm/plans/', roles: ['developer', 'admin', 'bme_head', 'technician', 'viewer'] },
+  { prefix: '/pm/schedules/', roles: ['developer', 'admin', 'bme_head', 'technician', 'viewer'] },
+  { prefix: '/requests', roles: ['developer', 'admin', 'bme_head', 'technician', 'department_head', 'department_user', 'store_user', 'viewer'] },
   { prefix: '/documents', roles: ['developer', 'admin', 'bme_head', 'technician'] },
   { prefix: '/installation', roles: ['developer', 'admin', 'bme_head', 'technician'] },
 ];

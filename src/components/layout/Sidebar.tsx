@@ -4,10 +4,10 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { NAV_SECTIONS, APP_NAME_SHORT, ROUTES } from '@/constants';
-import { ChevronLeft, ChevronRight, Activity, LayoutDashboard, Bell, Monitor, FileText, PackageCheck, Wrench, CalendarCheck, Gauge, Package, Boxes, GraduationCap, Trash2, ShieldAlert, CheckCircle, BarChart3, ArrowUpDown, FileBarChart, Users, Settings, ClipboardList, Headphones, BrainCircuit, Shield, MessageSquareText } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Activity, LayoutDashboard, Bell, Monitor, FileText, PackageCheck, Wrench, CalendarCheck, CalendarDays, Gauge, Package, Boxes, GraduationCap, Trash2, ShieldAlert, CheckCircle, BarChart3, ArrowUpDown, FileBarChart, Users, Settings, ClipboardList, Headphones, BrainCircuit, Shield, MessageSquareText } from 'lucide-react';
 
 const iconMap: Record<string, React.ElementType> = {
-  LayoutDashboard, Bell, Monitor, FileText, PackageCheck, Wrench, CalendarCheck, Gauge,
+  LayoutDashboard, Bell, Monitor, FileText, PackageCheck, Wrench, CalendarCheck, CalendarDays, Gauge,
   Package, Boxes, GraduationCap, Trash2, Activity, ShieldAlert, CheckCircle, BarChart3,
   ArrowUpDown, FileBarChart, Users, Settings, ClipboardList, Headphones, BrainCircuit, Shield, MessageSquareText,
 };

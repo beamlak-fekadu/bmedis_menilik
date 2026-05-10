@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Plus, CheckCircle, XCircle } from 'lucide-react';
 import PageHeader from '@/components/ui/PageHeader';
 import DataTable from '@/components/ui/DataTable';
@@ -47,6 +48,7 @@ function formatLabel(val: string) {
 
 export default function DisposalPage() {
   const { toast } = useToast();
+  const searchParams = useSearchParams();
   const [disposalRequests, setDisposalRequests] = useState<DisposalRow[]>([]);
   const [disposedAssets, setDisposedAssets] = useState<DisposedRow[]>([]);
   const [assets, setAssets] = useState<{ value: string; label: string }[]>([]);
@@ -96,6 +98,12 @@ export default function DisposalPage() {
   }, [toast]);
 
   useEffect(() => { loadData(); }, [loadData]);
+
+  useEffect(() => {
+    if (searchParams.get('source') === 'requests-hub' && searchParams.get('action') === 'new-request') {
+      setCreateOpen(true);
+    }
+  }, [searchParams]);
 
   const handleCreate = async () => {
     if (!formAssetId || !formReason) {

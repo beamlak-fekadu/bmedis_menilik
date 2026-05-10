@@ -3,7 +3,7 @@
 import { z } from 'zod';
 import { getActionContext, logServerAuditEvent, revalidateMany, actionError, nullIfEmpty, type ActionResult } from './_shared';
 
-const trainingPaths = ['/training', '/reports/training'];
+const trainingPaths = ['/training', '/calendar', '/reports/training'];
 
 export async function createTrainingRequestAction(payload: Record<string, unknown>): Promise<ActionResult> {
   try {

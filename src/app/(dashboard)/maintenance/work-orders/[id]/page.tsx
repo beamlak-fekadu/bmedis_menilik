@@ -11,8 +11,10 @@ import {
 } from '@/components/ui';
 import { UrgencyBadge, WorkOrderStatusBadge } from '@/components/ui/StatusBadge';
 import {
-  getWorkOrderById, getMaintenanceEvents,
+  getWorkOrderById, getMaintenanceEvents, getRequestById,
 } from '@/services/maintenance.service';
+import { getEquipmentById } from '@/services/equipment.service';
+import { formatEquipmentCondition, getConditionBadgeClass } from '@/utils/equipment/condition-labels';
 import { assignWorkOrder, createMaintenanceEventAction, reassignWorkOrder, updateWorkOrderAction } from '@/actions/maintenance.actions';
 import { syncOfflineWorkOrderActionsAction } from '@/actions/offline-sync.actions';
 import { enqueueOfflineAction, getOfflineQueue, markOfflineActionFailed, removeOfflineAction, type OfflineWorkOrderAction } from '@/lib/offline/technician-queue';
@@ -31,6 +33,20 @@ type WOWithJoins = WorkOrder & {
   completion_outcome?: string | null;
   final_equipment_condition?: string | null;
 };
+
+interface OriginatingRequest {
+  id: string;
+  request_number: string;
+  fault_description: string;
+  urgency: string;
+  status: string;
+  reported_condition?: string | null;
+  reported_condition_source?: string | null;
+}
+
+interface EquipmentConditionSnap {
+  condition: string;
+}
 
 type EventWithJoins = MaintenanceEvent & {
   failure_codes?: { id: string; code: string; description: string };
@@ -61,6 +77,8 @@ export default function WorkOrderDetailPage() {
 
   const [wo, setWO] = useState<WOWithJoins | null>(null);
   const [events, setEvents] = useState<EventWithJoins[]>([]);
+  const [originatingRequest, setOriginatingRequest] = useState<OriginatingRequest | null>(null);
+  const [equipmentCondition, setEquipmentCondition] = useState<EquipmentConditionSnap | null>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
 
@@ -108,7 +126,35 @@ export default function WorkOrderDetailPage() {
       }
       const woData = data as unknown as WOWithJoins;
       setWO(woData);
-      await loadEvents(woData.asset_id);
+
+      // Load events, originating request, and current equipment condition in parallel
+      const requestId = (woData as { request_id?: string | null }).request_id;
+      await Promise.all([
+        loadEvents(woData.asset_id),
+        requestId
+          ? getRequestById(requestId).then(({ data: reqData }) => {
+              if (reqData) {
+                const r = reqData as unknown as OriginatingRequest;
+                setOriginatingRequest({
+                  id: r.id,
+                  request_number: r.request_number,
+                  fault_description: r.fault_description,
+                  urgency: r.urgency,
+                  status: r.status,
+                  reported_condition: r.reported_condition,
+                  reported_condition_source: r.reported_condition_source,
+                });
+              }
+            }).catch(() => undefined)
+          : Promise.resolve(),
+        getEquipmentById(woData.asset_id).then(({ data: eqData }) => {
+          if (eqData) {
+            const eq = eqData as unknown as { condition: string };
+            setEquipmentCondition({ condition: eq.condition });
+          }
+        }).catch(() => undefined),
+      ]);
+
       refreshQueuedActions();
       setLoading(false);
     }
@@ -573,6 +619,100 @@ export default function WorkOrderDetailPage() {
                   </div>
                 ))}
               </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Originating Request */}
+        {originatingRequest && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Originating Request</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <dl className="grid gap-3 sm:grid-cols-2">
+                <div>
+                  <dt className="text-xs font-medium text-gray-500 dark:text-gray-400">Request #</dt>
+                  <dd className="mt-1 text-sm">
+                    <a href={`/maintenance/requests/${originatingRequest.id}`} className="text-[var(--brand)] hover:underline">
+                      {originatingRequest.request_number}
+                    </a>
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-xs font-medium text-gray-500 dark:text-gray-400">Urgency</dt>
+                  <dd className="mt-1">
+                    <UrgencyBadge urgency={originatingRequest.urgency as never} />
+                  </dd>
+                </div>
+                {originatingRequest.reported_condition && (
+                  <div>
+                    <dt className="text-xs font-medium text-gray-500 dark:text-gray-400">Reported Condition</dt>
+                    <dd className="mt-1 text-sm font-medium">
+                      {originatingRequest.reported_condition === 'functional_issue'
+                        ? <span className="text-emerald-300">Functional (issue observed)</span>
+                        : originatingRequest.reported_condition === 'needs_repair'
+                        ? <span className="text-amber-300">Needs repair</span>
+                        : <span className="text-rose-300">Non-functional</span>}
+                      {originatingRequest.reported_condition_source && (
+                        <span className="ml-1.5 text-xs font-normal text-[var(--text-muted)]">· via {originatingRequest.reported_condition_source}</span>
+                      )}
+                    </dd>
+                  </div>
+                )}
+                <div className="sm:col-span-2">
+                  <dt className="text-xs font-medium text-gray-500 dark:text-gray-400">Fault Description</dt>
+                  <dd className="mt-1 whitespace-pre-wrap text-sm text-gray-900 dark:text-white">{originatingRequest.fault_description}</dd>
+                </div>
+              </dl>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Equipment Condition Context */}
+        {equipmentCondition && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Equipment Condition</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-wrap items-start gap-6">
+                <div>
+                  <p className="text-xs text-[var(--text-muted)]">Current condition</p>
+                  <span className={`mt-1 inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${getConditionBadgeClass(equipmentCondition.condition)}`}>
+                    {formatEquipmentCondition(equipmentCondition.condition)}
+                  </span>
+                </div>
+                {originatingRequest?.reported_condition && (
+                  <div>
+                    <p className="text-xs text-[var(--text-muted)]">Reported at request</p>
+                    <p className="mt-1 text-xs font-medium text-[var(--foreground)]">
+                      {originatingRequest.reported_condition === 'functional_issue' ? 'Functional (issue)' : originatingRequest.reported_condition === 'needs_repair' ? 'Needs repair' : 'Non-functional'}
+                    </p>
+                  </div>
+                )}
+                {wo?.final_equipment_condition && (
+                  <div>
+                    <p className="text-xs text-[var(--text-muted)]">Final (at completion)</p>
+                    <span className={`mt-1 inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${getConditionBadgeClass(wo.final_equipment_condition)}`}>
+                      {formatEquipmentCondition(wo.final_equipment_condition)}
+                    </span>
+                  </div>
+                )}
+                {wo?.completion_outcome && (
+                  <div>
+                    <p className="text-xs text-[var(--text-muted)]">Completion outcome</p>
+                    <p className="mt-1 text-xs font-medium text-[var(--foreground)]">
+                      {wo.completion_outcome.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase())}
+                    </p>
+                  </div>
+                )}
+              </div>
+              {wo?.equipment_assets?.id && (
+                <a href={`/equipment/${wo.equipment_assets.id}`} className="mt-3 block text-xs text-[var(--brand)] hover:underline">
+                  View equipment detail →
+                </a>
+              )}
             </CardContent>
           </Card>
         )}

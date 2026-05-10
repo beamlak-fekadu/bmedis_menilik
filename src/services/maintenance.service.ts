@@ -8,6 +8,7 @@ import type {
 } from '@/types/database';
 import { recomputeAssetAnalytics } from '@/actions/analytics.actions';
 import { logAuditEvent } from './audit.service';
+import { OPEN_MAINTENANCE_REQUEST_STATUSES } from '@/utils/maintenance/request-status';
 
 export interface MaintenanceRequestFilters {
   status?: MaintenanceRequestStatus;
@@ -172,7 +173,7 @@ export async function getOpenMaintenanceRequests() {
   return supabase
     .from('maintenance_requests')
     .select('id, asset_id, status, urgency, created_at')
-    .in('status', ['pending', 'approved', 'assigned', 'in_progress'])
+    .in('status', [...OPEN_MAINTENANCE_REQUEST_STATUSES])
     .order('created_at', { ascending: false });
 }
 
@@ -191,8 +192,34 @@ export async function getOpenRequestsForAsset(assetId: string) {
     .from('maintenance_requests')
     .select('id, asset_id, status, urgency, reported_condition, reported_condition_source, created_at')
     .eq('asset_id', assetId)
-    .in('status', ['pending', 'approved', 'assigned', 'in_progress'])
+    .in('status', [...OPEN_MAINTENANCE_REQUEST_STATUSES])
     .order('created_at', { ascending: false });
+}
+
+export interface OpenCorrectiveRequestDetail {
+  id: string;
+  request_number: string;
+  asset_id: string;
+  status: string;
+  urgency: string;
+  reported_condition: string | null;
+  fault_description: string;
+  created_at: string;
+}
+
+// Returns the first open maintenance request for an asset, or null if none exists.
+// Used to enforce the duplicate prevention rule: one active corrective request per asset.
+export async function getOpenCorrectiveRequestForAsset(assetId: string): Promise<OpenCorrectiveRequestDetail | null> {
+  const supabase = createClient();
+  const { data } = await supabase
+    .from('maintenance_requests')
+    .select('id, request_number, asset_id, status, urgency, reported_condition, fault_description, created_at')
+    .eq('asset_id', assetId)
+    .in('status', [...OPEN_MAINTENANCE_REQUEST_STATUSES])
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  return (data as OpenCorrectiveRequestDetail | null) ?? null;
 }
 
 export async function getOpenWorkOrdersForAsset(assetId: string) {
@@ -202,6 +229,15 @@ export async function getOpenWorkOrdersForAsset(assetId: string) {
     .select('id, asset_id, status, priority, assigned_to, created_at')
     .eq('asset_id', assetId)
     .in('status', ['open', 'assigned', 'in_progress', 'on_hold'])
+    .order('created_at', { ascending: false });
+}
+
+export async function getWorkOrdersByRequestId(requestId: string) {
+  const supabase = createClient();
+  return supabase
+    .from('work_orders')
+    .select(WORK_ORDER_SELECT)
+    .eq('request_id', requestId)
     .order('created_at', { ascending: false });
 }
 

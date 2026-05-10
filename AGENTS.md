@@ -1,6 +1,6 @@
 # AGENTS.md — BMERMS Codebase Reference for AI Agents
 
-Last updated: 2026-05-09 (session 10, Equipment condition auditability + completion outcome)
+Last updated: 2026-05-10 (session 13, Requests Hub central intake)
 Branch: BMERMS_V4
 Supabase project ID: fgqyszbxzpmqzpqvdivx
 
@@ -234,6 +234,87 @@ supabase.rpc('refresh_decision_support_snapshots')
 6. Future triage categories: new triage categories must define record IDs, exact routes, and prefilled fallback flows before being shown in the Command Center.
 7. BME Head principle: the system recommends/explains; the BME Head decides.
 
+### Requests Hub Semantics (session 13)
+1. Requests Hub (`/requests`) is central intake and cross-category tracking, not a replacement for operational modules.
+2. Request categories: corrective maintenance, calibration, training, procurement, disposal, installation, and specification/document support.
+3. UI naming uses "Corrective Maintenance Requests"; do not reintroduce "Curative Maintenance Requests".
+4. Shared data source: `src/app/(dashboard)/requests/_lib/requests-hub-data.ts` returns categoryCards, workflowCards, unifiedRequests, and roleScope. Cards, filters, and the unified table must share this normalized row set to prevent count mismatches.
+5. Normalized table rows include request number, type, asset/subject, department, submitted by, status, owner/assignee, created date, exact href, and next action href.
+6. Existing record → exact route. Maintenance opens `/maintenance/requests/[id]` or linked `/maintenance/work-orders/[id]`; procurement opens `/command/drilldown/procurement/[id]`; request types without dedicated detail pages use `/requests/[type]/[id]` as a lightweight exact status/detail route.
+7. New request → type-specific contextual route with `source=requests-hub`; module pages open the relevant request/upload modal from this query where implemented.
+8. BME Head/developer/admin see all request activity. Department roles see own/department-scoped activity where rows expose requester or department context. Viewer is read-only. Store focuses procurement/installation/specification visibility.
+9. Specification requests mean technical specifications, standards, or document support for procurement, replacement, donation acceptance, installation, or standardization. The hub counts real `specification_requests` workflow rows; `equipment_documents` are output/evidence documents, not request rows.
+10. Disposal requests are formal `disposal_requests`; replacement candidates are related evidence and may route to `/replacement`, but are not counted as disposal requests.
+11. Installation counts real `installation_requests` workflow rows. `installation_records` remain installation/commissioning completion evidence and are not counted as request intake.
+
+### Installation Request Semantics (session 14)
+1. Installation Request = intake/workflow item. Installation Record = completion evidence.
+2. Request flow: submitted → reviewed/approved → scheduled or assigned → in progress → installation/commissioning completed → installation record created → equipment go-live.
+3. `/installation` separates Requests and Records tabs. New Installation Request opens `/installation/requests/new?source=...`; Add Installation / Commissioning Record remains the evidence action.
+4. Requests Hub Installation count uses `installation_requests`, not `installation_records`.
+
+### Specification Request Semantics (session 14)
+1. Specification Request = request/tracking item. Specification Document = output/evidence.
+2. Requests can be reviewed, moved in progress, linked to uploaded specification documents, completed, rejected, and retrieved.
+3. `/documents` separates Document Repository and Specification Requests tabs. New Specification Request opens `/documents/specification-requests/new?source=...`; Upload Specification Document remains the output action.
+4. Requests Hub Specification count uses `specification_requests`, not `equipment_documents`.
+
+### Hospital Operations Calendar Semantics
+1. `/calendar` is fully internal and must not be treated as Google Calendar integration.
+2. Do not add Google OAuth, external sync, external event creation, or Google token storage for the current internal calendar.
+3. Calendar events are normalized from BMERMS operational tables with real date fields only.
+4. Current sources include PM schedules, calibration records/requests, work orders, maintenance requests, training sessions/requests, installation requests/records, procurement requests, disposal requests/disposed assets, and dated specification requests where the row has `required_by`.
+5. Source tables remain the source of truth; calendar sync means internal revalidation/refresh after module actions mutate source records.
+6. Every event should route to the exact source record when available: `/pm/schedules/[id]`, `/maintenance/work-orders/[id]`, `/maintenance/requests/[id]`, `/installation/requests/[id]`, `/command/drilldown/procurement/[id]`, `/documents/specification-requests/[id]`. Use contextual module routes only where no exact detail route exists.
+7. Viewer is read-only. Calendar does not provide direct mutation controls; operational actions stay on module pages.
+8. External Google Calendar sync is intentionally deferred and would require OAuth/token storage/duplicate prevention/conflict handling before implementation.
+
+### Maintenance Workflow Semantics (session 11)
+1. Maintenance Request = reported problem. Work Order = assigned execution task.
+2. Request workflow: submitted → approved → work order created → assigned → in progress → completed.
+3. Maintenance main page: Requests | Work Orders tabs with custom controlled tab switching (not Tabs component). 8 summary cards drive tab+filter activation. Quick-filter chips within each tab. All counts/filters use the same loaded arrays → no mismatches.
+4. Request-WO relationship: work_orders.request_id links to maintenance_requests.id. Both detail pages show the cross-link. Request table shows linked WO # and "Needs WO" if approved with no WO. WO table shows originating request #.
+5. State-aware request row actions:
+   - open WO on_hold → Resolve Blocker → /maintenance/work-orders/[id]?action=resolve-blocker
+   - open WO in_progress → View Progress → /maintenance/work-orders/[id]
+   - any other open WO → Open WO → /maintenance/work-orders/[id]
+   - pending → Review → /maintenance/requests/[id]
+   - approved, no WO → Create WO → /maintenance/work-orders/new?request_id=...&asset_id=...&work_type=corrective&source=maintenance-request
+   - else → View → /maintenance/requests/[id]
+6. State-aware WO row actions:
+   - on_hold → Resolve Blocker → /maintenance/work-orders/[id]?action=resolve-blocker
+   - in_progress → View Progress → /maintenance/work-orders/[id]
+   - open + unassigned → Assign → /maintenance/work-orders/[id]?action=assign
+   - assigned → Start / View → /maintenance/work-orders/[id]
+   - completed → View Result → /maintenance/work-orders/[id]
+   - else → View → /maintenance/work-orders/[id]
+7. Request detail: workflow steps strip; reported_condition prominently displayed; linked WO list (status, technician, completion outcome); equipment current condition panel; state-aware action buttons (Approve/Reject/Create WO/Open WO).
+8. Work order detail: originating request card (request#, urgency, reported condition, fault description); Equipment Condition panel (current / at request / final at completion / completion outcome).
+9. Recurring failure banner: failure count badge, department, "Schedule diagnostic" (prefilled corrective request with source=recurring-failure), "Review risk" link. Threshold: ≥4 failures.
+10. Viewer is read-only on all maintenance pages.
+
+### Preventive Maintenance Semantics (session 15)
+1. PM Plan = recurring preventive maintenance rule/program. It defines equipment, frequency, checklist expectation, and active/inactive state.
+2. PM Schedule = one generated planned-maintenance task instance with scheduled date, status, assigned technician, and evidence/action state.
+3. PM Completion = evidence that scheduled PM work was performed. Evidence records result, checklist, notes/findings, technician, completion date, and final equipment condition.
+4. PM Compliance = completed scheduled PM tasks ÷ total scheduled PM tasks for the displayed period. Skipped/deferred PM is tracked separately and does not count as completed.
+5. `/pm` is a planned-maintenance control center: summary cards, compliance chart, Plans/Schedules/Overdue tabs, quick filters, exact row actions, and shared row-derived counts must stay consistent.
+6. Existing schedule rows open exact `/pm/schedules/[id]` routes. Assign/reassign/complete/defer/skip actions use action queries on that exact schedule route.
+7. Completing PM updates `pm_schedules` evidence fields, inserts `pm_completions`, updates equipment condition from final condition, refreshes analytics/risk detectability through the existing recompute pipeline, and revalidates PM, Equipment, and Command Center paths.
+8. If PM finds an issue, the completion flow can create/open a corrective maintenance request with duplicate prevention using the existing open-request guard.
+9. Defer/skip PM requires a reason. Deferred PM may move the scheduled date and is still not counted as completed compliance.
+10. Developer/admin/BME Head manage PM plans and schedules; technicians can execute PM work; viewer is read-only. The system recommends/prioritizes/explains; the BME Head decides.
+
+### PM Count and Action Semantics (session 16)
+1. PM Schedule Records = all generated `pm_schedules` rows, including historical completed, skipped, deferred, canceled, overdue, and upcoming task records.
+2. Active PM Tasks = unfinished PM schedules requiring action. Active statuses are `scheduled`, `in_progress`, `overdue`, and `deferred`; completed, skipped, and canceled are not active.
+3. PM Plan status is separate from asset criticality. Plan: Active/Paused comes from `pm_plans.is_active`; Asset criticality comes from `equipment_categories.criticality_level`.
+4. `Needs next task` means the plan has no unfinished upcoming/active schedule. It does not mean there is no PM history.
+5. Generate Next Task creates the next `pm_schedules` row only when the plan has no unfinished active task. If an unfinished task exists, open that exact task instead of creating a duplicate.
+6. Pause Plan sets `pm_plans.is_active=false`, disables future task generation, and preserves all existing schedule history and active task rows. Resume Plan sets `is_active=true`.
+7. History opens exact `/pm/plans/[id]/history` with plan metadata, schedule/evidence history, active/upcoming task state, and exact schedule-detail links.
+8. PM Compliance = completed scheduled tasks ÷ total scheduled tasks × 100. Skipped/deferred are tracked separately and do not count as completed.
+
 ### Equipment Section Semantics (session 9)
 1. Condition is the primary operational state. Status (active/inactive/disposed) is NOT shown in the main Equipment list or table; it stays in the DB and admin/edit forms only.
 2. Canonical condition labels: functional→"Functional", needs_repair→"Needs repair", non_functional→"Non-functional", under_maintenance→"Under maintenance". Always import from `src/utils/equipment/condition-labels.ts`.
@@ -342,11 +423,11 @@ work_orders status enum: open / assigned / in_progress / on_hold / completed / c
 | Table          | Key columns                                                                       |
 |----------------|-----------------------------------------------------------------------------------|
 | pm_plans       | id, asset_id(FK), template_id(FK), name, frequency_days, next_due_date, last_completed_date, is_active |
-| pm_schedules   | id, plan_id(FK), asset_id(FK), scheduled_date, status(enum), assigned_to(FK profiles) |
+| pm_schedules   | id, plan_id(FK), asset_id(FK), scheduled_date, status(enum), assigned_to(FK profiles), completed_by(FK profiles), completion/defer evidence |
 | pm_checklists  | id, schedule_id(FK), items(JSONB)                                                 |
 | pm_completions | id, schedule_id(FK), completed_by(FK), completion_date, duration_hours, checklist_results(JSONB) |
 
-pm_schedules status enum: scheduled / completed / overdue / skipped / in_progress
+pm_schedules status enum: scheduled / completed / overdue / skipped / deferred / in_progress / canceled
 
 ### Calibration (Migration 00006)
 | Table                    | Key columns                                                           |
@@ -528,11 +609,13 @@ New SQL functions must use SECURITY DEFINER if they touch analytics or decision 
 - createWorkOrder(data) — work_order_number: WO-{timestamp}
 - updateWorkOrder(id, data) — triggers recomputeAssetAnalytics if status='completed'
 - getMaintenanceEvents(assetId), createMaintenanceEvent(data)
-- getOpenMaintenanceRequests() — all requests with status in pending/approved/assigned/in_progress (no filters)
+- getOpenMaintenanceRequests() — all requests with status in pending/approved/assigned/in_progress (uses OPEN_MAINTENANCE_REQUEST_STATUSES)
 - getOpenWorkOrders() — all work orders with status in open/assigned/in_progress/on_hold (no filters)
 - getOpenRequestsForAsset(assetId) — open requests for a specific asset; includes reported_condition + reported_condition_source
 - getOpenWorkOrdersForAsset(assetId) — open work orders for a specific asset
 - getLastCompletedWorkOrderForAsset(assetId) — last completed WO; returns completion_outcome + final_equipment_condition
+- getWorkOrdersByRequestId(requestId) — all WOs linked via request_id; returns full WORK_ORDER_SELECT
+- getOpenCorrectiveRequestForAsset(assetId) — returns OpenCorrectiveRequestDetail | null (id, request_number, status, urgency, reported_condition, fault_description, created_at); used by duplicate prevention guards
 
 ### pm.service.ts
 - getPMPlans(filters), createPMPlan(data)
@@ -854,6 +937,51 @@ GEMINI_RETRY_COUNT       Default: 1
 GEMINI_MAX_COMPLETION_TOKENS  Default: 900
 CHAT_DEBUG_PROVIDER_FLOW "true" to enable debug logging in orchestrator
 ```
+
+---
+
+## Duplicate corrective request prevention
+
+One active corrective maintenance request per asset is the rule.
+
+**Active (open) statuses** — defined in `src/utils/maintenance/request-status.ts`:
+- `pending`, `approved`, `assigned`, `in_progress`
+
+**Closed statuses** — do NOT block new requests:
+- `completed`, `rejected`, `canceled`
+
+**Implementation layers:**
+
+1. **Shared constants** (`src/utils/maintenance/request-status.ts`):
+   - `OPEN_MAINTENANCE_REQUEST_STATUSES`, `CLOSED_MAINTENANCE_REQUEST_STATUSES`
+   - `isOpenMaintenanceRequestStatus()`, `isClosedMaintenanceRequestStatus()`, `formatRequestStatus()`
+
+2. **Service helper** (`maintenance.service.ts → getOpenCorrectiveRequestForAsset(assetId)`):
+   - Returns `OpenCorrectiveRequestDetail | null`.
+   - Used by the new-request page and any future UI that needs to check before showing Create Request.
+
+3. **Server action guard** (`maintenance.actions.ts → createMaintenanceRequestAction()`):
+   - Queries for existing open request before insert.
+   - If found: returns `{ success: false, error: '...', data: { reason: 'duplicate_open_request', existingRequestId, existingRequestNumber, existingRequestStatus } }`.
+   - This fires regardless of source (UI, direct POST, command center, etc.).
+
+4. **UI layer** (`/maintenance/requests/new`):
+   - On asset select, fetches `getOpenCorrectiveRequestForAsset(assetId)`.
+   - If found: shows amber warning panel with "Open Existing Request" and "Back" buttons; Submit is disabled.
+   - If server action still returns duplicate (race condition): redirects to existing request with `?duplicatePrevented=1`.
+
+5. **Request detail page** (`/maintenance/requests/[id]`):
+   - If `?duplicatePrevented=1` is in URL: shows amber banner "Duplicate request prevented. This existing open request was opened instead."
+
+6. **Maintenance page recurring failure card**:
+   - Checks `openRequestByAsset` map (derived from loaded `requests` array).
+   - If open request exists for the recurring-failure asset: shows amber "Open Request (MR-xxx)" button instead of "Schedule diagnostic".
+
+7. **Equipment list + detail** — already correct: show "Open Request" action when `openRequest` is set; "Create Request" only when no open request/WO exists.
+
+8. **Command Center Needs Request triage** — already correct: `fetchActiveCorrectiveAssetIds()` excludes assets with open corrective work.
+
+**No DB migration added** — a partial unique index would conflict with historical duplicate seed rows. Service/action guard is the enforcement layer.
 
 ---
 

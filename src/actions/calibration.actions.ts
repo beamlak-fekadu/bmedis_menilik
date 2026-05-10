@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { recomputeAssetAnalytics } from './analytics.actions';
 import { getActionContext, logServerAuditEvent, revalidateMany, actionError, nullIfEmpty, type ActionResult } from './_shared';
 
-const calibrationPaths = ['/calibration', '/command', '/reports/calibration'];
+const calibrationPaths = ['/calibration', '/calendar', '/command', '/reports/calibration'];
 
 export async function createCalibrationRequestAction(payload: Record<string, unknown>): Promise<ActionResult> {
   try {

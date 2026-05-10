@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Plus, ClipboardList, Users, ChevronLeft } from 'lucide-react';
 import PageHeader from '@/components/ui/PageHeader';
 import DataTable from '@/components/ui/DataTable';
@@ -61,6 +62,7 @@ function formatLabel(val: string) {
 
 export default function TrainingPage() {
   const { toast } = useToast();
+  const searchParams = useSearchParams();
   const [sessions, setSessions] = useState<SessionRow[]>([]);
   const [requests, setRequests] = useState<RequestRow[]>([]);
   const [assets, setAssets] = useState<{ value: string; label: string }[]>([]);
@@ -123,6 +125,12 @@ export default function TrainingPage() {
   }, [toast]);
 
   useEffect(() => { loadData(); }, [loadData]);
+
+  useEffect(() => {
+    if (searchParams.get('source') === 'requests-hub' && searchParams.get('action') === 'new-request') {
+      setRequestModalOpen(true);
+    }
+  }, [searchParams]);
 
   const openDetail = async (session: SessionRow) => {
     setDetailSession(session);

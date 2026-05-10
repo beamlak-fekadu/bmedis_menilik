@@ -2,6 +2,7 @@ import Link from 'next/link';
 import {
   ArrowUpDown,
   BookOpen,
+  CalendarDays,
   Info,
   Settings2,
   ShieldAlert,
@@ -570,6 +571,9 @@ export default async function CommandCenterPage() {
               <span className="text-xs text-[var(--text-muted)]">Live operational data · {now}</span>
               <Link href="/reports" className="text-xs text-violet-300/70 hover:text-violet-300" title="Generate reports from current data">
                 <BookOpen className="inline h-3 w-3" /> Reports
+              </Link>
+              <Link href="/calendar" className="text-xs text-cyan-300/80 hover:text-cyan-200" title="Open hospital operations calendar">
+                <CalendarDays className="inline h-3 w-3" /> Calendar
               </Link>
               {primaryRole === 'developer' && (
                 <Link href="/command/health" className="inline-flex items-center gap-1 text-xs text-slate-400 hover:text-slate-300" title="Developer: asset health scores">

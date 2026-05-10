@@ -1,17 +1,19 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { ArrowLeft, Save } from 'lucide-react';
+import { ArrowLeft, Save, AlertTriangle } from 'lucide-react';
 import { PageHeader, Card, CardHeader, CardTitle, CardContent, Button, Select, Textarea } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
 import { getEquipmentList } from '@/services/equipment.service';
+import { getOpenCorrectiveRequestForAsset } from '@/services/maintenance.service';
 import { createMaintenanceRequestAction } from '@/actions/maintenance.actions';
+import { formatRequestStatus } from '@/utils/maintenance/request-status';
 import type { EquipmentAsset, Urgency } from '@/types/database';
 import { maintenanceRequestSchema } from '@/utils/validation/operations';
 
 // Reported condition options stored in maintenance_requests.reported_condition (migration 00038).
-// functional_issue = equipment operates but issue observed (no condition sync to equipment_assets).
+// functional_issue = equipment operates but issue observed (no condition change to equipment_assets).
 // needs_repair / non_functional = condition synced to equipment_assets.condition.
 const REPORTED_CONDITION_OPTIONS = [
   { value: 'functional_issue', label: 'Functional (issue observed)' },
@@ -19,12 +21,22 @@ const REPORTED_CONDITION_OPTIONS = [
   { value: 'non_functional', label: 'Non-functional' },
 ];
 
+interface DuplicateInfo {
+  id: string;
+  request_number: string;
+  status: string;
+  urgency: string;
+  fault_description: string;
+}
+
 export default function NewMaintenanceRequestPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
   const [assets, setAssets] = useState<EquipmentAsset[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const [duplicateInfo, setDuplicateInfo] = useState<DuplicateInfo | null>(null);
+  const [checkingDuplicate, setCheckingDuplicate] = useState(false);
   const [form, setForm] = useState(() => {
     const source = searchParams.get('source') ?? '';
     const type = searchParams.get('type');
@@ -56,8 +68,49 @@ export default function NewMaintenanceRequestPage() {
     load();
   }, []);
 
+  // Check for duplicate open request when asset changes
+  const checkForDuplicate = useCallback(async (assetId: string) => {
+    if (!assetId) {
+      setDuplicateInfo(null);
+      return;
+    }
+    setCheckingDuplicate(true);
+    const existing = await getOpenCorrectiveRequestForAsset(assetId);
+    setCheckingDuplicate(false);
+    if (existing) {
+      setDuplicateInfo({
+        id: existing.id,
+        request_number: existing.request_number,
+        status: existing.status,
+        urgency: existing.urgency,
+        fault_description: existing.fault_description,
+      });
+    } else {
+      setDuplicateInfo(null);
+    }
+  }, []);
+
+  // Check on initial load if assetId was pre-filled from URL
+  useEffect(() => {
+    if (form.asset_id) {
+      void Promise.resolve().then(() => checkForDuplicate(form.asset_id));
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  function handleAssetChange(assetId: string) {
+    setForm((prev) => ({ ...prev, asset_id: assetId }));
+    checkForDuplicate(assetId);
+  }
+
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
+
+    // Guard: server action will also block this, but provide immediate UI feedback
+    if (duplicateInfo) {
+      toast('warning', `${duplicateInfo.request_number} is already open for this equipment. Open the existing request instead.`);
+      return;
+    }
+
     const parsed = maintenanceRequestSchema.safeParse(form);
     if (!parsed.success) {
       toast('warning', parsed.error.issues[0]?.message ?? 'Invalid request details');
@@ -85,6 +138,13 @@ export default function NewMaintenanceRequestPage() {
     setSubmitting(false);
 
     if (!result.success) {
+      // Handle duplicate prevented by server action (race condition or direct POST)
+      const resultData = result.data as { reason?: string; existingRequestId?: string; existingRequestNumber?: string; existingRequestStatus?: string } | undefined;
+      if (resultData?.reason === 'duplicate_open_request' && resultData.existingRequestId) {
+        toast('warning', `Duplicate prevented: ${resultData.existingRequestNumber ?? 'open request'} already exists for this equipment.`);
+        router.push(`/maintenance/requests/${resultData.existingRequestId}?duplicatePrevented=1`);
+        return;
+      }
       toast('error', result.error ?? 'Failed to create maintenance request');
       return;
     }
@@ -106,22 +166,60 @@ export default function NewMaintenanceRequestPage() {
         }
       />
 
+      {/* Duplicate warning panel */}
+      {duplicateInfo && (
+        <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-400" />
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold text-amber-300">
+                Open request already exists for this equipment
+              </p>
+              <p className="mt-1 text-xs text-amber-200/80">
+                <strong>{duplicateInfo.request_number}</strong> is currently{' '}
+                <strong>{formatRequestStatus(duplicateInfo.status)}</strong>.{' '}
+                {duplicateInfo.fault_description
+                  ? `Reported issue: "${duplicateInfo.fault_description.slice(0, 120)}${duplicateInfo.fault_description.length > 120 ? '…' : ''}"`
+                  : 'Open the existing request to review or add details.'}
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Button
+                  size="sm"
+                  variant="primary"
+                  onClick={() => router.push(`/maintenance/requests/${duplicateInfo.id}`)}
+                >
+                  Open Existing Request
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => router.back()}>
+                  Back
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <Card>
         <CardHeader>
           <CardTitle>Request Details</CardTitle>
         </CardHeader>
         <CardContent>
           <form className="space-y-4" onSubmit={onSubmit}>
-            <Select
-              label="Equipment Asset *"
-              placeholder="Select asset"
-              value={form.asset_id}
-              onChange={(e) => setForm((prev) => ({ ...prev, asset_id: e.target.value }))}
-              options={assets.map((asset) => ({
-                value: asset.id,
-                label: `${asset.asset_code} - ${asset.name}`,
-              }))}
-            />
+            <div className="relative">
+              <Select
+                label="Equipment Asset *"
+                placeholder="Select asset"
+                value={form.asset_id}
+                onChange={(e) => handleAssetChange(e.target.value)}
+                options={assets.map((asset) => ({
+                  value: asset.id,
+                  label: `${asset.asset_code} - ${asset.name}`,
+                }))}
+              />
+              {checkingDuplicate && (
+                <span className="absolute right-3 top-8 text-xs text-[var(--text-muted)]">Checking…</span>
+              )}
+            </div>
             <Select
               label="Reported Equipment Condition *"
               placeholder="Select current condition"
@@ -153,7 +251,11 @@ export default function NewMaintenanceRequestPage() {
               placeholder="Additional context for maintenance team."
             />
             <div className="flex justify-end">
-              <Button type="submit" loading={submitting}>
+              <Button
+                type="submit"
+                loading={submitting}
+                disabled={!!duplicateInfo || checkingDuplicate}
+              >
                 <Save className="h-4 w-4" />
                 Submit Request
               </Button>

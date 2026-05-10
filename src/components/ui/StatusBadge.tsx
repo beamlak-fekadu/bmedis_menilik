@@ -43,6 +43,8 @@ const pmStatusVariant: Record<PMScheduleStatus, BadgeVariant> = {
   completed: 'success',
   overdue: 'error',
   skipped: 'default',
+  deferred: 'warning',
+  canceled: 'default',
 };
 
 const riskVariant: Record<RiskLevel, BadgeVariant> = {

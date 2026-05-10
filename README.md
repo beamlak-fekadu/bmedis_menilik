@@ -132,3 +132,52 @@ rank, score, and explain, but final operational decisions remain with the BME He
 5. State-aware action labels: Assign for unassigned work, Reassign for assigned work, View Progress for in-progress work, Resolve Blocker for on-hold work.
 6. Future triage categories: new triage categories must define record IDs, exact routes, and prefilled fallback flows before being shown in the Command Center.
 7. BME Head principle: the system recommends/explains; the BME Head decides.
+
+## Requests Hub Semantics
+
+The `/requests` page is the central intake and tracking layer for hospital requests. It does not replace the full Maintenance, Calibration, Training, Procurement, Disposal, Installation, or Documents modules.
+
+- Categories: corrective maintenance, calibration, training, procurement, disposal, installation, and specification/document support.
+- "Corrective Maintenance Requests" is the canonical UI label; do not use "Curative Maintenance Requests".
+- The unified request table normalizes rows across real request tables through one shared fetcher.
+- Existing record actions open exact routes. New request actions use type-specific routes with `source=requests-hub`.
+- BME Head/developer/admin see all activity; department roles see own/department-scoped activity; viewer is read-only.
+- Installation requests are intake/workflow rows in `installation_requests`; installation records are completion evidence in `installation_records`.
+- Specification requests are tracking rows in `specification_requests`; specification documents are output/evidence in `equipment_documents`.
+- Disposal requests are formal disposal workflow rows. Replacement candidates are related evidence and are not counted as disposal requests.
+- Counts shown on cards must come from the same normalized data source as the unified request table.
+
+## Hospital Operations Calendar Semantics
+
+The `/calendar` page is a fully internal hospital operations calendar. It is not Google Calendar integration and must not add Google OAuth, external sync, or external event creation.
+
+- Calendar events are normalized from BMERMS operational source tables with real date fields only.
+- Sources include PM schedules, calibration records/requests, work orders, maintenance requests, training sessions/requests, installation requests/records, procurement requests, disposal workflow rows, and dated specification requests where available.
+- Source tables remain the source of truth. Calendar sync means internal revalidation after module actions update records.
+- Events route to exact records when routes exist, including PM schedules, work orders, maintenance requests, installation requests, procurement drilldown, and specification requests. Contextual module routes are used only where no exact detail page exists.
+- Viewer is read-only and the calendar does not expose direct mutation controls.
+- External Google Calendar sync is intentionally deferred because it would require OAuth, token storage, duplicate prevention, and conflict handling.
+
+## Preventive Maintenance Semantics
+
+The `/pm` module is a planned-maintenance control center, not only a schedule table.
+
+- PM Plan = recurring PM rule/program for equipment, frequency, checklist expectation, and active state.
+- PM Schedule = one planned task instance with scheduled date, assignment, status, action route, and evidence state.
+- PM Completion = evidence that work was performed: result, checklist, notes, technician, completion date, and final equipment condition.
+- PM Compliance = completed scheduled PM tasks ÷ total scheduled PM tasks for the period. Skipped/deferred PM is tracked separately and does not count as completed.
+- Existing records open exact routes such as `/pm/schedules/[id]`; assign, complete, defer, and skip use action queries on the exact schedule.
+- Completing PM updates PM evidence, equipment condition, Equipment detail, Command Center overdue PM, and risk detectability where the refresh pipeline exists.
+- If PM finds an issue, the user can create/open a corrective maintenance request with duplicate prevention.
+- Viewer is read-only; operational PM mutations are role-gated.
+
+### PM Count and Action Semantics
+
+- PM Schedule Records = historical + active generated PM task rows in `pm_schedules`.
+- Active PM Tasks = unfinished PM tasks requiring action: scheduled, in progress, overdue, or deferred.
+- PM Plan status is separate from asset criticality: Active/Paused comes from `pm_plans.is_active`; asset criticality comes from the equipment category.
+- `Needs next task` means no unfinished upcoming schedule exists for that plan, not that there is no history.
+- Generate Next Task creates a new schedule only when no unfinished task exists; otherwise it opens the existing unfinished task.
+- Pause Plan disables future task generation but does not delete history or complete/cancel existing tasks. Resume Plan re-enables generation.
+- History opens `/pm/plans/[id]/history` for exact plan schedule/evidence drilldown.
+- PM Compliance = completed scheduled tasks ÷ total scheduled tasks × 100. Skipped/deferred are tracked separately and not counted as completed.

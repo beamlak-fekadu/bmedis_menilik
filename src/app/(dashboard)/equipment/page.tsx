@@ -8,7 +8,6 @@ import {
   Clock, AlertCircle, TrendingUp,
 } from 'lucide-react';
 import { PageHeader, Button, Spinner } from '@/components/ui';
-import StatCard from '@/components/ui/StatCard';
 import { BarChart, DoughnutChart, ChartCard } from '@/components/charts';
 import { getEquipmentList } from '@/services/equipment.service';
 import { getAll } from '@/services/settings.service';
@@ -105,6 +104,43 @@ const QUICK_FILTERS: { key: QuickFilter; label: string }[] = [
   { key: 'high_risk', label: 'High / Critical risk' },
   { key: 'replacement_candidate', label: 'Replacement candidate' },
 ];
+
+const COLOR_MAP: Record<string, string> = {
+  blue:   'bg-blue-500/15 text-blue-400',
+  green:  'bg-emerald-500/15 text-emerald-400',
+  yellow: 'bg-amber-500/15 text-amber-400',
+  red:    'bg-rose-500/15 text-rose-400',
+  purple: 'bg-violet-500/15 text-violet-400',
+  orange: 'bg-orange-500/15 text-orange-400',
+  gray:   'bg-slate-500/15 text-slate-400',
+};
+
+function SummaryCard({
+  label, value, icon, color = 'blue', active, onClick,
+}: {
+  label: string;
+  value: number;
+  icon: React.ReactNode;
+  color?: string;
+  active?: boolean;
+  onClick?: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`panel-surface flex flex-col gap-1 rounded-xl p-4 text-left transition-colors
+        ${onClick ? 'cursor-pointer hover:ring-1 hover:ring-[var(--brand)]/40' : ''}
+        ${active ? 'ring-2 ring-[var(--brand)]' : ''}`}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <span className="text-2xl font-bold leading-none text-[var(--foreground)]">{value}</span>
+        <span className={`rounded-lg p-1.5 ${COLOR_MAP[color] ?? COLOR_MAP.blue}`}>{icon}</span>
+      </div>
+      <span className="text-xs font-medium leading-tight text-[var(--text-muted)]">{label}</span>
+    </button>
+  );
+}
 
 function SortHeader({
   label, sortable, colKey, sortKey, sortAsc, onSort,
@@ -351,14 +387,14 @@ export default function EquipmentListPage() {
   }
 
   const summaryCards = [
-    { label: 'Total Equipment', value: counts.total, icon: <Activity className="h-5 w-5" />, color: 'blue', qf: '' as QuickFilter },
-    { label: 'Functional', value: counts.functional, icon: <CheckCircle2 className="h-5 w-5" />, color: 'green', qf: '' as QuickFilter, conditionFilter: 'functional' },
-    { label: 'Needs Repair', value: counts.needsRepair, icon: <Wrench className="h-5 w-5" />, color: 'yellow', qf: 'needs_repair' as QuickFilter },
-    { label: 'Non-functional', value: counts.nonFunctional, icon: <AlertCircle className="h-5 w-5" />, color: 'red', qf: 'non_functional' as QuickFilter },
-    { label: 'Under Maintenance', value: counts.underMaintenance, icon: <Clock className="h-5 w-5" />, color: 'purple', qf: 'under_maintenance' as QuickFilter },
-    { label: 'Faulted, No Request', value: counts.faultedNoReq, icon: <AlertTriangle className="h-5 w-5" />, color: 'orange', qf: 'faulted_no_request' as QuickFilter },
-    { label: 'High / Critical Risk', value: counts.highRisk, icon: <ShieldAlert className="h-5 w-5" />, color: 'red', qf: 'high_risk' as QuickFilter },
-    { label: 'Replacement Watch', value: allRows.filter((r) => r.riskInfo && r.riskInfo.rpn > 200).length, icon: <TrendingUp className="h-5 w-5" />, color: 'orange', qf: 'replacement_candidate' as QuickFilter },
+    { label: 'Total Equipment', value: counts.total, icon: <Activity className="h-4 w-4" />, color: 'blue', qf: '' as QuickFilter },
+    { label: 'Functional', value: counts.functional, icon: <CheckCircle2 className="h-4 w-4" />, color: 'green', qf: '' as QuickFilter, conditionFilter: 'functional' },
+    { label: 'Needs Repair', value: counts.needsRepair, icon: <Wrench className="h-4 w-4" />, color: 'yellow', qf: 'needs_repair' as QuickFilter },
+    { label: 'Non-functional', value: counts.nonFunctional, icon: <AlertCircle className="h-4 w-4" />, color: 'red', qf: 'non_functional' as QuickFilter },
+    { label: 'Under Maintenance', value: counts.underMaintenance, icon: <Clock className="h-4 w-4" />, color: 'purple', qf: 'under_maintenance' as QuickFilter },
+    { label: 'Faulted, No Request', value: counts.faultedNoReq, icon: <AlertTriangle className="h-4 w-4" />, color: 'orange', qf: 'faulted_no_request' as QuickFilter },
+    { label: 'High / Critical Risk', value: counts.highRisk, icon: <ShieldAlert className="h-4 w-4" />, color: 'red', qf: 'high_risk' as QuickFilter },
+    { label: 'Replacement Watch', value: allRows.filter((r) => r.riskInfo && r.riskInfo.rpn > 200).length, icon: <TrendingUp className="h-4 w-4" />, color: 'orange', qf: 'replacement_candidate' as QuickFilter },
   ];
 
   return (
@@ -380,24 +416,30 @@ export default function EquipmentListPage() {
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 xl:grid-cols-8">
-        {summaryCards.map(({ label, value, icon, color, qf, conditionFilter }) => (
-          <StatCard
-            key={label}
-            label={label}
-            value={value}
-            icon={icon}
-            color={color}
-            onClick={() => {
-              if (conditionFilter) {
-                setFilterCondition((prev) => (prev === conditionFilter ? '' : conditionFilter));
-                setQuickFilter('');
-              } else if (qf) {
-                handleCardFilter(qf);
-              }
-              setPage(1);
-            }}
-          />
-        ))}
+        {summaryCards.map(({ label, value, icon, color, qf, conditionFilter }) => {
+          const isActive = conditionFilter
+            ? filterCondition === conditionFilter
+            : qf ? quickFilter === qf : false;
+          return (
+            <SummaryCard
+              key={label}
+              label={label}
+              value={value}
+              icon={icon}
+              color={color}
+              active={isActive}
+              onClick={() => {
+                if (conditionFilter) {
+                  setFilterCondition((prev) => (prev === conditionFilter ? '' : conditionFilter));
+                  setQuickFilter('');
+                } else if (qf) {
+                  handleCardFilter(qf);
+                }
+                setPage(1);
+              }}
+            />
+          );
+        })}
       </div>
 
       {/* Charts */}

@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { recomputeAssetAnalytics } from './analytics.actions';
 import { updateEquipmentConditionAction } from './equipment.actions';
 import { getActionContext, logServerAuditEvent, revalidateMany, actionError, nullIfEmpty, type ActionResult } from './_shared';
+import { OPEN_MAINTENANCE_REQUEST_STATUSES } from '@/utils/maintenance/request-status';
 
 const requestSchema = z.object({
   asset_id: z.string().min(1),
@@ -58,7 +59,7 @@ const eventSchema = z.object({
   notes: z.string().optional().nullable(),
 });
 
-const maintenancePaths = ['/maintenance', '/work-orders', '/command', '/reports/maintenance', '/equipment'];
+const maintenancePaths = ['/maintenance', '/work-orders', '/calendar', '/command', '/reports/maintenance', '/equipment'];
 
 // Completion outcome → default final equipment condition
 function outcomeToCondition(outcome: string): 'functional' | 'needs_repair' | 'non_functional' | 'under_maintenance' {
@@ -113,6 +114,31 @@ export async function createMaintenanceRequestAction(payload: Record<string, unk
     const { supabase, profile, error } = await getActionContext(['admin', 'bme_head', 'technician', 'department_head', 'department_user']);
     if (error || !profile) return { success: false, error };
     const parsed = requestSchema.parse(payload);
+
+    // Duplicate prevention: one active corrective request per asset at a time.
+    // Closed statuses (completed/rejected/canceled) do not block new requests.
+    const { data: existing } = await supabase
+      .from('maintenance_requests')
+      .select('id, request_number, status')
+      .eq('asset_id', parsed.asset_id)
+      .in('status', [...OPEN_MAINTENANCE_REQUEST_STATUSES])
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (existing) {
+      return {
+        success: false,
+        error: 'This equipment already has an open corrective maintenance request.',
+        data: {
+          reason: 'duplicate_open_request',
+          existingRequestId: existing.id,
+          existingRequestNumber: existing.request_number,
+          existingRequestStatus: existing.status,
+        },
+      };
+    }
+
     const data = {
       ...parsed,
       request_number: `MR-${Date.now().toString(36).toUpperCase()}`,

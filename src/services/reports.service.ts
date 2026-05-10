@@ -55,7 +55,7 @@ export async function getPMReport(filters: ReportFilters = {}) {
       id, scheduled_date, status, notes,
       pm_plans(id, name, frequency_days),
       equipment_assets(id, asset_code, name, departments(id, name)),
-      profiles(id, full_name)
+      assigned_to_profile:profiles!pm_schedules_assigned_to_fkey(id, full_name)
     `);
 
   if (filters.status) query = query.eq('status', filters.status);

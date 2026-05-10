@@ -13,6 +13,7 @@ export const ROUTES = {
   LOGIN: '/login',
   RESET_PASSWORD: '/reset-password',
   COMMAND: '/command',
+  CALENDAR: '/calendar',
   // DEPRECATED — kept as redirect targets in middleware. DASHBOARD now points to /command
   // so any code that uses ROUTES.DASHBOARD as the post-login default keeps working.
   DASHBOARD: '/command',
@@ -61,6 +62,7 @@ export const NAV_SECTIONS = [
     title: 'Command',
     items: [
       { label: 'Command Center', href: ROUTES.COMMAND, icon: 'LayoutDashboard', roles: ['developer', 'admin', 'bme_head', 'technician', 'department_head', 'department_user', 'store_user', 'viewer'] },
+      { label: 'Hospital Calendar', href: ROUTES.CALENDAR, icon: 'CalendarDays', roles: ['developer', 'admin', 'bme_head', 'technician', 'department_head', 'department_user', 'store_user', 'viewer'] },
     ],
   },
   {
@@ -73,8 +75,8 @@ export const NAV_SECTIONS = [
     title: 'Work',
     items: [
       { label: 'Maintenance', href: ROUTES.MAINTENANCE, icon: 'Wrench', roles: ['developer', 'admin', 'bme_head', 'technician', 'department_head', 'department_user'] },
-      { label: 'Requests', href: ROUTES.REQUESTS, icon: 'ClipboardList', roles: ['developer', 'admin', 'bme_head', 'technician', 'department_head', 'department_user'] },
-      { label: 'Preventive Maintenance', href: ROUTES.PM, icon: 'CalendarCheck', roles: ['developer', 'admin', 'bme_head', 'technician'] },
+      { label: 'Requests', href: ROUTES.REQUESTS, icon: 'ClipboardList', roles: ['developer', 'admin', 'bme_head', 'technician', 'department_head', 'department_user', 'store_user', 'viewer'] },
+      { label: 'Preventive Maintenance', href: ROUTES.PM, icon: 'CalendarCheck', roles: ['developer', 'admin', 'bme_head', 'technician', 'viewer'] },
       { label: 'Calibration', href: ROUTES.CALIBRATION, icon: 'Gauge', roles: ['developer', 'admin', 'bme_head', 'technician'] },
       { label: 'Work Orders', href: ROUTES.WORK_ORDERS, icon: 'ClipboardList', roles: ['developer', 'admin', 'bme_head', 'technician', 'department_head'] },
     ],

@@ -71,7 +71,7 @@ interface PMScheduleRow {
   id: string;
   scheduled_date: string;
   status: PMScheduleStatus;
-  profiles: { full_name: string } | null;
+  assigned_to_profile?: { full_name: string } | { full_name: string }[] | null;
   [key: string]: unknown;
 }
 
@@ -143,6 +143,10 @@ interface LastCompletedWO {
 function formatDate(val: string | null): string {
   if (!val) return '—';
   return new Date(val).toLocaleDateString();
+}
+
+function firstRelation<T>(value: T | T[] | null | undefined) {
+  return Array.isArray(value) ? value[0] : value;
 }
 
 function formatCurrency(val: number | null): string {
@@ -527,7 +531,7 @@ export default function EquipmentDetailPage({ params }: { params: Promise<{ id: 
     {
       key: 'completed_by',
       header: 'Assigned To',
-      render: (row: PMScheduleRow) => row.profiles?.full_name ?? '—',
+      render: (row: PMScheduleRow) => firstRelation(row.assigned_to_profile)?.full_name ?? '—',
     },
   ];
 

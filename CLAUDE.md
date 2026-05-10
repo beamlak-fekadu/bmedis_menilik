@@ -1,6 +1,6 @@
 # CLAUDE.md — BMERMS Project Intelligence
 
-Last updated: 2026-05-09 (session 10)
+Last updated: 2026-05-10 (session 13, Requests Hub central intake)
 Branch: BMERMS_V4
 Deployment: https://project-git-bmermsv3-beamlak-fekadus-projects.vercel.app
 Supabase project ID: fgqyszbxzpmqzpqvdivx
@@ -61,9 +61,44 @@ DONE:
 - Command Center redesign (2026-05-09, session 6): Full redesign for developer/admin/bme_head roles. New sections: live header with 10s auto-refresh, 10-card summary strip, critical action strip (top 6 scored cross-category actions), 8-tab categorized triage center (corrective/calibration/PM/stock/installation/replacement/procurement/training), technician workload (green/amber/red), improved risk distribution (summarizeRiskDrivers instead of raw JSON), improved replacement watchlist (buildReplacementReason). Other roles keep existing CommandCenterInteractive layout. No scoring-lab or sensitivity sliders on this page. No DB migrations required. Developer scoring lab deferred to /developer/scoring-lab (future route).
 - Command Center action accuracy (2026-05-09, session 8): Row-level actions now follow exact-record semantics: existing work orders open `/maintenance/work-orders/[id]` with state-aware action queries, existing requests open `/maintenance/requests/[id]`, PM uses `/pm/schedules/[id]`, procurement uses `/command/drilldown/procurement/[id]`, and replacement evidence uses `/command/drilldown/replacement/[assetId]`. Needs Request and stock actions open prefilled creation flows with `source=command-center`. Summary cards use `/command/drilldown/[type]` and counts share the same fetchers as triage/drilldowns. Risk Watch can be acknowledged via `command_center_acknowledgements` signal hashes and reappears when the signal changes. Training triage is hidden from the BME Head control room pending a future Department Head workflow.
 - Equipment section redesign (2026-05-09, session 9): Equipment list page: Status filter/column removed, Condition is the sole operational field; standardized condition labels via `src/utils/equipment/condition-labels.ts`; 8 summary cards (Total/Functional/Needs Repair/Non-functional/Under Maintenance/Faulted No Request/High Risk/Replacement Watch) clickable to filter table; Department (bar) + Condition (donut) charts; 7 quick-filter chips; Maintenance State column with badge (derived from open requests/work orders); state-aware Actions column (Resolve Blocker/View Progress/Open Work Order/Open Request/Create Request/Review Risk/Evidence/View); all filtering client-side over loaded dataset of 80 assets. Equipment detail page: Maintenance Status card (condition + state + exact WO/request links + create-request call-to-action); Reliability card with honest empty states (no "Availability: 0 failures" - replaced with "No recorded failures" / "Insufficient downtime data" / "100% (no failures)" based on actual data); Calibration card added; Replacement card adds formula explanation and evidence link; primary header action is state-aware. Condition sync: maintenance request creation with reported_condition updates equipment_assets.condition; WO start (in_progress) sets under_maintenance; WO complete sets functional. Maintenance request form adds "Reported Equipment Condition" field, prefills from URL param reportedCondition. New service functions: getOpenMaintenanceRequests(), getOpenWorkOrders(), getOpenRequestsForAsset(), getOpenWorkOrdersForAsset(). New action: updateEquipmentConditionAction(). No DB migrations required.
+- Maintenance section workflow redesign (2026-05-09, session 11): Maintenance main page: 8 summary cards (Pending/Approved/Needs WO/Open WO/Unassigned/In Progress/On Hold/Done This Month) that click to filter the correct tab; custom controlled tabs replace Tabs component for card-driven tab switching; quick-filter chips (8 per tab) above each DataTable with chip counts; request table adds Reported Condition + Work Order + Next Action columns; WO table adds Request + Unassigned highlight + Next Action columns; all filtering/counting client-side over same loaded arrays (no count mismatches); recurring failure banner improved with failure count badge, department label, "Schedule diagnostic" action (prefilled corrective request), and "Review risk" link. Request detail page: shows `reported_condition` prominently, fetches and shows linked work orders (with WO status, technician, completion outcome), shows equipment current condition, removes confusing standalone Assign button (replaced with state-aware Create WO / Open WO), workflow progress strip, improved timeline with condition and WO events. Work order detail page: fetches and shows originating request (request#, urgency, reported condition, fault description), shows Equipment Condition panel (current / at-request / final at completion), equipment detail link. New service function: getWorkOrdersByRequestId(). No DB migrations required.
 - Equipment condition auditability + completion outcome (2026-05-09, session 10): Migration 00038 adds `reported_condition` (functional_issue/needs_repair/non_functional) and `reported_condition_source` to `maintenance_requests`. Migration 00039 adds `completion_outcome` (resolved/partially_resolved/not_resolved/awaiting_parts_or_vendor) and `final_equipment_condition` to `work_orders`. Work order completion now requires a completion modal — technician selects outcome and final condition before completing. Outcome defaults: resolved→functional, partially_resolved→needs_repair, not_resolved→non_functional, awaiting_parts_or_vendor→under_maintenance. Equipment detail Maintenance Status card shows reported_condition from open request and last completion outcome from last completed WO. AssistantLauncher moved from `bottom-20 right-4 z-[70]` to `bottom-6 right-4 z-[50]` — no longer overlaps Equipment table action column. DashboardLayout main bottom padding reduced from pb-28/lg:pb-24 to pb-24/lg:pb-20 to match new button position. getLastCompletedWorkOrderForAsset() added to maintenance.service.ts.
 
 - Audit remediation (2026-05-05, migrations 00027–00033): full recompute backfill on deploy; audit performed_by/details + acknowledgeFlag profile FK; constraints (low_stock flag_type, PMC grain unique + dedupe, partial unique asset_code for active rows, non-negative repair/downtime hours); hot-path indexes; read-model views refreshed with deleted_at filters and COALESCE; dropped unused repeat_repair_flags + equipment_locations; chat_sessions column equipment_id → asset_id
+
+- Duplicate corrective request prevention (2026-05-10, session 12):
+  - Rule: one active corrective maintenance request per asset at a time.
+  - Open/active statuses: pending, approved, assigned, in_progress.
+  - Closed statuses (completed, rejected, canceled) do not block new requests.
+  - Shared constants: src/utils/maintenance/request-status.ts (OPEN_MAINTENANCE_REQUEST_STATUSES, CLOSED_MAINTENANCE_REQUEST_STATUSES, isOpenMaintenanceRequestStatus, formatRequestStatus).
+  - New service helper: getOpenCorrectiveRequestForAsset(assetId) in maintenance.service.ts — returns full request detail or null.
+  - Server action guard: createMaintenanceRequestAction() queries for existing open request before insert; returns { success: false, reason: 'duplicate_open_request', existingRequestId, ... } if found.
+  - /maintenance/requests/new: on asset select, fetches existing open request; shows amber warning banner with "Open Existing Request" button; disables Submit if duplicate detected; handles server-action duplicate response and redirects to existing request with duplicatePrevented=1 param.
+  - /maintenance/requests/[id]: shows "Duplicate request prevented" banner when duplicatePrevented=1 query param is present.
+  - /maintenance (main page): recurring failure "Schedule Diagnostic" button replaced with "Open Request (MR-xxx)" when an open request already exists for the asset; amber badge shows existing request number.
+  - Equipment list page: already correctly shows "Open Request" vs "Create Request" based on loaded openRequest state — no changes needed.
+  - Command Center Needs Request triage: already uses fetchActiveCorrectiveAssetIds() to exclude assets with open corrective work — no changes needed.
+  - No DB migration added: partial unique index would block historical duplicate seed rows; service/action guard is sufficient. TODO comment added in maintenance.actions.ts explaining this.
+
+- Requests Hub redesign (2026-05-10, session 13):
+  - `/requests` is now the central intake and cross-category tracking layer for corrective maintenance, calibration, training, procurement, disposal, installation, and specification/document support.
+  - Shared fetcher: `src/app/(dashboard)/requests/_lib/requests-hub-data.ts` normalizes maintenance, calibration, training, procurement, disposal, installation request, and specification request rows into one `RequestHubRow[]`. The same normalized rows drive category cards, workflow cards, status filters, and the unified table.
+  - UI: `src/app/(dashboard)/requests/_components/RequestsHubClient.tsx` provides clickable category summary cards, operational workflow cards, role/scope chips, type/status/department filters, search, pagination, and a unified request table.
+  - Exact route rule retained: maintenance rows open exact request/linked work-order routes; procurement rows open `/command/drilldown/procurement/[id]`; categories without module detail pages use lightweight `/requests/[type]/[id]` detail/status pages.
+  - Creation route rule: new request buttons are type-specific and contextual (`source=requests-hub`). Existing module pages open their request/upload modal when receiving Requests Hub query params.
+  - Naming: "Curative Maintenance Requests" is replaced by "Corrective Maintenance Requests".
+  - Installation requests are intake/workflow rows in `installation_requests`; installation records remain completion evidence in `installation_records`.
+  - Specification requests are workflow rows in `specification_requests`; specification documents remain output/evidence in `equipment_documents`.
+  - Disposal distinguishes formal `disposal_requests` from replacement candidates; replacement candidates are noted and linked but not counted as disposal requests.
+  - DB migrations added: `00040_installation_requests.sql` and `00041_specification_requests.sql`.
+
+- Hospital Operations Calendar (2026-05-10):
+  - `/calendar` is a fully internal BMERMS calendar, not Google Calendar integration. No Google OAuth, external sync, or external event creation is implemented.
+  - Calendar events are normalized from BMERMS operational source tables: PM schedules, calibration records/requests, work orders, maintenance requests, training sessions/requests, installation requests/records, procurement requests, disposal requests/disposed assets, and dated specification requests where rows expose real dates.
+  - Source tables remain the source of truth. Calendar "sync" means internal revalidation/refresh after module actions update source records.
+  - Every event uses a real date field and routes to the exact source record when available: PM schedules, work orders, maintenance requests, installation requests, procurement drilldown, and specification request detail. Calibration, training, disposal, and installation records use contextual module routes where dedicated detail pages do not exist.
+  - Viewer is read-only. Operational mutation happens on the source module pages, not directly inside the calendar.
+  - External Google Calendar sync is intentionally deferred; it would require OAuth, token storage, duplicate prevention, and conflict handling.
 
 IN PROGRESS:
 - Step 8:  Recurring failure count intentionally remains at 1 seeded asset because the thesis
@@ -80,6 +115,7 @@ NOT STARTED:
 
 ### Decision Support
   /command                    Unified decision-support home (all roles)
+  /calendar                   Internal hospital operations calendar across date-based biomedical workflows
   /command/health             Asset health scores — admin only, not in sidebar
   /command/triage             Full triage queue — confirmed working, real data, 80 assets after dedup
   /command/drilldown/[type]   Summary-card drilldowns using Command Center shared fetchers
@@ -97,14 +133,16 @@ NOT STARTED:
   /inventory/[id]/edit        Deprecated redirect alias → /equipment/[id]/edit
 
 ### Work
+  /requests                   Central intake/tracking hub with category cards + unified request table
+  /requests/[type]/[id]       Lightweight exact-status detail for request types without dedicated detail pages
   /maintenance                Maintenance requests + work order overview
   /maintenance/requests/new   Create maintenance request
   /maintenance/requests/[id]  Request detail
   /maintenance/work-orders/new   Create work order
   /maintenance/work-orders/[id]  Work order detail
-  /pm                         Preventive maintenance plans + schedules
+  /pm                         Planned-maintenance control center: PM cards, compliance, plans, schedules, overdue work
   /pm/plans/new               Create PM plan
-  /pm/schedules/[id]          PM schedule detail + checklist
+  /pm/schedules/[id]          PM execution detail + assignment, checklist, completion/defer evidence
   /calibration                Calibration records, requests, upcoming due
   /work-orders                All open work orders (cross-module view)
 
@@ -193,6 +231,14 @@ NOT STARTED:
     PM plans, schedules (2024-2025), completions, and quarterly compliance rows added for
     Inpatient Ward (71%), Pharmacy (71%), and Radiology (82%). /pm department chart shows 8/8.
 
+7a. RESOLVED (2026-05-10, migration 00042) — /pm is now a planned-maintenance control center.
+    PM Plan = recurring rule/program, PM Schedule = one planned task instance, and PM Completion =
+    evidence that work was performed. PM Compliance = completed scheduled PM tasks ÷ total scheduled
+    PM tasks; skipped/deferred PM is tracked separately and does not count as completed. Completing PM
+    records result, checklist, notes, technician, final equipment condition, updates equipment state,
+    refreshes analytics/risk detectability, and can create/open a duplicate-safe corrective request.
+    Viewer remains read-only and row actions open exact /pm/schedules/[id] records.
+
 8.  DOCUMENTED (2026-05-07) — Recurring failure card on /maintenance shows only 1 asset
     because seed data has one asset crossing the configured failureCount >= 4 threshold.
 
@@ -273,6 +319,30 @@ recompute_equipment_analytics() and recompute_all_equipment_analytics() in migra
 
 ---
 
+## Preventive Maintenance Semantics
+
+1. PM Plan = recurring PM rule/program for equipment, frequency, checklist expectations, and active/inactive state.
+2. PM Schedule = one planned PM task instance with scheduled date, assigned technician, status, completion/defer state, and exact detail route.
+3. PM Completion = evidence that work was performed: result, checklist, notes/findings, technician, completed date, and final equipment condition.
+4. PM Compliance = completed scheduled PM tasks ÷ total scheduled PM tasks. Skipped/deferred PM is tracked separately and does not count as completed.
+5. `/pm` is a planned-maintenance control center with summary cards, compliance by department, workflow-aware Plans/Schedules/Overdue tabs, exact row actions, and shared counts.
+6. Completion updates PM schedule evidence, inserts PM completion evidence, updates equipment condition, refreshes analytics/risk detectability via the existing recompute pipeline, and revalidates PM, Equipment, and Command Center paths.
+7. If PM finds an issue, the completion flow can create/open a corrective request with duplicate prevention.
+8. Viewer is read-only. Developer/admin/BME Head manage PM controls; technicians execute PM work where allowed. The BME Head remains the final decision maker.
+
+## PM Count and Action Semantics
+
+1. PM Schedule Records = all generated `pm_schedules` rows, including historical completed, skipped, deferred, canceled, overdue, and upcoming task records.
+2. Active PM Tasks = unfinished PM schedules requiring action. Active statuses are `scheduled`, `in_progress`, `overdue`, and `deferred`; completed, skipped, and canceled are not active.
+3. PM Plan status is different from asset criticality. Plan: Active/Paused comes from `pm_plans.is_active`; Asset criticality comes from `equipment_categories.criticality_level`.
+4. `Needs next task` means the plan has no unfinished upcoming/active schedule, not that it has no PM history.
+5. Generate Next Task creates the next `pm_schedules` row only if no unfinished task exists for the plan; otherwise it opens/returns the existing unfinished task.
+6. Pause Plan sets `pm_plans.is_active=false` and disables future task generation without deleting history or changing existing task completion state. Resume Plan sets `is_active=true`.
+7. History opens exact `/pm/plans/[id]/history` with plan metadata, schedule/evidence history, active/upcoming task state, and exact schedule-detail links.
+8. PM Compliance = completed scheduled tasks ÷ total scheduled tasks × 100. Skipped/deferred are tracked separately and do not count as completed.
+
+---
+
 ## Migration history
 
 00001 — Reference/master data tables
@@ -316,5 +386,8 @@ recompute_equipment_analytics() and recompute_all_equipment_analytics() in migra
 00037 — command_center_acknowledgements table (item_type, item_key, asset_id, signal_hash, acknowledged_at, snoozed_until)
 00038 — maintenance_requests.reported_condition (functional_issue/needs_repair/non_functional) + reported_condition_source
 00039 — work_orders.completion_outcome (resolved/partially_resolved/not_resolved/awaiting_parts_or_vendor) + final_equipment_condition
+00040 — installation_requests workflow rows
+00041 — specification_requests workflow rows
+00042 — PM schedule evidence fields, deferred status, and enriched v_overdue_pm
 
-NEVER modify 00001–00035. Next migration must be 00040.
+NEVER modify 00001–00035. Next migration must be 00043.

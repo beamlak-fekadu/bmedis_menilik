@@ -3,7 +3,7 @@
 import { z } from 'zod';
 import { getActionContext, logServerAuditEvent, revalidateMany, actionError, nullIfEmpty, type ActionResult } from './_shared';
 
-const disposalPaths = ['/disposal', '/replacement', '/reports/disposal'];
+const disposalPaths = ['/disposal', '/replacement', '/calendar', '/reports/disposal'];
 const disposalStatus = z.enum(['pending', 'approved', 'rejected', 'completed', 'canceled']);
 
 export async function createDisposalRequestAction(payload: Record<string, unknown>): Promise<ActionResult> {
