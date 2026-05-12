@@ -33,7 +33,7 @@ import { useRole } from '@/hooks/useRole';
 type SessionRow = Record<string, unknown>;
 type RequestRow = Record<string, unknown>;
 type AttendeeRow = Record<string, unknown>;
-type TrainingTab = 'requests' | 'upcoming' | 'completed' | 'evidence';
+type TrainingTab = 'requests' | 'upcoming' | 'completed';
 type TrainingFilter = 'all' | 'pending' | 'upcoming' | 'completed-month' | 'new-equipment' | 'user-error' | 'critical-equipment';
 
 const trainingTypeOptions: { value: TrainingType; label: string }[] = [
@@ -66,8 +66,8 @@ function formatLabel(val: string) {
 }
 
 function normalizeTrainingTab(value: string | null): TrainingTab | '' {
-  if (value === 'requests' || value === 'upcoming' || value === 'completed' || value === 'evidence') return value;
-  if (value === 'sessions' || value === 'history') return 'completed';
+  if (value === 'requests' || value === 'upcoming' || value === 'completed') return value;
+  if (value === 'sessions' || value === 'history' || value === 'evidence') return 'completed';
   return '';
 }
 
@@ -502,7 +502,7 @@ export default function TrainingPage() {
     },
     {
       id: 'completed',
-      label: 'Completed Sessions',
+      label: 'Sessions / History',
       count: completedSessions.length,
       content: (
         <DataTable
@@ -514,27 +514,13 @@ export default function TrainingPage() {
         />
       ),
     },
-    {
-      id: 'evidence',
-      label: 'Competency Evidence',
-      count: completedSessions.length,
-      content: (
-        <DataTable
-          columns={sessionColumns}
-          data={filteredCompleted}
-          searchPlaceholder="Search competency evidence..."
-          emptyMessage="No competency evidence found"
-          onRowClick={openDetail}
-        />
-      ),
-    },
   ];
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="Training"
-        description="Competency and equipment safety workflow for requests, scheduled sessions, attendance evidence, and coverage gaps."
+        description="Equipment safety training workflow for requests, scheduled sessions, attendance evidence, and user-error follow-up."
         actions={canManageMaintenance ? (
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" onClick={() => setRequestModalOpen(true)}><ClipboardList className="h-4 w-4" /> New Request</Button>

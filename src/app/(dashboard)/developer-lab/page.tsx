@@ -13,6 +13,7 @@ type HealthCheck = {
   severity: 'critical' | 'warning' | 'info' | 'ok';
   explanation: string;
   href?: string;
+  group: 'data' | 'workflow' | 'decision-support' | 'security';
 };
 
 const METHOD_CARDS = [
@@ -209,6 +210,7 @@ export default async function DeveloperLabPage({ searchParams }: { searchParams:
       severity: countByMissing(assets, (row) => !row.department_id) > 0 ? 'warning' : 'ok',
       explanation: 'Department assignment is required for readiness, reports, and ownership filters.',
       href: '/equipment',
+      group: 'data',
     },
     {
       label: 'Assets without category',
@@ -216,6 +218,7 @@ export default async function DeveloperLabPage({ searchParams }: { searchParams:
       severity: countByMissing(assets, (row) => !row.category_id) > 0 ? 'warning' : 'ok',
       explanation: 'Category drives criticality, PM expectations, and replacement interpretation.',
       href: '/equipment',
+      group: 'data',
     },
     {
       label: 'Active equipment without risk score',
@@ -223,6 +226,7 @@ export default async function DeveloperLabPage({ searchParams }: { searchParams:
       severity: countByMissing(assets, (row) => row.status === 'active' && !riskAssetIds.has(row.id as string)) > 0 ? 'critical' : 'ok',
       explanation: 'FMEA coverage is needed for risk bands, triage, alerts, and replacement planning.',
       href: '/developer-lab?focus=risk-scores',
+      group: 'decision-support',
     },
     {
       label: 'PM plans without upcoming task',
@@ -230,6 +234,7 @@ export default async function DeveloperLabPage({ searchParams }: { searchParams:
       severity: countByMissing(pmPlans, (row) => row.is_active === true && !activePlanIds.has(row.id as string)) > 0 ? 'warning' : 'ok',
       explanation: 'Active PM plans should normally have one unfinished scheduled task or clear history state.',
       href: '/pm?filter=needs-next-task&source=developer-lab',
+      group: 'workflow',
     },
     {
       label: 'Overdue PM',
@@ -237,6 +242,7 @@ export default async function DeveloperLabPage({ searchParams }: { searchParams:
       severity: countByMissing(pmSchedules, (row) => Boolean(row.scheduled_date && String(row.scheduled_date) < currentDate && !['completed', 'skipped', 'canceled'].includes(String(row.status)))) > 0 ? 'critical' : 'ok',
       explanation: 'Overdue PM weakens preventive control and can increase detectability risk.',
       href: '/pm?filter=overdue&source=developer-lab',
+      group: 'workflow',
     },
     {
       label: 'Overdue calibration',
@@ -244,6 +250,7 @@ export default async function DeveloperLabPage({ searchParams }: { searchParams:
       severity: countByMissing(calibrationRecords, (row) => Boolean(row.next_due_date && String(row.next_due_date) < currentDate)) > 0 ? 'critical' : 'ok',
       explanation: 'Overdue calibration is a safety and accuracy compliance issue.',
       href: '/calibration?tab=upcoming&source=developer-lab',
+      group: 'workflow',
     },
     {
       label: 'Low stock blockers',
@@ -251,6 +258,7 @@ export default async function DeveloperLabPage({ searchParams }: { searchParams:
       severity: countByMissing(parts, (row) => row.is_active !== false && Number(row.current_stock ?? 0) <= Number(row.reorder_level ?? 0)) > 0 ? 'warning' : 'ok',
       explanation: 'Low stock can delay repairs and should connect to procurement when needed.',
       href: '/spare-parts?tab=lowstock&source=developer-lab',
+      group: 'workflow',
     },
     {
       label: 'Stockout without procurement',
@@ -258,6 +266,7 @@ export default async function DeveloperLabPage({ searchParams }: { searchParams:
       severity: countByMissing(parts, (row) => row.is_active !== false && Number(row.current_stock ?? 0) <= 0) > 0 ? 'critical' : 'ok',
       explanation: 'Procurement links are stored as textual justification today, so verify stockout requests manually.',
       href: '/procurement?source=developer-lab&filter=stockout',
+      group: 'workflow',
     },
     {
       label: 'Procurement delayed',
@@ -265,6 +274,7 @@ export default async function DeveloperLabPage({ searchParams }: { searchParams:
       severity: countByMissing(procurementRows, (row) => Boolean(row.expected_delivery_date && String(row.expected_delivery_date) < currentDate && !['delivered', 'canceled'].includes(String(row.status)))) > 0 ? 'warning' : 'ok',
       explanation: 'Late procurement can block maintenance, stock recovery, and replacement workflows.',
       href: '/procurement?source=developer-lab&filter=delayed',
+      group: 'workflow',
     },
     {
       label: 'Profiles without roles',
@@ -272,6 +282,7 @@ export default async function DeveloperLabPage({ searchParams }: { searchParams:
       severity: countByMissing(profiles, (row) => !Array.isArray(row.user_roles) || row.user_roles.length === 0) > 0 ? 'warning' : 'ok',
       explanation: 'Profiles need roles for route access, server actions, and RLS behavior.',
       href: '/settings?tab=staff-access',
+      group: 'security',
     },
     {
       label: 'Auth users without profiles',
@@ -279,6 +290,7 @@ export default async function DeveloperLabPage({ searchParams }: { searchParams:
       severity: 'info',
       explanation: 'The app can show profile-to-auth links, but cannot safely enumerate auth.users from the browser/client service.',
       href: '/settings?tab=security-access',
+      group: 'security',
     },
     {
       label: 'Departments without equipment',
@@ -286,6 +298,7 @@ export default async function DeveloperLabPage({ searchParams }: { searchParams:
       severity: countByMissing(departments, (row) => !departmentIdsWithEquipment.has(row.id as string)) > 0 ? 'info' : 'ok',
       explanation: 'Empty departments may be valid, but readiness and reports should explain them.',
       href: '/settings?tab=departments',
+      group: 'data',
     },
     {
       label: 'Categories without criticality',
@@ -293,6 +306,7 @@ export default async function DeveloperLabPage({ searchParams }: { searchParams:
       severity: countByMissing(categories, (row) => !row.criticality_level) > 0 ? 'warning' : 'ok',
       explanation: 'Criticality is needed for readiness and lifecycle scoring interpretation.',
       href: '/settings?tab=equipment-categories',
+      group: 'data',
     },
     {
       label: 'Calibration-relevant equipment without history',
@@ -300,6 +314,7 @@ export default async function DeveloperLabPage({ searchParams }: { searchParams:
       severity: countByMissing(assets, (row) => row.status === 'active' && !calibrationAssetIds.has(row.id as string)) > 0 ? 'info' : 'ok',
       explanation: 'The current schema does not flag calibration-required assets, so this check uses active equipment as a broad coverage proxy.',
       href: '/calibration?tab=records&source=developer-lab',
+      group: 'decision-support',
     },
     {
       label: 'Replacement candidates without disposal request',
@@ -307,6 +322,7 @@ export default async function DeveloperLabPage({ searchParams }: { searchParams:
       severity: Array.from(highReplacementAssetIds).filter((assetId) => !disposalAssetIds.has(assetId)).length > 0 ? 'info' : 'ok',
       explanation: 'Replacement evidence and formal disposal requests are related but separate workflows.',
       href: '/disposal?tab=candidates&source=developer-lab',
+      group: 'decision-support',
     },
   ];
 
@@ -375,29 +391,54 @@ export default async function DeveloperLabPage({ searchParams }: { searchParams:
 
       <DeveloperLabClient replacementRows={replacementRows} />
 
-      <section className="space-y-3">
+      <section className="space-y-4">
         <div>
-          <h2 className="text-lg font-semibold text-[var(--foreground)]">Data Health Checks</h2>
+          <h2 className="text-lg font-semibold text-[var(--foreground)]">System Health Checks</h2>
           <p className="text-sm text-[var(--text-muted)]">Counts come from real tables/views. Missing schema support is labeled instead of simulated.</p>
         </div>
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {healthChecks.map((check) => (
-            <Card key={check.label}>
-              <div className="flex items-start justify-between gap-3">
+        {([
+          { id: 'data', label: 'Data Integrity', description: 'Asset metadata completeness affecting all downstream scoring and reporting.' },
+          { id: 'workflow', label: 'Workflow Integrity', description: 'Operational workflows (PM, calibration, stock, procurement) in a healthy execution state.' },
+          { id: 'decision-support', label: 'Decision-Support Integrity', description: 'FMEA coverage, replacement evidence, and calibration history supporting scoring outputs.' },
+          { id: 'security', label: 'Security / Auth Integrity', description: 'Profile and role linkage for RLS, access control, and server action authorization.' },
+        ] as Array<{ id: HealthCheck['group']; label: string; description: string }>).map((group) => {
+          const groupChecks = healthChecks.filter((check) => check.group === group.id);
+          const criticalCount = groupChecks.filter((check) => check.severity === 'critical').length;
+          const warningCount = groupChecks.filter((check) => check.severity === 'warning').length;
+          return (
+            <div key={group.id} className="rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-1)] p-4">
+              <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
                 <div>
-                  <p className="font-medium text-[var(--foreground)]">{check.label}</p>
-                  <p className="mt-1 text-sm text-[var(--text-muted)]">{check.explanation}</p>
+                  <h3 className="text-base font-semibold text-[var(--foreground)]">{group.label}</h3>
+                  <p className="text-sm text-[var(--text-muted)]">{group.description}</p>
                 </div>
-                <Badge variant={variantForSeverity(check.severity)}>{check.count}</Badge>
+                <div className="flex gap-2">
+                  {criticalCount > 0 && <Badge variant="error">{criticalCount} critical</Badge>}
+                  {warningCount > 0 && <Badge variant="warning">{warningCount} warning</Badge>}
+                  {criticalCount === 0 && warningCount === 0 && <Badge variant="success">Healthy</Badge>}
+                </div>
               </div>
-              {check.href && (
-                <Link className="mt-3 inline-flex text-xs text-[var(--brand)] hover:underline" href={check.href}>
-                  Open drilldown/action
-                </Link>
-              )}
-            </Card>
-          ))}
-        </div>
+              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                {groupChecks.map((check) => (
+                  <Card key={check.label}>
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="font-medium text-[var(--foreground)]">{check.label}</p>
+                        <p className="mt-1 text-sm text-[var(--text-muted)]">{check.explanation}</p>
+                      </div>
+                      <Badge variant={variantForSeverity(check.severity)}>{check.count}</Badge>
+                    </div>
+                    {check.href && (
+                      <Link className="mt-3 inline-flex text-xs text-[var(--brand)] hover:underline" href={check.href}>
+                        Open drilldown/action
+                      </Link>
+                    )}
+                  </Card>
+                ))}
+              </div>
+            </div>
+          );
+        })}
       </section>
 
       <Card>

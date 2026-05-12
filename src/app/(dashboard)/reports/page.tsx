@@ -5,234 +5,372 @@ import type { ReactNode } from 'react';
 import {
   Activity,
   Boxes,
+  BookOpen,
   CalendarCheck,
   ClipboardList,
+  Download,
+  FlaskConical,
   Gauge,
   GraduationCap,
   LockKeyhole,
   Monitor,
   Package,
   PackageCheck,
+  Printer,
   Replace,
   ShieldAlert,
   Trash2,
   Users,
   Wrench,
+  ArrowRight,
+  BarChart3,
+  FileText,
+  Info,
 } from 'lucide-react';
 import PageHeader from '@/components/ui/PageHeader';
-import Card from '@/components/ui/Card';
 import Badge from '@/components/ui/Badge';
 
-interface ReportCard {
+interface ReportDef {
   type: string;
   title: string;
-  description: string;
-  metric: string;
-  status?: 'Ready' | 'Partial' | 'Needs data';
+  purpose: string;
+  evidenceTag: string;
+  charts: number;
+  tables: number;
   icon: ReactNode;
-  color: string;
-  emphasis?: boolean;
+  iconBg: string;
+  priority?: boolean;
+  devOnly?: boolean;
 }
 
-const reports: ReportCard[] = [
+interface ReportSection {
+  id: string;
+  title: string;
+  description: string;
+  sectionColor: string;
+  reports: ReportDef[];
+}
+
+const sections: ReportSection[] = [
   {
-    type: 'biomedical-operations',
-    title: 'Biomedical Engineering Operations Report',
-    description: 'Unified equipment, condition, department, and operational inventory evidence.',
-    metric: 'Defense priority',
-    status: 'Ready',
-    icon: <Activity className="h-7 w-7" />,
-    color: 'text-blue-300 bg-blue-500/15',
-    emphasis: true,
+    id: 'executive',
+    title: 'Executive & Defense',
+    description: 'High-priority reports for operations review, thesis defense, and BME Head evidence export.',
+    sectionColor: 'border-blue-500/30 bg-blue-500/5',
+    reports: [
+      {
+        type: 'biomedical-operations',
+        title: 'Biomedical Engineering Operations Report',
+        purpose:
+          'Unified executive snapshot: equipment condition, department readiness, compliance, risk, and critical actions.',
+        evidenceTag: 'Defense priority',
+        charts: 5,
+        tables: 1,
+        icon: <Activity className="h-5 w-5" />,
+        iconBg: 'text-blue-400 bg-blue-500/15',
+        priority: true,
+      },
+      {
+        type: 'evaluation-demo',
+        title: 'Evaluation / Demo Evidence Report',
+        purpose:
+          'System capability evidence: implemented modules, workflow coverage, decision-support scores, and data health.',
+        evidenceTag: 'Defense evidence',
+        charts: 3,
+        tables: 1,
+        icon: <FlaskConical className="h-5 w-5" />,
+        iconBg: 'text-violet-400 bg-violet-500/15',
+        priority: true,
+      },
+      {
+        type: 'department-readiness',
+        title: 'Department Readiness Report',
+        purpose:
+          'Equipment readiness by hospital department: essential asset availability, condition breakdown, and risk exposure.',
+        evidenceTag: 'Readiness',
+        charts: 3,
+        tables: 1,
+        icon: <Users className="h-5 w-5" />,
+        iconBg: 'text-cyan-400 bg-cyan-500/15',
+      },
+      {
+        type: 'decision-support-methodology',
+        title: 'Decision-Support Methodology Report',
+        purpose:
+          'Formulas, scoring criteria, component weights, source tables, and explainability evidence for thesis review.',
+        evidenceTag: 'Methodology',
+        charts: 2,
+        tables: 2,
+        icon: <BookOpen className="h-5 w-5" />,
+        iconBg: 'text-indigo-400 bg-indigo-500/15',
+        devOnly: false,
+      },
+    ],
   },
   {
-    type: 'equipment',
-    title: 'Inventory Report',
-    description: 'Complete equipment inventory with department, category, condition, status, and cost fields.',
-    metric: 'CSV/PDF',
-    icon: <Monitor className="h-7 w-7" />,
-    color: 'text-cyan-300 bg-cyan-500/15',
+    id: 'lifecycle',
+    title: 'Asset Lifecycle',
+    description:
+      'Evidence for asset inventory, FMEA risk analysis, replacement planning, and end-of-life management.',
+    sectionColor: 'border-amber-500/30 bg-amber-500/5',
+    reports: [
+      {
+        type: 'equipment',
+        title: 'Inventory and Asset Condition Report',
+        purpose:
+          'Complete asset inventory with department, category, condition, cost, warranty status, and age distribution.',
+        evidenceTag: 'Inventory',
+        charts: 4,
+        tables: 1,
+        icon: <Monitor className="h-5 w-5" />,
+        iconBg: 'text-cyan-400 bg-cyan-500/15',
+      },
+      {
+        type: 'risk-fmea',
+        title: 'Risk and FMEA Report',
+        purpose:
+          'RPN scores, severity, occurrence, detectability, risk bands, assignment methods, and risk driver explanations.',
+        evidenceTag: 'Risk evidence',
+        charts: 3,
+        tables: 1,
+        icon: <ShieldAlert className="h-5 w-5" />,
+        iconBg: 'text-rose-400 bg-rose-500/15',
+      },
+      {
+        type: 'replacement-planning',
+        title: 'Replacement Planning Report',
+        purpose:
+          'RPI rankings, component scores, lifecycle drivers, and prototype decision thresholds (≥0.70 strong, 0.55–0.69 review).',
+        evidenceTag: 'Lifecycle',
+        charts: 3,
+        tables: 1,
+        icon: <Replace className="h-5 w-5" />,
+        iconBg: 'text-amber-400 bg-amber-500/15',
+      },
+      {
+        type: 'disposal-lifecycle',
+        title: 'Disposal / Lifecycle Report',
+        purpose:
+          'Disposal requests, approvals, disposal methods, completed disposals, and end-of-life evidence.',
+        evidenceTag: 'End of life',
+        charts: 2,
+        tables: 1,
+        icon: <Trash2 className="h-5 w-5" />,
+        iconBg: 'text-red-400 bg-red-500/15',
+      },
+    ],
   },
   {
-    type: 'maintenance-performance',
-    title: 'Maintenance Performance Report',
-    description: 'Maintenance event history, repair duration, service cost, and completion evidence.',
-    metric: 'Reliability evidence',
-    status: 'Ready',
-    icon: <Wrench className="h-7 w-7" />,
-    color: 'text-orange-300 bg-orange-500/15',
-    emphasis: true,
+    id: 'compliance',
+    title: 'Maintenance & Compliance',
+    description:
+      'Corrective maintenance, work order execution, preventive maintenance compliance, and calibration accuracy evidence.',
+    sectionColor: 'border-emerald-500/30 bg-emerald-500/5',
+    reports: [
+      {
+        type: 'maintenance-performance',
+        title: 'Maintenance Performance Report',
+        purpose:
+          'Maintenance events, MTTR, repair costs, recurring failures, and corrective maintenance reliability evidence.',
+        evidenceTag: 'Reliability',
+        charts: 3,
+        tables: 2,
+        icon: <Wrench className="h-5 w-5" />,
+        iconBg: 'text-orange-400 bg-orange-500/15',
+        priority: true,
+      },
+      {
+        type: 'work-orders',
+        title: 'Work Order Execution Report',
+        purpose:
+          'Open, assigned, in-progress, on-hold, and completed work orders with outcome, technician, and evidence trace.',
+        evidenceTag: 'Execution trace',
+        charts: 3,
+        tables: 1,
+        icon: <ClipboardList className="h-5 w-5" />,
+        iconBg: 'text-violet-400 bg-violet-500/15',
+      },
+      {
+        type: 'pm-compliance',
+        title: 'PM Compliance Report',
+        purpose:
+          'PM schedules, completion status, overdue tasks, skipped/deferred evidence, and department-level compliance.',
+        evidenceTag: 'Compliance',
+        charts: 3,
+        tables: 1,
+        icon: <CalendarCheck className="h-5 w-5" />,
+        iconBg: 'text-emerald-400 bg-emerald-500/15',
+        priority: true,
+      },
+      {
+        type: 'calibration-compliance',
+        title: 'Calibration Compliance Report',
+        purpose:
+          'Calibration records, pass/fail/adjusted results, next due dates, overdue assets, and safety follow-up evidence.',
+        evidenceTag: 'Accuracy control',
+        charts: 3,
+        tables: 1,
+        icon: <Gauge className="h-5 w-5" />,
+        iconBg: 'text-purple-400 bg-purple-500/15',
+        priority: true,
+      },
+    ],
   },
   {
-    type: 'work-orders',
-    title: 'Work Order Report',
-    description: 'Open, assigned, in-progress, on-hold, completed, vendor, and priority work orders.',
-    metric: 'Execution trace',
-    icon: <ClipboardList className="h-7 w-7" />,
-    color: 'text-violet-300 bg-violet-500/15',
-  },
-  {
-    type: 'pm-compliance',
-    title: 'PM Compliance Report',
-    description: 'Preventive maintenance schedules, completion status, assignment, and due evidence.',
-    metric: 'Compliance',
-    status: 'Ready',
-    icon: <CalendarCheck className="h-7 w-7" />,
-    color: 'text-emerald-300 bg-emerald-500/15',
-    emphasis: true,
-  },
-  {
-    type: 'calibration-compliance',
-    title: 'Calibration Compliance Report',
-    description: 'Calibration records, results, next due dates, failed/adjusted outcomes, and evidence.',
-    metric: 'Accuracy control',
-    status: 'Ready',
-    icon: <Gauge className="h-7 w-7" />,
-    color: 'text-purple-300 bg-purple-500/15',
-    emphasis: true,
-  },
-  {
-    type: 'risk-fmea',
-    title: 'Risk and FMEA Report',
-    description: 'RPN, severity, occurrence, detectability, risk bands, explanations, and methods.',
-    metric: 'Explainable scores',
-    icon: <ShieldAlert className="h-7 w-7" />,
-    color: 'text-rose-300 bg-rose-500/15',
-  },
-  {
-    type: 'replacement-planning',
-    title: 'Replacement Planning Report',
-    description: 'RPI rankings, component scores, replacement drivers, and planning evidence.',
-    metric: 'Lifecycle',
-    status: 'Ready',
-    icon: <Replace className="h-7 w-7" />,
-    color: 'text-amber-300 bg-amber-500/15',
-    emphasis: true,
-  },
-  {
-    type: 'department-readiness',
-    title: 'Department Readiness Report',
-    description: 'Department equipment ownership, conditions, readiness proxies, and operational exposure.',
-    metric: 'Readiness',
-    icon: <Users className="h-7 w-7" />,
-    color: 'text-blue-300 bg-blue-500/15',
-  },
-  {
-    type: 'spare-parts-stock',
-    title: 'Spare Parts / Stock Report',
-    description: 'Spare-part balances, reorder levels, stock value, and low-stock evidence.',
-    metric: 'Stock control',
-    icon: <Package className="h-7 w-7" />,
-    color: 'text-teal-300 bg-teal-500/15',
-  },
-  {
-    type: 'procurement-pipeline',
-    title: 'Procurement Pipeline Report',
-    description: 'Requested, approved, ordered, in-transit, delivered, delayed, and linked procurement rows.',
-    metric: 'Pipeline',
-    icon: <PackageCheck className="h-7 w-7" />,
-    color: 'text-green-300 bg-green-500/15',
-  },
-  {
-    type: 'training-competency',
-    title: 'Training / Competency Report',
-    description: 'Training sessions, trainer, equipment/category linkage, attendees, and certification evidence.',
-    metric: 'Competency',
-    icon: <GraduationCap className="h-7 w-7" />,
-    color: 'text-indigo-300 bg-indigo-500/15',
-  },
-  {
-    type: 'disposal-lifecycle',
-    title: 'Disposal / Lifecycle Report',
-    description: 'Disposal requests, approvals, methods, completed disposals, and lifecycle evidence.',
-    metric: 'End of life',
-    icon: <Trash2 className="h-7 w-7" />,
-    color: 'text-red-300 bg-red-500/15',
-  },
-  {
-    type: 'technician-workload',
-    title: 'Technician Workload Report',
-    description: 'Work-order assignment and execution evidence used for workload review.',
-    metric: 'Assignment',
-    icon: <Boxes className="h-7 w-7" />,
-    color: 'text-slate-300 bg-slate-500/15',
-  },
-  {
-    type: 'audit-security',
-    title: 'Audit / Security Report',
-    description: 'Recent audit events for roles, settings, security, equipment, and workflow changes.',
-    metric: 'Governance',
-    icon: <LockKeyhole className="h-7 w-7" />,
-    color: 'text-violet-300 bg-violet-500/15',
+    id: 'resources',
+    title: 'Resource, Procurement & People',
+    description:
+      'Stock control, procurement pipeline, training competency, technician workload, and governance audit evidence.',
+    sectionColor: 'border-violet-500/30 bg-violet-500/5',
+    reports: [
+      {
+        type: 'spare-parts-stock',
+        title: 'Spare Parts and Stock Control Report',
+        purpose:
+          'Part inventory, stockout alerts, low-stock items, procurement recovery status, and work-order blockers.',
+        evidenceTag: 'Stock control',
+        charts: 2,
+        tables: 2,
+        icon: <Package className="h-5 w-5" />,
+        iconBg: 'text-teal-400 bg-teal-500/15',
+      },
+      {
+        type: 'procurement-pipeline',
+        title: 'Procurement Pipeline Report',
+        purpose:
+          'Procurement requests across all pipeline stages, delays, priority, expected delivery, and delivery evidence.',
+        evidenceTag: 'Pipeline',
+        charts: 2,
+        tables: 1,
+        icon: <PackageCheck className="h-5 w-5" />,
+        iconBg: 'text-green-400 bg-green-500/15',
+      },
+      {
+        type: 'training-competency',
+        title: 'Training and Equipment Safety Report',
+        purpose:
+          'Training sessions, pending requests, attendees, equipment category linkage, and competency evidence.',
+        evidenceTag: 'Competency',
+        charts: 2,
+        tables: 1,
+        icon: <GraduationCap className="h-5 w-5" />,
+        iconBg: 'text-indigo-400 bg-indigo-500/15',
+      },
+      {
+        type: 'technician-workload',
+        title: 'Technician Workload Report',
+        purpose:
+          'Assignment load by technician, completion evidence, critical task distribution, and workload balance.',
+        evidenceTag: 'Assignment',
+        charts: 3,
+        tables: 1,
+        icon: <Boxes className="h-5 w-5" />,
+        iconBg: 'text-slate-400 bg-slate-500/15',
+      },
+      {
+        type: 'audit-security',
+        title: 'Audit and Security Report',
+        purpose:
+          'Audit trail for role changes, settings, equipment condition, workflow completion, and security events.',
+        evidenceTag: 'Governance',
+        charts: 2,
+        tables: 1,
+        icon: <LockKeyhole className="h-5 w-5" />,
+        iconBg: 'text-violet-400 bg-violet-500/15',
+      },
+    ],
   },
 ];
 
-const defensePackTypes = [
-  'biomedical-operations',
-  'maintenance-performance',
-  'pm-compliance',
-  'calibration-compliance',
-  'replacement-planning',
-  'department-readiness',
-];
+function ReportCard({ report }: { report: ReportDef }) {
+  return (
+    <Link
+      href={`/reports/${report.type}`}
+      className="group flex flex-col gap-3 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-1)] p-4 transition-all hover:border-[var(--brand)]/50 hover:shadow-md"
+    >
+      <div className="flex items-start gap-3">
+        <div className={`shrink-0 rounded-lg p-2.5 ${report.iconBg}`}>{report.icon}</div>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-start gap-1.5">
+            <h3 className="text-sm font-semibold text-[var(--foreground)] group-hover:text-[var(--brand)] leading-tight">
+              {report.title}
+            </h3>
+            {report.priority && (
+              <Badge variant="purple" className="shrink-0">Priority</Badge>
+            )}
+          </div>
+          <p className="mt-1 text-xs leading-relaxed text-[var(--text-muted)]">{report.purpose}</p>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2 text-xs text-[var(--text-muted)]">
+        <span className="inline-flex items-center gap-1 rounded-md border border-[var(--border-subtle)] px-2 py-0.5">
+          <BarChart3 className="h-3 w-3" />
+          {report.charts} chart{report.charts !== 1 ? 's' : ''}
+        </span>
+        <span className="inline-flex items-center gap-1 rounded-md border border-[var(--border-subtle)] px-2 py-0.5">
+          <FileText className="h-3 w-3" />
+          {report.tables} evidence table{report.tables !== 1 ? 's' : ''}
+        </span>
+        <Badge variant="info">{report.evidenceTag}</Badge>
+      </div>
+
+      <div className="flex items-center justify-between border-t border-[var(--border-subtle)] pt-3">
+        <div className="flex items-center gap-3 text-xs text-[var(--text-muted)]">
+          <span className="inline-flex items-center gap-1">
+            <Download className="h-3 w-3" /> CSV
+          </span>
+          <span className="inline-flex items-center gap-1">
+            <Download className="h-3 w-3" /> PDF
+          </span>
+          <span className="inline-flex items-center gap-1">
+            <Printer className="h-3 w-3" /> Print
+          </span>
+        </div>
+        <span className="inline-flex items-center gap-1 text-xs font-medium text-[var(--brand)] group-hover:underline">
+          Open report <ArrowRight className="h-3 w-3" />
+        </span>
+      </div>
+    </Link>
+  );
+}
 
 export default function ReportsPage() {
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <PageHeader
         title="Reports"
-        description="Evidence and export center for biomedical operations, decision support, compliance, lifecycle, inventory, training, audit, and thesis demonstration reporting."
+        description="Evidence and export center for biomedical engineering operations, decision support, compliance, lifecycle, inventory, training, audit, and thesis demonstration reporting."
       />
 
-      <section className="panel-surface rounded-lg p-4">
-        <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <h2 className="text-base font-semibold text-[var(--foreground)]">Defense Evidence Pack</h2>
-            <p className="mt-1 text-sm text-[var(--text-muted)]">High-value reports for operations review, thesis defense, and BME Head evidence export.</p>
-          </div>
-          <Badge variant="purple">Curated evidence</Badge>
-        </div>
-        <div className="grid gap-3 md:grid-cols-3">
-          {reports.filter((report) => defensePackTypes.includes(report.type)).map((report) => (
-            <Link key={report.type} href={`/reports/${report.type}`} className="rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-1)] p-3 transition hover:border-[var(--brand)]/50">
-              <div className="flex items-start justify-between gap-2">
-                <p className="text-sm font-semibold text-[var(--foreground)]">{report.title}</p>
-                <Badge variant={report.status === 'Partial' ? 'warning' : 'success'}>{report.status ?? 'Ready'}</Badge>
-              </div>
-              <p className="mt-2 text-xs text-[var(--text-muted)]">{report.description}</p>
-            </Link>
-          ))}
-        </div>
-      </section>
-
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {reports.map((report) => (
-          <Link key={report.type} href={`/reports/${report.type}`}>
-            <Card className={`group h-full border border-[var(--border-subtle)] bg-[var(--surface-1)] transition-shadow hover:shadow-md ${report.emphasis ? 'ring-1 ring-[var(--brand)]/30' : ''}`}>
-              <div className="flex h-full flex-col items-start gap-4">
-                <div className={`rounded-lg p-3 ${report.color}`}>
-                  {report.icon}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="mb-2 flex items-start justify-between gap-2">
-                    <h3 className="text-base font-semibold text-[var(--foreground)] group-hover:text-[var(--brand)]">
-                      {report.title}
-                    </h3>
-                    <Badge variant={report.emphasis ? 'purple' : 'info'}>{report.metric}</Badge>
-                  </div>
-                  {report.status && <Badge variant={report.status === 'Partial' ? 'warning' : 'success'}>{report.status}</Badge>}
-                  <p className="text-sm text-[var(--text-muted)]">
-                    {report.description}
-                  </p>
-                </div>
-                <span className="text-sm font-medium text-[var(--brand)] group-hover:underline">
-                  Open report
-                </span>
-              </div>
-            </Card>
-          </Link>
-        ))}
+      <div className="flex items-start gap-3 rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-2)] px-4 py-3">
+        <Info className="mt-0.5 h-4 w-4 shrink-0 text-[var(--text-muted)]" />
+        <p className="text-sm text-[var(--text-muted)]">
+          Reports are generated from the current operational database state. Each report includes a snapshot timestamp,
+          methodology note, charts, evidence tables, and export options (CSV, PDF, Print/Save as PDF). Charts and
+          summaries reflect available records at the time of generation.
+        </p>
       </div>
+
+      {sections.map((section) => (
+        <section key={section.id}>
+          <div className={`mb-4 flex items-start justify-between gap-3 rounded-lg border px-4 py-3 ${section.sectionColor}`}>
+            <div>
+              <h2 className="text-base font-semibold text-[var(--foreground)]">{section.title}</h2>
+              <p className="mt-0.5 text-sm text-[var(--text-muted)]">{section.description}</p>
+            </div>
+            <span className="shrink-0 text-xs text-[var(--text-muted)]">
+              {section.reports.length} reports
+            </span>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            {section.reports.map((report) => (
+              <ReportCard key={report.type} report={report} />
+            ))}
+          </div>
+        </section>
+      ))}
     </div>
   );
 }

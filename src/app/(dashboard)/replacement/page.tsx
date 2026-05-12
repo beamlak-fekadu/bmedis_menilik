@@ -184,12 +184,13 @@ export default function ReplacementPage() {
   const topCandidates = ranked.filter((row) => rpiValue(row) >= 0.55).slice(0, 3);
   const replacementCandidates = ranked.filter((row) => rpiValue(row) >= 0.55);
   const highPriority = ranked.filter((row) => rpiValue(row) >= 0.7);
+  const reviewCandidates = ranked.filter((row) => rpiValue(row) >= 0.55 && rpiValue(row) < 0.7);
+  const monitorCandidates = ranked.filter((row) => rpiValue(row) < 0.55).slice(0, 10);
   const criticalClinicalImpact = ranked.filter((row) => (row.risk_score ?? 0) >= 0.7);
   const poorSpareSupport = ranked.filter((row) => (row.spare_part_score ?? 0) >= 0.7);
   const highMaintenanceBurden = ranked.filter((row) => (row.maintenance_burden_score ?? 0) >= 0.7);
   const lowAvailability = ranked.filter((row) => (row.availability_score ?? 0) >= 0.7);
   const frequentFailure = ranked.filter((row) => (row.failure_score ?? 0) >= 0.7);
-  const obsoleteAgeRisk = ranked.filter((row) => (row.age_score ?? 0) >= 0.7);
   const chartRows = chartLimit === 'all' ? ranked : ranked.slice(0, Number(chartLimit));
   const filteredRows = ranked.filter((row) => {
     if (activeFilter === 'strong') return rpiValue(row) >= 0.7;
@@ -200,8 +201,9 @@ export default function ReplacementPage() {
     if (activeFilter === 'age') return (row.age_score ?? 0) >= 0.7;
     if (activeFilter === 'spare') return (row.spare_part_score ?? 0) >= 0.7;
     if (activeFilter === 'critical') return (row.risk_score ?? 0) >= 0.7;
+    if (activeFilter === 'monitor') return rpiValue(row) < 0.55;
     if (activeFilter === 'all') return true;
-    return rpiValue(row) >= 0.55;
+    return replacementCandidates.length > 0 ? rpiValue(row) >= 0.55 : monitorCandidates.some((item) => item.id === row.id);
   });
 
   if (loading) return <PageLoader />;
@@ -277,6 +279,7 @@ export default function ReplacementPage() {
           <Link href={`/replacement?assetId=${row.asset_id}&action=create-review`} className="rounded-lg border border-[var(--border-subtle)] px-2 py-1 text-xs hover:bg-[var(--surface-2)]">Create Replacement Review</Link>
           <Link href={procurementPrefill(row)} className="rounded-lg border border-[var(--border-subtle)] px-2 py-1 text-xs hover:bg-[var(--surface-2)]">Create Procurement Request</Link>
           <Link href={disposalPrefill(row)} className="rounded-lg border border-[var(--border-subtle)] px-2 py-1 text-xs hover:bg-[var(--surface-2)]">Create Disposal Request</Link>
+          <Link href={`/replacement?filter=monitor&assetId=${row.asset_id}`} className="rounded-lg border border-[var(--border-subtle)] px-2 py-1 text-xs hover:bg-[var(--surface-2)]">Mark Monitor Only</Link>
         </div>
       ),
     },
@@ -303,13 +306,14 @@ export default function ReplacementPage() {
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard label="Replacement Candidates" value={replacementCandidates.length} icon={<Replace className="h-6 w-6" />} color="blue" active={activeFilter === 'candidates'} onClick={() => setActiveFilter('candidates')} />
-        <StatCard label="High RPI" value={highPriority.length} icon={<AlertTriangle className="h-6 w-6" />} color="red" active={activeFilter === 'strong'} onClick={() => setActiveFilter('strong')} />
+        <StatCard label="Strong Candidates" value={highPriority.length} icon={<AlertTriangle className="h-6 w-6" />} color="red" active={activeFilter === 'strong'} onClick={() => setActiveFilter('strong')} />
+        <StatCard label="Review Candidates" value={reviewCandidates.length} icon={<ClipboardList className="h-6 w-6" />} color="orange" active={activeFilter === 'review'} onClick={() => setActiveFilter('review')} />
+        <StatCard label="Monitor Candidates" value={monitorCandidates.length} icon={<Clock className="h-6 w-6" />} color="green" active={activeFilter === 'monitor'} onClick={() => setActiveFilter('monitor')} />
         <StatCard label="High Maintenance Burden" value={highMaintenanceBurden.length} icon={<Activity className="h-6 w-6" />} color="purple" active={activeFilter === 'maintenance'} onClick={() => setActiveFilter('maintenance')} />
         <StatCard label="Low Availability / High Downtime" value={lowAvailability.length} icon={<Clock className="h-6 w-6" />} color="orange" active={activeFilter === 'availability'} onClick={() => setActiveFilter('availability')} />
         <StatCard label="Frequent Failure" value={frequentFailure.length} icon={<AlertTriangle className="h-6 w-6" />} color="red" active={activeFilter === 'failure'} onClick={() => setActiveFilter('failure')} />
-        <StatCard label="Obsolete / Age Risk" value={obsoleteAgeRisk.length} icon={<Clock className="h-6 w-6" />} color="yellow" active={activeFilter === 'age'} onClick={() => setActiveFilter('age')} />
         <StatCard label="Spare Parts Unsupported" value={poorSpareSupport.length} icon={<PackageCheck className="h-6 w-6" />} color="yellow" active={activeFilter === 'spare'} onClick={() => setActiveFilter('spare')} />
-        <StatCard label="Critical Service Risk" value={criticalClinicalImpact.length} icon={<ClipboardList className="h-6 w-6" />} color="orange" active={activeFilter === 'critical'} onClick={() => setActiveFilter('critical')} />
+        <StatCard label="High FMEA Risk" value={criticalClinicalImpact.length} icon={<ClipboardList className="h-6 w-6" />} color="orange" active={activeFilter === 'critical'} onClick={() => setActiveFilter('critical')} />
       </div>
 
       <section className="rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-1)] p-4">
@@ -343,6 +347,13 @@ export default function ReplacementPage() {
         </div>
       )}
 
+      {replacementCandidates.length === 0 && monitorCandidates.length > 0 && (
+        <section className="rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-1)] p-4">
+          <h2 className="text-base font-semibold text-[var(--foreground)]">No Assets Exceed Replacement Threshold</h2>
+          <p className="mt-2 text-sm text-[var(--text-muted)]">Showing top monitored lifecycle candidates for review so Replacement and Disposal use the same RPI evidence without overstating approval readiness.</p>
+        </section>
+      )}
+
       <ChartCard title="Replacement Priority Index" description="Current live ranking snapshot. Sandbox comparisons and threshold sensitivity are developer-only.">
         <div className="mb-3 flex flex-wrap gap-2">
           {(['10', '20', 'all'] as const).map((limit) => (
@@ -373,7 +384,7 @@ export default function ReplacementPage() {
         data={filteredRows}
         keyField="id"
         searchPlaceholder="Search replacement candidates..."
-        emptyMessage="No replacement candidates found"
+        emptyMessage={replacementCandidates.length === 0 ? 'No assets exceed the replacement threshold. Top monitored lifecycle candidates appear when score evidence exists.' : 'No replacement candidates found for this filter'}
         pageSize={15}
       />
     </div>

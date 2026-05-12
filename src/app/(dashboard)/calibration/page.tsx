@@ -214,6 +214,11 @@ export default function CalibrationPage() {
       setReqAssetId(assetId);
       setRecAssetId(assetId);
     }
+    const calibrationTypeId = searchParams.get('calibrationTypeId');
+    if (calibrationTypeId) {
+      setReqTypeId(calibrationTypeId);
+      setRecTypeId(calibrationTypeId);
+    }
     if (searchParams.get('action') === 'record-result') setRecordModalOpen(true);
     if (searchParams.get('action') === 'new-request') setRequestModalOpen(true);
   }, [searchParams]);
@@ -344,11 +349,11 @@ export default function CalibrationPage() {
         const asset = calibrationAsset(row);
         return (
           <div className="flex flex-wrap gap-1.5">
-            <Link className="rounded-lg border border-[var(--border-subtle)] px-2 py-1 text-xs font-medium hover:bg-[var(--surface-2)]" href={`/calibration?recordId=${row.id as string}&source=calibration-record`}>
+            <Link className="rounded-lg bg-[var(--brand)] px-2 py-1 text-xs font-medium text-white hover:bg-[var(--brand-strong)]" href={`/calibration/records/${row.id as string}`}>
               View Evidence
             </Link>
             {['fail', 'adjusted'].includes(row.result as string) && asset?.id && (
-              <Link className="rounded-lg border border-[var(--border-subtle)] px-2 py-1 text-xs font-medium hover:bg-[var(--surface-2)]" href={`/maintenance/requests/new?assetId=${asset.id}&source=calibration&reportedCondition=needs_repair`}>
+              <Link className="rounded-lg border border-amber-500/60 bg-amber-500/10 px-2 py-1 text-xs font-medium text-amber-400 hover:bg-amber-500/20" href={`/maintenance/requests/new?assetId=${asset.id}&source=calibration-failed&reportedCondition=needs_repair&description=${encodeURIComponent(`Calibration ${String(row.result)} result requires corrective review.`)}`}>
                 Create Maintenance Request
               </Link>
             )}
@@ -417,8 +422,14 @@ export default function CalibrationPage() {
               : row.status === 'rejected'
                 ? 'View Reason'
                 : 'Open Assigned Task';
+        const isPrimary = ['pending', 'approved', 'in_progress'].includes(String(row.status ?? ''));
         return (
-          <Link className="rounded-lg border border-[var(--border-subtle)] px-2 py-1 text-xs font-medium hover:bg-[var(--surface-2)]" href={`/calibration?requestId=${row.id as string}&action=${label.toLowerCase().replace(/\s+/g, '-')}`}>
+          <Link
+            className={isPrimary
+              ? 'rounded-lg bg-[var(--brand)] px-2 py-1 text-xs font-medium text-white hover:bg-[var(--brand-strong)]'
+              : 'rounded-lg border border-[var(--border-subtle)] px-2 py-1 text-xs font-medium hover:bg-[var(--surface-2)]'}
+            href={`/calibration/requests/${row.id as string}${row.status === 'approved' ? '?action=schedule' : ''}`}
+          >
             {label}
           </Link>
         );
@@ -507,8 +518,8 @@ export default function CalibrationPage() {
         if (request?.id) {
           return (
             <div className="flex flex-wrap gap-1.5">
-              <Link className="rounded-lg border border-[var(--border-subtle)] px-2 py-1 text-xs font-medium hover:bg-[var(--surface-2)]" href={`/calibration?requestId=${request.id as string}`}>
-                {String(request.status) === 'approved' ? 'Open Assigned Task' : 'Open Request'}
+              <Link className="rounded-lg bg-[var(--brand)] px-2 py-1 text-xs font-medium text-white hover:bg-[var(--brand-strong)]" href={`/calibration/requests/${request.id as string}${String(request.status) === 'approved' ? '?action=schedule' : ''}`}>
+                {String(request.status) === 'approved' ? 'Schedule Calibration' : 'Open Request'}
               </Link>
               {asset?.id && (
                 <Link className="rounded-lg border border-[var(--border-subtle)] px-2 py-1 text-xs font-medium hover:bg-[var(--surface-2)]" href={`/equipment/${asset.id}`}>
@@ -528,7 +539,7 @@ export default function CalibrationPage() {
                   if (asset?.id) setReqAssetId(asset.id);
                   setRequestModalOpen(true);
                 }}
-                className="rounded-lg border border-[var(--border-subtle)] px-2 py-1 text-xs font-medium hover:bg-[var(--surface-2)]"
+                className="rounded-lg bg-[var(--brand)] px-2 py-1 text-xs font-medium text-white hover:bg-[var(--brand-strong)]"
               >
                 {label}
               </button>
@@ -540,7 +551,7 @@ export default function CalibrationPage() {
                   if (asset?.id) setRecAssetId(asset.id);
                   setRecordModalOpen(true);
                 }}
-                className="rounded-lg border border-[var(--border-subtle)] px-2 py-1 text-xs font-medium hover:bg-[var(--surface-2)]"
+                className="rounded-lg bg-[var(--brand)] px-2 py-1 text-xs font-medium text-white hover:bg-[var(--brand-strong)]"
               >
                 {label}
               </button>
@@ -735,7 +746,7 @@ export default function CalibrationPage() {
                     ) : (group.requests ?? []).map((request) => {
                       const asset = calibrationAsset(request);
                       return (
-                        <Link key={String(request.id)} href={`/calibration?requestId=${request.id as string}`} className="block rounded-md bg-[var(--surface-2)]/70 p-2 hover:bg-[var(--surface-2)]">
+                        <Link key={String(request.id)} href={`/calibration/requests/${request.id as string}${request.status === 'approved' ? '?action=schedule' : ''}`} className="block rounded-md bg-[var(--surface-2)]/70 p-2 hover:bg-[var(--surface-2)]">
                           <div className="flex items-start justify-between gap-2">
                             <div className="min-w-0">
                               <p className="truncate text-sm font-medium text-[var(--foreground)]">{asset?.asset_code ?? 'Request'} · {asset?.name ?? String(request.request_number ?? 'Calibration request')}</p>
@@ -763,7 +774,7 @@ export default function CalibrationPage() {
                               ))}
                             </div>
                           </div>
-                          {asset?.id && <Link className="text-xs font-medium text-[var(--brand)] hover:underline" href={request?.id ? `/calibration?requestId=${request.id as string}` : `/calibration?assetId=${asset.id}&action=new-request`}>{request?.id ? 'Open Request' : 'Create Calibration Request'}</Link>}
+                          {asset?.id && <Link className="text-xs font-medium text-[var(--brand)] hover:underline" href={request?.id ? `/calibration/requests/${request.id as string}` : `/calibration/requests/new?assetId=${asset.id}&calibrationTypeId=${String(row.calibration_type_id ?? '')}&source=triage`}>{request?.id ? 'Open Request' : 'Create Calibration Request'}</Link>}
                         </div>
                       </div>
                     );

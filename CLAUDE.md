@@ -1,6 +1,6 @@
 # CLAUDE.md — BMERMS Project Intelligence
 
-Last updated: 2026-05-11 (final workflow polishing pass)
+Last updated: 2026-05-12 (Reports module redesign — professional evidence/export center)
 Branch: BMERMS_V4
 Deployment: https://project-git-bmermsv3-beamlak-fekadus-projects.vercel.app
 Supabase project ID: fgqyszbxzpmqzpqvdivx
@@ -105,6 +105,37 @@ DONE:
   - App-level role types live in `src/types/roles.ts` (`RoleName`, `ROLE_NAMES`). Other app/domain aliases used by services/pages live in `src/types/domain.ts`.
   - After regenerating Supabase types, rerun `npx tsc --noEmit` and `npm run build`; fix missing exports by moving/reusing app types outside the generated file instead of editing `database.ts`.
   - Migration 00043 exposes `asset_id` in `v_calibration_due` for exact calibration and Command Center drilldowns.
+
+- Logistics drilldowns + Developer Lab + Settings finish (2026-05-12):
+  - Logistics page rewritten with `?workflow=` param (supports both `workflow=` and old `panel=`). Each workflow now renders a real Table with live data: receiving→delivered procurement, requests→open procurement, issue→low-stock parts with deficit/action, bin-card→full ledger with receipts/issues per part, usage-linkage→linked and unlinked issues with stockout banner. URL param is `workflow` (not `panel`).
+  - Developer Lab health checks grouped into 4 categories: Data Integrity, Workflow Integrity, Decision-Support Integrity, Security/Auth Integrity. Each group shows its own critical/warning/healthy summary badge.
+  - DeveloperLabClient sensitivity tabs now show per-tab methodology previews for non-RPI tabs (Equipment Health, Department Readiness, Critical Action Score, Stock/Procurement Priority) with labeled fields, sources, and "Preview only" amber banners.
+  - Settings page `spare-part-categories`, `procurement-statuses`, `disposal-reasons` sections now show actual configured values: spare parts explains the free-text category column; procurement statuses shows all 6 enum values with descriptions; disposal reasons shows all 6 disposal method enum values with descriptions.
+  - Procurement inline status update already existed (select dropdown + handleStatusUpdate). Confirmed working.
+  - All calibration routes verified present: /calibration/requests/[id], /calibration/records/[id], /calibration/requests/new (redirects), /calibration/records/new (redirects). All actions (Review Request, Schedule Calibration, Prepare Calibration, Record Result, View Evidence, Open Asset Profile, Create Maintenance Request) route correctly.
+  - Build: npm run build ✅ tsc --noEmit ✅ npm run lint ✅ (0 errors).
+
+- Action style + reports charts finishing pass (2026-05-12):
+  - Reports detail page (`/reports/[type]`) now renders per-type Chart.js charts in the Visual Summary section using existing BarChart, DoughnutChart, HorizontalBarChart, and ChartCard components. Charts are computed from loaded data via `buildReportCharts(effectiveReportType, data)`. The `reportCharts` useMemo must appear before any conditional returns.
+  - Training TrainingTab type cleaned up: removed unused 'evidence' variant; 'evidence' in normalizeTrainingTab now maps to 'completed'.
+  - Action button styles standardized across calibration, work-orders, alerts, spare-parts, procurement, disposal: primary row action uses `bg-[var(--brand)]` brand purple; stockout uses `bg-red-600`; warning/low-stock uses `bg-amber-600`; amber signal uses `border-amber-500/60 bg-amber-500/10 text-amber-400`; success/issue uses `bg-emerald-600`; secondary/evidence uses neutral outline.
+  - All pre-existing changes (calibration actions, work orders unified queue, replacement thresholds, disposal disposed_by full_name, alerts specific labels, training no-evidence-tab) were already in place from prior sessions — no regressions.
+  - Build: `npm run build` and `npx tsc --noEmit` and `npm run lint` all pass clean.
+
+- Reports module redesign (2026-05-12):
+  - `/reports/page.tsx` rewritten as 4 professional sections: Executive & Defense, Asset Lifecycle, Maintenance & Compliance, Resource/Procurement & People. Each section has a styled header, description, and 2–5 report cards.
+  - Report cards now show: title, purpose, evidence tag badge, chart/table count ("X charts + Y evidence tables"), exports available (CSV/PDF/Print), and Open Report link.
+  - Defense Evidence Pack section removed. No demo tools on Reports page.
+  - New report types added: `evaluation-demo` (Equipment data as demo evidence, full config in getReportConfig), `decision-support-methodology` (maps to replacement-planning fetcher, with methodology-specific title and columns).
+  - `/reports/[type]/page.tsx` upgraded with: per-report KPI cards (buildReportKPIs), Priority Findings section (buildPriorityFindings), extended charts with 3 chart types per key report (buildReportCharts now handles biomedical-operations, evaluation-demo, department-readiness, maintenance-performance (monthly trend bar added), pm-compliance (dept bar added), calibration-compliance (dept bar added), work-orders/technician-workload (technician hbar added), replacement-planning/decision-support-methodology (dept bar added), risk-fmea (dept bar added)).
+  - Executive summary function (buildExecutiveSummary) uses actual loaded counts for each report type.
+  - Methodology section shows report-specific explanation; replacement/decision-support reports show the prototype threshold amber notice.
+  - Export CSV now includes 4 metadata header rows (Report, Institution, Snapshot Generated, Source) before data headers. Filename pattern: bmerms-[slug]-snapshot-YYYY-MM-DD-HH-mm.csv.
+  - Export PDF (jsPDF — real PDF download) includes snapshot timestamp in header. Filename: bmerms-[slug]-snapshot-YYYY-MM-DD-HH-mm.pdf.
+  - "Print / Save as PDF" button uses window.print(). DashboardLayout sidebar/topbar/AssistantLauncher wrapped in `no-print` class. Print CSS added to globals.css: white bg, black text, hides nav/controls, preserves charts and tables. @page { size: A4; margin: 1.5cm }.
+  - Report detail page has `no-print` export action row and filter row; a print-only header div (hidden on screen) shows title, institution, and timestamp.
+  - Snapshot notice banner shows generation time and freshness state; amber variant when analytics refresh was unavailable.
+  - Build: npm run build ✅ tsc --noEmit ✅ npm run lint ✅ (0 errors).
 
 - Final workflow polishing pass (2026-05-11):
   - Global rule: operational pages are control surfaces, not passive dashboards. Count cards filter the page or route to exact filtered destinations, active cards are highlighted, and row actions use state-aware workflow verbs.

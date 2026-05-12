@@ -243,9 +243,9 @@ export default function ProcurementPage() {
         const procurement = row as ProcurementRow;
         return (
           <div className="flex flex-wrap gap-1.5">
-            <Link className="rounded-lg border border-[var(--border-subtle)] px-2 py-1 text-xs font-medium hover:bg-[var(--surface-2)]" href={action.href}>{action.label}</Link>
+            <Link className="rounded-lg bg-[var(--brand)] px-2 py-1 text-xs font-medium text-white hover:bg-[var(--brand-strong)]" href={action.href}>{action.label}</Link>
             {isStockLinked(procurement) && (
-              <Link className="rounded-lg border border-[var(--border-subtle)] px-2 py-1 text-xs font-medium hover:bg-[var(--surface-2)]" href="/work-orders?filter=on_hold&source=procurement">
+              <Link className="rounded-lg border border-amber-500/60 bg-amber-500/10 px-2 py-1 text-xs font-medium text-amber-400 hover:bg-amber-500/20" href="/work-orders?filter=on_hold&source=procurement">
                 Open Blocked Work
               </Link>
             )}

@@ -131,3 +131,92 @@ body {
 .assistant-warning-strong {
   color: var(--assistant-warning-text-strong);
 }
+
+/* ── Print styles ──────────────────────────────────────────────────────────── */
+@media print {
+  /* Hide navigation, controls, and interactive chrome */
+  .no-print,
+  .assistant-launcher,
+  .assistant-panel {
+    display: none !important;
+  }
+
+  /* Reset dark backgrounds for legibility */
+  body,
+  .app-shell,
+  .panel-surface,
+  .panel-surface-muted {
+    background: #ffffff !important;
+    color: #000000 !important;
+    box-shadow: none !important;
+  }
+
+  /* Ensure text is readable on white */
+  h1, h2, h3, h4, p, span, td, th, li {
+    color: #111111 !important;
+  }
+
+  /* Muted text slightly softer but still legible */
+  .text-muted,
+  [class*="text-muted"] {
+    color: #444444 !important;
+  }
+
+  /* Brand purple readable on white */
+  [class*="text-brand"],
+  [class*="text-violet"],
+  [class*="text-blue"],
+  [class*="text-emerald"],
+  [class*="text-amber"],
+  [class*="text-rose"],
+  [class*="text-red"] {
+    color: #000000 !important;
+  }
+
+  /* Badges — remove colored backgrounds for print */
+  [class*="bg-"] {
+    background: transparent !important;
+    border-color: #cccccc !important;
+  }
+
+  /* Keep borders visible for structure */
+  [class*="border"] {
+    border-color: #cccccc !important;
+  }
+
+  /* Charts need their canvas visible — don't hide them */
+  canvas {
+    max-width: 100% !important;
+  }
+
+  /* Break page neatly between chart rows but not inside them */
+  .report-chart-grid > * {
+    break-inside: avoid;
+  }
+
+  /* Don't break KPI cards mid-row */
+  .report-kpi-grid > * {
+    break-inside: avoid;
+  }
+
+  /* Avoid page breaks inside evidence tables */
+  table {
+    break-inside: avoid;
+  }
+
+  /* Show snapshot header in print */
+  .report-print-header {
+    display: block !important;
+  }
+
+  /* Remove sticky headers that don't print well */
+  thead {
+    display: table-header-group;
+  }
+
+  /* Ensure page uses full width */
+  @page {
+    margin: 1.5cm;
+    size: A4 portrait;
+  }
+}

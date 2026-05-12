@@ -1,6 +1,6 @@
 # AGENTS.md — BMERMS Codebase Reference for AI Agents
 
-Last updated: 2026-05-11 (final workflow polishing pass)
+Last updated: 2026-05-12 (Reports module redesign — professional evidence/export center)
 Branch: BMERMS_V4
 Supabase project ID: fgqyszbxzpmqzpqvdivx
 
@@ -277,8 +277,52 @@ supabase.rpc('refresh_decision_support_snapshots')
 6. Procurement cards filter the pipeline and permitted users can update status inline. Delivered procurement points to Receive Stock so stock balances are updated through the stock workflow.
 7. Replacement thresholds are prototype/system decision thresholds only: RPI >= 0.70 strong candidate, 0.55-0.69 review candidate, <0.55 monitor. They do not approve replacement automatically; sensitivity controls live in Developer Lab only.
 8. Reports prepare a timestamped snapshot, attempt a safe decision-support snapshot refresh, write audit evidence when permitted, and display freshness/methodology notes.
-9. Settings consolidates profile/password, reference data, user management, role permissions, and security posture. BME Head can view governance sections; mutation controls remain developer/admin-gated.
-10. Developer Lab is under Command for developer/admin roles. Sensitivity tabs are simulation only unless a deliberate refresh/recompute action is run.
+
+### Logistics Workflow Drilldown Convention (2026-05-12)
+1. `/logistics` uses `?workflow=` param (normalizeWorkflow also accepts legacy `?panel=` for backward compatibility).
+2. Supported workflows: `receiving`, `requests`, `issue`, `bin-card`, `usage-linkage`.
+3. Each workflow renders a real data Table from live data fetched at mount: procurement, parts, low-stock parts, receipts, issues.
+4. Receiving: delivered procurement rows with "Receive Into Stock" and "Open Procurement" actions.
+5. Requests: open procurement rows (status not delivered/canceled) with "Track Procurement" and "Review/Approve" actions.
+6. Issue: low-stock parts with current_stock/reorder_level/deficit and "Issue Stock" (if stock > 0), "Create Urgent Procurement" (if stockout), or "Request Procurement" (if low stock) actions.
+7. Bin-card: all parts with per-part receipts/issues counts and last receipt/issue dates computed from full receipt/issue arrays.
+8. Usage-linkage: stockout banner + linked issues (with work-order link) + unlinked issues separated.
+9. Stats cards at top route to filtered spare-parts or logistics workflow panels.
+
+### Developer Lab Health Check Grouping (2026-05-12)
+1. Health checks in /developer-lab are grouped into 4 categories: Data Integrity, Workflow Integrity, Decision-Support Integrity, Security/Auth Integrity.
+2. Each group shows its own critical/warning/healthy summary badge based on the checks within it.
+3. The `HealthCheck` type has a required `group` field ('data'|'workflow'|'decision-support'|'security').
+4. Non-RPI sensitivity tabs (health, readiness, critical, stock) now show per-tab methodology preview with formula inputs, source tables, and "Preview only — simulation not yet connected to live scores" amber banner.
+
+### Settings Configured-in-DB Sections (2026-05-12)
+1. `spare-part-categories` section: explains that categories are free-text on `spare_parts.category`; no lookup table exists; no fake CRUD shown.
+2. `procurement-statuses` section: shows all 6 enum values (requested/approved/ordered/in_transit/delivered/canceled) with descriptions. Labeled "Database enum — read-only."
+3. `disposal-reasons` section: shows all 6 disposal method enum values (auction/donation/recycling/destruction/return_to_vendor/other) with descriptions. Labeled "Database enum — read-only."
+
+### Action Button Style Convention (2026-05-12)
+1. Primary operational action (first row action, must-act items): `rounded-lg bg-[var(--brand)] px-2 py-1 text-xs font-medium text-white hover:bg-[var(--brand-strong)]`
+2. Secondary/evidence/navigation action: `rounded-lg border border-[var(--border-subtle)] px-2 py-1 text-xs font-medium hover:bg-[var(--surface-2)]`
+3. Stockout/urgent escalation: `rounded-lg bg-red-600 px-2 py-1 text-xs font-medium text-white hover:bg-red-500`
+4. Warning/low-stock procurement: `rounded-lg bg-amber-600 px-2 py-1 text-xs font-medium text-white hover:bg-amber-500`
+5. Amber warning signal: `rounded-lg border border-amber-500/60 bg-amber-500/10 px-2 py-1 text-xs font-medium text-amber-400 hover:bg-amber-500/20`
+6. Success/complete/issue: `rounded-lg bg-emerald-600 px-2 py-1 text-xs font-medium text-white hover:bg-emerald-500`
+7. Apply consistently across calibration, work-orders, alerts, spare-parts, procurement, disposal, training, replacement action buttons.
+8. Button component variants already cover primary/warning/success/destructive/info/outline; use those via `<Button variant="...">` for full-width/modal buttons and the CSS class pattern for compact inline table row actions.
+
+### Reports Module Convention (2026-05-12 redesign)
+1. Reports page (`src/app/(dashboard)/reports/page.tsx`) is organized into 4 sections: Executive & Defense, Asset Lifecycle, Maintenance & Compliance, Resource/Procurement & People. Each card shows: title, purpose, evidence tag, chart count, table count, and available exports (CSV/PDF/Print).
+2. Report detail page (`src/app/(dashboard)/reports/[type]/page.tsx`) structure: print-only header → PageHeader → no-print export row (Back/CSV/PDF/Print/Refresh) → Snapshot notice banner → Executive Summary → KPI cards (buildReportKPIs) → Visual Analytics charts (buildReportCharts) → Priority Findings (buildPriorityFindings) → Methodology & Interpretation → Evidence Table (filters + DataTable).
+3. `buildReportCharts(type, rows): ChartSpec[]` takes the original URL slug (not effectiveReportType). ChartSpec has type ('doughnut'|'bar'|'hbar'|'line'). Handles: equipment/biomedical-operations/department-readiness/evaluation-demo→4 charts; maintenance-performance→3 charts (type donut+cost bar+monthly bar); pm-compliance→3 charts (status donut+assignment donut+dept bar); calibration-compliance→3 charts (result donut+type bar+dept bar); work-orders/technician-workload→3 charts (status donut+priority donut+technician hbar); replacement-planning/decision-support-methodology→3 charts (top 10 RPI hbar+band donut+dept bar); risk-fmea→3 charts (band donut+top 10 RPN hbar+dept bar); procurement-pipeline→2 charts; spare-parts-stock→1-2 charts; disposal-lifecycle→2 charts; training-competency→1-2 charts; audit-security→2 charts.
+4. `buildReportKPIs(type, rows): KpiCard[]` — report-specific KPI cards with { label, value, color, sub? }. Color keys: blue/green/red/yellow/orange/purple/gray mapped to CSS in kpiColorMap.
+5. `buildPriorityFindings(type, rows): Finding[]` — up to 3-4 critical/warning/info findings per report type. Uses AlertTriangle for critical/warning, CheckCircle for info.
+6. `buildExecutiveSummary(type, rows): string` — uses real loaded counts per report type; never generic.
+7. New report type configs added: `evaluation-demo` (Equipment data, demo-focused title/columns), `decision-support-methodology` (replacement-planning data, methodology title/columns with formula labels like S₁..S₅).
+8. Export CSV (`src/utils/export.ts`): includes 4 metadata header rows (Report, Institution, Snapshot Generated, Source) before column headers. Filename: `bmerms-[slug]-snapshot-YYYY-MM-DD-HH-mm.csv`. `exportToCSV(data, columns, slug, { reportTitle, generatedAt })`.
+9. Export PDF (jsPDF real PDF): includes snapshot timestamp in header. Filename: `bmerms-[slug]-snapshot-YYYY-MM-DD-HH-mm.pdf`. `exportToPDF({ data, columns, filename, title, filters, generatedAt })`.
+10. Print CSS: added to `src/app/globals.css` `@media print` block. Hides `.no-print`, `.assistant-launcher`, `.assistant-panel`. Sets white bg, black text. DashboardLayout sidebar and topbar wrapped in `no-print` class. Report export row and filter row have `no-print` class. Print-only header div has class `report-print-header hidden` (shown in print). Chart grids get class `report-chart-grid` (break-inside: avoid). KPI grids get `report-kpi-grid`.
+11. Settings consolidates profile/password, reference data, user management, role permissions, and security posture. BME Head can view governance sections; mutation controls remain developer/admin-gated.
+12. Developer Lab is under Command for developer/admin roles. Sensitivity tabs are simulation only unless a deliberate refresh/recompute action is run.
 
 ### Requests Hub Semantics (session 13)
 1. Requests Hub (`/requests`) is central intake and cross-category tracking, not a replacement for operational modules.

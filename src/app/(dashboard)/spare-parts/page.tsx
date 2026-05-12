@@ -312,13 +312,13 @@ export default function SparePartsPage() {
         if (stock <= reorder) {
           const existing = openProcurementForPart(row);
           if (existing?.id) {
-            return <Link className="rounded-lg border border-[var(--border-subtle)] px-2 py-1 text-xs font-medium hover:bg-[var(--surface-2)]" href={procurementDetail(existing.id as string)}>Track Procurement</Link>;
+            return <Link className="rounded-lg bg-[var(--brand)] px-2 py-1 text-xs font-medium text-white hover:bg-[var(--brand-strong)]" href={procurementDetail(existing.id as string)}>Track Procurement</Link>;
           }
           const params = procurementParams(row, stock, reorder);
-          return <Link className="rounded-lg border border-[var(--border-subtle)] px-2 py-1 text-xs font-medium hover:bg-[var(--surface-2)]" href={`/procurement/requests/new?${params.toString()}`}>{stock <= 0 ? 'Create Urgent Procurement' : 'Request Procurement'}</Link>;
+          return <Link className={stock <= 0 ? 'rounded-lg bg-red-600 px-2 py-1 text-xs font-medium text-white hover:bg-red-500' : 'rounded-lg bg-amber-600 px-2 py-1 text-xs font-medium text-white hover:bg-amber-500'} href={`/procurement/requests/new?${params.toString()}`}>{stock <= 0 ? 'Create Urgent Procurement' : 'Request Procurement'}</Link>;
         }
         return canManageParts ? (
-          <button type="button" className="rounded-lg border border-[var(--border-subtle)] px-2 py-1 text-xs font-medium hover:bg-[var(--surface-2)]" onClick={() => { setIssPartId(row.id as string); setIssueOpen(true); }}>
+          <button type="button" className="rounded-lg bg-emerald-600 px-2 py-1 text-xs font-medium text-white hover:bg-emerald-500" onClick={() => { setIssPartId(row.id as string); setIssueOpen(true); }}>
             Issue Part
           </button>
         ) : <span className="text-xs text-[var(--text-muted)]">View</span>;

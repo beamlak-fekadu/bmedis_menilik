@@ -20,25 +20,27 @@ export default function DashboardLayout({ children, userName, userRole, userRole
 
   return (
     <div className="app-shell flex h-screen overflow-hidden">
-      <div className={`fixed inset-0 z-40 lg:hidden ${mobileMenuOpen ? '' : 'pointer-events-none'}`}>
+      <div className={`no-print fixed inset-0 z-40 lg:hidden ${mobileMenuOpen ? '' : 'pointer-events-none'}`}>
         <div className={`absolute inset-0 bg-black/50 transition-opacity ${mobileMenuOpen ? 'opacity-100' : 'opacity-0'}`} onClick={() => setMobileMenuOpen(false)} />
         <div className={`absolute inset-y-0 left-0 z-50 transition-transform ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
           <Sidebar userRoles={userRoles} />
         </div>
       </div>
 
-      <div className="hidden lg:flex">
+      <div className="no-print hidden lg:flex">
         <Sidebar userRoles={userRoles} />
       </div>
 
       <div className="flex flex-1 flex-col overflow-hidden">
-        <Topbar
-          userName={userName}
-          userRole={userRole}
-          alertCount={alertCount}
-          onMenuToggle={() => setMobileMenuOpen(true)}
-          onLogout={onLogout}
-        />
+        <div className="no-print">
+          <Topbar
+            userName={userName}
+            userRole={userRole}
+            alertCount={alertCount}
+            onMenuToggle={() => setMobileMenuOpen(true)}
+            onLogout={onLogout}
+          />
+        </div>
         <main className="flex-1 overflow-y-auto p-4 pb-24 lg:p-6 lg:pb-20">{children}</main>
       </div>
       <AssistantLauncher />

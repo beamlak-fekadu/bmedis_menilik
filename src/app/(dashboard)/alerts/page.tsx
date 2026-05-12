@@ -111,7 +111,7 @@ function sourceActionLabel(alert: AlertRow) {
   if (alert.flag_type === 'urgent_maintenance') return 'Create Maintenance Request';
   if (alert.flag_type === 'recurring_failure') return 'Open Maintenance Evidence';
   if (alert.flag_type === 'high_risk') return 'Open Asset Profile';
-  return 'Open Source Record';
+  return 'Open Asset Profile';
 }
 
 function alertGroup(alert: AlertRow) {
@@ -262,7 +262,7 @@ export default function AlertsPage() {
                       {alert.acknowledged_at && <div>Acknowledged: {new Date(alert.acknowledged_at).toLocaleString()}</div>}
                     </div>
                     <div className="flex flex-wrap gap-2">
-                      <Link href={sourceHref(alert)} className="rounded-lg border border-[var(--border-subtle)] px-3 py-1.5 text-xs font-medium hover:bg-[var(--surface-2)]">
+                      <Link href={sourceHref(alert)} className="rounded-lg bg-[var(--brand)] px-3 py-1.5 text-xs font-medium text-white hover:bg-[var(--brand-strong)]">
                         {sourceActionLabel(alert)}
                       </Link>
                       {alert.is_acknowledged ? (

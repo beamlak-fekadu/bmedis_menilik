@@ -161,9 +161,96 @@ export default function DeveloperLabClient({ replacementRows }: Props) {
                 Reset Sandbox
               </Button>
             </>
+          ) : sandboxTab === 'health' ? (
+            <div className="space-y-3">
+              <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-300">
+                Preview only — Equipment Health simulation is not yet connected to live operational scores.
+              </div>
+              <div className="grid gap-3 md:grid-cols-2">
+                {[
+                  { label: 'Availability ratio', weight: '30%', source: 'equipment_reliability_metrics.availability_ratio', note: 'MTBF / (MTBF + MTTR) — higher is better' },
+                  { label: 'PM compliance', weight: '25%', source: 'pm_compliance_metrics.compliance_pct', note: 'Completed PM ÷ scheduled PM — higher is better' },
+                  { label: 'RPN penalty', weight: '25%', source: 'equipment_risk_scores.rpn', note: 'Inverted and normalized — lower RPN is better health' },
+                  { label: 'Condition / flag penalty', weight: '20%', source: 'equipment_assets.condition, recommendation_flags', note: 'Non-functional and active flags reduce score' },
+                ].map((row) => (
+                  <div key={row.label} className="rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-1)] p-3 text-sm">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-medium text-[var(--foreground)]">{row.label}</span>
+                      <span className="text-[var(--text-muted)]">{row.weight}</span>
+                    </div>
+                    <p className="mt-1 text-xs text-[var(--text-muted)]">{row.source}</p>
+                    <p className="mt-1 text-xs text-[var(--text-muted)]">{row.note}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : sandboxTab === 'readiness' ? (
+            <div className="space-y-3">
+              <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-300">
+                Preview only — Department Readiness simulation is not yet connected to live operational scores.
+              </div>
+              <div className="grid gap-3 md:grid-cols-2">
+                {[
+                  { label: 'Essential functional assets', weight: 'Primary driver', source: 'equipment_assets (critical/high category, functional condition)', note: 'Count of essential assets in functional state' },
+                  { label: 'Total essential assets', weight: 'Denominator', source: 'equipment_assets (critical/high category, active status)', note: 'Readiness = essential functional ÷ total essential' },
+                  { label: 'Non-essential functional', weight: 'Secondary', source: 'equipment_assets (lower criticality)', note: 'Contributes to extended readiness view' },
+                  { label: 'Open corrective work', weight: 'Modifier', source: 'maintenance_requests (active statuses)', note: 'Under-maintenance assets are non-functional for readiness' },
+                ].map((row) => (
+                  <div key={row.label} className="rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-1)] p-3 text-sm">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-medium text-[var(--foreground)]">{row.label}</span>
+                      <span className="text-[var(--text-muted)]">{row.weight}</span>
+                    </div>
+                    <p className="mt-1 text-xs text-[var(--text-muted)]">{row.source}</p>
+                    <p className="mt-1 text-xs text-[var(--text-muted)]">{row.note}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : sandboxTab === 'critical' ? (
+            <div className="space-y-3">
+              <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-300">
+                Preview only — Critical Action score simulation is not yet connected to live operational scores.
+              </div>
+              <div className="grid gap-3 md:grid-cols-2">
+                {[
+                  { category: 'Corrective maintenance', base: 'Urgency × status age', note: 'Critical corrective → highest base weight; open > 7 days adds overdue penalty' },
+                  { category: 'PM overdue', base: 'Days overdue × criticality', note: 'Critical asset overdue PM scores highest; routine overdue is lower' },
+                  { category: 'Calibration overdue', base: 'Safety risk score', note: 'Critical + failed/adjusted last result gets maximum calibration score' },
+                  { category: 'Stock blocker', base: 'Stockout × linkage', note: 'Stockout blocking active work order scores highest' },
+                  { category: 'Procurement delay', base: 'Delay days × criticality', note: 'Linked procurement that is delayed scores on delay duration' },
+                  { category: 'Installation / replacement', base: 'Category weight', note: 'Lower base weight; included to surface lifecycle signals' },
+                ].map((row) => (
+                  <div key={row.category} className="rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-1)] p-3 text-sm">
+                    <p className="font-medium text-[var(--foreground)]">{row.category}</p>
+                    <p className="mt-1 text-xs text-[var(--text-muted)]">Base: {row.base}</p>
+                    <p className="text-xs text-[var(--text-muted)]">{row.note}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
           ) : (
-            <div className="rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-1)] p-4 text-sm text-[var(--text-muted)]">
-              Simulation limited by available fields. This tab documents the scoring family and reserves the interface for client-side ranking once its full row inputs are loaded.
+            <div className="space-y-3">
+              <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-300">
+                Preview only — Stock/Procurement priority simulation is not yet connected to live operational scores.
+              </div>
+              <div className="grid gap-3 md:grid-cols-2">
+                {[
+                  { label: 'Stockout severity', weight: 'Highest', source: 'spare_parts.current_stock = 0', note: 'Complete stockout is prioritized over low stock' },
+                  { label: 'Reorder deficit', weight: 'High', source: 'reorder_level - current_stock', note: 'Larger deficit relative to reorder level → higher urgency' },
+                  { label: 'Active work order linkage', weight: 'Multiplier', source: 'stock_issues.issued_to_event_id, work_orders', note: 'Parts linked to active work orders are treated as blockers' },
+                  { label: 'Procurement delay days', weight: 'Medium', source: 'procurement_requests.expected_delivery_date', note: 'Days past expected delivery date for open orders' },
+                ].map((row) => (
+                  <div key={row.label} className="rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-1)] p-3 text-sm">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-medium text-[var(--foreground)]">{row.label}</span>
+                      <span className="text-[var(--text-muted)]">{row.weight}</span>
+                    </div>
+                    <p className="mt-1 text-xs text-[var(--text-muted)]">{row.source}</p>
+                    <p className="mt-1 text-xs text-[var(--text-muted)]">{row.note}</p>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </CardContent>

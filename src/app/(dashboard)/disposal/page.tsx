@@ -429,9 +429,9 @@ export default function DisposalPage() {
         return (
           <div className="flex flex-wrap gap-1.5">
             {row.existing_request ? (
-              <Link className="rounded-lg border border-[var(--border-subtle)] px-2 py-1 text-xs font-medium hover:bg-[var(--surface-2)]" href={`/disposal?assetId=${assetId}`}>Review Request</Link>
+              <Link className="rounded-lg bg-[var(--brand)] px-2 py-1 text-xs font-medium text-white hover:bg-[var(--brand-strong)]" href={`/disposal?assetId=${assetId}`}>Review Request</Link>
             ) : canManageMaintenance ? (
-              <button type="button" className="rounded-lg border border-[var(--border-subtle)] px-2 py-1 text-xs font-medium hover:bg-[var(--surface-2)]" onClick={() => { setFormAssetId(assetId); setFormReason(String(row.reason ?? 'Lifecycle evidence supports disposal review.')); setCreateOpen(true); }}>
+              <button type="button" className="rounded-lg bg-[var(--brand)] px-2 py-1 text-xs font-medium text-white hover:bg-[var(--brand-strong)]" onClick={() => { setFormAssetId(assetId); setFormReason(String(row.reason ?? 'Lifecycle evidence supports disposal review.')); setCreateOpen(true); }}>
                 Create Disposal Request
               </button>
             ) : null}

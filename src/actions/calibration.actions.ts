@@ -6,6 +6,36 @@ import { getActionContext, logServerAuditEvent, revalidateMany, actionError, nul
 
 const calibrationPaths = ['/calibration', '/calendar', '/command', '/reports/calibration'];
 
+export async function updateCalibrationRequestStatusAction(id: string, status: string): Promise<ActionResult> {
+  try {
+    const { supabase, profile, error } = await getActionContext(['admin', 'bme_head', 'technician']);
+    if (error || !profile) return { success: false, error };
+    const parsedStatus = z.enum(['pending', 'approved', 'in_progress', 'completed', 'rejected', 'canceled']).parse(status);
+    const oldRow = await supabase.from('calibration_requests').select('*').eq('id', id).maybeSingle();
+    const result = await supabase
+      .from('calibration_requests')
+      .update({ status: parsedStatus } as never)
+      .eq('id', id)
+      .select('*')
+      .single();
+    if (result.error) return { success: false, error: result.error.message };
+    await logServerAuditEvent({
+      supabase,
+      profileId: profile.id,
+      action: 'calibration_request.status_update',
+      entityType: 'calibration_requests',
+      entityId: id,
+      oldValues: oldRow.data as Record<string, unknown> | null,
+      newValues: result.data as Record<string, unknown>,
+    });
+    const assetId = (result.data as Record<string, unknown>).asset_id as string | undefined;
+    revalidateMany([...calibrationPaths, `/calibration/requests/${id}`, ...(assetId ? [`/equipment/${assetId}`] : [])]);
+    return { success: true, data: result.data };
+  } catch (err) {
+    return actionError(err, 'Failed to update calibration request');
+  }
+}
+
 export async function createCalibrationRequestAction(payload: Record<string, unknown>): Promise<ActionResult> {
   try {
     const { supabase, profile, error } = await getActionContext(['admin', 'bme_head', 'technician']);

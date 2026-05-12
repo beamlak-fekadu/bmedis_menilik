@@ -702,18 +702,79 @@ export default function SettingsPage() {
     if (activeSection === 'equipment-categories') return renderReferenceManager('equipment_categories');
     if (activeSection === 'calibration-types') return renderReferenceManager('calibration_types');
     if (activeSection === 'pm-templates') return renderReferenceManager('pm_templates');
-    if (activeSection === 'spare-part-categories' || activeSection === 'procurement-statuses' || activeSection === 'disposal-reasons') {
-      const labels: Record<string, string> = {
-        'spare-part-categories': 'Spare Part Categories',
-        'procurement-statuses': 'Procurement Statuses',
-        'disposal-reasons': 'Disposal Reasons',
-      };
+    if (activeSection === 'spare-part-categories') {
       return (
         <Card>
-          <CardHeader><CardTitle>{labels[activeSection]}</CardTitle><Badge variant="info">Configured in database</Badge></CardHeader>
-          <CardContent className="space-y-2 text-sm text-[var(--text-muted)]">
-            <p>This setting is represented by existing operational fields and database constraints today.</p>
-            <p>Full CRUD can be added once a dedicated lookup table is introduced; no fake controls are shown here.</p>
+          <CardHeader><CardTitle>Spare Part Categories</CardTitle><Badge variant="info">Configured in reference data</Badge></CardHeader>
+          <CardContent className="space-y-3 text-sm">
+            <p className="text-[var(--text-muted)]">Spare part categories are free-text classification values stored on each part row in the <code className="rounded bg-[var(--surface-3)] px-1">spare_parts.category</code> column. A dedicated lookup table has not been added yet, so CRUD is not available here.</p>
+            <div className="rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-1)] p-3">
+              <p className="mb-2 font-medium text-[var(--foreground)]">Where it affects the system</p>
+              <ul className="list-disc pl-4 text-[var(--text-muted)]">
+                <li>Spare parts catalog grouping and category filter</li>
+                <li>Training report category filter</li>
+                <li>Procurement justification context</li>
+              </ul>
+            </div>
+            <p className="text-[var(--text-muted)]">To manage categories today, update the <code className="rounded bg-[var(--surface-3)] px-1">category</code> field directly when editing a spare part.</p>
+          </CardContent>
+        </Card>
+      );
+    }
+    if (activeSection === 'procurement-statuses') {
+      const PROCUREMENT_STATUSES = [
+        { value: 'requested', label: 'Requested', description: 'Request submitted; needs BME review and approval.' },
+        { value: 'approved', label: 'Approved', description: 'Approved; ready to place order with supplier.' },
+        { value: 'ordered', label: 'Ordered', description: 'Order placed; supplier follow-up and delivery tracking.' },
+        { value: 'in_transit', label: 'In Transit', description: 'Goods in transit; prepare receipt and stock update.' },
+        { value: 'delivered', label: 'Delivered', description: 'Goods received; receive into stock and close evidence.' },
+        { value: 'canceled', label: 'Canceled', description: 'Request canceled; reason should be documented.' },
+      ];
+      return (
+        <Card>
+          <CardHeader><CardTitle>Procurement Statuses</CardTitle><Badge variant="info">Database enum — read-only</Badge></CardHeader>
+          <CardContent className="space-y-3 text-sm">
+            <p className="text-[var(--text-muted)]">Procurement statuses are a PostgreSQL enum defined in the database schema. They cannot be changed without a database migration. Inline status updates are available on the Procurement page.</p>
+            <div className="grid gap-2 md:grid-cols-2">
+              {PROCUREMENT_STATUSES.map((status) => (
+                <div key={status.value} className="rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-1)] p-3">
+                  <div className="flex items-center gap-2">
+                    <code className="rounded bg-[var(--surface-3)] px-1.5 py-0.5 text-xs text-[var(--foreground)]">{status.value}</code>
+                    <span className="text-xs font-medium text-[var(--foreground)]">{status.label}</span>
+                  </div>
+                  <p className="mt-1 text-xs text-[var(--text-muted)]">{status.description}</p>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      );
+    }
+    if (activeSection === 'disposal-reasons') {
+      const DISPOSAL_METHODS = [
+        { value: 'auction', label: 'Auction', description: 'Equipment sold by public or closed auction; proceeds documented.' },
+        { value: 'donation', label: 'Donation', description: 'Equipment donated to another institution or organization.' },
+        { value: 'recycling', label: 'Recycling', description: 'Equipment sent to certified e-waste or materials recycling.' },
+        { value: 'destruction', label: 'Destruction', description: 'Equipment destroyed; used for hazardous, non-resalable, or expired items.' },
+        { value: 'return_to_vendor', label: 'Return to Vendor', description: 'Equipment returned under warranty, contract, or trade-in agreement.' },
+        { value: 'other', label: 'Other', description: 'Any other disposal method; must be described in notes.' },
+      ];
+      return (
+        <Card>
+          <CardHeader><CardTitle>Disposal Methods</CardTitle><Badge variant="info">Database enum — read-only</Badge></CardHeader>
+          <CardContent className="space-y-3 text-sm">
+            <p className="text-[var(--text-muted)]">Disposal methods are a PostgreSQL enum defined in the database schema. They cannot be changed without a database migration. These values are selected on the Disposal page when creating or completing a disposal request.</p>
+            <div className="grid gap-2 md:grid-cols-2">
+              {DISPOSAL_METHODS.map((method) => (
+                <div key={method.value} className="rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-1)] p-3">
+                  <div className="flex items-center gap-2">
+                    <code className="rounded bg-[var(--surface-3)] px-1.5 py-0.5 text-xs text-[var(--foreground)]">{method.value}</code>
+                    <span className="text-xs font-medium text-[var(--foreground)]">{method.label}</span>
+                  </div>
+                  <p className="mt-1 text-xs text-[var(--text-muted)]">{method.description}</p>
+                </div>
+              ))}
+            </div>
           </CardContent>
         </Card>
       );
