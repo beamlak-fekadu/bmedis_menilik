@@ -63,7 +63,7 @@ export default function ResetPasswordPage() {
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          placeholder="you@yekatit12.gov.et"
+          placeholder="you@menelikii.gov.et"
           required
           autoComplete="email"
           autoFocus

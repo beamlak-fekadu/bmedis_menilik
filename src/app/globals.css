@@ -16,10 +16,10 @@
   --surface-2: rgba(255, 255, 255, 0.45);
   --surface-3: rgba(255, 255, 255, 0.92);
   --surface-solid: #ffffff;
-  --border-subtle: rgba(15, 23, 42, 0.08);
-  --border-strong: rgba(15, 23, 42, 0.14);
-  --text-muted: #475569;
-  --text-subtle: #94a3b8;
+  --border-subtle: rgba(15, 23, 42, 0.14);
+  --border-strong: rgba(15, 23, 42, 0.20);
+  --text-muted: #334155;
+  --text-subtle: #475569;
 
   /* Brand — calm clinical blue with violet gradient partner for emphasis */
   --brand: #2563eb;
@@ -63,8 +63,8 @@
   --chatbot-nav-glow: 0 0 0 1px rgb(214 165 71 / 30%), 0 8px 18px rgb(214 165 71 / 18%);
 
   /* Charts */
-  --chart-label: #475569;
-  --chart-grid: rgba(15, 23, 42, 0.08);
+  --chart-label: #334155;
+  --chart-grid: rgba(15, 23, 42, 0.16);
   --chart-tooltip-bg: rgba(15, 23, 42, 0.92);
   --chart-tooltip-text: #f8fafc;
   --chart-tooltip-border: rgba(255, 255, 255, 0.12);

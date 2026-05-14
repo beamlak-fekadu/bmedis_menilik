@@ -790,7 +790,7 @@ export default function SettingsPage() {
             <CardHeader><CardTitle>Hospital Profile</CardTitle></CardHeader>
             <CardContent className="space-y-3 text-sm">
               <div className="flex justify-between gap-4"><span className="text-[var(--text-muted)]">System name</span><span>BMERMS</span></div>
-              <div className="flex justify-between gap-4"><span className="text-[var(--text-muted)]">Implementation site</span><span>Yekatit-12 Hospital Medical College</span></div>
+              <div className="flex justify-between gap-4"><span className="text-[var(--text-muted)]">Implementation site</span><span>Menelik II Hospital</span></div>
               <div className="flex justify-between gap-4"><span className="text-[var(--text-muted)]">Implementation mode</span><Badge variant="info">Thesis/demo validation</Badge></div>
               <div className="flex justify-between gap-4"><span className="text-[var(--text-muted)]">Current role</span><span>{humanize(primaryRole)}</span></div>
             </CardContent>

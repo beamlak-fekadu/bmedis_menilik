@@ -1,4 +1,4 @@
--- Master Seed File for Yekatit-12 Hospital Medical College Demo Data
+-- Master Seed File for Menelik II Hospital Demo Data
 -- Run this file to populate the entire database with realistic seed data.
 -- Execute after all migrations have been applied.
 --

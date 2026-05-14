@@ -267,7 +267,7 @@ export default function LogisticsPage() {
               key: 'current_stock', header: 'Current',
               render: (row: Record<string, unknown>) => {
                 const state = String(row.stockState ?? '');
-                const cls = state === 'Stockout' ? 'font-bold text-red-400' : state === 'Low Stock' ? 'font-bold text-amber-400' : 'text-emerald-400';
+                const cls = state === 'Stockout' ? 'font-bold text-red-600 dark:text-red-400' : state === 'Low Stock' ? 'font-bold text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400';
                 return <span className={cls}>{String(row.current_stock ?? 0)}</span>;
               },
             },
@@ -317,8 +317,8 @@ export default function LogisticsPage() {
         <div className="space-y-6">
           {stockoutParts.length > 0 && (
             <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-3">
-              <p className="text-sm font-semibold text-red-300">{stockoutParts.length} parts are stocked out — they may be blocking active work orders.</p>
-              <Link href="/work-orders?filter=on_hold&source=logistics" className="mt-2 inline-block text-xs text-red-300 hover:underline">
+              <p className="text-sm font-semibold text-red-700 dark:text-red-300">{stockoutParts.length} parts are stocked out — they may be blocking active work orders.</p>
+              <Link href="/work-orders?filter=on_hold&source=logistics" className="mt-2 inline-block text-xs text-red-700 dark:text-red-300 hover:underline">
                 Open Blocked Work Orders &rarr;
               </Link>
             </div>
@@ -402,15 +402,15 @@ export default function LogisticsPage() {
         }
       />
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8">
-        <StatCard label="Low Stock" value={summary.lowStock} icon={<Boxes className="h-6 w-6" />} color="red" onClick={() => go('/spare-parts?filter=low-stock&source=logistics')} />
-        <StatCard label="Active Parts" value={summary.totalParts} icon={<Warehouse className="h-6 w-6" />} color="blue" onClick={() => go('/spare-parts?tab=catalog&source=logistics')} />
-        <StatCard label="Recent Receipts" value={summary.receipts} icon={<ClipboardCheck className="h-6 w-6" />} color="green" onClick={() => go('/logistics?workflow=bin-card')} />
-        <StatCard label="Recent Issues" value={summary.issues} icon={<ArrowRightLeft className="h-6 w-6" />} color="orange" onClick={() => go('/logistics?workflow=usage-linkage')} />
-        <StatCard label="Open Procurement" value={summary.procurementOpen} icon={<HandHelping className="h-6 w-6" />} color="purple" onClick={() => go('/procurement?filter=open&source=logistics')} />
-        <StatCard label="Pending Receiving" value={summary.pendingReceiving} icon={<PackageCheck className="h-6 w-6" />} color="yellow" active={activeWorkflow === 'receiving'} onClick={() => go('/logistics?workflow=receiving')} />
-        <StatCard label="Low/Stockout Parts" value={summary.pendingIssue} icon={<ClipboardCheck className="h-6 w-6" />} color="orange" active={activeWorkflow === 'issue'} onClick={() => go('/logistics?workflow=issue')} />
-        <StatCard label="WO-Linked Issues" value={summary.workOrderIssues} icon={<ArrowRightLeft className="h-6 w-6" />} color="blue" active={activeWorkflow === 'usage-linkage'} onClick={() => go('/logistics?workflow=usage-linkage')} />
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-8">
+        <StatCard label="Low Stock" value={summary.lowStock} icon={<Boxes className="h-5 w-5" />} color="red" onClick={() => go('/spare-parts?filter=low-stock&source=logistics')} />
+        <StatCard label="Active Parts" value={summary.totalParts} icon={<Warehouse className="h-5 w-5" />} color="blue" onClick={() => go('/spare-parts?tab=catalog&source=logistics')} />
+        <StatCard label="Recent Receipts" value={summary.receipts} icon={<ClipboardCheck className="h-5 w-5" />} color="green" onClick={() => go('/logistics?workflow=bin-card')} />
+        <StatCard label="Recent Issues" value={summary.issues} icon={<ArrowRightLeft className="h-5 w-5" />} color="orange" onClick={() => go('/logistics?workflow=usage-linkage')} />
+        <StatCard label="Open Procurement" value={summary.procurementOpen} icon={<HandHelping className="h-5 w-5" />} color="purple" onClick={() => go('/procurement?filter=open&source=logistics')} />
+        <StatCard label="Pending Receiving" value={summary.pendingReceiving} icon={<PackageCheck className="h-5 w-5" />} color="yellow" active={activeWorkflow === 'receiving'} onClick={() => go('/logistics?workflow=receiving')} />
+        <StatCard label="Low/Stockout Parts" value={summary.pendingIssue} icon={<ClipboardCheck className="h-5 w-5" />} color="orange" active={activeWorkflow === 'issue'} onClick={() => go('/logistics?workflow=issue')} />
+        <StatCard label="WO-Linked Issues" value={summary.workOrderIssues} icon={<ArrowRightLeft className="h-5 w-5" />} color="blue" active={activeWorkflow === 'usage-linkage'} onClick={() => go('/logistics?workflow=usage-linkage')} />
       </div>
 
       <section className="panel-surface rounded-lg p-4">
@@ -437,21 +437,21 @@ export default function LogisticsPage() {
               count: summary.pendingIssue,
               why: 'Low-stock or stockout parts need procurement or issue decisions before repairs can continue.',
               href: '/logistics?workflow=issue',
-              tone: 'text-orange-300',
+              tone: 'text-orange-700 dark:text-orange-300',
             },
             {
               label: 'Open procurement',
               count: summary.procurementOpen,
               why: 'Purchases that need follow-up before stock can recover.',
               href: '/procurement?filter=open&source=logistics',
-              tone: 'text-violet-300',
+              tone: 'text-violet-700 dark:text-violet-300',
             },
             {
               label: 'Work-order linked issues',
               count: summary.workOrderIssues,
               why: `${summary.workOrderIssues} stock issues are linked to work orders; ${Math.max(summary.issues - summary.workOrderIssues, 0)} are not linked.`,
               href: '/logistics?workflow=usage-linkage',
-              tone: 'text-cyan-300',
+              tone: 'text-cyan-700 dark:text-cyan-300',
             },
           ].map((item) => (
             <Link key={item.label} href={item.href} className="rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-1)] p-3 transition hover:border-[var(--brand)]/50">

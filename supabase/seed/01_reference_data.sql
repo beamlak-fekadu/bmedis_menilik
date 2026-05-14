@@ -1,5 +1,5 @@
 -- Seed 01: Reference / Master Data
--- Realistic reference data for Yekatit-12 Hospital Medical College, Addis Ababa
+-- Realistic reference data for Menelik II Hospital, Addis Ababa
 
 -- =============================================================================
 -- DEPARTMENTS (8 departments)

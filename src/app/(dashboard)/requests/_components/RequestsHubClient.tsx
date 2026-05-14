@@ -113,7 +113,7 @@ export default function RequestsHubClient({ data }: { data: RequestsHubData }) {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-7">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
         {data.categoryCards.map((card) => {
           const Icon = ICONS[card.type];
           const active = selectedType === card.type;
@@ -127,12 +127,12 @@ export default function RequestsHubClient({ data }: { data: RequestsHubData }) {
               }`}
             >
               <div className="flex items-start justify-between gap-3">
-                <div>
+                <div className="min-w-0">
                   <p className="text-sm font-medium text-[var(--text-muted)]">{card.label}</p>
-                  <p className="mt-1 text-2xl font-bold text-[var(--foreground)]">{card.configured ? card.total : '0'}</p>
+                  <p className="mt-1 text-xl font-bold text-[var(--foreground)] xl:text-2xl">{card.configured ? card.total : '0'}</p>
                 </div>
-                <span className="rounded-lg bg-[var(--brand)]/15 p-2 text-[var(--brand)]">
-                  <Icon className="h-5 w-5" />
+                <span className="shrink-0 rounded-lg bg-[var(--brand)]/15 p-1.5 text-[var(--brand)]">
+                  <Icon className="h-4 w-4" />
                 </span>
               </div>
               <p className="mt-2 text-xs text-[var(--text-muted)]">

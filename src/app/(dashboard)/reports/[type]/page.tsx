@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Download, Printer, ArrowLeft, RefreshCw, AlertTriangle, CheckCircle, Info } from 'lucide-react';
 import PageHeader from '@/components/ui/PageHeader';
+import InfoPopover from '@/components/ui/InfoPopover';
 import DataTable from '@/components/ui/DataTable';
 import FilterBar from '@/components/ui/FilterBar';
 import Button from '@/components/ui/Button';
@@ -1456,14 +1457,14 @@ export default function ReportTypePage() {
       {/* Print-only header — hidden on screen */}
       <div className="report-print-header hidden">
         <h1 className="text-xl font-bold">{config.title}</h1>
-        <p className="text-sm">Yekatit-12 Hospital Medical College — BMERMS</p>
+        <p className="text-sm">Menelik II Hospital — BMERMS</p>
         <p className="text-sm">Generated: {snapshotTs}</p>
         <hr className="my-2" />
       </div>
 
       <PageHeader
         title={config.title}
-        description={config.description}
+        descriptionInfo={config.description}
         breadcrumbs={[{ label: 'Reports', href: '/reports' }, { label: config.title }]}
       />
 
@@ -1488,25 +1489,27 @@ export default function ReportTypePage() {
         </div>
       </div>
 
-      {/* Snapshot notice */}
-      <div className={`flex items-start gap-3 rounded-lg border px-4 py-3 ${freshnessFail ? 'border-amber-500/40 bg-amber-500/8' : 'border-[var(--border-subtle)] bg-[var(--surface-2)]'}`}>
-        <Info className={`mt-0.5 h-4 w-4 shrink-0 ${freshnessFail ? 'text-amber-400' : 'text-[var(--text-muted)]'}`} />
-        <div className="space-y-0.5">
-          <p className="text-sm text-[var(--foreground)]">
-            This report represents a system snapshot generated at <strong>{snapshotTs}</strong>.
-            Operational metrics and evidence are read from the current BMERMS database state. Charts, summaries, and tables reflect available records at generation time.
+      {/* Snapshot notice — compact line, details behind (i) */}
+      <div className={`flex items-center gap-2 rounded-lg border px-4 py-2 ${freshnessFail ? 'border-amber-500/40 bg-amber-500/8' : 'border-[var(--border-subtle)] bg-[var(--surface-2)]'}`}>
+        <Info className={`h-4 w-4 shrink-0 ${freshnessFail ? 'text-amber-600 dark:text-amber-400' : 'text-[var(--text-muted)]'}`} />
+        <p className="text-sm text-[var(--foreground)]">
+          Snapshot generated <strong>{snapshotTs}</strong>
+          {freshnessFail ? <span className="ml-2 text-xs text-amber-700 dark:text-amber-400">(live refresh unavailable)</span> : null}
+        </p>
+        <InfoPopover className="ml-auto" align="right">
+          <p className="mb-2 text-[var(--foreground)]">
+            This report represents a system snapshot generated at <strong>{snapshotTs}</strong>. Operational metrics and evidence are read from the current BMERMS database state. Charts, summaries, and tables reflect available records at generation time.
           </p>
-          {freshnessFail && (
-            <p className="text-xs text-amber-400">
+          {freshnessFail ? (
+            <p className="text-xs text-amber-700 dark:text-amber-400">
               Live analytics refresh was unavailable. Report uses the latest available operational records.
             </p>
-          )}
-          {!freshnessFail && (
+          ) : (
             <p className="text-xs text-[var(--text-muted)]">
               Decision-support analytics were refreshed before this report was assembled.
             </p>
           )}
-        </div>
+        </InfoPopover>
       </div>
 
       {/* Executive summary */}

@@ -1,5 +1,5 @@
 -- Seed 02: Users, Profiles, and Roles
--- Creates roles and profiles for demo users at Yekatit-12 Hospital Medical College.
+-- Creates roles and profiles for demo users at Menelik II Hospital.
 -- NOTE: In production/hosted Supabase, auth.users entries are created via Supabase Auth
 -- (Dashboard or Admin API), not by direct inserts in this seed file.
 -- Seeded profiles intentionally start with user_id = NULL and must be linked later.
@@ -25,26 +25,28 @@ INSERT INTO roles (id, name, description, permissions) VALUES
 -- user_id is NULL until linked via Supabase Auth; profile.id is used by all FK references
 -- =============================================================================
 INSERT INTO profiles (id, full_name, email, phone, department_id, job_title, is_active) VALUES
-    -- Admin (Biomedical Head)
-    ('a3000001-0000-0000-0000-000000000001', 'Dr. Ermias Tadesse', 'ermias.tadesse@yekatit12.gov.et', '+251-91-234-5678', NULL, 'Head of Biomedical Engineering', true),
-    -- Technicians
-    ('a3000001-0000-0000-0000-000000000002', 'Hanna Gebremedhin', 'hanna.g@yekatit12.gov.et', '+251-91-345-6789', NULL, 'Senior Biomedical Technician', true),
-    ('a3000001-0000-0000-0000-000000000003', 'Solomon Bekele', 'solomon.b@yekatit12.gov.et', '+251-91-456-7890', NULL, 'Biomedical Technician', true),
-    ('a3000001-0000-0000-0000-000000000004', 'Meron Alemu', 'meron.a@yekatit12.gov.et', '+251-91-567-8901', NULL, 'Biomedical Technician', true),
-    -- Department Users (one per department)
-    ('a3000001-0000-0000-0000-000000000005', 'Sr. Tigist Worku', 'tigist.w@yekatit12.gov.et', '+251-91-678-9012', 'd0000001-0000-0000-0000-000000000001', 'ICU Head Nurse', true),
-    ('a3000001-0000-0000-0000-000000000006', 'Dr. Yonas Abera', 'yonas.a@yekatit12.gov.et', '+251-91-789-0123', 'd0000001-0000-0000-0000-000000000002', 'Chief Surgeon', true),
-    ('a3000001-0000-0000-0000-000000000007', 'Sr. Bethlehem Desta', 'bethlehem.d@yekatit12.gov.et', '+251-91-890-1234', 'd0000001-0000-0000-0000-000000000003', 'Emergency Department Lead', true),
-    ('a3000001-0000-0000-0000-000000000008', 'Dr. Fitsum Haile', 'fitsum.h@yekatit12.gov.et', '+251-91-901-2345', 'd0000001-0000-0000-0000-000000000004', 'Radiologist', true),
-    ('a3000001-0000-0000-0000-000000000009', 'Ato Dawit Mekonnen', 'dawit.m@yekatit12.gov.et', '+251-91-012-3456', 'd0000001-0000-0000-0000-000000000005', 'Lab Manager', true),
-    ('a3000001-0000-0000-0000-000000000010', 'W/ro Selamawit Girma', 'selamawit.g@yekatit12.gov.et', '+251-91-123-4567', 'd0000001-0000-0000-0000-000000000006', 'Chief Pharmacist', true),
-    ('a3000001-0000-0000-0000-000000000011', 'Sr. Rahel Mengistu', 'rahel.m@yekatit12.gov.et', '+251-91-234-5670', 'd0000001-0000-0000-0000-000000000007', 'Ward Charge Nurse', true),
-    ('a3000001-0000-0000-0000-000000000012', 'Dr. Abel Habtamu', 'abel.h@yekatit12.gov.et', '+251-91-345-6780', 'd0000001-0000-0000-0000-000000000008', 'OPD Physician', true),
-    -- Store User
-    ('a3000001-0000-0000-0000-000000000013', 'Ato Biniam Teshome', 'biniam.t@yekatit12.gov.et', '+251-91-456-7801', NULL, 'Medical Equipment Store Officer', true),
-    -- Management Viewers
-    ('a3000001-0000-0000-0000-000000000014', 'Dr. Amanuel Kifle', 'amanuel.k@yekatit12.gov.et', '+251-91-567-8012', NULL, 'Medical Director', true),
-    ('a3000001-0000-0000-0000-000000000015', 'W/ro Meseret Yilma', 'meseret.y@yekatit12.gov.et', '+251-91-678-9023', NULL, 'Hospital Administrator', true);
+    -- Admin (Biomedical Head) — linked demo login
+    ('a3000001-0000-0000-0000-000000000001', 'Dr. Ermias Tadesse', 'bme.head@bmerms-demo.local', '+251-91-234-5678', NULL, 'Head of Biomedical Engineering', true),
+    -- Technicians (first is the linked demo login; others use menelikii.gov.et)
+    ('a3000001-0000-0000-0000-000000000002', 'Hanna Gebremedhin', 'technician@bmerms-demo.local', '+251-91-345-6789', NULL, 'Senior Biomedical Technician', true),
+    ('a3000001-0000-0000-0000-000000000003', 'Solomon Bekele', 'solomon.b@menelikii.gov.et', '+251-91-456-7890', NULL, 'Biomedical Technician', true),
+    ('a3000001-0000-0000-0000-000000000004', 'Meron Alemu', 'meron.a@menelikii.gov.et', '+251-91-567-8901', NULL, 'Biomedical Technician', true),
+    -- Department Users (first is the linked demo login; others use menelikii.gov.et).
+    -- NOTE: the seed only ships a `department_user` role; the dedicated `department.head@bmerms-demo.local`
+    -- demo login exists in Supabase Auth but is not mapped here until a `department_head` role is added.
+    ('a3000001-0000-0000-0000-000000000005', 'Sr. Tigist Worku', 'department.user@bmerms-demo.local', '+251-91-678-9012', 'd0000001-0000-0000-0000-000000000001', 'ICU Head Nurse', true),
+    ('a3000001-0000-0000-0000-000000000006', 'Dr. Yonas Abera', 'yonas.a@menelikii.gov.et', '+251-91-789-0123', 'd0000001-0000-0000-0000-000000000002', 'Chief Surgeon', true),
+    ('a3000001-0000-0000-0000-000000000007', 'Sr. Bethlehem Desta', 'bethlehem.d@menelikii.gov.et', '+251-91-890-1234', 'd0000001-0000-0000-0000-000000000003', 'Emergency Department Lead', true),
+    ('a3000001-0000-0000-0000-000000000008', 'Dr. Fitsum Haile', 'fitsum.h@menelikii.gov.et', '+251-91-901-2345', 'd0000001-0000-0000-0000-000000000004', 'Radiologist', true),
+    ('a3000001-0000-0000-0000-000000000009', 'Ato Dawit Mekonnen', 'dawit.m@menelikii.gov.et', '+251-91-012-3456', 'd0000001-0000-0000-0000-000000000005', 'Lab Manager', true),
+    ('a3000001-0000-0000-0000-000000000010', 'W/ro Selamawit Girma', 'selamawit.g@menelikii.gov.et', '+251-91-123-4567', 'd0000001-0000-0000-0000-000000000006', 'Chief Pharmacist', true),
+    ('a3000001-0000-0000-0000-000000000011', 'Sr. Rahel Mengistu', 'rahel.m@menelikii.gov.et', '+251-91-234-5670', 'd0000001-0000-0000-0000-000000000007', 'Ward Charge Nurse', true),
+    ('a3000001-0000-0000-0000-000000000012', 'Dr. Abel Habtamu', 'abel.h@menelikii.gov.et', '+251-91-345-6780', 'd0000001-0000-0000-0000-000000000008', 'OPD Physician', true),
+    -- Store User — linked demo login
+    ('a3000001-0000-0000-0000-000000000013', 'Ato Biniam Teshome', 'store.user@bmerms-demo.local', '+251-91-456-7801', NULL, 'Medical Equipment Store Officer', true),
+    -- Management Viewers — first is the linked demo login; second uses menelikii.gov.et
+    ('a3000001-0000-0000-0000-000000000014', 'Dr. Amanuel Kifle', 'viewer@bmerms-demo.local', '+251-91-567-8012', NULL, 'Medical Director', true),
+    ('a3000001-0000-0000-0000-000000000015', 'W/ro Meseret Yilma', 'meseret.y@menelikii.gov.et', '+251-91-678-9023', NULL, 'Hospital Administrator', true);
 
 -- =============================================================================
 -- USER ROLES (assign roles to profiles)

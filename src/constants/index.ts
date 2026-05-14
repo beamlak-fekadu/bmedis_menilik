@@ -3,7 +3,7 @@ export const APP_NAME_SHORT = 'BMERMS';
 export const APP_NAME_FULL = 'Biomedical Engineering Resource Management System';
 export const APP_DESCRIPTION = 'Biomedical Engineering Resource Management System';
 export const APP_OPERATIONAL_TAGLINE = 'Clinical engineering operations, reliability, and decision support in one unified platform.';
-export const HOSPITAL_NAME = 'Yekatit-12 Hospital Medical College';
+export const HOSPITAL_NAME = 'Menelik II Hospital';
 export const CHATBOT_NAME = 'BMERMS AI Chatbot';
 export const ASSISTANT_NAME = 'BMERMS AI Assistant';
 

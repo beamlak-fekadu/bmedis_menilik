@@ -17,11 +17,17 @@ Use one seeded profile per demo role:
 
 | Role | Seeded profile email | Purpose in demo |
 | --- | --- | --- |
-| admin | `ermias.tadesse@yekatit12.gov.et` | Full access, governance, user and settings management |
-| technician | `hanna.g@yekatit12.gov.et` | Maintenance/PM/calibration and technical workflows |
-| department_user | `tigist.w@yekatit12.gov.et` | Department-scoped request and clinical operations view |
-| store_user | `biniam.t@yekatit12.gov.et` | Spare parts and logistics workflows |
-| viewer | `amanuel.k@yekatit12.gov.et` | Read-only dashboard/report access |
+| admin | `bme.head@bmerms-demo.local` | Full access, governance, user and settings management (acts as BME Head) |
+| technician | `technician@bmerms-demo.local` | Maintenance/PM/calibration and technical workflows |
+| department_user | `department.user@bmerms-demo.local` | Department-scoped request and clinical operations view |
+| store_user | `store.user@bmerms-demo.local` | Spare parts and logistics workflows |
+| viewer | `viewer@bmerms-demo.local` | Read-only dashboard/report access |
+
+Additional Supabase Auth logins exist for `developer@bmerms-demo.local` and
+`department.head@bmerms-demo.local`. They are not mapped by this seed script
+because the corresponding roles (`developer`, `department_head`) are not
+present in the base seed — `developer` is provisioned by migration 00022, and
+`department_head` would require a future role-adding migration.
 
 ## Step-by-step setup
 

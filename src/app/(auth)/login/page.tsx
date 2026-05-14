@@ -1,12 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { signIn } from '@/services/auth.service';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
+import LogoMark from '@/components/brand/LogoMark';
 import { APP_NAME_FULL, APP_NAME_SHORT, HOSPITAL_NAME } from '@/constants';
 
 const SIGN_IN_TAGLINE = 'Secure access to biomedical equipment analytics and operations.';
@@ -37,16 +37,8 @@ export default function LoginPage() {
   return (
     <div className="flex flex-col">
       <header className="mb-10 flex flex-col items-center text-center sm:mb-12">
-        <div className="mb-6 rounded-xl border border-[var(--border-subtle)]/70 bg-[var(--surface-2)]/35 px-5 py-3.5 shadow-none backdrop-blur-sm sm:px-6 sm:py-4">
-          <Image
-            src="/branding/college-logo.jpg"
-            alt={`${HOSPITAL_NAME} emblem`}
-            width={200}
-            height={240}
-            priority
-            sizes="200px"
-            className="mx-auto h-24 w-auto max-h-28 max-w-[168px] object-contain sm:h-28 sm:max-w-[188px]"
-          />
+        <div className="mb-6 flex items-center justify-center">
+          <LogoMark size={72} />
         </div>
 
         <p className="text-[0.68rem] font-semibold uppercase tracking-[0.22em] text-[var(--foreground)]">{APP_NAME_SHORT}</p>
@@ -66,7 +58,7 @@ export default function LoginPage() {
           inputMode="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          placeholder="you@yekatit12.gov.et"
+          placeholder="you@menelikii.gov.et"
           required
           autoComplete="email"
           autoFocus

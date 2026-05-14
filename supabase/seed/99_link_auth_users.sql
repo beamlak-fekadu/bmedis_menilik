@@ -17,11 +17,11 @@ WITH expected_demo_accounts AS (
   SELECT *
   FROM (
     VALUES
-      ('admin',           'ermias.tadesse@yekatit12.gov.et', 'REPLACE_WITH_ADMIN_AUTH_UUID'),
-      ('technician',      'hanna.g@yekatit12.gov.et',        'REPLACE_WITH_TECHNICIAN_AUTH_UUID'),
-      ('department_user', 'tigist.w@yekatit12.gov.et',       'REPLACE_WITH_DEPARTMENT_USER_AUTH_UUID'),
-      ('store_user',      'biniam.t@yekatit12.gov.et',       'REPLACE_WITH_STORE_USER_AUTH_UUID'),
-      ('viewer',          'amanuel.k@yekatit12.gov.et',      'REPLACE_WITH_VIEWER_AUTH_UUID')
+      ('admin',           'bme.head@bmerms-demo.local', 'REPLACE_WITH_ADMIN_AUTH_UUID'),
+      ('technician',      'technician@bmerms-demo.local',        'REPLACE_WITH_TECHNICIAN_AUTH_UUID'),
+      ('department_user', 'department.user@bmerms-demo.local',       'REPLACE_WITH_DEPARTMENT_USER_AUTH_UUID'),
+      ('store_user',      'store.user@bmerms-demo.local',       'REPLACE_WITH_STORE_USER_AUTH_UUID'),
+      ('viewer',          'viewer@bmerms-demo.local',      'REPLACE_WITH_VIEWER_AUTH_UUID')
   ) AS t(expected_role, email, auth_user_uuid_text)
 )
 SELECT
@@ -45,11 +45,11 @@ WITH expected_demo_accounts AS (
   SELECT *
   FROM (
     VALUES
-      ('admin',           'ermias.tadesse@yekatit12.gov.et', 'REPLACE_WITH_ADMIN_AUTH_UUID'),
-      ('technician',      'hanna.g@yekatit12.gov.et',        'REPLACE_WITH_TECHNICIAN_AUTH_UUID'),
-      ('department_user', 'tigist.w@yekatit12.gov.et',       'REPLACE_WITH_DEPARTMENT_USER_AUTH_UUID'),
-      ('store_user',      'biniam.t@yekatit12.gov.et',       'REPLACE_WITH_STORE_USER_AUTH_UUID'),
-      ('viewer',          'amanuel.k@yekatit12.gov.et',      'REPLACE_WITH_VIEWER_AUTH_UUID')
+      ('admin',           'bme.head@bmerms-demo.local', 'REPLACE_WITH_ADMIN_AUTH_UUID'),
+      ('technician',      'technician@bmerms-demo.local',        'REPLACE_WITH_TECHNICIAN_AUTH_UUID'),
+      ('department_user', 'department.user@bmerms-demo.local',       'REPLACE_WITH_DEPARTMENT_USER_AUTH_UUID'),
+      ('store_user',      'store.user@bmerms-demo.local',       'REPLACE_WITH_STORE_USER_AUTH_UUID'),
+      ('viewer',          'viewer@bmerms-demo.local',      'REPLACE_WITH_VIEWER_AUTH_UUID')
   ) AS t(expected_role, email, auth_user_uuid_text)
 ),
 parsed_demo_accounts AS (
@@ -76,11 +76,11 @@ WITH expected_demo_accounts AS (
   SELECT *
   FROM (
     VALUES
-      ('admin',           'ermias.tadesse@yekatit12.gov.et'),
-      ('technician',      'hanna.g@yekatit12.gov.et'),
-      ('department_user', 'tigist.w@yekatit12.gov.et'),
-      ('store_user',      'biniam.t@yekatit12.gov.et'),
-      ('viewer',          'amanuel.k@yekatit12.gov.et')
+      ('admin',           'bme.head@bmerms-demo.local'),
+      ('technician',      'technician@bmerms-demo.local'),
+      ('department_user', 'department.user@bmerms-demo.local'),
+      ('store_user',      'store.user@bmerms-demo.local'),
+      ('viewer',          'viewer@bmerms-demo.local')
   ) AS t(expected_role, email)
 )
 SELECT
@@ -105,11 +105,11 @@ WITH expected_demo_accounts AS (
   SELECT *
   FROM (
     VALUES
-      ('admin',           'ermias.tadesse@yekatit12.gov.et'),
-      ('technician',      'hanna.g@yekatit12.gov.et'),
-      ('department_user', 'tigist.w@yekatit12.gov.et'),
-      ('store_user',      'biniam.t@yekatit12.gov.et'),
-      ('viewer',          'amanuel.k@yekatit12.gov.et')
+      ('admin',           'bme.head@bmerms-demo.local'),
+      ('technician',      'technician@bmerms-demo.local'),
+      ('department_user', 'department.user@bmerms-demo.local'),
+      ('store_user',      'store.user@bmerms-demo.local'),
+      ('viewer',          'viewer@bmerms-demo.local')
   ) AS t(expected_role, email)
 )
 SELECT
@@ -133,11 +133,11 @@ WITH expected_demo_accounts AS (
   SELECT *
   FROM (
     VALUES
-      ('admin',           'ermias.tadesse@yekatit12.gov.et'),
-      ('technician',      'hanna.g@yekatit12.gov.et'),
-      ('department_user', 'tigist.w@yekatit12.gov.et'),
-      ('store_user',      'biniam.t@yekatit12.gov.et'),
-      ('viewer',          'amanuel.k@yekatit12.gov.et')
+      ('admin',           'bme.head@bmerms-demo.local'),
+      ('technician',      'technician@bmerms-demo.local'),
+      ('department_user', 'department.user@bmerms-demo.local'),
+      ('store_user',      'store.user@bmerms-demo.local'),
+      ('viewer',          'viewer@bmerms-demo.local')
   ) AS t(expected_role, email)
 )
 SELECT

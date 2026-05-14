@@ -23,9 +23,9 @@ Do this automatically without being asked. Keep entries accurate — remove stal
 ## What this project is
 
 BMERMS (Biomedical Engineering Resource Management System) is a hospital-level medical
-equipment asset management and decision-support system built for Yekatit-12 Hospital
-Medical College, Addis Ababa, Ethiopia. BSc thesis project for the School of Biomedical
-Engineering at Addis Ababa University.
+equipment asset management and decision-support system built for Menelik II Hospital,
+Addis Ababa, Ethiopia. BSc thesis project for the School of Biomedical Engineering at
+Addis Ababa University.
 
 Thesis contribution: converting routine equipment records into ranked, explainable
 engineering priorities using FMEA-based RPN, MTBF, MTTR, availability, PM compliance,
@@ -56,7 +56,7 @@ DONE:
            alerts, installation, and scoped offline sync
 - Step 10: Audit/revalidation coverage added to new server actions; profile IDs are used for audit FK fields
 - Step 14: Supabase TypeScript types generated. Current linked-schema output is `src/types/database.ts`; generated type files must stay generated-only.
-- Step 15: Login page shows "Yekatit-12 Hospital Medical College"
+- Step 15: Login page shows "Menelik II Hospital"
 - Reliability metrics (2026-05-05, migrations 00034–00035): one row per asset in equipment_reliability_metrics; idx_reliability_metrics_asset_unique; recompute upserts on asset_id; Command Center triage detail uses availability_ratio (DB column), not a misnamed percentage field.
 - Command Center redesign (2026-05-09, session 6): Full redesign for developer/admin/bme_head roles. New sections: live header with 10s auto-refresh, 10-card summary strip, critical action strip (top 6 scored cross-category actions), 8-tab categorized triage center (corrective/calibration/PM/stock/installation/replacement/procurement/training), technician workload (green/amber/red), improved risk distribution (summarizeRiskDrivers instead of raw JSON), improved replacement watchlist (buildReplacementReason). Other roles keep existing CommandCenterInteractive layout. No scoring-lab or sensitivity sliders on this page. No DB migrations required. Developer scoring lab deferred to /developer/scoring-lab (future route).
 - Command Center action accuracy (2026-05-09, session 8): Row-level actions now follow exact-record semantics: existing work orders open `/maintenance/work-orders/[id]` with state-aware action queries, existing requests open `/maintenance/requests/[id]`, PM uses `/pm/schedules/[id]`, procurement uses `/command/drilldown/procurement/[id]`, and replacement evidence uses `/command/drilldown/replacement/[assetId]`. Needs Request and stock actions open prefilled creation flows with `source=command-center`. Summary cards use `/command/drilldown/[type]` and counts share the same fetchers as triage/drilldowns. Risk Watch can be acknowledged via `command_center_acknowledgements` signal hashes and reappears when the signal changes. Training triage is hidden from the BME Head control room pending a future Department Head workflow.
@@ -158,7 +158,7 @@ IN PROGRESS:
 
 NOT STARTED:
 - Step 11: BME usability evaluation instrument design
-- Step 12: Usability testing with BMEs at Yekatit 12
+- Step 12: Usability testing with BMEs at Menelik II Hospital
 - Step 13: MEMIS comparison section for thesis
 
 ---
@@ -323,8 +323,10 @@ NOT STARTED:
     and optional details; errors surfaced via console.error and return value. acknowledgeFlag
     uses profiles.id for acknowledged_by (FK-correct).
 
-12. Institution name in seed — currently "St. Peter's Specialized Hospital", should be
-    "Yekatit-12 Hospital" (fix pending, low priority).
+12. RESOLVED (2026-05-13) — Institution rename: every UI surface, seed SQL comment, and
+    seed profile email now reads "Menelik II Hospital" / `@menelikii.gov.et`. Demo logins
+    map to `@bmerms-demo.local` per role. `St. Peter's Specialized Hospital` no longer
+    appears.
 
 13. RESOLVED (2026-05-04, migration 00023) — compute_replacement_priority_scores_all() implemented.
     replacement_priority_scores now has 80 computed rows (weights_profile_id IS NULL) plus the 8

@@ -11,7 +11,7 @@ export default async function RequestsHubPage() {
     <div className="space-y-6">
       <PageHeader
         title="Requests Hub"
-        description="Central intake and tracking for maintenance, calibration, procurement, training, disposal, installation, and specification requests."
+        descriptionInfo="Central intake and tracking for maintenance, calibration, procurement, training, disposal, installation, and specification requests."
         actions={<Badge variant="info">Role-based visibility enabled</Badge>}
       />
       <RequestsHubClient data={data} />

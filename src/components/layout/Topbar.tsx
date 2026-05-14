@@ -5,6 +5,7 @@ import { APP_NAME_SHORT, HOSPITAL_NAME } from '@/constants';
 import Button from '@/components/ui/Button';
 import Dropdown from '@/components/ui/Dropdown';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
+import { AssistantLauncher } from '@/components/assistant/AssistantLauncher';
 
 interface TopbarProps {
   userName?: string;
@@ -51,6 +52,7 @@ export default function Topbar({
       </div>
 
       <div className="flex items-center gap-2">
+        <AssistantLauncher />
         <ThemeToggle />
         <Button variant="ghost" size="icon" className="relative">
           <Bell className="h-5 w-5 text-[var(--text-muted)]" />

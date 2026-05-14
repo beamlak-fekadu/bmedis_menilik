@@ -3,7 +3,6 @@
 import { useState, type ReactNode } from 'react';
 import Sidebar from './Sidebar';
 import Topbar from './Topbar';
-import { AssistantLauncher } from '@/components/assistant/AssistantLauncher';
 import { AssistantPanel } from '@/components/assistant/AssistantPanel';
 
 interface DashboardLayoutProps {
@@ -41,9 +40,8 @@ export default function DashboardLayout({ children, userName, userRole, userRole
             onLogout={onLogout}
           />
         </div>
-        <main className="flex-1 overflow-y-auto p-4 pb-24 lg:p-6 lg:pb-20">{children}</main>
+        <main className="flex-1 overflow-y-auto p-4 pb-6 lg:p-6 lg:pb-8">{children}</main>
       </div>
-      <AssistantLauncher />
       <AssistantPanel />
     </div>
   );

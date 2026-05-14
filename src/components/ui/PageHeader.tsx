@@ -1,5 +1,6 @@
 import { type ReactNode } from 'react';
 import Link from 'next/link';
+import InfoPopover from './InfoPopover';
 
 interface Breadcrumb {
   label: string;
@@ -9,11 +10,13 @@ interface Breadcrumb {
 interface PageHeaderProps {
   title: string;
   description?: string;
+  /** When set, the description is rendered behind a small (i) button next to the title instead of inline. */
+  descriptionInfo?: ReactNode;
   breadcrumbs?: Breadcrumb[];
   actions?: ReactNode;
 }
 
-export default function PageHeader({ title, description, breadcrumbs, actions }: PageHeaderProps) {
+export default function PageHeader({ title, description, descriptionInfo, breadcrumbs, actions }: PageHeaderProps) {
   return (
     <div className="mb-6">
       {breadcrumbs && breadcrumbs.length > 0 && (
@@ -32,8 +35,13 @@ export default function PageHeader({ title, description, breadcrumbs, actions }:
       )}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-[var(--foreground)]">{title}</h1>
-          {description && <p className="mt-1 text-sm text-[var(--text-muted)]">{description}</p>}
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-bold text-[var(--foreground)]">{title}</h1>
+            {descriptionInfo && <InfoPopover align="left">{descriptionInfo}</InfoPopover>}
+          </div>
+          {description && !descriptionInfo && (
+            <p className="mt-1 text-sm text-[var(--text-muted)]">{description}</p>
+          )}
         </div>
         {actions && <div className="flex items-center gap-2">{actions}</div>}
       </div>

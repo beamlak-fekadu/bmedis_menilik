@@ -2,7 +2,7 @@
 
 Last updated: 2026-05-11
 
-Scope: app hardening and demo readiness with seed data. Real Yekatit-12 production data migration is intentionally excluded.
+Scope: app hardening and demo readiness with seed data. Real Menelik II Hospital production data migration is intentionally excluded.
 
 ## Core Demo Workflow
 

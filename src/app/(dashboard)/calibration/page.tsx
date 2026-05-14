@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { AlertTriangle, CalendarClock, CheckCircle, ClipboardList, Gauge, Plus, ShieldAlert, Wrench } from 'lucide-react';
 import PageHeader from '@/components/ui/PageHeader';
+import InfoPopover from '@/components/ui/InfoPopover';
 import DataTable from '@/components/ui/DataTable';
 import Tabs from '@/components/ui/Tabs';
 import Button from '@/components/ui/Button';
@@ -698,7 +699,7 @@ export default function CalibrationPage() {
     <div className="space-y-6">
       <PageHeader
         title="Calibration"
-        description="Accuracy and safety compliance control center for due, overdue, failed, adjusted, and requested calibrations."
+        descriptionInfo="Accuracy and safety compliance control center for due, overdue, failed, adjusted, and requested calibrations."
         actions={canManageMaintenance ? (
           <div className="flex flex-wrap gap-2">
             <Button onClick={() => setRequestModalOpen(true)} variant="outline"><ClipboardList className="h-4 w-4" /> New Request</Button>
@@ -721,14 +722,16 @@ export default function CalibrationPage() {
       {(overdueRows.length > 0 || failedAdjusted.length > 0 || awaitingActionRequests.length > 0) && (
         <section className="panel-surface rounded-lg p-4">
           <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
-            <div>
+            <div className="flex items-center gap-2">
               <h2 className="text-base font-semibold text-[var(--foreground)]">Calibration Triage</h2>
-              <p className="text-sm text-[var(--text-muted)]">Calibration priority = overdue severity + equipment criticality + last result risk + department impact + open workflow state.</p>
+              <InfoPopover align="left">
+                <p className="mb-2 font-semibold text-[var(--foreground)]">How priority is scored</p>
+                <p className="mb-2 text-[var(--text-muted)]">Calibration priority = overdue severity + equipment criticality + last result risk + department impact + open workflow state.</p>
+                <p className="font-semibold text-[var(--foreground)]">Triage groups</p>
+                <p className="text-[var(--text-muted)]">Urgent Safety Risk: overdue high-criticality or failed/adjusted last results. Needs Scheduling: due/overdue equipment without an open workflow. Awaiting Action: pending or approved requests. Longest Overdue: secondary lens for routine overdue work without overstating severity.</p>
+              </InfoPopover>
             </div>
             <Badge variant="warning">Scoring method visible per item</Badge>
-          </div>
-          <div className="mb-4 rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-1)] p-3 text-sm text-[var(--text-muted)]">
-            Urgent safety risk is curated for overdue high-criticality assets or failed/adjusted last results. Needs Scheduling is due/overdue equipment without an open workflow. Awaiting Action is pending or approved requests. Longest Overdue is a secondary lens so routine overdue work is visible without overstating every item as critical.
           </div>
           <div className="grid gap-3 lg:grid-cols-4">
             {[
