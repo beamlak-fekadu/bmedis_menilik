@@ -10,6 +10,7 @@ import Tabs from '@/components/ui/Tabs';
 import Button from '@/components/ui/Button';
 import Badge from '@/components/ui/Badge';
 import StatCard from '@/components/ui/StatCard';
+import ClearFiltersButton from '@/components/ui/ClearFiltersButton';
 import Modal from '@/components/ui/Modal';
 import Input from '@/components/ui/Input';
 import Select from '@/components/ui/Select';
@@ -22,6 +23,7 @@ import {
   getLowStockParts,
 } from '@/services/spare-parts.service';
 import { getProcurementPipeline } from '@/services/procurement.service';
+import { countLowStock, countStockout, countOpenProcurement } from '@/utils/decision-support/canonical-counts';
 import { createSparePartAction, createStockIssueAction, createStockReceiptAction } from '@/actions/spare-parts.actions';
 import { createClient } from '@/lib/supabase/client';
 import { useRole } from '@/hooks/useRole';
@@ -321,7 +323,7 @@ export default function SparePartsPage() {
           <button type="button" className="rounded-lg bg-emerald-600 px-2 py-1 text-xs font-medium text-white hover:bg-emerald-500" onClick={() => { setIssPartId(row.id as string); setIssueOpen(true); }}>
             Issue Part
           </button>
-        ) : <span className="text-xs text-[var(--text-muted)]">View</span>;
+        ) : <span className="text-xs text-[var(--text-muted)]">View only</span>;
       },
     },
   ];
@@ -447,6 +449,10 @@ export default function SparePartsPage() {
   if (loading) return <PageLoader />;
 
   const stockouts = lowStock.filter((row) => Number(row.current_stock ?? 0) <= 0);
+  // Canonical counts for stat cards — must agree with Developer Lab and Command Center.
+  const canonicalLowStockCount = countLowStock(parts as Array<{ current_stock?: number | null; reorder_level?: number | null; is_active?: boolean | null }>);
+  const canonicalStockoutCount = countStockout(parts as Array<{ current_stock?: number | null; is_active?: boolean | null }>);
+  const canonicalOpenProcurementCount = countOpenProcurement(procurementRows as Array<{ status?: string | null }>);
   const recentReceipts = receipts.filter((row) => {
     if (!row.received_date) return false;
     return Date.now() - new Date(row.received_date as string).getTime() <= 30 * 86_400_000;
@@ -455,7 +461,6 @@ export default function SparePartsPage() {
     if (!row.issue_date) return false;
     return Date.now() - new Date(row.issue_date as string).getTime() <= 30 * 86_400_000;
   });
-  const openProcurement = procurementRows.filter((row) => !['delivered', 'canceled'].includes(String(row.status ?? 'requested')));
   const highCostStock = parts.filter((row) => Number(row.current_stock ?? 0) * Number(row.unit_cost ?? 0) >= 1000);
   const lowStockNoProcurement = lowStock.filter((row) => !openProcurementForPart(row));
   const lowStockWithProcurement = lowStock.filter((row) => Boolean(openProcurementForPart(row)));
@@ -579,14 +584,20 @@ export default function SparePartsPage() {
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard label="Total Parts" value={parts.length} icon={<Boxes className="h-6 w-6" />} color="blue" active={selectedTab === 'catalog' && selectedFilter === 'all'} onClick={() => selectStockView('catalog')} />
-        <StatCard label="Low Stock" value={lowStock.length} icon={<AlertTriangle className="h-6 w-6" />} color="orange" active={selectedTab === 'lowstock' && selectedFilter === 'low-stock'} onClick={() => selectStockView('lowstock', 'low-stock')} />
-        <StatCard label="Stockout" value={stockouts.length} icon={<AlertTriangle className="h-6 w-6" />} color="red" active={selectedFilter === 'stockout'} onClick={() => selectStockView('blockers', 'stockout')} />
-        <StatCard label="Stockout Blockers" value={stockouts.length} icon={<Wrench className="h-6 w-6" />} color="purple" active={selectedFilter === 'blockers'} onClick={() => selectStockView('blockers', 'blockers')} />
+        <StatCard label="Low Stock" value={canonicalLowStockCount} icon={<AlertTriangle className="h-6 w-6" />} color="orange" active={selectedTab === 'lowstock' && selectedFilter === 'low-stock'} onClick={() => selectStockView('lowstock', 'low-stock')} />
+        <StatCard label="Stockout" value={canonicalStockoutCount} icon={<AlertTriangle className="h-6 w-6" />} color="red" active={selectedFilter === 'stockout'} onClick={() => selectStockView('blockers', 'stockout')} />
+        <StatCard label="Stockout Blockers" value={canonicalStockoutCount} icon={<Wrench className="h-6 w-6" />} color="purple" active={selectedFilter === 'blockers'} onClick={() => selectStockView('blockers', 'blockers')} />
         <StatCard label="Recently Received" value={recentReceipts.length} icon={<PackagePlus className="h-6 w-6" />} color="green" active={selectedFilter === 'recent-received'} onClick={() => selectStockView('receipts', 'recent-received')} />
         <StatCard label="Recently Issued" value={recentIssues.length} icon={<PackageMinus className="h-6 w-6" />} color="yellow" active={selectedFilter === 'recent-issued'} onClick={() => selectStockView('issues', 'recent-issued')} />
-        <StatCard label="Pending Procurement" value={openProcurement.length} icon={<ClipboardList className="h-6 w-6" />} color="purple" active={selectedFilter === 'with-procurement'} onClick={() => selectStockView('lowstock', 'with-procurement')} />
+        <StatCard label="Pending Procurement" value={canonicalOpenProcurementCount} icon={<ClipboardList className="h-6 w-6" />} color="purple" active={selectedFilter === 'with-procurement'} onClick={() => selectStockView('lowstock', 'with-procurement')} />
         <StatCard label="High-Cost Stock" value={highCostStock.length} icon={<DollarSign className="h-6 w-6" />} color="gray" active={selectedFilter === 'high-cost'} onClick={() => selectStockView('catalog', 'high-cost')} />
       </div>
+
+      {(activeTab !== '' || selectedFilter !== 'all') && (
+        <div className="flex justify-end">
+          <ClearFiltersButton onClick={() => { setActiveTab(''); setActiveFilter('all'); }} />
+        </div>
+      )}
 
       <section className="panel-surface rounded-lg p-4">
         <h2 className="text-base font-semibold text-[var(--foreground)]">Stock Action Queue</h2>

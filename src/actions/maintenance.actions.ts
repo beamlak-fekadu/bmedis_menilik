@@ -3,7 +3,7 @@
 import { z } from 'zod';
 import { recomputeAssetAnalytics } from './analytics.actions';
 import { updateEquipmentConditionAction } from './equipment.actions';
-import { getActionContext, logServerAuditEvent, revalidateMany, actionError, nullIfEmpty, type ActionResult } from './_shared';
+import { getActionContextForCapability, getActionContextForAnyCapability, logServerAuditEvent, revalidateMany, actionError, nullIfEmpty, type ActionResult } from './_shared';
 import { OPEN_MAINTENANCE_REQUEST_STATUSES } from '@/utils/maintenance/request-status';
 
 const requestSchema = z.object({
@@ -111,7 +111,7 @@ function normalizePartialWorkOrder(payload: Record<string, unknown>) {
 
 export async function createMaintenanceRequestAction(payload: Record<string, unknown>): Promise<ActionResult> {
   try {
-    const { supabase, profile, error } = await getActionContext(['admin', 'bme_head', 'technician', 'department_head', 'department_user']);
+    const { supabase, profile, error } = await getActionContextForCapability('maintenance.request.create');
     if (error || !profile) return { success: false, error };
     const parsed = requestSchema.parse(payload);
 
@@ -174,7 +174,13 @@ export async function createMaintenanceRequestAction(payload: Record<string, unk
 
 export async function updateRequestStatusAction(id: string, status: string): Promise<ActionResult> {
   try {
-    const { supabase, profile, error } = await getActionContext(['admin', 'bme_head', 'technician', 'department_head', 'department_user']);
+    // Status changes include create-author cancellations as well as approvals.
+    // Authorize via "request.create" so departmental requestors can cancel their
+    // own requests, while approvals/rejections also fall under request.approve.
+    const { supabase, profile, error } = await getActionContextForAnyCapability([
+      'maintenance.request.approve',
+      'maintenance.request.create',
+    ]);
     if (error || !profile) return { success: false, error };
     const parsedStatus = z.enum(['pending', 'approved', 'assigned', 'in_progress', 'completed', 'rejected', 'canceled']).parse(status);
     const oldRow = await supabase.from('maintenance_requests').select('*').eq('id', id).maybeSingle();
@@ -192,7 +198,7 @@ export async function updateRequestStatusAction(id: string, status: string): Pro
 
 export async function createWorkOrderAction(payload: Record<string, unknown>): Promise<ActionResult> {
   try {
-    const { supabase, profile, error } = await getActionContext(['admin', 'bme_head', 'technician']);
+    const { supabase, profile, error } = await getActionContextForCapability('work_order.create');
     if (error || !profile) return { success: false, error };
     const data = { ...normalizeWorkOrder(payload), work_order_number: `WO-${Date.now().toString(36).toUpperCase()}`, status: (payload.status as string | undefined) ?? 'open' };
     const result = await supabase.from('work_orders').insert(data as never).select('*').single();
@@ -207,7 +213,14 @@ export async function createWorkOrderAction(payload: Record<string, unknown>): P
 
 export async function updateWorkOrderAction(id: string, payload: Record<string, unknown>): Promise<ActionResult> {
   try {
-    const { supabase, profile, error } = await getActionContext(['admin', 'bme_head', 'technician']);
+    // Endpoint covers start/complete/on_hold transitions and generic edits.
+    // Any of the WO-execution capabilities satisfies entry; status-specific
+    // capability is not enforced per-status here (parity with prior behavior).
+    const { supabase, profile, error } = await getActionContextForAnyCapability([
+      'work_order.start',
+      'work_order.complete',
+      'work_order.add_event',
+    ]);
     if (error || !profile) return { success: false, error };
 
     // Parse completion fields separately (not in normalizePartialWorkOrder to keep schema stable)
@@ -248,7 +261,7 @@ export async function updateWorkOrderAction(id: string, payload: Record<string, 
 
 async function setWorkOrderAssignee(id: string, technicianProfileId: string, action: 'assign' | 'reassign'): Promise<ActionResult> {
   try {
-    const { supabase, profile, error } = await getActionContext(['admin', 'bme_head']);
+    const { supabase, profile, error } = await getActionContextForCapability('work_order.assign');
     if (error || !profile) return { success: false, error };
     const parsedId = z.string().min(1).parse(technicianProfileId);
 
@@ -302,7 +315,7 @@ export async function reassignWorkOrder(workOrderId: string, technicianProfileId
 
 export async function createMaintenanceEventAction(payload: Record<string, unknown>): Promise<ActionResult> {
   try {
-    const { supabase, profile, error } = await getActionContext(['admin', 'bme_head', 'technician']);
+    const { supabase, profile, error } = await getActionContextForCapability('work_order.add_event');
     if (error || !profile) return { success: false, error };
     const parsed = eventSchema.parse(payload);
     const data = Object.fromEntries(Object.entries(parsed).map(([key, value]) => [key, nullIfEmpty(value) ?? value]));

@@ -3,24 +3,18 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import {
-  Activity,
   Boxes,
-  BookOpen,
   CalendarCheck,
   ClipboardList,
   Download,
-  FlaskConical,
   Gauge,
   GraduationCap,
-  LockKeyhole,
   Monitor,
   Package,
   PackageCheck,
-  Printer,
   Replace,
   ShieldAlert,
   Trash2,
-  Users,
   Wrench,
   ArrowRight,
   BarChart3,
@@ -52,61 +46,6 @@ interface ReportSection {
 }
 
 const sections: ReportSection[] = [
-  {
-    id: 'executive',
-    title: 'Executive & Defense',
-    description: 'High-priority reports for operations review, thesis defense, and BME Head evidence export.',
-    sectionColor: 'border-blue-500/30 bg-blue-500/5',
-    reports: [
-      {
-        type: 'biomedical-operations',
-        title: 'Biomedical Engineering Operations Report',
-        purpose:
-          'Unified executive snapshot: equipment condition, department readiness, compliance, risk, and critical actions.',
-        evidenceTag: 'Defense priority',
-        charts: 5,
-        tables: 1,
-        icon: <Activity className="h-5 w-5" />,
-        iconBg: 'text-blue-400 bg-blue-500/15',
-        priority: true,
-      },
-      {
-        type: 'evaluation-demo',
-        title: 'Evaluation / Demo Evidence Report',
-        purpose:
-          'System capability evidence: implemented modules, workflow coverage, decision-support scores, and data health.',
-        evidenceTag: 'Defense evidence',
-        charts: 3,
-        tables: 1,
-        icon: <FlaskConical className="h-5 w-5" />,
-        iconBg: 'text-violet-400 bg-violet-500/15',
-        priority: true,
-      },
-      {
-        type: 'department-readiness',
-        title: 'Department Readiness Report',
-        purpose:
-          'Equipment readiness by hospital department: essential asset availability, condition breakdown, and risk exposure.',
-        evidenceTag: 'Readiness',
-        charts: 3,
-        tables: 1,
-        icon: <Users className="h-5 w-5" />,
-        iconBg: 'text-cyan-400 bg-cyan-500/15',
-      },
-      {
-        type: 'decision-support-methodology',
-        title: 'Decision-Support Methodology Report',
-        purpose:
-          'Formulas, scoring criteria, component weights, source tables, and explainability evidence for thesis review.',
-        evidenceTag: 'Methodology',
-        charts: 2,
-        tables: 2,
-        icon: <BookOpen className="h-5 w-5" />,
-        iconBg: 'text-indigo-400 bg-indigo-500/15',
-        devOnly: false,
-      },
-    ],
-  },
   {
     id: 'lifecycle',
     title: 'Asset Lifecycle',
@@ -267,17 +206,6 @@ const sections: ReportSection[] = [
         icon: <Boxes className="h-5 w-5" />,
         iconBg: 'text-slate-400 bg-slate-500/15',
       },
-      {
-        type: 'audit-security',
-        title: 'Audit and Security Report',
-        purpose:
-          'Audit trail for role changes, settings, equipment condition, workflow completion, and security events.',
-        evidenceTag: 'Governance',
-        charts: 2,
-        tables: 1,
-        icon: <LockKeyhole className="h-5 w-5" />,
-        iconBg: 'text-violet-400 bg-violet-500/15',
-      },
     ],
   },
 ];
@@ -316,19 +244,11 @@ function ReportCard({ report }: { report: ReportDef }) {
       </div>
 
       <div className="flex items-center justify-between border-t border-[var(--border-subtle)] pt-3">
-        <div className="flex items-center gap-3 text-xs text-[var(--text-muted)]">
-          <span className="inline-flex items-center gap-1">
-            <Download className="h-3 w-3" /> CSV
-          </span>
-          <span className="inline-flex items-center gap-1">
-            <Download className="h-3 w-3" /> PDF
-          </span>
-          <span className="inline-flex items-center gap-1">
-            <Printer className="h-3 w-3" /> Print
-          </span>
-        </div>
+        <span className="inline-flex items-center gap-1 text-xs text-[var(--text-muted)]">
+          <Download className="h-3 w-3" /> Export PDF
+        </span>
         <span className="inline-flex items-center gap-1 text-xs font-medium text-[var(--brand)] group-hover:underline">
-          Open report <ArrowRight className="h-3 w-3" />
+          Open Snapshot Report <ArrowRight className="h-3 w-3" />
         </span>
       </div>
     </Link>
@@ -347,8 +267,8 @@ export default function ReportsPage() {
         <Info className="mt-0.5 h-4 w-4 shrink-0 text-[var(--text-muted)]" />
         <p className="text-sm text-[var(--text-muted)]">
           Reports are generated from the current operational database state. Each report includes a snapshot timestamp,
-          methodology note, charts, evidence tables, and export options (CSV, PDF, Print/Save as PDF). Charts and
-          summaries reflect available records at the time of generation.
+          methodology note, charts, evidence tables, and PDF export. Charts and summaries reflect available records
+          at the time of generation.
         </p>
       </div>
 

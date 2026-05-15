@@ -1,7 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { getActionContext, logServerAuditEvent, actionError, type ActionResult } from './_shared';
+import { getActionContextForCapability, logServerAuditEvent, actionError, type ActionResult } from './_shared';
 import { recomputeAllAnalytics } from './analytics.actions';
 
 const developerLabPaths = ['/developer-lab', '/command', '/alerts', '/replacement', '/reports'];
@@ -12,7 +12,7 @@ function revalidateDeveloperLabPaths() {
 
 export async function refreshFmeaRiskScoresAction(): Promise<ActionResult> {
   try {
-    const { supabase, profile, error } = await getActionContext(['developer']);
+    const { supabase, profile, error } = await getActionContextForCapability('developer.refresh_snapshots');
     if (error || !profile) return { success: false, error };
 
     const result = await (supabase.rpc as never as (fn: string) => Promise<{ error: { message: string } | null }>)(
@@ -36,7 +36,7 @@ export async function refreshFmeaRiskScoresAction(): Promise<ActionResult> {
 
 export async function refreshDecisionSupportSnapshotsAction(): Promise<ActionResult> {
   try {
-    const { supabase, profile, error } = await getActionContext(['developer']);
+    const { supabase, profile, error } = await getActionContextForCapability('developer.refresh_snapshots');
     if (error || !profile) return { success: false, error };
 
     const result = await supabase.rpc('refresh_decision_support_snapshots');
@@ -58,7 +58,7 @@ export async function refreshDecisionSupportSnapshotsAction(): Promise<ActionRes
 
 export async function recomputeAllAnalyticsDeveloperAction(): Promise<ActionResult> {
   try {
-    const { profile, error } = await getActionContext(['developer']);
+    const { profile, error } = await getActionContextForCapability('developer.diagnostics');
     if (error || !profile) return { success: false, error };
 
     const result = await recomputeAllAnalytics();

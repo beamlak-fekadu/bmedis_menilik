@@ -5,9 +5,11 @@ import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { AlertTriangle, ClipboardCheck, PackageCheck, Truck, Timer, CircleDollarSign } from 'lucide-react';
 import { PageHeader, StatCard, Card, CardHeader, CardTitle, DataTable, Badge, Button, Modal, Input, Select, Textarea } from '@/components/ui';
+import ClearFiltersButton from '@/components/ui/ClearFiltersButton';
 import { getProcurementPipeline } from '@/services/procurement.service';
 import { createProcurementRequestAction, updateProcurementStatusAction } from '@/actions/procurement.actions';
 import { procurementRequestSchema } from '@/utils/validation/operations';
+import { countOpenProcurement, countDelayedProcurement } from '@/utils/decision-support/canonical-counts';
 import { useToast } from '@/components/ui/Toast';
 import { AskAiButton } from '@/components/assistant/AskAiButton';
 import { procurementDetail } from '@/app/(dashboard)/command/_lib/command-center-routes';
@@ -158,7 +160,8 @@ export default function ProcurementPage() {
     ordered: rows.filter((r) => r.status === 'ordered').length,
     inTransit: rows.filter((r) => r.status === 'in_transit').length,
     delivered: rows.filter((r) => r.status === 'delivered').length,
-    delayed: rows.filter((r) => isDelayed(r)).length,
+    open: countOpenProcurement(rows),
+    delayed: countDelayedProcurement(rows),
     criticalLinked: rows.filter((r) => ['critical', 'high'].includes(r.priority) && isLinked(r)).length,
     stockBlockers: rows.filter((r) => isStockLinked(r)).length,
     replacementLinked: rows.filter((r) => isReplacementLinked(r)).length,
@@ -287,6 +290,11 @@ export default function ProcurementPage() {
         <StatCard label="Stock Blockers" value={summary.stockBlockers} icon={<CircleDollarSign className="h-6 w-6" />} color="yellow" active={activeFilter === 'stock-blockers'} onClick={() => setActiveFilter('stock-blockers')} />
         <StatCard label="Replacement Linked" value={summary.replacementLinked} icon={<PackageCheck className="h-6 w-6" />} color="gray" active={activeFilter === 'replacement-linked'} onClick={() => setActiveFilter('replacement-linked')} />
       </div>
+      {activeFilter !== 'open' && activeFilter !== 'all' && (
+        <div className="flex justify-end">
+          <ClearFiltersButton onClick={() => setActiveFilter('open')} />
+        </div>
+      )}
       <section className="panel-surface rounded-lg p-4">
         <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
           <div>
@@ -296,13 +304,22 @@ export default function ProcurementPage() {
           {delayedRows.length > 0 && <Badge variant="error">{delayedRows.length} delayed</Badge>}
         </div>
         <div className="grid gap-3 lg:grid-cols-5">
-          {pipelineSteps.map((step) => (
-            <div key={step.id} className="rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-1)] p-3">
-              <p className="text-sm font-semibold text-[var(--foreground)]">{step.label}</p>
-              <p className="mt-1 text-2xl font-bold text-[var(--foreground)]">{step.count}</p>
-              <p className="mt-2 text-xs text-[var(--text-muted)]">{step.desc}</p>
-            </div>
-          ))}
+          {pipelineSteps.map((step) => {
+            const active = activeFilter === step.id;
+            return (
+              <button
+                type="button"
+                key={step.id}
+                onClick={() => setActiveFilter(step.id as ProcurementFilter)}
+                aria-pressed={active}
+                className={`text-left rounded-lg border p-3 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)] ${active ? 'border-[var(--brand)] bg-[var(--brand-soft)] shadow-sm' : 'border-[var(--border-subtle)] bg-[var(--surface-1)] hover:border-[var(--brand)]/40 hover:bg-[var(--surface-2)]'}`}
+              >
+                <p className="text-sm font-semibold text-[var(--foreground)]">{step.label}</p>
+                <p className="mt-1 text-2xl font-bold text-[var(--foreground)]">{step.count}</p>
+                <p className="mt-2 text-xs text-[var(--text-muted)]">{step.desc}</p>
+              </button>
+            );
+          })}
         </div>
         {delayedRows.length > 0 && (
           <div className="mt-3 grid gap-2 md:grid-cols-3">

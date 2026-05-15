@@ -1,14 +1,14 @@
 'use server';
 
 import { z } from 'zod';
-import { getActionContext, logServerAuditEvent, revalidateMany, actionError, nullIfEmpty, type ActionResult } from './_shared';
+import { getActionContextForCapability, logServerAuditEvent, revalidateMany, actionError, nullIfEmpty, type ActionResult } from './_shared';
 
 const disposalPaths = ['/disposal', '/replacement', '/calendar', '/reports/disposal'];
 const disposalStatus = z.enum(['pending', 'approved', 'rejected', 'completed', 'canceled']);
 
 export async function createDisposalRequestAction(payload: Record<string, unknown>): Promise<ActionResult> {
   try {
-    const { supabase, profile, error } = await getActionContext(['admin', 'bme_head', 'technician']);
+    const { supabase, profile, error } = await getActionContextForCapability('disposal.request.create');
     if (error || !profile) return { success: false, error };
     const parsed = z.object({
       asset_id: z.string().min(1),
@@ -31,7 +31,7 @@ export async function createDisposalRequestAction(payload: Record<string, unknow
 
 export async function updateDisposalRequestStatusAction(id: string, status: string): Promise<ActionResult> {
   try {
-    const { supabase, profile, error } = await getActionContext(['admin', 'bme_head', 'technician']);
+    const { supabase, profile, error } = await getActionContextForCapability('disposal.approve');
     if (error || !profile) return { success: false, error };
     const parsedStatus = disposalStatus.parse(status);
     const oldRow = await supabase.from('disposal_requests').select('*').eq('id', id).maybeSingle();
@@ -52,7 +52,7 @@ export async function updateDisposalRequestStatusAction(id: string, status: stri
 
 export async function createDisposedAssetAction(payload: Record<string, unknown>): Promise<ActionResult> {
   try {
-    const { supabase, profile, error } = await getActionContext(['admin', 'bme_head', 'technician']);
+    const { supabase, profile, error } = await getActionContextForCapability('disposal.record');
     if (error || !profile) return { success: false, error };
     const parsed = z.object({
       asset_id: z.string().min(1),

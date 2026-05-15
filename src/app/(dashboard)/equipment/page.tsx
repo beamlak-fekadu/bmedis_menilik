@@ -373,9 +373,9 @@ export default function EquipmentListPage() {
     }
 
     if (isHighRisk(riskInfo)) return { label: 'Review Risk', href: `/equipment/${id}`, variant: 'outline' };
-    if (ri && ri.rpn > 200) return { label: 'Evidence', href: replacementEvidence(id), variant: 'outline' };
+    if (ri && ri.rpn > 200) return { label: 'Open Replacement Evidence', href: replacementEvidence(id), variant: 'outline' };
 
-    return { label: 'View', href: `/equipment/${id}`, variant: 'ghost' };
+    return { label: 'Open Asset Profile', href: `/equipment/${id}`, variant: 'ghost' };
   }
 
   if (loading) {

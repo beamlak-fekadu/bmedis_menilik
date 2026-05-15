@@ -1,12 +1,12 @@
 'use server';
 
-import { getActionContext, logServerAuditEvent, revalidateMany, actionError, type ActionResult } from './_shared';
+import { getActionContextForCapability, logServerAuditEvent, revalidateMany, actionError, type ActionResult } from './_shared';
 
 const alertPaths = ['/alerts', '/command', '/command/triage', '/developer-lab'];
 
 export async function acknowledgeAlertFlagAction(id: string): Promise<ActionResult> {
   try {
-    const { supabase, profile, error } = await getActionContext(['admin', 'bme_head', 'technician']);
+    const { supabase, profile, error } = await getActionContextForCapability('alerts.acknowledge');
     if (error || !profile) return { success: false, error };
 
     const oldRow = await supabase.from('recommendation_flags').select('*').eq('id', id).maybeSingle();

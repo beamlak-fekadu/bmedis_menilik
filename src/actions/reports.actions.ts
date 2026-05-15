@@ -1,20 +1,11 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { getActionContext, logServerAuditEvent, actionError, type ActionResult } from './_shared';
+import { getActionContextForCapability, logServerAuditEvent, actionError, type ActionResult } from './_shared';
 
 export async function prepareReportSnapshotAction(reportType: string): Promise<ActionResult<{ generatedAt: string; refreshStatus: string }>> {
   try {
-    const { supabase, profile, error } = await getActionContext([
-      'developer',
-      'admin',
-      'bme_head',
-      'technician',
-      'department_head',
-      'department_user',
-      'store_user',
-      'viewer',
-    ]);
+    const { supabase, profile, error } = await getActionContextForCapability('reports.view');
     if (error || !profile) return { success: false, error };
 
     const generatedAt = new Date().toISOString();

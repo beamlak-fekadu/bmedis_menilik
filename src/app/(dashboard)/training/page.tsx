@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { CalendarClock, CheckCircle, ClipboardList, GraduationCap, Plus, ShieldAlert, Users, ChevronLeft } from 'lucide-react';
 import PageHeader from '@/components/ui/PageHeader';
+import ClearFiltersButton from '@/components/ui/ClearFiltersButton';
 import DataTable from '@/components/ui/DataTable';
 import Tabs from '@/components/ui/Tabs';
 import Button from '@/components/ui/Button';
@@ -435,26 +436,26 @@ export default function TrainingPage() {
           </CardHeader>
           <div className="mb-4 grid grid-cols-2 gap-4 text-sm sm:grid-cols-4">
             <div>
-              <span className="text-gray-500 dark:text-gray-400">Trainer</span>
+              <span className="text-[var(--text-muted)]">Trainer</span>
               <p className="font-medium">{detailSession.trainer as string}</p>
             </div>
             <div>
-              <span className="text-gray-500 dark:text-gray-400">Date</span>
+              <span className="text-[var(--text-muted)]">Date</span>
               <p className="font-medium">{new Date(detailSession.training_date as string).toLocaleDateString()}</p>
             </div>
             <div>
-              <span className="text-gray-500 dark:text-gray-400">Duration</span>
+              <span className="text-[var(--text-muted)]">Duration</span>
               <p className="font-medium">{detailSession.duration_hours ? `${detailSession.duration_hours}h` : '—'}</p>
             </div>
             <div>
-              <span className="text-gray-500 dark:text-gray-400">Location</span>
+              <span className="text-[var(--text-muted)]">Location</span>
               <p className="font-medium">{(detailSession.location as string) || '—'}</p>
             </div>
           </div>
           {detailSession.description ? (
-            <p className="mb-4 text-sm text-gray-600 dark:text-gray-400">{detailSession.description as string}</p>
+            <p className="mb-4 text-sm text-[var(--text-muted)]">{detailSession.description as string}</p>
           ) : null}
-          <h4 className="mb-2 text-sm font-semibold text-gray-700 dark:text-gray-300">Attendees</h4>
+          <h4 className="mb-2 text-sm font-semibold text-[var(--foreground)]">Attendees</h4>
           <Table
             columns={attendeeColumns}
             data={attendees}
@@ -538,6 +539,12 @@ export default function TrainingPage() {
         <StatCard label="User Error Related" value={userErrorRelated} icon={<ShieldAlert className="h-6 w-6" />} color="red" active={activeFilter === 'user-error'} onClick={() => selectTrainingView('requests', 'user-error')} />
         <StatCard label="Critical Equipment Training" value={criticalEquipmentTraining} icon={<ShieldAlert className="h-6 w-6" />} color="purple" active={activeFilter === 'critical-equipment'} onClick={() => selectTrainingView('upcoming', 'critical-equipment')} />
       </div>
+
+      {(activeTab !== '' || activeFilter !== 'all') && (
+        <div className="flex justify-end">
+          <ClearFiltersButton onClick={() => { setActiveTab(''); setActiveFilter('all'); }} />
+        </div>
+      )}
 
       <section className="panel-surface rounded-lg p-4">
         <h2 className="text-base font-semibold text-[var(--foreground)]">Training Work Queue</h2>

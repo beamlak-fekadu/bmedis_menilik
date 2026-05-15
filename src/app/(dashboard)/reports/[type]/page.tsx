@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Download, Printer, ArrowLeft, RefreshCw, AlertTriangle, CheckCircle, Info } from 'lucide-react';
+import { Download, ArrowLeft, RefreshCw, AlertTriangle, CheckCircle, Info } from 'lucide-react';
 import PageHeader from '@/components/ui/PageHeader';
 import InfoPopover from '@/components/ui/InfoPopover';
 import DataTable from '@/components/ui/DataTable';
@@ -14,8 +14,13 @@ import { BarChart, DoughnutChart, HorizontalBarChart, ChartCard, LineChart } fro
 import * as reportsService from '@/services/reports.service';
 import * as settingsService from '@/services/settings.service';
 import type { ReportFilters } from '@/services/reports.service';
-import { exportToCSV, exportToPDF } from '@/utils/export';
+import { exportToPDF, captureChartImages } from '@/utils/export';
 import { prepareReportSnapshotAction } from '@/actions/reports.actions';
+import {
+  REPLACEMENT_REVIEW_THRESHOLD,
+  REPLACEMENT_STRONG_THRESHOLD,
+  replacementBand,
+} from '@/utils/decision-support/replacement-thresholds';
 
 type Row = Record<string, unknown>;
 
@@ -161,17 +166,14 @@ function buildReportKPIs(type: string, rows: Row[]): KpiCard[] {
   }
 
   if (slug === 'replacement-planning' || slug === 'decision-support-methodology') {
-    const strong = rows.filter((r) => Number(r.replacement_priority_index ?? 0) >= 0.7).length;
-    const review = rows.filter((r) => {
-      const rpi = Number(r.replacement_priority_index ?? 0);
-      return rpi >= 0.55 && rpi < 0.7;
-    }).length;
+    const strong = rows.filter((r) => replacementBand(Number(r.replacement_priority_index ?? 0)) === 'strong').length;
+    const review = rows.filter((r) => replacementBand(Number(r.replacement_priority_index ?? 0)) === 'review').length;
     const monitor = rows.length - strong - review;
     return [
       { label: 'Total Assessed', value: rows.length, color: 'blue' },
-      { label: 'Strong Candidates (≥0.70)', value: strong, color: strong > 0 ? 'red' : 'green', sub: 'Replacement recommended' },
-      { label: 'Review Candidates (0.55–0.69)', value: review, color: review > 0 ? 'yellow' : 'green' },
-      { label: 'Monitor (<0.55)', value: monitor, color: 'gray' },
+      { label: `Strong Candidates (≥${REPLACEMENT_STRONG_THRESHOLD.toFixed(2)})`, value: strong, color: strong > 0 ? 'red' : 'green', sub: 'Replacement recommended' },
+      { label: `Review Candidates (${REPLACEMENT_REVIEW_THRESHOLD.toFixed(2)}–${(REPLACEMENT_STRONG_THRESHOLD - 0.01).toFixed(2)})`, value: review, color: review > 0 ? 'yellow' : 'green' },
+      { label: `Monitor (<${REPLACEMENT_REVIEW_THRESHOLD.toFixed(2)})`, value: monitor, color: 'gray' },
     ];
   }
 
@@ -306,15 +308,12 @@ function buildPriorityFindings(type: string, rows: Row[]): Finding[] {
   }
 
   if (type === 'replacement-planning' || type === 'decision-support-methodology') {
-    const strong = rows.filter((r) => Number(r.replacement_priority_index ?? 0) >= 0.7).length;
-    const review = rows.filter((r) => {
-      const rpi = Number(r.replacement_priority_index ?? 0);
-      return rpi >= 0.55 && rpi < 0.7;
-    }).length;
-    if (strong > 0) findings.push({ severity: 'critical', finding: `${strong} asset${strong > 1 ? 's' : ''} meet the strong replacement threshold (RPI ≥ 0.70). BME Head review recommended.` });
-    if (review > 0) findings.push({ severity: 'warning', finding: `${review} asset${review > 1 ? 's' : ''} are in the review zone (RPI 0.55–0.69).` });
+    const strong = rows.filter((r) => replacementBand(Number(r.replacement_priority_index ?? 0)) === 'strong').length;
+    const review = rows.filter((r) => replacementBand(Number(r.replacement_priority_index ?? 0)) === 'review').length;
+    if (strong > 0) findings.push({ severity: 'critical', finding: `${strong} asset${strong > 1 ? 's' : ''} meet the strong replacement threshold (RPI ≥ ${REPLACEMENT_STRONG_THRESHOLD.toFixed(2)}). BME Head review recommended.` });
+    if (review > 0) findings.push({ severity: 'warning', finding: `${review} asset${review > 1 ? 's' : ''} are in the review zone (RPI ${REPLACEMENT_REVIEW_THRESHOLD.toFixed(2)}–${(REPLACEMENT_STRONG_THRESHOLD - 0.01).toFixed(2)}).` });
     if (strong === 0 && review === 0) findings.push({ severity: 'info', finding: 'No assets exceed the replacement threshold in this snapshot. All are in the monitor category.' });
-    findings.push({ severity: 'info', finding: 'Prototype thresholds: RPI ≥ 0.70 = strong candidate, 0.55–0.69 = review, <0.55 = monitor. Thresholds do not auto-approve replacement.' });
+    findings.push({ severity: 'info', finding: `Prototype thresholds: RPI ≥ ${REPLACEMENT_STRONG_THRESHOLD.toFixed(2)} = strong candidate, ${REPLACEMENT_REVIEW_THRESHOLD.toFixed(2)}–${(REPLACEMENT_STRONG_THRESHOLD - 0.01).toFixed(2)} = review, <${REPLACEMENT_REVIEW_THRESHOLD.toFixed(2)} = monitor. Thresholds do not auto-approve replacement.` });
   }
 
   if (type === 'risk-fmea') {
@@ -625,8 +624,8 @@ function buildReportCharts(type: string, rows: Row[]): ChartSpec[] {
         .sort((a, b) => Number(a.rank ?? 9999) - Number(b.rank ?? 9999))
         .slice(0, 10);
       const bandCounts = countBy(rows, (r) => {
-        const rpi = Number(r.replacement_priority_index ?? 0);
-        return rpi >= 0.7 ? 'Strong Candidate' : rpi >= 0.55 ? 'Review Candidate' : 'Monitor';
+        const band = replacementBand(Number(r.replacement_priority_index ?? 0));
+        return band === 'strong' ? 'Strong Candidate' : band === 'review' ? 'Review Candidate' : 'Monitor';
       });
       const deptCounts = countBy(rows, (r) => {
         const asset = r.equipment_assets as { departments?: { name?: string } } | null;
@@ -644,8 +643,8 @@ function buildReportCharts(type: string, rows: Row[]): ChartSpec[] {
           }),
           values: top10.map((r) => Math.round(Number(r.replacement_priority_index ?? 0) * 100)),
           colors: top10.map((r) => {
-            const rpi = Number(r.replacement_priority_index ?? 0);
-            return rpi >= 0.7 ? 'rgb(239,68,68)' : rpi >= 0.55 ? 'rgb(234,179,8)' : 'rgb(34,197,94)';
+            const band = replacementBand(Number(r.replacement_priority_index ?? 0));
+            return band === 'strong' ? 'rgb(239,68,68)' : band === 'review' ? 'rgb(234,179,8)' : 'rgb(34,197,94)';
           }),
         },
         {
@@ -920,10 +919,10 @@ function buildExecutiveSummary(type: string, rows: Row[]): string {
   }
 
   if (type === 'replacement-planning' || type === 'decision-support-methodology') {
-    const strong = rows.filter((r) => Number(r.replacement_priority_index ?? 0) >= 0.7).length;
-    const review = rows.filter((r) => { const rpi = Number(r.replacement_priority_index ?? 0); return rpi >= 0.55 && rpi < 0.7; }).length;
-    if (strong === 0 && review === 0) return `This replacement planning snapshot ranks ${rows.length} assets by RPI. No assets exceed the replacement threshold (0.70). All are in the monitor category (<0.55). Showing top-ranked assets for lifecycle review.`;
-    return `This replacement planning snapshot ranks ${rows.length} assets. ${strong} meet the strong replacement threshold (RPI ≥ 0.70) and ${review} are in the review zone (0.55–0.69). These are prototype decision thresholds — they support BME Head review and do not auto-approve replacement.`;
+    const strong = rows.filter((r) => replacementBand(Number(r.replacement_priority_index ?? 0)) === 'strong').length;
+    const review = rows.filter((r) => replacementBand(Number(r.replacement_priority_index ?? 0)) === 'review').length;
+    if (strong === 0 && review === 0) return `This replacement planning snapshot ranks ${rows.length} assets by RPI. No assets exceed the replacement threshold (${REPLACEMENT_STRONG_THRESHOLD.toFixed(2)}). All are in the monitor category (<${REPLACEMENT_REVIEW_THRESHOLD.toFixed(2)}). Showing top-ranked assets for lifecycle review.`;
+    return `This replacement planning snapshot ranks ${rows.length} assets. ${strong} meet the strong replacement threshold (RPI ≥ ${REPLACEMENT_STRONG_THRESHOLD.toFixed(2)}) and ${review} are in the review zone (${REPLACEMENT_REVIEW_THRESHOLD.toFixed(2)}–${(REPLACEMENT_STRONG_THRESHOLD - 0.01).toFixed(2)}). These are prototype decision thresholds — they support BME Head review and do not auto-approve replacement.`;
   }
 
   if (type === 'procurement-pipeline') {
@@ -956,7 +955,7 @@ function buildExecutiveSummary(type: string, rows: Row[]): string {
 function methodologyFor(type: string): string {
   if (['pm-compliance'].includes(type)) return 'PM compliance evidence comes from generated pm_schedule rows. Completed schedules count as completed evidence. Skipped, deferred, and overdue rows remain visible for audit. PM Compliance = completed ÷ total scheduled × 100.';
   if (['calibration-compliance'].includes(type)) return 'Calibration compliance uses calibration_records, result status, and next_due_date. Failed and adjusted results remain as evidence for follow-up work. Overdue detection compares next_due_date to the snapshot generation time.';
-  if (['replacement-planning', 'decision-support-methodology'].includes(type)) return 'Replacement planning uses RPI = Σ(wⱼ × sᵢⱼ) where components are age, failure history, availability, maintenance burden, spare-part support, and FMEA risk score. Component scores are min-max normalized. Thresholds: ≥0.70 strong candidate, 0.55–0.69 review, <0.55 monitor. These are prototype thresholds for demonstration and sensitivity testing.';
+  if (['replacement-planning', 'decision-support-methodology'].includes(type)) return `Replacement planning uses RPI = Σ(wⱼ × sᵢⱼ) where components are age, failure history, availability, maintenance burden, spare-part support, and FMEA risk score. Component scores are min-max normalized. Thresholds: ≥${REPLACEMENT_STRONG_THRESHOLD.toFixed(2)} strong candidate, ${REPLACEMENT_REVIEW_THRESHOLD.toFixed(2)}–${(REPLACEMENT_STRONG_THRESHOLD - 0.01).toFixed(2)} review, <${REPLACEMENT_REVIEW_THRESHOLD.toFixed(2)} monitor. These are prototype thresholds for demonstration and sensitivity testing.`;
   if (['risk-fmea'].includes(type)) return 'FMEA reporting uses RPN = Severity × Occurrence × Detectability (each 1–10). Risk bands: RPN ≥ 100 = critical, 60–99 = high, 30–59 = medium, <30 = low. Assignment method (seed/computed/override) and explanation are included for traceability.';
   if (['procurement-pipeline'].includes(type)) return 'Procurement evidence follows each request through requested → approved → ordered → in_transit → delivered → canceled stages. Priority, expected delivery, delay, and contextual justification are preserved for each row.';
   if (['maintenance-performance'].includes(type)) return 'Maintenance events come from maintenance_events joined to equipment_assets. MTTR = total repair hours ÷ completed repairs. MTBF = operational time ÷ failure count. These values require failure date and repair duration data to be recorded accurately.';
@@ -1234,8 +1233,26 @@ function getReportConfig(type: string): ReportConfig | null {
           { key: 'detectability', header: 'D', sortable: true },
           { key: 'rpn', header: 'RPN', sortable: true },
           { key: 'risk_level', header: 'Risk Band', render: (row: Row) => <Badge variant={statusVariant[row.risk_level as string] || 'default'}>{formatLabel(String(row.risk_level ?? ''))}</Badge> },
-          { key: 'assignment_method', header: 'Method' },
-          { key: 'explanation', header: 'Explanation' },
+          { key: 'assignment_method', header: 'Method', render: (row: Row) => formatLabel(String(row.assignment_method ?? '—')) },
+          {
+            key: 'explanation',
+            header: 'Explanation',
+            render: (row: Row) => {
+              // explanation is JSONB (migration 00036). Format the structured
+              // payload as readable scalar text — never render a raw object.
+              const raw = row.explanation;
+              if (raw == null) return '—';
+              if (typeof raw === 'string') return raw;
+              if (typeof raw === 'object') {
+                const obj = raw as Record<string, unknown>;
+                const parts = Object.entries(obj)
+                  .filter(([, v]) => v != null && typeof v !== 'object')
+                  .map(([k, v]) => `${formatLabel(k)}: ${String(v)}`);
+                return parts.length > 0 ? parts.join(' · ') : '—';
+              }
+              return String(raw);
+            },
+          },
         ],
       };
 
@@ -1306,6 +1323,7 @@ export default function ReportTypePage() {
   const [refreshStatus, setRefreshStatus] = useState('pending');
 
   const config = useMemo(() => getReportConfig(reportType), [reportType]);
+  const chartsContainerRef = useRef<HTMLDivElement | null>(null);
 
   const reportKPIs = useMemo(() => buildReportKPIs(reportType, data), [reportType, data]);
   const reportCharts = useMemo(() => buildReportCharts(reportType, data), [reportType, data]);
@@ -1433,22 +1451,44 @@ export default function ReportTypePage() {
   const handleFilterChange = (key: string, value: string) => setFilterValues((prev) => ({ ...prev, [key]: value }));
   const handleFilterReset = () => setFilterValues({});
 
-  const handleExportCSV = () => {
-    const result = exportToCSV(data, config.columns, reportType, {
-      reportTitle: config.title,
-      generatedAt,
-    });
-    if (!result.success) { toast('warning', result.error ?? 'No rows to export'); return; }
-    toast('success', 'Report exported as CSV');
-  };
-
   const handleExportPDF = () => {
-    const result = exportToPDF({ data, columns: config.columns, filename: reportType, title: config.title, filters: filterValues, generatedAt });
-    if (!result.success) { toast('warning', result.error ?? 'No rows to export'); return; }
-    toast('success', 'Report exported as PDF');
+    const chartImages = captureChartImages(chartsContainerRef.current);
+    const methodologyLines = [config.methodologyNote];
+    if (reportType === 'replacement-planning' || reportType === 'decision-support-methodology') {
+      methodologyLines.push(
+        `Prototype Decision Thresholds: RPI >= ${REPLACEMENT_STRONG_THRESHOLD.toFixed(2)} = Strong replacement candidate. RPI ${REPLACEMENT_REVIEW_THRESHOLD.toFixed(2)}-${(REPLACEMENT_STRONG_THRESHOLD - 0.01).toFixed(2)} = Review candidate. RPI < ${REPLACEMENT_REVIEW_THRESHOLD.toFixed(2)} = Monitor.`
+      );
+    }
+    const expectedCharts = reportCharts.length;
+    const captureMiss = expectedCharts > 0 && chartImages.length === 0;
+    const chartSummaries = expectedCharts > 0
+      ? reportCharts.map((c) => ({ title: c.title, description: c.description, labels: c.labels }))
+      : undefined;
+    const chartExportNote = captureMiss
+      ? 'Chart images could not be captured for this PDF (the page may have been rendered without a visible chart canvas). The charts that appear on the on-screen report are listed below for evidence.'
+      : undefined;
+    const result = exportToPDF({
+      data,
+      columns: config.columns,
+      filename: reportType,
+      title: config.title,
+      filters: filterValues,
+      generatedAt,
+      executiveSummary,
+      kpis: reportKPIs.map((k) => ({ label: k.label, value: String(k.value), sub: k.sub })),
+      charts: chartImages,
+      chartSummaries,
+      chartExportNote,
+      priorityFindings: priorityFindings.map((f) => ({ severity: f.severity, finding: f.finding })),
+      methodologyNote: methodologyLines.filter(Boolean).join('\n\n'),
+    });
+    if (!result.success) { toast('warning', result.error ?? 'Nothing to export'); return; }
+    if (captureMiss) {
+      toast('warning', 'Charts were not captured. Exporting snapshot summary and evidence table only.');
+    } else {
+      toast('success', `Report exported as PDF${chartImages.length ? ` (with ${chartImages.length} chart${chartImages.length !== 1 ? 's' : ''})` : ''}`);
+    }
   };
-
-  const handlePrint = () => window.print();
 
   const snapshotTs = new Date(generatedAt).toLocaleString();
 
@@ -1474,14 +1514,8 @@ export default function ReportTypePage() {
           <ArrowLeft className="h-4 w-4" /> Back to Reports
         </Button>
         <div className="ml-auto flex flex-wrap items-center gap-2">
-          <Button variant="outline" size="sm" onClick={handleExportCSV} disabled={loading || data.length === 0}>
-            <Download className="h-4 w-4" /> Export CSV
-          </Button>
           <Button variant="outline" size="sm" onClick={handleExportPDF} disabled={loading || data.length === 0}>
             <Download className="h-4 w-4" /> Export PDF
-          </Button>
-          <Button variant="outline" size="sm" onClick={handlePrint} disabled={loading}>
-            <Printer className="h-4 w-4" /> Print / Save as PDF
           </Button>
           <Button variant="ghost" size="sm" onClick={loadData} disabled={loading}>
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} /> Refresh
@@ -1544,22 +1578,27 @@ export default function ReportTypePage() {
       {!loading && reportCharts.length > 0 && (
         <section>
           <h2 className="mb-3 text-base font-semibold text-[var(--foreground)]">Visual Analytics</h2>
-          <div className={`report-chart-grid grid gap-4 ${reportCharts.length === 1 ? 'grid-cols-1' : 'md:grid-cols-2'}`}>
+          <div
+            ref={chartsContainerRef}
+            className={`report-chart-grid grid gap-4 ${reportCharts.length === 1 ? 'grid-cols-1' : 'md:grid-cols-2'}`}
+          >
             {reportCharts.map((chart) => (
-              <ChartCard key={chart.title} title={chart.title} description={chart.description}>
-                {chart.labels.length === 0 ? (
-                  <div className="flex h-40 items-center justify-center text-sm text-[var(--text-muted)]">
-                    No data available for this chart in the current snapshot.
-                  </div>
-                ) : (
-                  <>
-                    {chart.type === 'doughnut' && <DoughnutChart labels={chart.labels} data={chart.values} colors={chart.colors} height={250} />}
-                    {chart.type === 'bar' && <BarChart labels={chart.labels} datasets={[{ label: chart.title, data: chart.values, backgroundColor: chart.colors }]} height={250} />}
-                    {chart.type === 'hbar' && <HorizontalBarChart labels={chart.labels} values={chart.values} colors={chart.colors} height={Math.max(220, chart.labels.length * 30)} />}
-                    {chart.type === 'line' && chart.datasets && <LineChart labels={chart.labels} datasets={chart.datasets} height={250} />}
-                  </>
-                )}
-              </ChartCard>
+              <div key={chart.title} data-chart-title={chart.title}>
+                <ChartCard title={chart.title} description={chart.description}>
+                  {chart.labels.length === 0 ? (
+                    <div className="flex h-40 items-center justify-center text-sm text-[var(--text-muted)]">
+                      No data available for this chart in the current snapshot.
+                    </div>
+                  ) : (
+                    <>
+                      {chart.type === 'doughnut' && <DoughnutChart labels={chart.labels} data={chart.values} colors={chart.colors} height={250} />}
+                      {chart.type === 'bar' && <BarChart labels={chart.labels} datasets={[{ label: chart.title, data: chart.values, backgroundColor: chart.colors }]} height={250} />}
+                      {chart.type === 'hbar' && <HorizontalBarChart labels={chart.labels} values={chart.values} colors={chart.colors} height={Math.max(220, chart.labels.length * 30)} />}
+                      {chart.type === 'line' && chart.datasets && <LineChart labels={chart.labels} datasets={chart.datasets} height={250} />}
+                    </>
+                  )}
+                </ChartCard>
+              </div>
             ))}
           </div>
         </section>
@@ -1595,7 +1634,7 @@ export default function ReportTypePage() {
         <p className="text-sm leading-relaxed text-[var(--text-muted)]">{config.methodologyNote}</p>
         {(type => ['replacement-planning', 'decision-support-methodology'].includes(type))(reportType) && (
           <p className="mt-3 rounded-md border border-amber-500/30 bg-amber-500/8 px-3 py-2 text-sm text-amber-300">
-            Prototype Decision Thresholds: RPI ≥ 0.70 = Strong replacement candidate. RPI 0.55–0.69 = Review candidate. RPI &lt; 0.55 = Monitor. These thresholds are used for demonstration and sensitivity testing and do not automatically approve replacement.
+            {`Prototype Decision Thresholds: RPI ≥ ${REPLACEMENT_STRONG_THRESHOLD.toFixed(2)} = Strong replacement candidate. RPI ${REPLACEMENT_REVIEW_THRESHOLD.toFixed(2)}–${(REPLACEMENT_STRONG_THRESHOLD - 0.01).toFixed(2)} = Review candidate. RPI < ${REPLACEMENT_REVIEW_THRESHOLD.toFixed(2)} = Monitor. These thresholds are used for demonstration and sensitivity testing and do not automatically approve replacement.`}
           </p>
         )}
         {freshnessFail && (

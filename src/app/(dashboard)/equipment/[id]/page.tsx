@@ -131,10 +131,13 @@ interface OpenRecord {
   assigned_to?: string | null;
   reported_condition?: string | null;
   reported_condition_source?: string | null;
+  request_number?: string | null;
+  work_order_number?: string | null;
 }
 
 interface LastCompletedWO {
   id: string;
+  work_order_number?: string | null;
   completion_outcome?: string | null;
   final_equipment_condition?: string | null;
   completed_at?: string | null;
@@ -157,7 +160,7 @@ function formatCurrency(val: number | null): string {
 function DetailRow({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="flex flex-col gap-1 py-2">
-      <dt className="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
+      <dt className="text-xs font-medium uppercase tracking-wider text-[var(--text-muted)]">
         {label}
       </dt>
       <dd className="text-sm text-gray-900 dark:text-white">{value || '—'}</dd>
@@ -670,6 +673,50 @@ export default function EquipmentDetailPage({ params }: { params: Promise<{ id: 
           {events.length > 0 && (
             <MetricLine label="Last maintenance event" value={formatDate(events[0].completion_date)} />
           )}
+
+          {/* Condition trace narrative: explains why current condition is what it is. */}
+          {/* Never invents prior state; falls back to "no transition evidence yet". */}
+          <div className="rounded-md border border-dashed border-[var(--border-subtle)] bg-[var(--surface-1)] px-3 py-2 text-xs text-[var(--text-muted)]">
+            <p className="mb-1 font-medium text-[var(--foreground)]">Condition trace</p>
+            {(() => {
+              const cond = equipment.condition?.replace(/_/g, ' ') ?? 'unknown';
+              if (lastCompletedWO?.work_order_number && lastCompletedWO.final_equipment_condition) {
+                const outcome = lastCompletedWO.completion_outcome?.replace(/_/g, ' ') ?? 'completed';
+                return (
+                  <p>
+                    Current condition is <strong className="text-[var(--foreground)]">{cond}</strong> following work order{' '}
+                    <strong className="text-[var(--foreground)]">{lastCompletedWO.work_order_number}</strong> (outcome: {outcome}).
+                  </p>
+                );
+              }
+              if (openWorkOrder?.work_order_number) {
+                return (
+                  <p>
+                    Current condition is <strong className="text-[var(--foreground)]">{cond}</strong>. Open work order{' '}
+                    <strong className="text-[var(--foreground)]">{openWorkOrder.work_order_number}</strong> is in progress.
+                  </p>
+                );
+              }
+              if (openRequest?.request_number) {
+                const reported = openRequest.reported_condition?.replace(/_/g, ' ');
+                return (
+                  <p>
+                    Current condition is <strong className="text-[var(--foreground)]">{cond}</strong>. Open request{' '}
+                    <strong className="text-[var(--foreground)]">{openRequest.request_number}</strong>
+                    {reported ? ` reported it as ${reported}` : ''}.
+                  </p>
+                );
+              }
+              if (events.length > 0) {
+                return (
+                  <p>
+                    Current condition is <strong className="text-[var(--foreground)]">{cond}</strong>. Last maintenance event recorded {formatDate(events[0].completion_date)}.
+                  </p>
+                );
+              }
+              return <p>No condition-transition evidence has been recorded yet.</p>;
+            })()}
+          </div>
         </HealthCard>
 
         {/* 2. Reliability */}

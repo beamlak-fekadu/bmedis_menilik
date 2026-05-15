@@ -8,6 +8,7 @@ import type { ScoreExplanation as ScoreExplanationData } from '../_lib/command-c
 interface Props {
   details: ScoreExplanationData;
   children?: ReactNode;
+  showIcon?: boolean;
 }
 
 function DetailList({ items }: { items?: Array<{ label: string; value: string | number | null }> }) {
@@ -24,7 +25,7 @@ function DetailList({ items }: { items?: Array<{ label: string; value: string | 
   );
 }
 
-export function ScoreExplanation({ details, children }: Props) {
+export function ScoreExplanation({ details, children, showIcon = true }: Props) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -35,11 +36,15 @@ export function ScoreExplanation({ details, children }: Props) {
           event.stopPropagation();
           setOpen(true);
         }}
-        className="inline-flex items-center gap-1 rounded-md border border-[var(--border-subtle)] px-2 py-1 text-xs font-medium text-[var(--foreground)] transition hover:border-[var(--brand)]/50 hover:text-violet-300"
+        className={
+          showIcon
+            ? 'inline-flex items-center gap-1 rounded-md border border-[var(--border-subtle)] px-2 py-1 text-xs font-medium text-[var(--foreground)] transition hover:border-[var(--brand)]/50 hover:text-violet-300'
+            : 'inline-flex items-center text-left transition hover:opacity-80'
+        }
         aria-label={`Explain ${details.title}`}
       >
         {children ?? details.scoreLabel}
-        <Info className="h-3 w-3" />
+        {showIcon && <Info className="h-3 w-3" />}
       </button>
       {open && (
         <div className="fixed inset-0 z-50 flex">

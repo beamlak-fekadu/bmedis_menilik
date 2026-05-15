@@ -52,7 +52,8 @@ function SummaryCard({ card, canMutate }: { card: CardData; canMutate: boolean }
   return (
     <Link
       href={card.href}
-      className={`panel-surface group flex flex-col gap-3 rounded-lg border p-5 transition-all ${borderColor}`}
+      aria-label={`${card.label}: ${card.value}. ${card.action}`}
+      className={`panel-surface filter-card-pressable group flex flex-col gap-3 rounded-lg border p-5 ${borderColor} focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)]`}
     >
       <div className="flex items-start justify-between">
         <div className="min-w-0 flex-1">
@@ -73,7 +74,7 @@ function SummaryCard({ card, canMutate }: { card: CardData; canMutate: boolean }
         <div className={`shrink-0 rounded-lg p-3 ${card.iconBg}`}>{card.icon}</div>
       </div>
       {(canMutate || card.urgency !== 'critical') && (
-        <p className="text-xs font-medium text-violet-300 opacity-0 transition-opacity group-hover:opacity-100">
+        <p className="text-xs font-medium text-[var(--brand)] opacity-80 transition-opacity group-hover:opacity-100">
           {card.action} →
         </p>
       )}
@@ -174,7 +175,7 @@ export function SummaryActionCards({ summary, wip, criticalActionCount, replacem
     {
       label: 'Replacement Candidates',
       value: replacementCandidates,
-      sublabel: 'Assets with high replacement priority index',
+      sublabel: 'RPI ≥ 0.55 (Strong + Review)',
       action: 'Review lifecycle decisions',
       href: '/command/drilldown/replacement',
       icon: <TrendingDown className="h-5 w-5" />,
@@ -189,17 +190,18 @@ export function SummaryActionCards({ summary, wip, criticalActionCount, replacem
       {cards.map((card) => (
         <SummaryCard key={card.label} card={card} canMutate={canMutate} />
       ))}
-      {/* Refresh hint card */}
+      {/* Reports shortcut card */}
       <Link
         href="/reports"
-        className="panel-surface group flex flex-col items-center justify-center gap-2 rounded-lg border p-5 text-center transition hover:border-[var(--brand)]/50"
+        aria-label="Open Reports"
+        className="panel-surface filter-card-pressable group flex flex-col items-center justify-center gap-2 rounded-lg border p-5 text-center hover:border-[var(--brand)]/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)]"
       >
-        <div className="rounded-lg bg-slate-500/15 p-3 text-slate-300">
+        <div className="rounded-lg bg-[var(--surface-3)] p-3 text-[var(--text-muted)]">
           <RefreshCw className="h-5 w-5" />
         </div>
         <p className="text-sm font-medium text-[var(--text-muted)]">Reports</p>
-        <p className="text-xs text-violet-300 opacity-0 transition-opacity group-hover:opacity-100">
-          Open reports →
+        <p className="text-xs font-medium text-[var(--brand)] opacity-80 transition-opacity group-hover:opacity-100">
+          Open Snapshot Reports →
         </p>
       </Link>
     </div>

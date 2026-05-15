@@ -31,20 +31,46 @@ export async function getAllProfiles() {
     .order('full_name', { ascending: true });
 }
 
+// Canonical fetcher for the "assignable technician" dropdown across maintenance
+// work orders, PM schedules, calibration scheduling, and training assignment.
+//
+// Inclusion rules:
+//   - role IN ('technician', 'bme_head') — BME Head may take work directly.
+//   - is_active = true.
+//   - profile.user_id may be NULL: profile-only staff are still assignable.
+//     They simply can't log in until linked to an auth.users row via
+//     supabase/seed/99_link_auth_users.sql.
+//
+// Exclusion rules:
+//   - 'developer' is intentionally excluded — developer is a thesis/debug
+//     identity, not an operational technician.
+//
+// RLS caveat: this query embeds user_roles → roles via !inner joins. If RLS
+// on `user_roles` or `roles` blocks SELECT for the calling user, the dropdown
+// will silently return an empty list. See documents/rbac-rls-audit.sql
+// section 1 to verify SELECT policies on those tables.
+//
+// Empty-state contract: callers should render
+// "No assignable technicians found. Check Settings → Staff & Access."
+// when the result is empty, so the message is consistent everywhere.
 export async function getActiveTechnicians() {
   const supabase = createClient();
   return supabase
     .from('profiles')
     .select(`
-      id, user_id, full_name, email, phone, department_id,
-      avatar_url, job_title, is_active, created_at, updated_at,
+      id, user_id, full_name, email, phone, department_id, job_title,
+      avatar_url, is_active, created_at, updated_at,
       departments(id, name, code),
       user_roles!inner(id, role_id, assigned_at, roles!inner(id, name, description, permissions))
     `)
     .eq('is_active', true)
-    .eq('user_roles.roles.name', 'technician')
+    .in('user_roles.roles.name', ['technician', 'bme_head'])
     .order('full_name', { ascending: true });
 }
+
+/** Canonical empty-state copy for assignment dropdowns. */
+export const ASSIGNABLE_TECHNICIANS_EMPTY_STATE =
+  'No assignable technicians found. Check Settings → Staff & Access.';
 
 export async function getProfileById(id: string) {
   const supabase = createClient();

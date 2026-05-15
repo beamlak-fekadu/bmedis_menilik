@@ -2,13 +2,18 @@
 
 import { z } from 'zod';
 import { recomputeAssetAnalytics } from './analytics.actions';
-import { getActionContext, logServerAuditEvent, revalidateMany, actionError, nullIfEmpty, type ActionResult } from './_shared';
+import { getActionContextForCapability, getActionContextForAnyCapability, logServerAuditEvent, revalidateMany, actionError, nullIfEmpty, type ActionResult } from './_shared';
 
 const calibrationPaths = ['/calibration', '/calendar', '/command', '/reports/calibration'];
 
 export async function updateCalibrationRequestStatusAction(id: string, status: string): Promise<ActionResult> {
   try {
-    const { supabase, profile, error } = await getActionContext(['admin', 'bme_head', 'technician']);
+    // Status update covers approve/reject/schedule transitions; allow approve
+    // or schedule capability (technicians schedule, BME Head/admin approve).
+    const { supabase, profile, error } = await getActionContextForAnyCapability([
+      'calibration.request.approve',
+      'calibration.schedule',
+    ]);
     if (error || !profile) return { success: false, error };
     const parsedStatus = z.enum(['pending', 'approved', 'in_progress', 'completed', 'rejected', 'canceled']).parse(status);
     const oldRow = await supabase.from('calibration_requests').select('*').eq('id', id).maybeSingle();
@@ -38,7 +43,7 @@ export async function updateCalibrationRequestStatusAction(id: string, status: s
 
 export async function createCalibrationRequestAction(payload: Record<string, unknown>): Promise<ActionResult> {
   try {
-    const { supabase, profile, error } = await getActionContext(['admin', 'bme_head', 'technician']);
+    const { supabase, profile, error } = await getActionContextForCapability('calibration.request.create');
     if (error || !profile) return { success: false, error };
     const parsed = z.object({
       asset_id: z.string().min(1),
@@ -62,7 +67,7 @@ export async function createCalibrationRequestAction(payload: Record<string, unk
 
 export async function createCalibrationRecordAction(payload: Record<string, unknown>): Promise<ActionResult> {
   try {
-    const { supabase, profile, error } = await getActionContext(['admin', 'bme_head', 'technician']);
+    const { supabase, profile, error } = await getActionContextForCapability('calibration.record_result');
     if (error || !profile) return { success: false, error };
     const parsed = z.object({
       asset_id: z.string().min(1),

@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { AlertTriangle, CalendarClock, CheckCircle, Clock, UserPlus, Wrench } from 'lucide-react';
 import { PageHeader, DataTable, Button, Spinner, StatCard, Badge } from '@/components/ui';
+import ClearFiltersButton from '@/components/ui/ClearFiltersButton';
 import { UrgencyBadge, WorkOrderStatusBadge } from '@/components/ui/StatusBadge';
 import { getWorkOrders } from '@/services/maintenance.service';
 import { getPMSchedules } from '@/services/pm.service';
@@ -444,17 +445,21 @@ export default function WorkOrdersPage() {
         </section>
       )}
 
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         {FILTERS.map((item) => (
           <button
             key={item.id}
             type="button"
             onClick={() => setFilter(item.id)}
+            aria-pressed={filter === item.id}
             className={`rounded-lg border px-3 py-1.5 text-sm transition ${filter === item.id ? 'border-[var(--brand)] bg-[var(--surface-2)] text-[var(--foreground)]' : 'border-[var(--border-subtle)] text-[var(--text-muted)] hover:border-[var(--brand)]/50'}`}
           >
             {item.label}
           </button>
         ))}
+        {filter !== 'active' && (
+          <ClearFiltersButton onClick={() => setFilter('active')} />
+        )}
       </div>
 
       <DataTable<WorkOrderRow>

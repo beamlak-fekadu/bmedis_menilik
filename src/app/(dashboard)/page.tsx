@@ -215,7 +215,7 @@ export default function DashboardPage() {
               height={320}
             />
           ) : (
-            <p className="py-12 text-center text-sm text-gray-500">No department data</p>
+            <p className="py-12 text-center text-sm text-[var(--text-muted)]">No department data</p>
           )}
         </ChartCard>
 
@@ -228,7 +228,7 @@ export default function DashboardPage() {
               height={320}
             />
           ) : (
-            <p className="py-12 text-center text-sm text-gray-500">No condition data</p>
+            <p className="py-12 text-center text-sm text-[var(--text-muted)]">No condition data</p>
           )}
         </ChartCard>
       </div>
@@ -278,7 +278,7 @@ export default function DashboardPage() {
           </CardTitle>
         </CardHeader>
         {alerts.length === 0 ? (
-          <p className="py-8 text-center text-sm text-gray-500">No active alerts</p>
+          <p className="py-8 text-center text-sm text-[var(--text-muted)]">No active alerts</p>
         ) : (
           <div className="divide-y divide-gray-100 dark:divide-gray-800">
             {alerts.map((alert) => (
@@ -292,7 +292,7 @@ export default function DashboardPage() {
                   ) : alert.severity === 'medium' ? (
                     <Clock className="h-5 w-5 text-yellow-500" />
                   ) : (
-                    <MoreHorizontal className="h-5 w-5 text-gray-400" />
+                    <MoreHorizontal className="h-5 w-5 text-[var(--text-subtle)]" />
                   )}
                 </div>
                 <div className="min-w-0 flex-1">
@@ -300,7 +300,7 @@ export default function DashboardPage() {
                     <Badge variant={severityVariant[alert.severity] ?? 'default'}>
                       {alert.severity}
                     </Badge>
-                    <span className="text-xs text-gray-500">
+                    <span className="text-xs text-[var(--text-muted)]">
                       {alert.equipment_assets?.asset_code} — {alert.equipment_assets?.name}
                     </span>
                   </div>
@@ -311,7 +311,7 @@ export default function DashboardPage() {
                       details: alert.details ?? null,
                     })}
                   </p>
-                  <p className="mt-0.5 text-xs text-gray-400">
+                  <p className="mt-0.5 text-xs text-[var(--text-subtle)]">
                     {new Date(alert.generated_at).toLocaleString()}
                   </p>
                 </div>

@@ -37,7 +37,7 @@ export default function ConfirmDialog({
             <AlertTriangle className="h-5 w-5 text-red-600" />
           </div>
         )}
-        <p className="text-sm text-gray-600 dark:text-gray-400">{description}</p>
+        <p className="text-sm text-[var(--text-muted)]">{description}</p>
       </div>
     </Modal>
   );

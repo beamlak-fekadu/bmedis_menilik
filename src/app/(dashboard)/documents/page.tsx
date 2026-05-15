@@ -383,11 +383,11 @@ export default function DocumentsPage() {
           />
           <Input label="Title *" value={formTitle} onChange={(e) => setFormTitle(e.target.value)} placeholder="Enter document title" />
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">File *</label>
+            <label className="mb-1 block text-sm font-medium text-[var(--foreground)]">File *</label>
             <input
               type="file"
               onChange={(e) => setFormFile(e.target.files?.[0] || null)}
-              className="block w-full text-sm text-gray-500 file:mr-4 file:rounded-lg file:border-0 file:bg-blue-50 file:px-4 file:py-2 file:text-sm file:font-medium file:text-blue-700 hover:file:bg-blue-100 dark:text-gray-400 dark:file:bg-blue-900/30 dark:file:text-blue-400"
+              className="block w-full text-sm text-[var(--text-muted)] file:mr-4 file:rounded-lg file:border-0 file:bg-blue-50 file:px-4 file:py-2 file:text-sm file:font-medium file:text-blue-700 hover:file:bg-blue-100 dark:text-[var(--text-muted)] dark:file:bg-blue-900/30 dark:file:text-blue-400"
             />
           </div>
         </div>

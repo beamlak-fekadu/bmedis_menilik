@@ -50,8 +50,8 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         {toasts.map((t) => (
           <div key={t.id} className={`flex items-center gap-3 rounded-lg border px-4 py-3 shadow-lg ${bgColors[t.type]} animate-[slideIn_0.2s_ease-out]`}>
             {icons[t.type]}
-            <p className="text-sm font-medium text-gray-900 dark:text-white">{t.message}</p>
-            <button onClick={() => remove(t.id)} className="ml-2 text-gray-400 hover:text-gray-600"><X className="h-4 w-4" /></button>
+            <p className="text-sm font-medium text-[var(--foreground)]">{t.message}</p>
+            <button onClick={() => remove(t.id)} aria-label="Dismiss" className="ml-2 text-[var(--text-muted)] hover:text-[var(--foreground)]"><X className="h-4 w-4" /></button>
           </div>
         ))}
       </div>

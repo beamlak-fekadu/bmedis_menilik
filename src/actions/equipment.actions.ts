@@ -2,7 +2,7 @@
 
 import { z } from 'zod';
 import { recomputeAssetAnalytics } from './analytics.actions';
-import { getActionContext, logServerAuditEvent, revalidateMany, actionError, nullIfEmpty, type ActionResult } from './_shared';
+import { getActionContext, getActionContextForCapability, logServerAuditEvent, revalidateMany, actionError, nullIfEmpty, type ActionResult } from './_shared';
 
 const equipmentSchema = z.object({
   asset_code: z.string().trim().min(1),
@@ -52,7 +52,7 @@ function normalizeEquipment(payload: Record<string, unknown>) {
 
 export async function createEquipmentAction(payload: Record<string, unknown>): Promise<ActionResult> {
   try {
-    const { supabase, profile, error } = await getActionContext(['admin', 'bme_head', 'technician']);
+    const { supabase, profile, error } = await getActionContextForCapability('equipment.create');
     if (error || !profile) return { success: false, error };
     const data = normalizeEquipment(payload);
 
@@ -86,7 +86,7 @@ export async function createEquipmentAction(payload: Record<string, unknown>): P
 
 export async function updateEquipmentAction(id: string, payload: Record<string, unknown>): Promise<ActionResult> {
   try {
-    const { supabase, profile, error } = await getActionContext(['admin', 'bme_head', 'technician']);
+    const { supabase, profile, error } = await getActionContextForCapability('equipment.edit');
     if (error || !profile) return { success: false, error };
     const data = normalizeEquipment(payload);
     const oldRow = await supabase.from('equipment_assets').select('*').eq('id', id).maybeSingle();
@@ -136,7 +136,7 @@ export async function updateEquipmentConditionAction(
 
 export async function softDeleteEquipmentAction(id: string): Promise<ActionResult> {
   try {
-    const { supabase, profile, error } = await getActionContext(['admin', 'bme_head', 'technician']);
+    const { supabase, profile, error } = await getActionContextForCapability('equipment.delete');
     if (error || !profile) return { success: false, error };
     const oldRow = await supabase.from('equipment_assets').select('*').eq('id', id).maybeSingle();
     const result = await supabase

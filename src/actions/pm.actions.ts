@@ -2,12 +2,11 @@
 
 import { z } from 'zod';
 import { recomputeAssetAnalytics } from './analytics.actions';
-import { getActionContext, logServerAuditEvent, revalidateMany, actionError, nullIfEmpty, type ActionResult } from './_shared';
+import { getActionContextForCapability, logServerAuditEvent, revalidateMany, actionError, nullIfEmpty, type ActionResult } from './_shared';
 import { OPEN_MAINTENANCE_REQUEST_STATUSES } from '@/utils/maintenance/request-status';
 import { datePlusDays } from '@/utils/pm/semantics';
 
 const pmPaths = ['/pm', '/calendar', '/command', '/reports/pm'];
-const PM_MUTATION_ROLES = ['admin', 'bme_head', 'technician'] as const;
 const ACTIVE_PM_SCHEDULE_STATUSES = ['scheduled', 'in_progress', 'overdue', 'deferred'] as const;
 
 const pmResultToCondition = {
@@ -52,7 +51,7 @@ async function getScheduleContext(supabase: Awaited<ReturnType<typeof import('@/
 
 export async function createPMPlanAction(payload: Record<string, unknown>): Promise<ActionResult> {
   try {
-    const { supabase, profile, error } = await getActionContext([...PM_MUTATION_ROLES]);
+    const { supabase, profile, error } = await getActionContextForCapability('pm.plan.create');
     if (error || !profile) return { success: false, error };
     const parsed = z.object({
       asset_id: z.string().min(1),
@@ -77,7 +76,7 @@ export async function createPMPlanAction(payload: Record<string, unknown>): Prom
 
 export async function updateScheduleStatusAction(id: string, status: string): Promise<ActionResult> {
   try {
-    const { supabase, profile, error } = await getActionContext([...PM_MUTATION_ROLES]);
+    const { supabase, profile, error } = await getActionContextForCapability('pm.complete');
     if (error || !profile) return { success: false, error };
     const parsedStatus = z.enum(['scheduled', 'completed', 'overdue', 'skipped', 'deferred', 'in_progress', 'canceled']).parse(status);
     const oldRow = await supabase.from('pm_schedules').select('*').eq('id', id).maybeSingle();
@@ -95,7 +94,7 @@ export async function updateScheduleStatusAction(id: string, status: string): Pr
 
 export async function createPMCompletionAction(payload: Record<string, unknown>): Promise<ActionResult> {
   try {
-    const { supabase, profile, error } = await getActionContext([...PM_MUTATION_ROLES]);
+    const { supabase, profile, error } = await getActionContextForCapability('pm.complete');
     if (error || !profile) return { success: false, error };
     const parsed = pmCompletionSchema.parse(payload);
     const completedBy = nullIfEmpty(parsed.completed_by) ?? profile.id;
@@ -198,7 +197,7 @@ export async function createPMCompletionAction(payload: Record<string, unknown>)
 
 export async function assignPMScheduleAction(id: string, assignedTo: string | null): Promise<ActionResult> {
   try {
-    const { supabase, profile, error } = await getActionContext([...PM_MUTATION_ROLES]);
+    const { supabase, profile, error } = await getActionContextForCapability('pm.assign');
     if (error || !profile) return { success: false, error };
     const assignee = nullIfEmpty(assignedTo);
     const oldRow = await supabase.from('pm_schedules').select('*').eq('id', id).maybeSingle();
@@ -220,7 +219,7 @@ export async function assignPMScheduleAction(id: string, assignedTo: string | nu
 
 export async function startPMScheduleAction(id: string): Promise<ActionResult> {
   try {
-    const { supabase, profile, error } = await getActionContext([...PM_MUTATION_ROLES]);
+    const { supabase, profile, error } = await getActionContextForCapability('pm.complete');
     if (error || !profile) return { success: false, error };
     const oldRow = await supabase.from('pm_schedules').select('*').eq('id', id).maybeSingle();
     const result = await supabase
@@ -241,7 +240,7 @@ export async function startPMScheduleAction(id: string): Promise<ActionResult> {
 
 export async function deferOrSkipPMScheduleAction(payload: Record<string, unknown>): Promise<ActionResult> {
   try {
-    const { supabase, profile, error } = await getActionContext([...PM_MUTATION_ROLES]);
+    const { supabase, profile, error } = await getActionContextForCapability('pm.complete');
     if (error || !profile) return { success: false, error };
     const parsed = deferSkipSchema.parse(payload);
     const oldRow = await supabase.from('pm_schedules').select('*').eq('id', parsed.schedule_id).maybeSingle();
@@ -274,7 +273,7 @@ export async function deferOrSkipPMScheduleAction(payload: Record<string, unknow
 
 export async function updatePMPlanStatusAction(id: string, isActive: boolean): Promise<ActionResult> {
   try {
-    const { supabase, profile, error } = await getActionContext(['admin', 'bme_head']);
+    const { supabase, profile, error } = await getActionContextForCapability('pm.plan.create');
     if (error || !profile) return { success: false, error };
     const oldRow = await supabase.from('pm_plans').select('*').eq('id', id).maybeSingle();
     const result = await supabase.from('pm_plans').update({ is_active: isActive } as never).eq('id', id).select('*').single();
@@ -289,7 +288,7 @@ export async function updatePMPlanStatusAction(id: string, isActive: boolean): P
 
 export async function pausePMPlanAction(id: string, reason?: string | null): Promise<ActionResult> {
   try {
-    const { supabase, profile, error } = await getActionContext(['admin', 'bme_head']);
+    const { supabase, profile, error } = await getActionContextForCapability('pm.plan.create');
     if (error || !profile) return { success: false, error };
     const oldRow = await supabase.from('pm_plans').select('*').eq('id', id).maybeSingle();
     if (oldRow.error) return { success: false, error: oldRow.error.message };
@@ -316,7 +315,7 @@ export async function pausePMPlanAction(id: string, reason?: string | null): Pro
 
 export async function resumePMPlanAction(id: string): Promise<ActionResult> {
   try {
-    const { supabase, profile, error } = await getActionContext(['admin', 'bme_head']);
+    const { supabase, profile, error } = await getActionContextForCapability('pm.plan.create');
     if (error || !profile) return { success: false, error };
     const oldRow = await supabase.from('pm_plans').select('*').eq('id', id).maybeSingle();
     if (oldRow.error) return { success: false, error: oldRow.error.message };
@@ -342,7 +341,7 @@ export async function resumePMPlanAction(id: string): Promise<ActionResult> {
 
 export async function generateNextPMScheduleAction(planId: string): Promise<ActionResult> {
   try {
-    const { supabase, profile, error } = await getActionContext(['admin', 'bme_head']);
+    const { supabase, profile, error } = await getActionContextForCapability('pm.plan.create');
     if (error || !profile) return { success: false, error };
     const planRes = await supabase.from('pm_plans').select('*').eq('id', planId).maybeSingle();
     if (planRes.error) return { success: false, error: planRes.error.message };

@@ -190,7 +190,7 @@ export async function getOpenRequestsForAsset(assetId: string) {
   const supabase = createClient();
   return supabase
     .from('maintenance_requests')
-    .select('id, asset_id, status, urgency, reported_condition, reported_condition_source, created_at')
+    .select('id, request_number, asset_id, status, urgency, reported_condition, reported_condition_source, created_at')
     .eq('asset_id', assetId)
     .in('status', [...OPEN_MAINTENANCE_REQUEST_STATUSES])
     .order('created_at', { ascending: false });
@@ -226,7 +226,7 @@ export async function getOpenWorkOrdersForAsset(assetId: string) {
   const supabase = createClient();
   return supabase
     .from('work_orders')
-    .select('id, asset_id, status, priority, assigned_to, created_at')
+    .select('id, work_order_number, asset_id, status, priority, assigned_to, created_at')
     .eq('asset_id', assetId)
     .in('status', ['open', 'assigned', 'in_progress', 'on_hold'])
     .order('created_at', { ascending: false });
@@ -245,7 +245,7 @@ export async function getLastCompletedWorkOrderForAsset(assetId: string) {
   const supabase = createClient();
   return supabase
     .from('work_orders')
-    .select('id, asset_id, status, completion_outcome, final_equipment_condition, completed_at')
+    .select('id, work_order_number, asset_id, status, completion_outcome, final_equipment_condition, completed_at')
     .eq('asset_id', assetId)
     .eq('status', 'completed')
     .order('completed_at', { ascending: false })

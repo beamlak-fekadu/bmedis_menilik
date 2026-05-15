@@ -1,14 +1,14 @@
 'use server';
 
 import { z } from 'zod';
-import { getActionContext, logServerAuditEvent, revalidateMany, actionError, nullIfEmpty, type ActionResult } from './_shared';
+import { getActionContextForCapability, logServerAuditEvent, revalidateMany, actionError, nullIfEmpty, type ActionResult } from './_shared';
 
 const procurementPaths = ['/procurement', '/logistics', '/calendar', '/command'];
 const procurementStatus = z.enum(['requested', 'approved', 'ordered', 'in_transit', 'delivered', 'canceled']);
 
 export async function createProcurementRequestAction(payload: Record<string, unknown>): Promise<ActionResult> {
   try {
-    const { supabase, profile, error } = await getActionContext(['admin', 'bme_head', 'store_user', 'technician']);
+    const { supabase, profile, error } = await getActionContextForCapability('procurement.request');
     if (error || !profile) return { success: false, error };
     const parsed = z.object({
       title: z.string().trim().min(5),
@@ -32,7 +32,7 @@ export async function createProcurementRequestAction(payload: Record<string, unk
 
 export async function updateProcurementStatusAction(id: string, status: string): Promise<ActionResult> {
   try {
-    const { supabase, profile, error } = await getActionContext(['admin', 'bme_head', 'store_user']);
+    const { supabase, profile, error } = await getActionContextForCapability('procurement.status_update');
     if (error || !profile) return { success: false, error };
     const parsedStatus = procurementStatus.parse(status);
     const oldRow = await supabase.from('procurement_requests').select('*').eq('id', id).maybeSingle();

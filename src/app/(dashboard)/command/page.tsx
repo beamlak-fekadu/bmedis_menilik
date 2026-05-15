@@ -1,10 +1,8 @@
 import Link from 'next/link';
 import {
   ArrowUpDown,
-  BookOpen,
   CalendarDays,
   Info,
-  Settings2,
   ShieldAlert,
   Users,
   Zap,
@@ -49,6 +47,7 @@ import {
   type TechnicianWorkloadItem,
 } from './_lib/command-center-data';
 import { equipmentDetail, replacementEvidence, replacementReportPrefill } from './_lib/command-center-routes';
+import { isReplacementCandidate } from '@/utils/decision-support/replacement-thresholds';
 
 // ─── types ────────────────────────────────────────────────────────────────────
 
@@ -392,7 +391,10 @@ async function fetchReplacementData(supabase: Awaited<ReturnType<typeof createCl
     justification: (row.justification as string | null) ?? null,
   }));
 
-  return { rows: all.slice(0, 5), total: all.length };
+  // Canonical replacement candidate count = Strong + Review (RPI >= 0.55).
+  // Monitor-band rows are not "candidates" and must not be counted here.
+  const candidates = all.filter((row) => isReplacementCandidate(row.priority_index));
+  return { rows: candidates.slice(0, 5), total: candidates.length };
 }
 
 // ─── page ─────────────────────────────────────────────────────────────────────
@@ -568,18 +570,10 @@ export default async function CommandCenterPage() {
             <div className="mt-1 flex flex-wrap items-center gap-3">
               <AutoRefreshStatus />
               <span className="text-xs text-[var(--text-muted)]/50">·</span>
-              <span className="text-xs text-[var(--text-muted)]">Live operational data · {now}</span>
-              <Link href="/reports" className="text-xs text-violet-300/70 hover:text-violet-300" title="Generate reports from current data">
-                <BookOpen className="inline h-3 w-3" /> Reports
-              </Link>
+              <span className="text-xs text-[var(--text-muted)]">Updated from current operational records · {now}</span>
               <Link href="/calendar" className="text-xs text-cyan-300/80 hover:text-cyan-200" title="Open hospital operations calendar">
                 <CalendarDays className="inline h-3 w-3" /> Calendar
               </Link>
-              {primaryRole === 'developer' && (
-                <Link href="/command/health" className="inline-flex items-center gap-1 text-xs text-slate-400 hover:text-slate-300" title="Developer: asset health scores">
-                  <Settings2 className="h-3 w-3" /> Health scores
-                </Link>
-              )}
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-2">
@@ -739,7 +733,7 @@ export default async function CommandCenterPage() {
             </CardHeader>
             <CardContent>
               {replacement.rows.length === 0 ? (
-                <p className="py-4 text-center text-sm text-[var(--text-muted)]">No replacement candidates scored yet</p>
+                <p className="py-4 text-center text-sm text-[var(--text-muted)]">No assets currently exceed the replacement review threshold (RPI ≥ 0.55).</p>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="min-w-[720px] w-full text-sm">

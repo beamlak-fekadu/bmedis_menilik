@@ -1,13 +1,13 @@
 'use server';
 
 import { z } from 'zod';
-import { getActionContext, logServerAuditEvent, revalidateMany, actionError, nullIfEmpty, type ActionResult } from './_shared';
+import { getActionContextForCapability, logServerAuditEvent, revalidateMany, actionError, nullIfEmpty, type ActionResult } from './_shared';
 
 const trainingPaths = ['/training', '/calendar', '/reports/training'];
 
 export async function createTrainingRequestAction(payload: Record<string, unknown>): Promise<ActionResult> {
   try {
-    const { supabase, profile, error } = await getActionContext(['admin', 'bme_head', 'technician', 'department_head', 'department_user']);
+    const { supabase, profile, error } = await getActionContextForCapability('training.request.create');
     if (error || !profile) return { success: false, error };
     const parsed = z.object({
       asset_id: z.string().optional().nullable(),
@@ -31,7 +31,7 @@ export async function createTrainingRequestAction(payload: Record<string, unknow
 
 export async function createTrainingSessionAction(payload: Record<string, unknown>): Promise<ActionResult> {
   try {
-    const { supabase, profile, error } = await getActionContext(['admin', 'bme_head', 'technician']);
+    const { supabase, profile, error } = await getActionContextForCapability('training.schedule');
     if (error || !profile) return { success: false, error };
     const parsed = z.object({
       title: z.string().trim().min(3),
@@ -57,7 +57,7 @@ export async function createTrainingSessionAction(payload: Record<string, unknow
 
 export async function createStaffTrainingRecordAction(payload: Record<string, unknown>): Promise<ActionResult> {
   try {
-    const { supabase, profile, error } = await getActionContext(['admin', 'bme_head', 'technician']);
+    const { supabase, profile, error } = await getActionContextForCapability('training.record_attendance');
     if (error || !profile) return { success: false, error };
     const parsed = z.object({
       session_id: z.string().min(1),

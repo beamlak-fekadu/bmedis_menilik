@@ -19,7 +19,7 @@ import { assignWorkOrder, createMaintenanceEventAction, reassignWorkOrder, updat
 import { syncOfflineWorkOrderActionsAction } from '@/actions/offline-sync.actions';
 import { enqueueOfflineAction, getOfflineQueue, markOfflineActionFailed, removeOfflineAction, type OfflineWorkOrderAction } from '@/lib/offline/technician-queue';
 import { getAll } from '@/services/settings.service';
-import { getActiveTechnicians } from '@/services/users.service';
+import { getActiveTechnicians, ASSIGNABLE_TECHNICIANS_EMPTY_STATE } from '@/services/users.service';
 import { useToast } from '@/components/ui/Toast';
 import { AskAiButton } from '@/components/assistant/AskAiButton';
 import { useRole } from '@/hooks/useRole';
@@ -422,7 +422,7 @@ export default function WorkOrderDetailPage() {
           <CardContent>
             <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <div>
-                <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Asset</dt>
+                <dt className="text-sm font-medium text-[var(--text-muted)]">Asset</dt>
                 <dd className="mt-1 text-sm text-gray-900 dark:text-white">
                   {wo.equipment_assets
                     ? `${wo.equipment_assets.asset_code} — ${wo.equipment_assets.name}`
@@ -430,52 +430,52 @@ export default function WorkOrderDetailPage() {
                 </dd>
               </div>
               <div>
-                <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Assigned To</dt>
+                <dt className="text-sm font-medium text-[var(--text-muted)]">Assigned To</dt>
                 <dd className="mt-1 text-sm text-gray-900 dark:text-white">
                   {wo.profiles?.full_name ?? 'Unassigned'}
                 </dd>
               </div>
               <div>
-                <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Priority</dt>
+                <dt className="text-sm font-medium text-[var(--text-muted)]">Priority</dt>
                 <dd className="mt-1"><UrgencyBadge urgency={wo.priority} /></dd>
               </div>
               <div>
-                <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Status</dt>
+                <dt className="text-sm font-medium text-[var(--text-muted)]">Status</dt>
                 <dd className="mt-1"><WorkOrderStatusBadge status={wo.status} /></dd>
               </div>
               <div>
-                <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Work Type</dt>
+                <dt className="text-sm font-medium text-[var(--text-muted)]">Work Type</dt>
                 <dd className="mt-1 text-sm text-gray-900 dark:text-white">
                   {wo.work_type.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
                 </dd>
               </div>
               <div>
-                <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">External Vendor</dt>
+                <dt className="text-sm font-medium text-[var(--text-muted)]">External Vendor</dt>
                 <dd className="mt-1 text-sm text-gray-900 dark:text-white">
                   {wo.external_vendor ? wo.external_vendor_name || 'Yes' : 'No'}
                 </dd>
               </div>
               <div>
-                <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Estimated Hours</dt>
+                <dt className="text-sm font-medium text-[var(--text-muted)]">Estimated Hours</dt>
                 <dd className="mt-1 text-sm text-gray-900 dark:text-white">
                   {wo.estimated_hours ?? '—'}
                 </dd>
               </div>
               <div>
-                <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Actual Hours</dt>
+                <dt className="text-sm font-medium text-[var(--text-muted)]">Actual Hours</dt>
                 <dd className="mt-1 text-sm text-gray-900 dark:text-white">
                   {wo.actual_hours ?? '—'}
                 </dd>
               </div>
               <div>
-                <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Created</dt>
+                <dt className="text-sm font-medium text-[var(--text-muted)]">Created</dt>
                 <dd className="mt-1 text-sm text-gray-900 dark:text-white">
                   {new Date(wo.created_at).toLocaleString()}
                 </dd>
               </div>
               {wo.started_at && (
                 <div>
-                  <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Started</dt>
+                  <dt className="text-sm font-medium text-[var(--text-muted)]">Started</dt>
                   <dd className="mt-1 text-sm text-gray-900 dark:text-white">
                     {new Date(wo.started_at).toLocaleString()}
                   </dd>
@@ -483,7 +483,7 @@ export default function WorkOrderDetailPage() {
               )}
               {wo.completed_at && (
                 <div>
-                  <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Completed</dt>
+                  <dt className="text-sm font-medium text-[var(--text-muted)]">Completed</dt>
                   <dd className="mt-1 text-sm text-gray-900 dark:text-white">
                     {new Date(wo.completed_at).toLocaleString()}
                   </dd>
@@ -491,7 +491,7 @@ export default function WorkOrderDetailPage() {
               )}
               {wo.root_cause && (
                 <div className="sm:col-span-2 lg:col-span-3">
-                  <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Root Cause</dt>
+                  <dt className="text-sm font-medium text-[var(--text-muted)]">Root Cause</dt>
                   <dd className="mt-1 whitespace-pre-wrap text-sm text-gray-900 dark:text-white">
                     {wo.root_cause}
                   </dd>
@@ -499,7 +499,7 @@ export default function WorkOrderDetailPage() {
               )}
               {wo.closure_notes && (
                 <div className="sm:col-span-2 lg:col-span-3">
-                  <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Closure Notes</dt>
+                  <dt className="text-sm font-medium text-[var(--text-muted)]">Closure Notes</dt>
                   <dd className="mt-1 whitespace-pre-wrap text-sm text-gray-900 dark:text-white">
                     {wo.closure_notes}
                   </dd>
@@ -507,7 +507,7 @@ export default function WorkOrderDetailPage() {
               )}
               {wo.completion_outcome && (
                 <div>
-                  <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Completion Outcome</dt>
+                  <dt className="text-sm font-medium text-[var(--text-muted)]">Completion Outcome</dt>
                   <dd className="mt-1 text-sm text-gray-900 dark:text-white">
                     {wo.completion_outcome.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase())}
                   </dd>
@@ -515,7 +515,7 @@ export default function WorkOrderDetailPage() {
               )}
               {wo.final_equipment_condition && (
                 <div>
-                  <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Final Equipment Condition</dt>
+                  <dt className="text-sm font-medium text-[var(--text-muted)]">Final Equipment Condition</dt>
                   <dd className="mt-1 text-sm text-gray-900 dark:text-white">
                     {wo.final_equipment_condition.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase())}
                   </dd>
@@ -632,7 +632,7 @@ export default function WorkOrderDetailPage() {
             <CardContent>
               <dl className="grid gap-3 sm:grid-cols-2">
                 <div>
-                  <dt className="text-xs font-medium text-gray-500 dark:text-gray-400">Request #</dt>
+                  <dt className="text-xs font-medium text-[var(--text-muted)]">Request #</dt>
                   <dd className="mt-1 text-sm">
                     <a href={`/maintenance/requests/${originatingRequest.id}`} className="text-[var(--brand)] hover:underline">
                       {originatingRequest.request_number}
@@ -640,14 +640,14 @@ export default function WorkOrderDetailPage() {
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-xs font-medium text-gray-500 dark:text-gray-400">Urgency</dt>
+                  <dt className="text-xs font-medium text-[var(--text-muted)]">Urgency</dt>
                   <dd className="mt-1">
                     <UrgencyBadge urgency={originatingRequest.urgency as never} />
                   </dd>
                 </div>
                 {originatingRequest.reported_condition && (
                   <div>
-                    <dt className="text-xs font-medium text-gray-500 dark:text-gray-400">Reported Condition</dt>
+                    <dt className="text-xs font-medium text-[var(--text-muted)]">Reported Condition</dt>
                     <dd className="mt-1 text-sm font-medium">
                       {originatingRequest.reported_condition === 'functional_issue'
                         ? <span className="text-emerald-300">Functional (issue observed)</span>
@@ -661,7 +661,7 @@ export default function WorkOrderDetailPage() {
                   </div>
                 )}
                 <div className="sm:col-span-2">
-                  <dt className="text-xs font-medium text-gray-500 dark:text-gray-400">Fault Description</dt>
+                  <dt className="text-xs font-medium text-[var(--text-muted)]">Fault Description</dt>
                   <dd className="mt-1 whitespace-pre-wrap text-sm text-gray-900 dark:text-white">{originatingRequest.fault_description}</dd>
                 </div>
               </dl>
@@ -741,10 +741,20 @@ export default function WorkOrderDetailPage() {
           <CardHeader>
             <CardTitle>Maintenance Events</CardTitle>
             {!isTerminal && (
-              <Button size="sm" onClick={openEventModal}>
-                <Plus className="h-4 w-4" />
-                Log Event
-              </Button>
+              <div className="flex items-center gap-2">
+                <a
+                  href={`/maintenance/work-orders/${id}/events/new`}
+                  className="inline-flex items-center gap-1 rounded-md border border-[var(--border-subtle)] bg-[var(--surface-1)] px-3 py-1.5 text-xs font-medium text-[var(--foreground)] hover:bg-[var(--surface-3)]"
+                  title="Open the full event form on its own page"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  Add Work Event
+                </a>
+                <Button size="sm" onClick={openEventModal}>
+                  <Plus className="h-4 w-4" />
+                  Log Event
+                </Button>
+              </div>
             )}
           </CardHeader>
           <CardContent>
@@ -835,7 +845,7 @@ export default function WorkOrderDetailPage() {
           options={technicians.map((t) => ({ value: t.id, label: `${t.full_name}${t.email ? ` · ${t.email}` : ''}` }))}
         />
         {technicians.length === 0 && (
-          <p className="mt-2 text-xs text-amber-300">No active technician profiles were found.</p>
+          <p className="mt-2 text-xs text-amber-300">{ASSIGNABLE_TECHNICIANS_EMPTY_STATE}</p>
         )}
       </Modal>
 

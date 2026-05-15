@@ -58,70 +58,78 @@ export const ROUTES = {
   CHATBOT: '/chatbot',
 } as const;
 
+// Sidebar nav structure. Each item now declares a `capability` (consumed by
+// src/lib/rbac.ts CAPABILITY_MATRIX); the legacy `roles` array is retained for
+// non-rbac consumers and as a backstop when no capability is declared.
 export const NAV_SECTIONS = [
   {
     title: 'Command',
     items: [
-      { label: 'Command Center', href: ROUTES.COMMAND, icon: 'LayoutDashboard', roles: ['developer', 'admin', 'bme_head', 'technician', 'department_head', 'department_user', 'store_user', 'viewer'] },
-      { label: 'Hospital Calendar', href: ROUTES.CALENDAR, icon: 'CalendarDays', roles: ['developer', 'admin', 'bme_head', 'technician', 'department_head', 'department_user', 'store_user', 'viewer'] },
-      { label: 'Developer Lab', href: ROUTES.DEVELOPER_LAB, icon: 'Activity', roles: ['developer', 'admin'] },
+      { label: 'Command Center', href: ROUTES.COMMAND, icon: 'LayoutDashboard', capability: 'nav.command', roles: ['developer', 'admin', 'bme_head', 'technician', 'department_head', 'department_user', 'store_user', 'viewer'] },
+      { label: 'Hospital Calendar', href: ROUTES.CALENDAR, icon: 'CalendarDays', capability: 'nav.calendar', roles: ['developer', 'admin', 'bme_head', 'technician', 'department_head', 'department_user', 'store_user', 'viewer'] },
+      // Developer Lab is intentionally developer-only via the
+      // `nav.developer_lab` capability; CAPABILITY_MATRIX grants it only to
+      // the `developer` role. The route guard in (dashboard)/layout.tsx is the
+      // server-side enforcement.
+      { label: 'Developer Lab', href: ROUTES.DEVELOPER_LAB, icon: 'Activity', capability: 'nav.developer_lab', roles: ['developer'] },
     ],
   },
   {
     title: 'Equipment',
     items: [
-      { label: 'Equipment', href: ROUTES.EQUIPMENT, icon: 'Monitor', roles: ['developer', 'admin', 'bme_head', 'technician', 'department_head', 'department_user', 'store_user', 'viewer'] },
+      { label: 'Equipment', href: ROUTES.EQUIPMENT, icon: 'Monitor', capability: 'nav.equipment', roles: ['developer', 'admin', 'bme_head', 'technician', 'department_head', 'department_user', 'store_user', 'viewer'] },
     ],
   },
   {
     title: 'Work',
     items: [
-      { label: 'Maintenance', href: ROUTES.MAINTENANCE, icon: 'Wrench', roles: ['developer', 'admin', 'bme_head', 'technician', 'department_head', 'department_user'] },
-      { label: 'Requests', href: ROUTES.REQUESTS, icon: 'ClipboardList', roles: ['developer', 'admin', 'bme_head', 'technician', 'department_head', 'department_user', 'store_user', 'viewer'] },
-      { label: 'Preventive Maintenance', href: ROUTES.PM, icon: 'CalendarCheck', roles: ['developer', 'admin', 'bme_head', 'technician', 'viewer'] },
-      { label: 'Calibration', href: ROUTES.CALIBRATION, icon: 'Gauge', roles: ['developer', 'admin', 'bme_head', 'technician'] },
-      { label: 'Work Orders', href: ROUTES.WORK_ORDERS, icon: 'ClipboardList', roles: ['developer', 'admin', 'bme_head', 'technician', 'department_head'] },
+      { label: 'Maintenance', href: ROUTES.MAINTENANCE, icon: 'Wrench', capability: 'nav.maintenance', roles: ['developer', 'admin', 'bme_head', 'technician', 'department_head', 'department_user'] },
+      { label: 'Requests', href: ROUTES.REQUESTS, icon: 'ClipboardList', capability: 'nav.requests', roles: ['developer', 'admin', 'bme_head', 'technician', 'department_head', 'department_user', 'store_user', 'viewer'] },
+      { label: 'Preventive Maintenance', href: ROUTES.PM, icon: 'CalendarCheck', capability: 'nav.pm', roles: ['developer', 'admin', 'bme_head', 'technician', 'viewer'] },
+      { label: 'Calibration', href: ROUTES.CALIBRATION, icon: 'Gauge', capability: 'nav.calibration', roles: ['developer', 'admin', 'bme_head', 'technician'] },
+      { label: 'Work Orders', href: ROUTES.WORK_ORDERS, icon: 'ClipboardList', capability: 'nav.work_orders', roles: ['developer', 'admin', 'bme_head', 'technician', 'department_head'] },
     ],
   },
   {
     title: 'Inventory',
     items: [
-      { label: 'Spare Parts', href: ROUTES.SPARE_PARTS, icon: 'Package', roles: ['developer', 'admin', 'bme_head', 'technician', 'store_user'] },
-      { label: 'Logistics', href: ROUTES.LOGISTICS, icon: 'Boxes', roles: ['developer', 'admin', 'bme_head', 'technician', 'store_user'] },
-      { label: 'Procurement', href: ROUTES.PROCUREMENT, icon: 'PackageCheck', roles: ['developer', 'admin', 'bme_head', 'technician', 'store_user'] },
+      { label: 'Spare Parts', href: ROUTES.SPARE_PARTS, icon: 'Package', capability: 'nav.spare_parts', roles: ['developer', 'admin', 'bme_head', 'technician', 'store_user'] },
+      { label: 'Logistics', href: ROUTES.LOGISTICS, icon: 'Boxes', capability: 'nav.logistics', roles: ['developer', 'admin', 'bme_head', 'technician', 'store_user'] },
+      { label: 'Procurement', href: ROUTES.PROCUREMENT, icon: 'PackageCheck', capability: 'nav.procurement', roles: ['developer', 'admin', 'bme_head', 'technician', 'store_user'] },
     ],
   },
   {
     title: 'People',
     items: [
-      { label: 'Training', href: ROUTES.TRAINING, icon: 'GraduationCap', roles: ['developer', 'admin', 'bme_head', 'technician', 'department_head', 'department_user'] },
+      { label: 'Training', href: ROUTES.TRAINING, icon: 'GraduationCap', capability: 'nav.training', roles: ['developer', 'admin', 'bme_head', 'technician', 'department_head', 'department_user'] },
     ],
   },
   {
     title: 'Lifecycle',
     items: [
-      { label: 'Replacement Priority', href: ROUTES.REPLACEMENT, icon: 'ArrowUpDown', roles: ['developer', 'admin', 'bme_head', 'technician', 'viewer'] },
-      { label: 'Disposal', href: ROUTES.DISPOSAL, icon: 'Trash2', roles: ['developer', 'admin', 'bme_head', 'technician'] },
+      { label: 'Replacement Priority', href: ROUTES.REPLACEMENT, icon: 'ArrowUpDown', capability: 'nav.replacement', roles: ['developer', 'admin', 'bme_head', 'technician', 'viewer'] },
+      { label: 'Disposal', href: ROUTES.DISPOSAL, icon: 'Trash2', capability: 'nav.disposal', roles: ['developer', 'admin', 'bme_head', 'technician'] },
     ],
   },
   {
     title: 'Support',
     items: [
-      { label: 'Alerts', href: ROUTES.ALERTS, icon: 'Bell', roles: ['developer', 'admin', 'bme_head', 'technician', 'department_head'] },
+      { label: 'Alerts', href: ROUTES.ALERTS, icon: 'Bell', capability: 'nav.alerts', roles: ['developer', 'admin', 'bme_head', 'technician', 'department_head'] },
+      // BMERMS AI Chatbot has no dedicated capability; keep roles-based.
       { label: CHATBOT_NAME, href: ROUTES.CHATBOT, icon: 'MessageSquareText', roles: ['developer', 'admin', 'bme_head', 'technician', 'department_head', 'department_user', 'store_user', 'viewer'] },
     ],
   },
   {
     title: 'Reports',
     items: [
-      { label: 'Reports', href: ROUTES.REPORTS, icon: 'FileBarChart', roles: ['developer', 'admin', 'bme_head', 'technician', 'department_head', 'department_user', 'store_user', 'viewer'] },
+      { label: 'Reports', href: ROUTES.REPORTS, icon: 'FileBarChart', capability: 'nav.reports', roles: ['developer', 'admin', 'bme_head', 'technician', 'department_head', 'department_user', 'store_user', 'viewer'] },
     ],
   },
   {
     title: 'Administration',
     items: [
-      { label: 'Settings', href: ROUTES.SETTINGS, icon: 'Settings', roles: ['developer', 'admin', 'bme_head'] },
-      { label: 'Audit Log', href: ROUTES.AUDIT, icon: 'FileText', roles: ['developer', 'admin', 'bme_head'] },
+      { label: 'Settings', href: ROUTES.SETTINGS, icon: 'Settings', capability: 'nav.settings', roles: ['developer', 'admin', 'bme_head'] },
+      { label: 'Audit Log', href: ROUTES.AUDIT, icon: 'FileText', capability: 'nav.audit', roles: ['developer', 'admin', 'bme_head'] },
     ],
   },
 ] as const;

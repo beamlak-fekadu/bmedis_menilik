@@ -8,6 +8,7 @@ import {
   AlertCircle, TrendingUp, Play, ShieldAlert,
 } from 'lucide-react';
 import { PageHeader, DataTable, Button, Spinner } from '@/components/ui';
+import ClearFiltersButton from '@/components/ui/ClearFiltersButton';
 import { UrgencyBadge, WorkOrderStatusBadge, RequestStatusBadge } from '@/components/ui/StatusBadge';
 import { getMaintenanceRequests, getWorkOrders } from '@/services/maintenance.service';
 import { getRecommendationFlags } from '@/services/analytics.service';
@@ -629,6 +630,9 @@ export default function MaintenancePage() {
                     />
                   );
                 })}
+                {reqFilter !== 'all' && (
+                  <ClearFiltersButton onClick={() => setReqFilter('all')} />
+                )}
                 <div className="ml-auto">
                   {canCreateRequests && (
                     <Link href="/maintenance/requests/new">
@@ -675,6 +679,9 @@ export default function MaintenancePage() {
                     />
                   );
                 })}
+                {woFilter !== 'all' && (
+                  <ClearFiltersButton onClick={() => setWoFilter('all')} />
+                )}
                 <div className="ml-auto">
                   {canManageMaintenance && (
                     <Link href="/maintenance/work-orders/new">

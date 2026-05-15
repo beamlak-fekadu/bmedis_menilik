@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { getReplacementPriorities } from '@/services/analytics.service';
 import { PageHeader, StatCard, DataTable, Badge, Button } from '@/components/ui';
+import ClearFiltersButton from '@/components/ui/ClearFiltersButton';
 import { PageLoader } from '@/components/ui/Spinner';
 import Card, { CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { ChartCard, HorizontalBarChart } from '@/components/charts';
@@ -21,6 +22,12 @@ import { ScoreExplanation } from '@/app/(dashboard)/command/_components/ScoreExp
 import type { ScoreExplanation as ScoreExplanationData } from '@/app/(dashboard)/command/_lib/command-center-data';
 import { equipmentDetail, replacementEvidence } from '@/app/(dashboard)/command/_lib/command-center-routes';
 import { generateReplacementDriver } from '@/utils/decision-support/explanations';
+import {
+  REPLACEMENT_REVIEW_THRESHOLD,
+  REPLACEMENT_STRONG_THRESHOLD,
+  replacementBand,
+  isReplacementCandidate,
+} from '@/utils/decision-support/replacement-thresholds';
 import { useRole } from '@/hooks/useRole';
 import { ROUTES } from '@/constants';
 
@@ -64,8 +71,9 @@ function rpiValue(row: ReplacementRow) {
 }
 
 function rpiColor(index: number): string {
-  if (index >= 0.7) return '#ef4444';
-  if (index >= 0.55) return '#f97316';
+  const band = replacementBand(index);
+  if (band === 'strong') return '#ef4444';
+  if (band === 'review') return '#f97316';
   return '#22c55e';
 }
 
@@ -76,15 +84,16 @@ function rpiLabel(value: number | null | undefined) {
 
 function scoreBand(value: number | null | undefined) {
   if (value == null) return 'Not available';
-  if (value >= 0.7) return 'High';
-  if (value >= 0.55) return 'Review';
+  if (value >= REPLACEMENT_STRONG_THRESHOLD) return 'High';
+  if (value >= REPLACEMENT_REVIEW_THRESHOLD) return 'Review';
   return 'Low';
 }
 
 function replacementDecisionBand(value: number | null | undefined) {
   if (value == null) return 'Not scored';
-  if (value >= 0.7) return 'Strong replacement candidate';
-  if (value >= 0.55) return 'Review candidate';
+  const band = replacementBand(value);
+  if (band === 'strong') return 'Strong replacement candidate';
+  if (band === 'review') return 'Review candidate';
   return 'Monitor';
 }
 
@@ -181,29 +190,30 @@ export default function ReplacementPage() {
     .filter((d) => d.replacement_priority_index != null)
     .sort((a, b) => (a.rank ?? 9999) - (b.rank ?? 9999)), [data]);
 
-  const topCandidates = ranked.filter((row) => rpiValue(row) >= 0.55).slice(0, 3);
-  const replacementCandidates = ranked.filter((row) => rpiValue(row) >= 0.55);
-  const highPriority = ranked.filter((row) => rpiValue(row) >= 0.7);
-  const reviewCandidates = ranked.filter((row) => rpiValue(row) >= 0.55 && rpiValue(row) < 0.7);
-  const monitorCandidates = ranked.filter((row) => rpiValue(row) < 0.55).slice(0, 10);
-  const criticalClinicalImpact = ranked.filter((row) => (row.risk_score ?? 0) >= 0.7);
-  const poorSpareSupport = ranked.filter((row) => (row.spare_part_score ?? 0) >= 0.7);
-  const highMaintenanceBurden = ranked.filter((row) => (row.maintenance_burden_score ?? 0) >= 0.7);
-  const lowAvailability = ranked.filter((row) => (row.availability_score ?? 0) >= 0.7);
-  const frequentFailure = ranked.filter((row) => (row.failure_score ?? 0) >= 0.7);
+  const topCandidates = ranked.filter((row) => isReplacementCandidate(rpiValue(row))).slice(0, 3);
+  const replacementCandidates = ranked.filter((row) => isReplacementCandidate(rpiValue(row)));
+  const highPriority = ranked.filter((row) => rpiValue(row) >= REPLACEMENT_STRONG_THRESHOLD);
+  const reviewCandidates = ranked.filter((row) => rpiValue(row) >= REPLACEMENT_REVIEW_THRESHOLD && rpiValue(row) < REPLACEMENT_STRONG_THRESHOLD);
+  const monitorCandidates = ranked.filter((row) => rpiValue(row) < REPLACEMENT_REVIEW_THRESHOLD).slice(0, 10);
+  const criticalClinicalImpact = ranked.filter((row) => (row.risk_score ?? 0) >= REPLACEMENT_STRONG_THRESHOLD);
+  const poorSpareSupport = ranked.filter((row) => (row.spare_part_score ?? 0) >= REPLACEMENT_STRONG_THRESHOLD);
+  const highMaintenanceBurden = ranked.filter((row) => (row.maintenance_burden_score ?? 0) >= REPLACEMENT_STRONG_THRESHOLD);
+  const lowAvailability = ranked.filter((row) => (row.availability_score ?? 0) >= REPLACEMENT_STRONG_THRESHOLD);
+  const frequentFailure = ranked.filter((row) => (row.failure_score ?? 0) >= REPLACEMENT_STRONG_THRESHOLD);
+  const ageObsolescenceRisk = ranked.filter((row) => (row.age_score ?? 0) >= REPLACEMENT_STRONG_THRESHOLD);
   const chartRows = chartLimit === 'all' ? ranked : ranked.slice(0, Number(chartLimit));
   const filteredRows = ranked.filter((row) => {
-    if (activeFilter === 'strong') return rpiValue(row) >= 0.7;
-    if (activeFilter === 'review') return rpiValue(row) >= 0.55 && rpiValue(row) < 0.7;
-    if (activeFilter === 'maintenance') return (row.maintenance_burden_score ?? 0) >= 0.7;
-    if (activeFilter === 'availability') return (row.availability_score ?? 0) >= 0.7;
-    if (activeFilter === 'failure') return (row.failure_score ?? 0) >= 0.7;
-    if (activeFilter === 'age') return (row.age_score ?? 0) >= 0.7;
-    if (activeFilter === 'spare') return (row.spare_part_score ?? 0) >= 0.7;
-    if (activeFilter === 'critical') return (row.risk_score ?? 0) >= 0.7;
-    if (activeFilter === 'monitor') return rpiValue(row) < 0.55;
+    if (activeFilter === 'strong') return rpiValue(row) >= REPLACEMENT_STRONG_THRESHOLD;
+    if (activeFilter === 'review') return rpiValue(row) >= REPLACEMENT_REVIEW_THRESHOLD && rpiValue(row) < REPLACEMENT_STRONG_THRESHOLD;
+    if (activeFilter === 'maintenance') return (row.maintenance_burden_score ?? 0) >= REPLACEMENT_STRONG_THRESHOLD;
+    if (activeFilter === 'availability') return (row.availability_score ?? 0) >= REPLACEMENT_STRONG_THRESHOLD;
+    if (activeFilter === 'failure') return (row.failure_score ?? 0) >= REPLACEMENT_STRONG_THRESHOLD;
+    if (activeFilter === 'age') return (row.age_score ?? 0) >= REPLACEMENT_STRONG_THRESHOLD;
+    if (activeFilter === 'spare') return (row.spare_part_score ?? 0) >= REPLACEMENT_STRONG_THRESHOLD;
+    if (activeFilter === 'critical') return (row.risk_score ?? 0) >= REPLACEMENT_STRONG_THRESHOLD;
+    if (activeFilter === 'monitor') return rpiValue(row) < REPLACEMENT_REVIEW_THRESHOLD;
     if (activeFilter === 'all') return true;
-    return replacementCandidates.length > 0 ? rpiValue(row) >= 0.55 : monitorCandidates.some((item) => item.id === row.id);
+    return replacementCandidates.length > 0 ? isReplacementCandidate(rpiValue(row)) : monitorCandidates.some((item) => item.id === row.id);
   });
 
   if (loading) return <PageLoader />;
@@ -235,7 +245,7 @@ export default function ReplacementPage() {
       sortable: true,
       render: (row: ReplacementRow) => (
         <ScoreExplanation details={rpiExplanation(row)}>
-          <Badge variant={rpiValue(row) >= 0.7 ? 'error' : rpiValue(row) >= 0.4 ? 'warning' : 'success'}>
+          <Badge variant={rpiValue(row) >= REPLACEMENT_STRONG_THRESHOLD ? 'error' : rpiValue(row) >= REPLACEMENT_REVIEW_THRESHOLD ? 'warning' : 'success'}>
             {rpiLabel(row.replacement_priority_index)}
           </Badge>
         </ScoreExplanation>
@@ -268,7 +278,7 @@ export default function ReplacementPage() {
       key: 'risk_band',
       header: 'Risk Band',
       sortable: true,
-      render: (row: ReplacementRow) => <Badge variant={rpiValue(row) >= 0.7 ? 'error' : rpiValue(row) >= 0.55 ? 'warning' : 'success'}>{replacementDecisionBand(row.replacement_priority_index)}</Badge>,
+      render: (row: ReplacementRow) => <Badge variant={rpiValue(row) >= REPLACEMENT_STRONG_THRESHOLD ? 'error' : rpiValue(row) >= REPLACEMENT_REVIEW_THRESHOLD ? 'warning' : 'success'}>{replacementDecisionBand(row.replacement_priority_index)}</Badge>,
     },
     {
       key: 'actions',
@@ -312,13 +322,20 @@ export default function ReplacementPage() {
         <StatCard label="High Maintenance Burden" value={highMaintenanceBurden.length} icon={<Activity className="h-6 w-6" />} color="purple" active={activeFilter === 'maintenance'} onClick={() => setActiveFilter('maintenance')} />
         <StatCard label="Low Availability / High Downtime" value={lowAvailability.length} icon={<Clock className="h-6 w-6" />} color="orange" active={activeFilter === 'availability'} onClick={() => setActiveFilter('availability')} />
         <StatCard label="Frequent Failure" value={frequentFailure.length} icon={<AlertTriangle className="h-6 w-6" />} color="red" active={activeFilter === 'failure'} onClick={() => setActiveFilter('failure')} />
+        <StatCard label="Age / Obsolescence Risk" value={ageObsolescenceRisk.length} icon={<Clock className="h-6 w-6" />} color="yellow" active={activeFilter === 'age'} onClick={() => setActiveFilter('age')} />
         <StatCard label="Spare Parts Unsupported" value={poorSpareSupport.length} icon={<PackageCheck className="h-6 w-6" />} color="yellow" active={activeFilter === 'spare'} onClick={() => setActiveFilter('spare')} />
         <StatCard label="High FMEA Risk" value={criticalClinicalImpact.length} icon={<ClipboardList className="h-6 w-6" />} color="orange" active={activeFilter === 'critical'} onClick={() => setActiveFilter('critical')} />
       </div>
 
+      {activeFilter !== 'candidates' && (
+        <div className="flex justify-end">
+          <ClearFiltersButton onClick={() => setActiveFilter('candidates')} />
+        </div>
+      )}
+
       <section className="rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-1)] p-4">
         <h2 className="text-base font-semibold text-[var(--foreground)]">Prototype Decision Thresholds</h2>
-        <p className="mt-2 text-sm text-[var(--text-muted)]">RPI &gt;= 0.70 means Strong replacement candidate. RPI 0.55-0.69 means Review candidate. RPI &lt; 0.55 means Monitor. These are prototype decision thresholds used for demonstration and sensitivity testing; they do not automatically approve replacement.</p>
+        <p className="mt-2 text-sm text-[var(--text-muted)]">RPI &gt;= {REPLACEMENT_STRONG_THRESHOLD.toFixed(2)} means Strong replacement candidate. RPI {REPLACEMENT_REVIEW_THRESHOLD.toFixed(2)}–{(REPLACEMENT_STRONG_THRESHOLD - 0.01).toFixed(2)} means Review candidate. RPI &lt; {REPLACEMENT_REVIEW_THRESHOLD.toFixed(2)} means Monitor. These are prototype decision thresholds used for demonstration and sensitivity testing; they do not automatically approve replacement.</p>
       </section>
 
       {topCandidates.length > 0 && (

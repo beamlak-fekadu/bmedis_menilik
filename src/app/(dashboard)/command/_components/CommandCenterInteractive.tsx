@@ -558,7 +558,9 @@ export default function CommandCenterInteractive({
                           }
                         }}
                       >
-                        <ScoreExplanation details={{
+                        <ScoreExplanation
+                          showIcon={false}
+                          details={{
                           title: `Department readiness — ${dept.department_name}`,
                           scoreLabel: `${dept.readiness_score}%`,
                           formula: 'functional essential ÷ total essential × 100',

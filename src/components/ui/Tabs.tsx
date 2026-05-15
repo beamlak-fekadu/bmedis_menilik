@@ -29,7 +29,7 @@ export default function Tabs({ tabs, defaultTab, activeTab, onChange }: TabsProp
 
   return (
     <div>
-      <div className="border-b border-gray-200 dark:border-gray-800">
+      <div className="border-b border-[var(--border-subtle)]">
         <nav className="-mb-px flex gap-4 overflow-x-auto" role="tablist">
           {tabs.map((tab) => (
             <button
@@ -39,13 +39,13 @@ export default function Tabs({ tabs, defaultTab, activeTab, onChange }: TabsProp
               onClick={() => handleChange(tab.id)}
               className={`whitespace-nowrap border-b-2 px-1 py-3 text-sm font-medium transition-colors ${
                 currentActive === tab.id
-                  ? 'border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400'
-                  : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
+                  ? 'border-[var(--brand)] text-[var(--brand)]'
+                  : 'border-transparent text-[var(--text-muted)] hover:border-[var(--border-strong)] hover:text-[var(--foreground)]'
               }`}
             >
               {tab.label}
               {tab.count !== undefined && (
-                <span className={`ml-2 rounded-full px-2 py-0.5 text-xs ${currentActive === tab.id ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/30' : 'bg-gray-100 text-gray-600 dark:bg-gray-800'}`}>
+                <span className={`ml-2 rounded-full px-2 py-0.5 text-xs ${currentActive === tab.id ? 'bg-[var(--brand-soft)] text-[var(--brand)]' : 'bg-[var(--surface-3)] text-[var(--text-muted)]'}`}>
                   {tab.count}
                 </span>
               )}

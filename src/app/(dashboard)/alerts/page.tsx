@@ -17,6 +17,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
 import { useRole } from '@/hooks/useRole';
 import { PageHeader, StatCard, Badge, Button, Tabs, FilterBar } from '@/components/ui';
+import ClearFiltersButton from '@/components/ui/ClearFiltersButton';
 import { PageLoader } from '@/components/ui/Spinner';
 import { useToast } from '@/components/ui/Toast';
 import { UrgencyBadge } from '@/components/ui/StatusBadge';
@@ -209,7 +210,7 @@ export default function AlertsPage() {
       return (
         <div className="flex flex-col items-center justify-center py-12 text-center">
           <CheckCircle className="mb-3 h-10 w-10 text-green-400" />
-          <p className="text-sm text-gray-500">No alerts in this category</p>
+          <p className="text-sm text-[var(--text-muted)]">No alerts in this category</p>
         </div>
       );
     }
@@ -247,7 +248,7 @@ export default function AlertsPage() {
                   </div>
                   {alert.details && Object.keys(alert.details).length > 0 && (
                     <div className="mt-2 rounded-md bg-gray-50 p-2 dark:bg-gray-800/50">
-                      <div className="flex flex-wrap gap-1 text-xs text-gray-600 dark:text-gray-400">
+                      <div className="flex flex-wrap gap-1 text-xs text-[var(--text-muted)]">
                         {Object.entries(alert.details).slice(0, 4).map(([k, v]) => (
                           <span key={k} className="rounded-full bg-[var(--surface-2)] px-2 py-0.5">
                             <span className="font-medium">{k.replace(/_/g, ' ')}:</span> {String(v)}
@@ -257,7 +258,7 @@ export default function AlertsPage() {
                     </div>
                   )}
                   <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-                    <div className="text-xs text-gray-400">
+                    <div className="text-xs text-[var(--text-subtle)]">
                       <div>Generated: {new Date(alert.generated_at).toLocaleString()}</div>
                       {alert.acknowledged_at && <div>Acknowledged: {new Date(alert.acknowledged_at).toLocaleString()}</div>}
                     </div>
@@ -417,6 +418,12 @@ export default function AlertsPage() {
           onClick={() => showAlertTab('risk')}
         />
       </div>
+
+      {(activeTab !== 'act_now' || filters.severity || filters.flag_type) && (
+        <div className="flex justify-end">
+          <ClearFiltersButton onClick={() => { setActiveTab('act_now'); setFilters({ severity: '', flag_type: '' }); }} />
+        </div>
+      )}
 
       <FilterBar
         filters={[

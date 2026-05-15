@@ -1,13 +1,13 @@
 'use server';
 
 import { z } from 'zod';
-import { getActionContext, logServerAuditEvent, revalidateMany, actionError, nullIfEmpty, type ActionResult } from './_shared';
+import { getActionContextForCapability, logServerAuditEvent, revalidateMany, actionError, nullIfEmpty, type ActionResult } from './_shared';
 
 const sparePaths = ['/spare-parts', '/logistics', '/command'];
 
 export async function createSparePartAction(payload: Record<string, unknown>): Promise<ActionResult> {
   try {
-    const { supabase, profile, error } = await getActionContext(['admin', 'bme_head', 'technician', 'store_user']);
+    const { supabase, profile, error } = await getActionContextForCapability('spare_parts.manage');
     if (error || !profile) return { success: false, error };
     const parsed = z.object({
       part_code: z.string().trim().min(1),
@@ -34,7 +34,7 @@ export async function createSparePartAction(payload: Record<string, unknown>): P
 
 export async function updateSparePartAction(id: string, payload: Record<string, unknown>): Promise<ActionResult> {
   try {
-    const { supabase, profile, error } = await getActionContext(['admin', 'bme_head', 'technician', 'store_user']);
+    const { supabase, profile, error } = await getActionContextForCapability('spare_parts.manage');
     if (error || !profile) return { success: false, error };
     const oldRow = await supabase.from('spare_parts').select('*').eq('id', id).maybeSingle();
     const result = await supabase.from('spare_parts').update(payload as never).eq('id', id).select('*').single();
@@ -49,7 +49,7 @@ export async function updateSparePartAction(id: string, payload: Record<string, 
 
 export async function createStockReceiptAction(payload: Record<string, unknown>): Promise<ActionResult> {
   try {
-    const { supabase, profile, error } = await getActionContext(['admin', 'bme_head', 'technician', 'store_user']);
+    const { supabase, profile, error } = await getActionContextForCapability('stock.receive');
     if (error || !profile) return { success: false, error };
     const parsed = z.object({
       part_id: z.string().min(1),
@@ -76,7 +76,7 @@ export async function createStockReceiptAction(payload: Record<string, unknown>)
 
 export async function createStockIssueAction(payload: Record<string, unknown>): Promise<ActionResult> {
   try {
-    const { supabase, profile, error } = await getActionContext(['admin', 'bme_head', 'technician', 'store_user']);
+    const { supabase, profile, error } = await getActionContextForCapability('stock.issue');
     if (error || !profile) return { success: false, error };
     const parsed = z.object({
       part_id: z.string().min(1),

@@ -18,6 +18,8 @@ export { default as FilterBar } from './FilterBar';
 export { default as Dropdown } from './Dropdown';
 export { default as Pagination } from './Pagination';
 export { default as ConfirmDialog } from './ConfirmDialog';
+export { default as ClearFiltersButton } from './ClearFiltersButton';
+export { actionButtonClass, type ActionTone } from './action-styles';
 export { default as ExpandableText } from './ExpandableText';
 export { default as InfoPopover } from './InfoPopover';
 export { ToastProvider, useToast } from './Toast';

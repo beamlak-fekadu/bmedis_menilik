@@ -42,7 +42,7 @@ interface EquipmentSnapshot {
 function DetailItem({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div>
-      <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">{label}</dt>
+      <dt className="text-sm font-medium text-[var(--text-muted)]">{label}</dt>
       <dd className="mt-1 text-sm text-gray-900 dark:text-white">{value || '—'}</dd>
     </div>
   );

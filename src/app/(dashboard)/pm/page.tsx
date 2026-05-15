@@ -168,14 +168,14 @@ function monthKey(date = new Date()) {
 }
 
 function scheduleAction(row: ScheduleRow) {
-  if (row.status === 'completed') return 'View Evidence';
-  if (row.status === 'skipped' || row.status === 'deferred') return 'View Reason';
-  if (isOverdueSchedule(row)) return row.assigned_to ? 'Complete / Defer' : 'Assign';
-  if (!row.assigned_to) return 'Assign';
+  if (row.status === 'completed') return 'View PM Evidence';
+  if (row.status === 'skipped' || row.status === 'deferred') return 'View Deferral Reason';
+  if (isOverdueSchedule(row)) return row.assigned_to ? 'Complete / Defer PM' : 'Assign Technician';
+  if (!row.assigned_to) return 'Assign Technician';
   if (row.status === 'in_progress') return 'Complete PM';
-  if (row.status === 'scheduled') return 'Start / Reassign';
-  if (row.status === 'canceled') return 'View Record';
-  return 'View';
+  if (row.status === 'scheduled') return 'Start / Reassign PM';
+  if (row.status === 'canceled') return 'View PM Record';
+  return 'Open PM Task';
 }
 
 function actionHref(row: ScheduleRow) {
@@ -618,7 +618,7 @@ export default function PMPage() {
       header: 'Action',
       render: (row: ScheduleRow) => (
         <Link href={actionHref(row)} onClick={(e) => e.stopPropagation()}>
-          <Button size="sm" variant={row.action_label.includes('Complete') || row.action_label === 'Assign' ? 'primary' : 'outline'}>
+          <Button size="sm" variant={row.action_label.includes('Complete') || row.action_label.includes('Assign') ? 'primary' : 'outline'}>
             {row.action_label}
           </Button>
         </Link>
@@ -640,14 +640,14 @@ export default function PMPage() {
       render: (row: OverduePM) => (
         <div className="flex flex-wrap gap-2" onClick={(e) => e.stopPropagation()}>
           <Link href={`/pm/schedules/${row.id}?action=${row.assigned_to_name ? 'complete' : 'assign'}`}>
-            <Button size="sm">{row.assigned_to_name ? 'Complete PM' : 'Assign'}</Button>
+            <Button size="sm">{row.assigned_to_name ? 'Complete PM' : 'Assign Technician'}</Button>
           </Link>
           <Link href={`/pm/schedules/${row.id}?action=defer`}>
             <Button size="sm" variant="outline">Defer</Button>
           </Link>
           {row.asset_id && (
             <Link href={`/equipment/${row.asset_id}`}>
-              <Button size="sm" variant="ghost">Asset</Button>
+              <Button size="sm" variant="ghost">Open Asset Profile</Button>
             </Link>
           )}
         </div>

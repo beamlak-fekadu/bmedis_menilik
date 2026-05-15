@@ -22,7 +22,7 @@ import {
 } from '@/components/ui';
 import { ConditionBadge, PMStatusBadge, RiskBadge } from '@/components/ui/StatusBadge';
 import { getPMScheduleById, getPMScheduleHistory } from '@/services/pm.service';
-import { getActiveTechnicians } from '@/services/users.service';
+import { getActiveTechnicians, ASSIGNABLE_TECHNICIANS_EMPTY_STATE } from '@/services/users.service';
 import { getMaintenanceEvents, getWorkOrders } from '@/services/maintenance.service';
 import { getRiskScores } from '@/services/analytics.service';
 import {
@@ -609,6 +609,9 @@ export default function PMScheduleDetailPage() {
             ...technicians.map((tech) => ({ value: tech.id, label: tech.full_name ?? tech.email ?? tech.id })),
           ]}
         />
+        {technicians.length === 0 && (
+          <p className="mt-2 text-xs text-amber-300">{ASSIGNABLE_TECHNICIANS_EMPTY_STATE}</p>
+        )}
       </Modal>
 
       <Modal

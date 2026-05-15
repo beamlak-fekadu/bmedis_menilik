@@ -1,6 +1,7 @@
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import type { RoleName } from '@/types/roles';
+import { hasCapability, hasAnyCapability, type Capability } from '@/lib/rbac';
 
 export type ActionResult<T = unknown> = {
   success: boolean;
@@ -17,7 +18,9 @@ export type ActionProfile = {
   roleNames: string[];
 };
 
-export async function getActionContext(allowedRoles: RoleName[]) {
+type AuthorizeFn = (roleNames: string[]) => boolean;
+
+async function loadActionContext(authorize: AuthorizeFn) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -46,8 +49,7 @@ export async function getActionContext(allowedRoles: RoleName[]) {
     .map((row) => ((row.roles as { name?: string } | null)?.name ?? null))
     .filter(Boolean) as string[];
 
-  const hasAccess = roleNames.includes('developer') || allowedRoles.some((role) => roleNames.includes(role));
-  if (!hasAccess) {
+  if (!authorize(roleNames)) {
     return { supabase, profile: null, error: 'Insufficient permissions' };
   }
 
@@ -59,6 +61,28 @@ export async function getActionContext(allowedRoles: RoleName[]) {
     } as ActionProfile,
     error: null,
   };
+}
+
+// Legacy role-array gate. Kept for backwards compatibility with un-migrated
+// callers. New code should prefer getActionContextForCapability().
+export async function getActionContext(allowedRoles: RoleName[]) {
+  return loadActionContext((roleNames) =>
+    roleNames.includes('developer') || allowedRoles.some((role) => roleNames.includes(role)),
+  );
+}
+
+// Capability-based gate. Authorizes the caller if their roles grant the given
+// capability via CAPABILITY_MATRIX. Developer always passes (hasCapability
+// short-circuits on developer). Viewer fails every mutation capability because
+// CAPABILITY_MATRIX.viewer contains no mutation entries.
+export async function getActionContextForCapability(capability: Capability) {
+  return loadActionContext((roleNames) => hasCapability(roleNames, capability));
+}
+
+// Variant when a single action endpoint needs ANY of several capabilities
+// (e.g., create-or-approve flows where either capability suffices).
+export async function getActionContextForAnyCapability(capabilities: Capability[]) {
+  return loadActionContext((roleNames) => hasAnyCapability(roleNames, capabilities));
 }
 
 export async function logServerAuditEvent(params: {

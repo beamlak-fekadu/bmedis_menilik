@@ -8,6 +8,8 @@ interface StatCardProps {
   color?: string;
   onClick?: () => void;
   active?: boolean;
+  sublabel?: string;
+  ariaLabel?: string;
 }
 
 /**
@@ -24,6 +26,8 @@ export default function StatCard({
   color = 'blue',
   onClick,
   active = false,
+  sublabel,
+  ariaLabel,
 }: StatCardProps) {
   // Token-driven colors so the tints retune cleanly in dark mode.
   const colorMap: Record<string, string> = {
@@ -36,13 +40,10 @@ export default function StatCard({
     gray:   'bg-[var(--surface-3)] text-[var(--text-muted)]',
   };
 
-  return (
-    <div
-      className={`panel-surface rounded-2xl p-5 transition-all duration-150 ${
-        onClick ? 'cursor-pointer hover:-translate-y-px hover:shadow-[var(--shadow-lg)]' : ''
-      } ${active ? 'ring-2 ring-[var(--brand)] ring-offset-0' : ''}`}
-      onClick={onClick}
-    >
+  const pressable = Boolean(onClick);
+
+  const content = (
+    <>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-[11px] font-medium uppercase tracking-wider text-[var(--text-muted)]">
@@ -51,6 +52,9 @@ export default function StatCard({
           <p className="mt-1.5 text-[28px] font-semibold leading-none tracking-tight text-[var(--foreground)] tabular-nums">
             {value}
           </p>
+          {sublabel && (
+            <p className="mt-1 text-xs text-[var(--text-muted)]">{sublabel}</p>
+          )}
           {trend && (
             <p
               className={`mt-1.5 text-xs font-medium tabular-nums ${
@@ -64,6 +68,30 @@ export default function StatCard({
         </div>
         <div className={`rounded-lg p-2.5 ${colorMap[color] || colorMap.blue}`}>{icon}</div>
       </div>
+    </>
+  );
+
+  if (pressable) {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        aria-pressed={active}
+        aria-label={ariaLabel ?? `${label}: ${value}`}
+        className={`panel-surface filter-card-pressable text-left rounded-2xl p-5 w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)] focus-visible:ring-offset-0 ${
+          active ? 'filter-card-active' : ''
+        }`}
+      >
+        {content}
+      </button>
+    );
+  }
+
+  return (
+    <div
+      className={`panel-surface rounded-2xl p-5 ${active ? 'filter-card-active' : ''}`}
+    >
+      {content}
     </div>
   );
 }

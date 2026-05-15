@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { NAV_SECTIONS, APP_NAME_SHORT, ROUTES } from '@/constants';
+import { hasCapability, type Capability } from '@/lib/rbac';
 import {
   ChevronLeft, ChevronRight, Monitor, FileText, PackageCheck, Wrench, CalendarCheck, CalendarDays, Gauge,
   Package, Boxes, GraduationCap, Trash2, Activity, ShieldAlert, CheckCircle, BarChart3,
@@ -61,9 +62,11 @@ export default function Sidebar({ userRoles = ['admin'] }: SidebarProps) {
 
       <nav className="flex-1 min-h-0 overflow-y-auto px-2 py-4">
         {NAV_SECTIONS.map((section) => {
-          const visibleItems = section.items.filter((item) =>
-            item.roles.some((r) => userRoles.includes(r))
-          );
+          const visibleItems = section.items.filter((item) => {
+            const cap = (item as { capability?: string }).capability as Capability | undefined;
+            if (cap) return hasCapability(userRoles, cap);
+            return item.roles.some((r) => userRoles.includes(r));
+          });
           if (visibleItems.length === 0) return null;
 
           return (

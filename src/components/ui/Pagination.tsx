@@ -18,9 +18,9 @@ export default function Pagination({ page, totalPages, onPageChange, totalItems,
   const end = Math.min(page * pageSize, totalItems || page * pageSize);
 
   return (
-    <div className="flex items-center justify-between border-t border-gray-200 px-4 py-3 dark:border-gray-800">
+    <div className="flex items-center justify-between border-t border-[var(--border-subtle)] px-4 py-3">
       {totalItems !== undefined && (
-        <p className="text-sm text-gray-500 dark:text-gray-400">
+        <p className="text-sm text-[var(--text-muted)]">
           Showing {start}–{end} of {totalItems}
         </p>
       )}

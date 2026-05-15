@@ -10,6 +10,7 @@ import DataTable from '@/components/ui/DataTable';
 import Tabs from '@/components/ui/Tabs';
 import Button from '@/components/ui/Button';
 import Badge from '@/components/ui/Badge';
+import ClearFiltersButton from '@/components/ui/ClearFiltersButton';
 import StatCard from '@/components/ui/StatCard';
 import Modal from '@/components/ui/Modal';
 import Input from '@/components/ui/Input';
@@ -24,6 +25,11 @@ import {
   getCalibrationRequests,
   getUpcomingCalibrations,
 } from '@/services/calibration.service';
+import {
+  countOverdueCalibration,
+  countFailedOrAdjustedCalibration,
+  countOpenCalibrationRequests,
+} from '@/utils/decision-support/canonical-counts';
 import { createCalibrationRecordAction, createCalibrationRequestAction } from '@/actions/calibration.actions';
 import { getEquipmentList } from '@/services/equipment.service';
 import * as settingsService from '@/services/settings.service';
@@ -415,14 +421,14 @@ export default function CalibrationPage() {
       header: 'Next Action',
       render: (row: CalRequest) => {
         const label = row.status === 'pending'
-          ? 'Review Request'
+          ? 'Review Calibration Request'
           : row.status === 'approved'
             ? 'Schedule Calibration'
             : row.status === 'completed'
-              ? 'View Evidence'
+              ? 'View Calibration Evidence'
               : row.status === 'rejected'
-                ? 'View Reason'
-                : 'Open Assigned Task';
+                ? 'View Rejection Reason'
+                : 'Open Assigned Calibration Task';
         const isPrimary = ['pending', 'approved', 'in_progress'].includes(String(row.status ?? ''));
         return (
           <Link
@@ -520,7 +526,7 @@ export default function CalibrationPage() {
           return (
             <div className="flex flex-wrap gap-1.5">
               <Link className="rounded-lg bg-[var(--brand)] px-2 py-1 text-xs font-medium text-white hover:bg-[var(--brand-strong)]" href={`/calibration/requests/${request.id as string}${String(request.status) === 'approved' ? '?action=schedule' : ''}`}>
-                {String(request.status) === 'approved' ? 'Schedule Calibration' : 'Open Request'}
+                {String(request.status) === 'approved' ? 'Schedule Calibration' : 'Review Calibration Request'}
               </Link>
               {asset?.id && (
                 <Link className="rounded-lg border border-[var(--border-subtle)] px-2 py-1 text-xs font-medium hover:bg-[var(--surface-2)]" href={`/equipment/${asset.id}`}>
@@ -710,14 +716,20 @@ export default function CalibrationPage() {
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard label="Calibration Records" value={records.length} icon={<Gauge className="h-6 w-6" />} color="blue" active={selectedTab === 'records' && selectedFilter === 'all'} onClick={() => selectCalibrationView('records')} />
-        <StatCard label="Calibration Requests" value={requests.length} icon={<ClipboardList className="h-6 w-6" />} color="purple" active={selectedTab === 'requests' && selectedFilter === 'all'} onClick={() => selectCalibrationView('requests')} />
+        <StatCard label="Open Requests" value={countOpenCalibrationRequests(requests as Array<{ status?: string | null }>)} icon={<ClipboardList className="h-6 w-6" />} color="purple" active={selectedTab === 'requests' && selectedFilter === 'all'} onClick={() => selectCalibrationView('requests')} />
         <StatCard label="Due Soon" value={dueSoonRows.length} icon={<CalendarClock className="h-6 w-6" />} color="yellow" active={selectedTab === 'upcoming' && selectedFilter === 'due-soon'} onClick={() => selectCalibrationView('upcoming', 'due-soon')} />
-        <StatCard label="Overdue" value={overdueRows.length} icon={<AlertTriangle className="h-6 w-6" />} color="red" active={selectedTab === 'overdue' && selectedFilter === 'overdue'} onClick={() => selectCalibrationView('overdue', 'overdue')} />
-        <StatCard label="Failed / Adjusted" value={failedAdjusted.length} icon={<ShieldAlert className="h-6 w-6" />} color="orange" active={selectedFilter === 'failed-adjusted'} onClick={() => selectCalibrationView('records', 'failed-adjusted')} />
+        <StatCard label="Overdue" value={countOverdueCalibration(upcoming as Array<{ next_due_date?: string | null }>)} icon={<AlertTriangle className="h-6 w-6" />} color="red" active={selectedTab === 'overdue' && selectedFilter === 'overdue'} onClick={() => selectCalibrationView('overdue', 'overdue')} />
+        <StatCard label="Failed / Adjusted" value={countFailedOrAdjustedCalibration(records as Array<{ result?: string | null }>)} icon={<ShieldAlert className="h-6 w-6" />} color="orange" active={selectedFilter === 'failed-adjusted'} onClick={() => selectCalibrationView('records', 'failed-adjusted')} />
         <StatCard label="Critical Overdue" value={criticalOverdueRows.length} icon={<AlertTriangle className="h-6 w-6" />} color="red" active={selectedFilter === 'critical-overdue'} onClick={() => selectCalibrationView('overdue', 'critical-overdue')} />
         <StatCard label="External Calibration" value={externalCalibration.length + externalRequests.length} icon={<Wrench className="h-6 w-6" />} color="gray" active={selectedFilter === 'external'} onClick={() => selectCalibrationView(externalRequests.length > 0 ? 'requests' : 'records', 'external')} />
         <StatCard label="Completed This Month" value={completedThisMonth.length} icon={<CheckCircle className="h-6 w-6" />} color="green" active={selectedFilter === 'completed-month'} onClick={() => selectCalibrationView('records', 'completed-month')} />
       </div>
+
+      {(activeTab !== '' || selectedFilter !== 'all') && (
+        <div className="flex justify-end">
+          <ClearFiltersButton onClick={() => { setActiveTab(''); setActiveFilter('all'); }} />
+        </div>
+      )}
 
       {(overdueRows.length > 0 || failedAdjusted.length > 0 || awaitingActionRequests.length > 0) && (
         <section className="panel-surface rounded-lg p-4">
@@ -755,7 +767,7 @@ export default function CalibrationPage() {
                               <p className="truncate text-sm font-medium text-[var(--foreground)]">{asset?.asset_code ?? 'Request'} · {asset?.name ?? String(request.request_number ?? 'Calibration request')}</p>
                               <p className="text-xs text-[var(--text-muted)]">{asset?.departments?.name ?? 'No department'} · {formatLabel(String(request.status ?? 'pending'))}</p>
                             </div>
-                            <span className="text-xs font-medium text-[var(--brand)]">{request.status === 'pending' ? 'Review Request' : 'Schedule Calibration'}</span>
+                            <span className="text-xs font-medium text-[var(--brand)]">{request.status === 'pending' ? 'Review Calibration Request' : 'Schedule Calibration'}</span>
                           </div>
                         </Link>
                       );
@@ -765,19 +777,35 @@ export default function CalibrationPage() {
                   ) : (group.rows ?? []).map((row) => {
                     const asset = calibrationAsset(row);
                     const request = openRequestForAsset(String(row.asset_id ?? asset?.id ?? ''));
+                    const factors = calibrationFactors(row, request);
+                    const calType = (row.calibration_types as { name?: string } | null)?.name ?? 'Calibration';
+                    const dueText = row.next_due_date ? new Date(String(row.next_due_date)).toLocaleDateString() : '—';
+                    const actionLabel = request?.id ? 'Open Request' : 'Schedule Calibration';
+                    const actionHref = request?.id
+                      ? `/calibration/requests/${request.id as string}`
+                      : `/calibration/requests/new?assetId=${asset?.id ?? ''}&calibrationTypeId=${String(row.calibration_type_id ?? '')}&source=triage`;
                     return (
                       <div key={String(row.id)} className="rounded-md bg-[var(--surface-2)]/70 p-2">
                         <div className="flex items-start justify-between gap-2">
                           <div className="min-w-0">
                             <p className="truncate text-sm font-medium text-[var(--foreground)]">{asset?.asset_code ?? 'Asset'} · {asset?.name ?? 'Unknown'}</p>
-                            <p className="text-xs text-[var(--text-muted)]">{asset?.departments?.name ?? 'No department'} · {formatLabel(String((row.calibration_types as { name?: string } | null)?.name ?? 'Calibration'))}</p>
-                            <div className="mt-2 flex flex-wrap gap-1">
-                              {calibrationFactors(row, request).map((factor) => (
-                                <span key={factor} className="rounded-full bg-[var(--surface-3)] px-2 py-0.5 text-[10px] text-[var(--text-muted)]">{factor}</span>
-                              ))}
-                            </div>
+                            <p className="text-xs text-[var(--text-muted)]">{asset?.departments?.name ?? 'No department'} · {formatLabel(String(calType))} · Due {dueText}</p>
                           </div>
-                          {asset?.id && <Link className="text-xs font-medium text-[var(--brand)] hover:underline" href={request?.id ? `/calibration/requests/${request.id as string}` : `/calibration/requests/new?assetId=${asset.id}&calibrationTypeId=${String(row.calibration_type_id ?? '')}&source=triage`}>{request?.id ? 'Open Request' : 'Create Calibration Request'}</Link>}
+                          <div className="flex shrink-0 items-center gap-1.5">
+                            {factors.length > 0 && (
+                              <InfoPopover align="right">
+                                <p className="mb-1 font-semibold text-[var(--foreground)]">Priority drivers</p>
+                                <ul className="space-y-0.5 text-xs text-[var(--text-muted)]">
+                                  {factors.map((factor) => (
+                                    <li key={factor}>• {factor}</li>
+                                  ))}
+                                </ul>
+                              </InfoPopover>
+                            )}
+                            {asset?.id && (
+                              <Link className="text-xs font-medium text-[var(--brand)] hover:underline" href={actionHref}>{actionLabel}</Link>
+                            )}
+                          </div>
                         </div>
                       </div>
                     );

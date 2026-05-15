@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { AlertTriangle, CheckCircle, ClipboardList, FileWarning, Plus, Recycle, Trash2, XCircle } from 'lucide-react';
 import PageHeader from '@/components/ui/PageHeader';
+import ClearFiltersButton from '@/components/ui/ClearFiltersButton';
 import DataTable from '@/components/ui/DataTable';
 import Tabs from '@/components/ui/Tabs';
 import Button from '@/components/ui/Button';
@@ -25,6 +26,7 @@ import { getEquipmentList } from '@/services/equipment.service';
 import { createClient } from '@/lib/supabase/client';
 import type { DisposalMethod, DisposalRequestStatus } from '@/types/domain';
 import { replacementEvidence } from '@/app/(dashboard)/command/_lib/command-center-routes';
+import { REPLACEMENT_STRONG_THRESHOLD } from '@/utils/decision-support/replacement-thresholds';
 import { useRole } from '@/hooks/useRole';
 
 type DisposalRow = Record<string, unknown>;
@@ -105,7 +107,7 @@ export default function DisposalPage() {
       setDisposedAssets((disposedRes.data || []) as DisposedRow[]);
       const requestsByAsset = new Set((reqRes.data || []).map((row: Record<string, unknown>) => row.asset_id));
       const replacementRows = ((replacementRes.data || []) as CandidateRow[])
-        .filter((row) => Number(row.replacement_priority_index ?? 0) >= 0.7 || Number(row.maintenance_burden_score ?? 0) >= 0.7 || Number(row.risk_score ?? 0) >= 0.7)
+        .filter((row) => Number(row.replacement_priority_index ?? 0) >= REPLACEMENT_STRONG_THRESHOLD || Number(row.maintenance_burden_score ?? 0) >= REPLACEMENT_STRONG_THRESHOLD || Number(row.risk_score ?? 0) >= REPLACEMENT_STRONG_THRESHOLD)
         .map((row) => ({ ...row, existing_request: requestsByAsset.has(row.asset_id) }));
       const nonRepairableAssets = ((assetRes.data || []) as CandidateRow[])
         .filter((row) => ['non_functional', 'decommissioned'].includes(String(row.condition)))
@@ -327,10 +329,10 @@ export default function DisposalPage() {
       header: 'Disposed By',
       render: (row: DisposedRow) => {
         const profile = row.disposed_by_profile as { full_name?: string | null; email?: string | null } | null;
+        const fallbackId = row.disposed_by ? String(row.disposed_by) : '';
         return (
-          <div>
+          <div title={!profile && fallbackId ? `Profile ID: ${fallbackId}` : undefined}>
             <p>{profile?.full_name ?? profile?.email ?? 'Unknown user'}</p>
-            {!profile && row.disposed_by ? <p className="text-xs text-[var(--text-muted)]">{String(row.disposed_by).slice(0, 8)}...</p> : null}
           </div>
         );
       },
@@ -356,9 +358,18 @@ export default function DisposalPage() {
     const asset = row.equipment_assets as { condition?: string } | null;
     return ['non_functional', 'decommissioned'].includes(String(asset?.condition ?? ''));
   });
-  const highMaintenance = candidates.filter((row) => Number(row.maintenance_burden_score ?? 0) >= 0.7);
+  const highMaintenance = candidates.filter((row) => Number(row.maintenance_burden_score ?? 0) >= REPLACEMENT_STRONG_THRESHOLD);
+  // Default tab priority:
+  //   1. URL ?tab=… wins.
+  //   2. Any formal disposal_requests rows → 'requests' (regardless of status).
+  //   3. No requests but disposal candidates exist → 'candidates'.
+  //   4. Only disposed_assets exist → 'disposed' (history evidence).
   const defaultTab: DisposalTab = normalizeDisposalTab(searchParams.get('tab'))
-    || (pending.length > 0 ? 'requests' : disposalRequests.length === 0 && candidates.length > 0 ? 'candidates' : 'disposed');
+    || (disposalRequests.length > 0
+      ? 'requests'
+      : candidates.length > 0
+        ? 'candidates'
+        : 'disposed');
   const selectedTab = activeTab || defaultTab;
   function selectDisposalView(tab: DisposalTab, filter: DisposalFilter = 'all') {
     setActiveTab(tab);
@@ -396,7 +407,7 @@ export default function DisposalPage() {
     {
       key: 'reason',
       header: 'Reason',
-      render: (row: CandidateRow) => String(row.reason ?? (Number(row.replacement_priority_index ?? 0) >= 0.7 ? 'High replacement priority with lifecycle evidence.' : 'Lifecycle evidence requires review.')),
+      render: (row: CandidateRow) => String(row.reason ?? (Number(row.replacement_priority_index ?? 0) >= REPLACEMENT_STRONG_THRESHOLD ? 'High replacement priority with lifecycle evidence.' : 'Lifecycle evidence requires review.')),
     },
     {
       key: 'rpi',
@@ -414,12 +425,12 @@ export default function DisposalPage() {
     {
       key: 'maintenance_burden_score',
       header: 'Maintenance Burden',
-      render: (row: CandidateRow) => Number(row.maintenance_burden_score ?? 0) >= 0.7 ? 'High' : row.maintenance_burden_score == null ? '—' : 'Moderate/low',
+      render: (row: CandidateRow) => Number(row.maintenance_burden_score ?? 0) >= REPLACEMENT_STRONG_THRESHOLD ? 'High' : row.maintenance_burden_score == null ? '—' : 'Moderate/low',
     },
     {
       key: 'risk_score',
       header: 'Risk',
-      render: (row: CandidateRow) => Number(row.risk_score ?? 0) >= 0.7 ? 'High' : row.risk_score == null ? '—' : 'Moderate/low',
+      render: (row: CandidateRow) => Number(row.risk_score ?? 0) >= REPLACEMENT_STRONG_THRESHOLD ? 'High' : row.risk_score == null ? '—' : 'Moderate/low',
     },
     {
       key: 'action',
@@ -516,6 +527,12 @@ export default function DisposalPage() {
         <StatCard label="High Maintenance Burden" value={highMaintenance.length} icon={<AlertTriangle className="h-6 w-6" />} color="red" active={activeFilter === 'high-burden'} onClick={() => selectDisposalView('candidates', 'high-burden')} />
         <StatCard label="Missing Evidence" value={missingEvidence.length} icon={<FileWarning className="h-6 w-6" />} color="gray" active={activeFilter === 'missing-evidence'} onClick={() => selectDisposalView(missingEvidence.length > 0 ? 'requests' : 'candidates', 'missing-evidence')} />
       </div>
+
+      {(activeTab !== '' || activeFilter !== 'all') && (
+        <div className="flex justify-end">
+          <ClearFiltersButton onClick={() => { setActiveTab(''); setActiveFilter('all'); }} />
+        </div>
+      )}
 
       {disposalRequests.length === 0 && candidates.length > 0 && (
         <section className="panel-surface rounded-lg p-4">

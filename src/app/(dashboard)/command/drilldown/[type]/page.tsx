@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
-import { ArrowLeft, Info } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { requireRole } from '@/lib/auth/helpers';
 import { createClient } from '@/lib/supabase/server';
 import { Badge, Card, CardContent, CardHeader, CardTitle, PageHeader } from '@/components/ui';
@@ -19,6 +19,7 @@ import {
 } from '../../_lib/command-center-data';
 import { ScoreExplanation } from '../../_components/ScoreExplanation';
 import { buildReplacementReason } from '@/utils/decision-support/command-center-reasons';
+import { isReplacementCandidate } from '@/utils/decision-support/replacement-thresholds';
 import {
   createMaintenanceRequestFromAsset,
   equipmentDetail,
@@ -277,7 +278,9 @@ async function getReplacementRows(supabase: Awaited<ReturnType<typeof createClie
       }),
     };
   });
-  return { rows, total: rows.length };
+  // Match Command Center: only Strong + Review candidates count (RPI >= 0.55).
+  const candidates = rows.filter((r) => isReplacementCandidate(r.priority_index));
+  return { rows: candidates, total: candidates.length };
 }
 
 export default async function CommandDrilldownPage({ params }: { params: Promise<{ type: string }> }) {
@@ -357,10 +360,6 @@ export default async function CommandDrilldownPage({ params }: { params: Promise
     <div className="space-y-6">
       <Link href="/command" className="inline-flex items-center gap-1 text-sm text-violet-300 hover:text-violet-200"><ArrowLeft className="h-4 w-4" /> Command Center</Link>
       <PageHeader title={meta.title} description={meta.description} />
-      <div className="rounded-md border border-violet-500/30 bg-violet-500/10 p-3 text-xs text-violet-200">
-        <Info className="mr-1 inline h-3.5 w-3.5" />
-        Drilldowns show filtered operational evidence. Composite values are explainable; final decisions remain with the BME Head.
-      </div>
       <Card><CardHeader><CardTitle>{meta.title}</CardTitle></CardHeader><CardContent>{content}</CardContent></Card>
     </div>
   );

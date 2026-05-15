@@ -2,7 +2,7 @@
 
 import { z } from 'zod';
 import { createMaintenanceEventAction, updateWorkOrderAction } from './maintenance.actions';
-import { getActionContext, logServerAuditEvent, actionError, type ActionResult } from './_shared';
+import { getActionContextForAnyCapability, logServerAuditEvent, actionError, type ActionResult } from './_shared';
 
 const offlineActionSchema = z.object({
   id: z.string().min(1),
@@ -16,7 +16,12 @@ type SyncResult = { id: string; status: 'synced' | 'failed' | 'skipped'; error?:
 
 export async function syncOfflineWorkOrderActionsAction(items: unknown[]): Promise<ActionResult<SyncResult[]>> {
   try {
-    const { supabase, profile, error } = await getActionContext(['admin', 'bme_head', 'technician']);
+    // Offline sync replays work-order events; any WO-execution capability suffices.
+    const { supabase, profile, error } = await getActionContextForAnyCapability([
+      'work_order.start',
+      'work_order.complete',
+      'work_order.add_event',
+    ]);
     if (error || !profile) return { success: false, error };
     const parsedItems = z.array(offlineActionSchema).parse(items);
     const results: SyncResult[] = [];

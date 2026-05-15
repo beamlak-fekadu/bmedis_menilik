@@ -1,13 +1,13 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import {
   Bell,
   Building2,
   ClipboardList,
   Database,
-  Download,
   MoreVertical,
   Pencil,
   Plus,
@@ -834,10 +834,12 @@ export default function SettingsPage() {
     return (
       <Card>
         <CardHeader><CardTitle>Data Import / Export</CardTitle></CardHeader>
-        <CardContent className="grid gap-3 md:grid-cols-3 text-sm">
-          <div className="rounded-lg border border-[var(--border-subtle)] p-3"><Upload className="mb-2 h-4 w-4 text-[var(--brand)]" />Hospital data conversion support placeholder</div>
-          <div className="rounded-lg border border-[var(--border-subtle)] p-3"><Download className="mb-2 h-4 w-4 text-[var(--brand)]" />Export reference data placeholder</div>
-          <div className="rounded-lg border border-[var(--border-subtle)] p-3"><Download className="mb-2 h-4 w-4 text-[var(--brand)]" />Export staff and access list placeholder</div>
+        <CardContent className="space-y-3 text-sm text-[var(--text-muted)]">
+          <p>Operational data export is available per module from the Reports center. Each report supports a timestamped PDF snapshot with evidence tables.</p>
+          <p>Bulk import of hospital reference data (departments, categories, staff) is intentionally not exposed in-app; it is performed via vetted Supabase migrations or seed files to preserve auditability.</p>
+          <div className="pt-1">
+            <Link href="/reports" className="inline-flex items-center gap-1 text-[var(--brand)] hover:underline">Open Reports Center</Link>
+          </div>
         </CardContent>
       </Card>
     );

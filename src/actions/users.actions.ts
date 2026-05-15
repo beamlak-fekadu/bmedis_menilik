@@ -1,12 +1,12 @@
 'use server';
 
-import { getActionContext, logServerAuditEvent, revalidateMany, actionError, type ActionResult } from './_shared';
+import { getActionContextForCapability, logServerAuditEvent, revalidateMany, actionError, type ActionResult } from './_shared';
 
 const userPaths = ['/settings', '/audit'];
 
 export async function updateProfileAction(id: string, payload: Record<string, unknown>): Promise<ActionResult> {
   try {
-    const { supabase, profile, error } = await getActionContext(['admin']);
+    const { supabase, profile, error } = await getActionContextForCapability('users.manage');
     if (error || !profile) return { success: false, error };
     const oldRow = await supabase.from('profiles').select('*').eq('id', id).maybeSingle();
     const result = await supabase.from('profiles').update(payload as never).eq('id', id).select('*').single();
@@ -21,7 +21,7 @@ export async function updateProfileAction(id: string, payload: Record<string, un
 
 export async function assignRoleAction(userId: string, roleId: string): Promise<ActionResult> {
   try {
-    const { supabase, profile, error } = await getActionContext(['admin']);
+    const { supabase, profile, error } = await getActionContextForCapability('roles.manage');
     if (error || !profile) return { success: false, error };
     const result = await supabase.from('user_roles').insert({ user_id: userId, role_id: roleId } as never).select('*').single();
     if (result.error) return { success: false, error: result.error.message };
@@ -35,7 +35,7 @@ export async function assignRoleAction(userId: string, roleId: string): Promise<
 
 export async function removeRoleAction(userId: string, roleId: string): Promise<ActionResult> {
   try {
-    const { supabase, profile, error } = await getActionContext(['admin']);
+    const { supabase, profile, error } = await getActionContextForCapability('roles.manage');
     if (error || !profile) return { success: false, error };
     const oldRow = await supabase.from('user_roles').select('*').eq('user_id', userId).eq('role_id', roleId).maybeSingle();
     const result = await supabase.from('user_roles').delete().eq('user_id', userId).eq('role_id', roleId);

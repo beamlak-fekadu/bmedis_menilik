@@ -4,6 +4,16 @@ import { requireRole } from '@/lib/auth/helpers';
 import { createClient } from '@/lib/supabase/server';
 import { Badge, Card, CardContent, CardHeader, CardTitle, PageHeader } from '@/components/ui';
 import DeveloperLabClient, { type LabReplacementRow } from './DeveloperLabClient';
+import {
+  countLowStock,
+  countStockout,
+  countOverdueCalibration,
+  countOverduePM,
+  countPMPlansWithoutUpcomingTask,
+  countDelayedProcurement,
+  countReplacementCandidates,
+} from '@/utils/decision-support/canonical-counts';
+import { REPLACEMENT_STRONG_THRESHOLD } from '@/utils/decision-support/replacement-thresholds';
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
@@ -13,6 +23,7 @@ type HealthCheck = {
   severity: 'critical' | 'warning' | 'info' | 'ok';
   explanation: string;
   href?: string;
+  actionLabel?: string;
   group: 'data' | 'workflow' | 'decision-support' | 'security';
 };
 
@@ -106,10 +117,6 @@ function variantForSeverity(severity: HealthCheck['severity']) {
   return 'info';
 }
 
-function today() {
-  return new Date().toISOString().slice(0, 10);
-}
-
 function normalizeScore(value: unknown) {
   return typeof value === 'number' && Number.isFinite(value) ? value : null;
 }
@@ -122,7 +129,6 @@ export default async function DeveloperLabPage({ searchParams }: { searchParams:
   await requireRole(['developer', 'admin']);
   await searchParams;
   const supabase = await createClient();
-  const currentDate = today();
 
   const [
     assetsRes,
@@ -138,6 +144,9 @@ export default async function DeveloperLabPage({ searchParams }: { searchParams:
     disposalRequestsRes,
     replacementRes,
     refreshLogRes,
+    workOrdersRes,
+    pmSchedulesAssignedRes,
+    demoProfilesRes,
   ] = await Promise.all([
     supabase.from('equipment_assets').select('id, asset_code, name, department_id, category_id, condition, status').is('deleted_at', null).limit(5000),
     supabase.from('equipment_risk_scores').select('asset_id').limit(5000),
@@ -156,6 +165,20 @@ export default async function DeveloperLabPage({ searchParams }: { searchParams:
       .order('replacement_rank', { ascending: true })
       .limit(100),
     supabase.from('decision_support_refresh_log').select('scope, status, started_at, finished_at, error_message').order('started_at', { ascending: false }).limit(1).maybeSingle(),
+    supabase.from('work_orders').select('id, assigned_to, status').limit(5000),
+    supabase.from('pm_schedules').select('id, assigned_to, status').not('assigned_to', 'is', null).limit(5000),
+    supabase
+      .from('profiles')
+      .select('id, email, full_name, user_id, is_active, user_roles(id, roles(name))')
+      .in('email', [
+        'developer@bmerms-demo.local',
+        'bme.head@bmerms-demo.local',
+        'technician@bmerms-demo.local',
+        'department.head@bmerms-demo.local',
+        'department.user@bmerms-demo.local',
+        'store.user@bmerms-demo.local',
+        'viewer@bmerms-demo.local',
+      ]),
   ]);
 
   const assets = (assetsRes.data ?? []) as Array<Record<string, unknown>>;
@@ -171,11 +194,25 @@ export default async function DeveloperLabPage({ searchParams }: { searchParams:
   const disposalRequests = (disposalRequestsRes.data ?? []) as Array<Record<string, unknown>>;
 
   const riskAssetIds = new Set(riskRows.map((row) => row.asset_id).filter(Boolean));
-  const activeScheduleStatuses = new Set(['scheduled', 'in_progress', 'overdue', 'deferred']);
-  const activePlanIds = new Set(pmSchedules.filter((row) => activeScheduleStatuses.has(String(row.status))).map((row) => row.plan_id).filter(Boolean));
   const calibrationAssetIds = new Set(calibrationRecords.map((row) => row.asset_id).filter(Boolean));
+  const profileIds = new Set(profiles.map((row) => row.id as string).filter(Boolean));
+  const workOrderRows = (workOrdersRes.data ?? []) as Array<Record<string, unknown>>;
+  const pmAssignedRows = (pmSchedulesAssignedRes.data ?? []) as Array<Record<string, unknown>>;
+  const workOrdersWithMissingAssignee = workOrderRows.filter((row) => row.assigned_to && !profileIds.has(row.assigned_to as string)).length;
+  const pmSchedulesWithMissingAssignee = pmAssignedRows.filter((row) => row.assigned_to && !profileIds.has(row.assigned_to as string)).length;
+  const profilesWithoutRoles = profiles.filter((row) => !Array.isArray(row.user_roles) || row.user_roles.length === 0).length;
   const disposalAssetIds = new Set(disposalRequests.map((row) => row.asset_id).filter(Boolean));
   const departmentIdsWithEquipment = new Set(assets.map((row) => row.department_id).filter(Boolean));
+  const demoProfiles = ((demoProfilesRes.data ?? []) as unknown) as Array<{ id: string; email: string; full_name: string | null; user_id: string | null; is_active: boolean | null; user_roles: Array<{ id: string; roles: Array<{ name: string }> | { name: string } | null }> | null }>;
+  const DEMO_EXPECTED: Array<{ email: string; role: string; nav: string }> = [
+    { email: 'developer@bmerms-demo.local', role: 'developer', nav: 'Everything + Developer Lab' },
+    { email: 'bme.head@bmerms-demo.local', role: 'bme_head', nav: 'All operational modules; no Developer Lab' },
+    { email: 'technician@bmerms-demo.local', role: 'technician', nav: 'Work execution + parts + alerts' },
+    { email: 'department.head@bmerms-demo.local', role: 'department_head', nav: 'Department equipment + requests + reports' },
+    { email: 'department.user@bmerms-demo.local', role: 'department_user', nav: 'Create/view department requests' },
+    { email: 'store.user@bmerms-demo.local', role: 'store_user', nav: 'Spare parts / logistics / procurement' },
+    { email: 'viewer@bmerms-demo.local', role: 'viewer', nav: 'Read-only command center + reports' },
+  ];
 
   const replacementRows: LabReplacementRow[] = ((replacementRes.data ?? []) as Array<Record<string, unknown>>)
     .filter((row) => row.asset_id)
@@ -197,10 +234,16 @@ export default async function DeveloperLabPage({ searchParams }: { searchParams:
       },
     }));
 
+  // Strong replacement candidates only (RPI >= 0.70) — narrow signal for the
+  // "without disposal request" check below. Uses the canonical threshold.
   const highReplacementAssetIds = new Set(
     replacementRows
-      .filter((row) => (row.priorityIndex ?? 0) >= 0.7 || (row.rank != null && row.rank <= 10))
+      .filter((row) => (row.priorityIndex ?? 0) >= REPLACEMENT_STRONG_THRESHOLD)
       .map((row) => row.assetId)
+  );
+
+  const replacementCandidateCount = countReplacementCandidates(
+    replacementRows.map((row) => ({ priority_index: row.priorityIndex }))
   );
 
   const healthChecks: HealthCheck[] = [
@@ -210,6 +253,7 @@ export default async function DeveloperLabPage({ searchParams }: { searchParams:
       severity: countByMissing(assets, (row) => !row.department_id) > 0 ? 'warning' : 'ok',
       explanation: 'Department assignment is required for readiness, reports, and ownership filters.',
       href: '/equipment',
+      actionLabel: 'Open Equipment List',
       group: 'data',
     },
     {
@@ -218,6 +262,7 @@ export default async function DeveloperLabPage({ searchParams }: { searchParams:
       severity: countByMissing(assets, (row) => !row.category_id) > 0 ? 'warning' : 'ok',
       explanation: 'Category drives criticality, PM expectations, and replacement interpretation.',
       href: '/equipment',
+      actionLabel: 'Open Equipment List',
       group: 'data',
     },
     {
@@ -226,70 +271,113 @@ export default async function DeveloperLabPage({ searchParams }: { searchParams:
       severity: countByMissing(assets, (row) => row.status === 'active' && !riskAssetIds.has(row.id as string)) > 0 ? 'critical' : 'ok',
       explanation: 'FMEA coverage is needed for risk bands, triage, alerts, and replacement planning.',
       href: '/developer-lab?focus=risk-scores',
+      actionLabel: 'Review Risk Scores',
       group: 'decision-support',
     },
-    {
-      label: 'PM plans without upcoming task',
-      count: countByMissing(pmPlans, (row) => row.is_active === true && !activePlanIds.has(row.id as string)),
-      severity: countByMissing(pmPlans, (row) => row.is_active === true && !activePlanIds.has(row.id as string)) > 0 ? 'warning' : 'ok',
-      explanation: 'Active PM plans should normally have one unfinished scheduled task or clear history state.',
-      href: '/pm?filter=needs-next-task&source=developer-lab',
-      group: 'workflow',
-    },
-    {
-      label: 'Overdue PM',
-      count: countByMissing(pmSchedules, (row) => Boolean(row.scheduled_date && String(row.scheduled_date) < currentDate && !['completed', 'skipped', 'canceled'].includes(String(row.status)))),
-      severity: countByMissing(pmSchedules, (row) => Boolean(row.scheduled_date && String(row.scheduled_date) < currentDate && !['completed', 'skipped', 'canceled'].includes(String(row.status)))) > 0 ? 'critical' : 'ok',
-      explanation: 'Overdue PM weakens preventive control and can increase detectability risk.',
-      href: '/pm?filter=overdue&source=developer-lab',
-      group: 'workflow',
-    },
-    {
-      label: 'Overdue calibration',
-      count: countByMissing(calibrationRecords, (row) => Boolean(row.next_due_date && String(row.next_due_date) < currentDate)),
-      severity: countByMissing(calibrationRecords, (row) => Boolean(row.next_due_date && String(row.next_due_date) < currentDate)) > 0 ? 'critical' : 'ok',
-      explanation: 'Overdue calibration is a safety and accuracy compliance issue.',
-      href: '/calibration?tab=upcoming&source=developer-lab',
-      group: 'workflow',
-    },
-    {
-      label: 'Low stock blockers',
-      count: countByMissing(parts, (row) => row.is_active !== false && Number(row.current_stock ?? 0) <= Number(row.reorder_level ?? 0)),
-      severity: countByMissing(parts, (row) => row.is_active !== false && Number(row.current_stock ?? 0) <= Number(row.reorder_level ?? 0)) > 0 ? 'warning' : 'ok',
-      explanation: 'Low stock can delay repairs and should connect to procurement when needed.',
-      href: '/spare-parts?tab=lowstock&source=developer-lab',
-      group: 'workflow',
-    },
-    {
-      label: 'Stockout without procurement',
-      count: countByMissing(parts, (row) => row.is_active !== false && Number(row.current_stock ?? 0) <= 0),
-      severity: countByMissing(parts, (row) => row.is_active !== false && Number(row.current_stock ?? 0) <= 0) > 0 ? 'critical' : 'ok',
-      explanation: 'Procurement links are stored as textual justification today, so verify stockout requests manually.',
-      href: '/procurement?source=developer-lab&filter=stockout',
-      group: 'workflow',
-    },
-    {
-      label: 'Procurement delayed',
-      count: countByMissing(procurementRows, (row) => Boolean(row.expected_delivery_date && String(row.expected_delivery_date) < currentDate && !['delivered', 'canceled'].includes(String(row.status)))),
-      severity: countByMissing(procurementRows, (row) => Boolean(row.expected_delivery_date && String(row.expected_delivery_date) < currentDate && !['delivered', 'canceled'].includes(String(row.status)))) > 0 ? 'warning' : 'ok',
-      explanation: 'Late procurement can block maintenance, stock recovery, and replacement workflows.',
-      href: '/procurement?source=developer-lab&filter=delayed',
-      group: 'workflow',
-    },
+    (() => {
+      const c = countPMPlansWithoutUpcomingTask(pmPlans as Array<{ id?: string | null; is_active?: boolean | null }>, pmSchedules as Array<{ plan_id?: string | null; status?: string | null }>);
+      return {
+        label: 'PM plans without upcoming task',
+        count: c,
+        severity: c > 0 ? 'warning' : 'ok',
+        explanation: 'Active PM plans should normally have one unfinished scheduled task or clear history state. Source: canonical-counts.ts → countPMPlansWithoutUpcomingTask.',
+        href: '/pm?filter=needs-next-task&source=developer-lab',
+        actionLabel: 'Open PM Plans Needing Next Task',
+        group: 'workflow',
+      } as HealthCheck;
+    })(),
+    (() => {
+      const c = countOverduePM(pmSchedules as Array<{ status?: string | null; scheduled_date?: string | null }>);
+      return {
+        label: 'Overdue PM',
+        count: c,
+        severity: c > 0 ? 'critical' : 'ok',
+        explanation: 'Overdue PM weakens preventive control. Counts scheduled_date < today AND status not completed/skipped/canceled/deferred. Source: canonical-counts.ts → countOverduePM.',
+        href: '/pm?filter=overdue&source=developer-lab',
+        actionLabel: 'Open Overdue PM',
+        group: 'workflow',
+      } as HealthCheck;
+    })(),
+    (() => {
+      const c = countOverdueCalibration(calibrationRecords as Array<{ next_due_date?: string | null }>);
+      return {
+        label: 'Overdue calibration',
+        count: c,
+        severity: c > 0 ? 'critical' : 'ok',
+        explanation: 'Overdue = next_due_date earlier than today. Seed contains historical dates; this count is expected until records are updated. Source: canonical-counts.ts → countOverdueCalibration (matches v_calibration_due).',
+        href: '/calibration?tab=overdue&source=developer-lab',
+        actionLabel: 'Open Overdue Calibration',
+        group: 'workflow',
+      } as HealthCheck;
+    })(),
+    (() => {
+      const c = countLowStock(parts as Array<{ current_stock?: number | null; reorder_level?: number | null; is_active?: boolean | null }>);
+      return {
+        label: 'Low stock',
+        count: c,
+        severity: c > 0 ? 'warning' : 'ok',
+        explanation: 'current_stock ≤ reorder_level AND current_stock > 0. Stockouts are tracked separately. Source: canonical-counts.ts → countLowStock.',
+        href: '/spare-parts?tab=lowstock&source=developer-lab',
+        actionLabel: 'Open Low Stock Parts',
+        group: 'workflow',
+      } as HealthCheck;
+    })(),
+    (() => {
+      const c = countStockout(parts as Array<{ current_stock?: number | null; is_active?: boolean | null }>);
+      return {
+        label: 'Stockout blockers',
+        count: c,
+        severity: c > 0 ? 'critical' : 'ok',
+        explanation: 'current_stock ≤ 0. Procurement linkage is by part name today (no FK), so verify open procurement manually for each stockout. Source: canonical-counts.ts → countStockout.',
+        href: '/spare-parts?tab=blockers&source=developer-lab',
+        actionLabel: 'Open Stock Blockers',
+        group: 'workflow',
+      } as HealthCheck;
+    })(),
+    (() => {
+      const c = countDelayedProcurement(procurementRows as Array<{ status?: string | null; expected_delivery_date?: string | null }>);
+      return {
+        label: 'Procurement delayed',
+        count: c,
+        severity: c > 0 ? 'warning' : 'ok',
+        explanation: 'expected_delivery_date < today AND status not delivered/canceled. Source: canonical-counts.ts → countDelayedProcurement.',
+        href: '/procurement?filter=delayed&source=developer-lab',
+        actionLabel: 'Open Delayed Procurement',
+        group: 'workflow',
+      } as HealthCheck;
+    })(),
     {
       label: 'Profiles without roles',
-      count: countByMissing(profiles, (row) => !Array.isArray(row.user_roles) || row.user_roles.length === 0),
-      severity: countByMissing(profiles, (row) => !Array.isArray(row.user_roles) || row.user_roles.length === 0) > 0 ? 'warning' : 'ok',
-      explanation: 'Profiles need roles for route access, server actions, and RLS behavior.',
-      href: '/settings?tab=staff-access',
+      count: profilesWithoutRoles,
+      severity: profilesWithoutRoles > 0 ? 'warning' : 'ok',
+      explanation: 'Profiles need roles for route access, server actions, and RLS behavior. Should be 0 after seed/02 + seed/100 run.',
+      href: '/settings?tab=staff-access&filter=missing-role',
+      actionLabel: 'Open Profiles Missing Roles',
+      group: 'security',
+    },
+    {
+      label: 'Work orders with missing assignee profile',
+      count: workOrdersWithMissingAssignee,
+      severity: workOrdersWithMissingAssignee > 0 ? 'critical' : 'ok',
+      explanation: 'work_orders.assigned_to points to a profiles.id that no longer exists. Indicates orphaned assignment data.',
+      href: '/work-orders?filter=unassigned&source=developer-lab',
+      actionLabel: 'Review Work Orders',
+      group: 'security',
+    },
+    {
+      label: 'PM schedules with missing assignee profile',
+      count: pmSchedulesWithMissingAssignee,
+      severity: pmSchedulesWithMissingAssignee > 0 ? 'critical' : 'ok',
+      explanation: 'pm_schedules.assigned_to points to a profiles.id that no longer exists. Indicates orphaned assignment data.',
+      href: '/pm?source=developer-lab',
+      actionLabel: 'Review PM Schedules',
       group: 'security',
     },
     {
       label: 'Auth users without profiles',
       count: 'Requires Supabase Auth admin API',
       severity: 'info',
-      explanation: 'The app can show profile-to-auth links, but cannot safely enumerate auth.users from the browser/client service.',
-      href: '/settings?tab=security-access',
+      explanation: 'The app can show profile-to-auth links, but cannot safely enumerate auth.users from the browser/client service. Use a server admin script for this check.',
       group: 'security',
     },
     {
@@ -298,6 +386,7 @@ export default async function DeveloperLabPage({ searchParams }: { searchParams:
       severity: countByMissing(departments, (row) => !departmentIdsWithEquipment.has(row.id as string)) > 0 ? 'info' : 'ok',
       explanation: 'Empty departments may be valid, but readiness and reports should explain them.',
       href: '/settings?tab=departments',
+      actionLabel: 'Review Departments',
       group: 'data',
     },
     {
@@ -306,6 +395,7 @@ export default async function DeveloperLabPage({ searchParams }: { searchParams:
       severity: countByMissing(categories, (row) => !row.criticality_level) > 0 ? 'warning' : 'ok',
       explanation: 'Criticality is needed for readiness and lifecycle scoring interpretation.',
       href: '/settings?tab=equipment-categories',
+      actionLabel: 'Review Equipment Categories',
       group: 'data',
     },
     {
@@ -314,14 +404,25 @@ export default async function DeveloperLabPage({ searchParams }: { searchParams:
       severity: countByMissing(assets, (row) => row.status === 'active' && !calibrationAssetIds.has(row.id as string)) > 0 ? 'info' : 'ok',
       explanation: 'The current schema does not flag calibration-required assets, so this check uses active equipment as a broad coverage proxy.',
       href: '/calibration?tab=records&source=developer-lab',
+      actionLabel: 'Review Calibration Records',
       group: 'decision-support',
     },
     {
-      label: 'Replacement candidates without disposal request',
+      label: 'Replacement candidates (RPI ≥ 0.55)',
+      count: replacementCandidateCount,
+      severity: replacementCandidateCount > 0 ? 'info' : 'ok',
+      explanation: 'Canonical: assets above the review threshold. Strong (RPI ≥ 0.70) + Review (0.55 ≤ RPI < 0.70). Monitor band is excluded. Source: canonical-counts.ts → countReplacementCandidates.',
+      href: '/replacement?filter=candidates&source=developer-lab',
+      actionLabel: 'Open Replacement Candidates',
+      group: 'decision-support',
+    },
+    {
+      label: 'Strong replacement candidates without disposal request',
       count: Array.from(highReplacementAssetIds).filter((assetId) => !disposalAssetIds.has(assetId)).length,
       severity: Array.from(highReplacementAssetIds).filter((assetId) => !disposalAssetIds.has(assetId)).length > 0 ? 'info' : 'ok',
-      explanation: 'Replacement evidence and formal disposal requests are related but separate workflows.',
+      explanation: 'Strong (RPI ≥ 0.70) replacement evidence without a formal disposal request. Replacement and disposal are related but separate workflows.',
       href: '/disposal?tab=candidates&source=developer-lab',
+      actionLabel: 'Open Disposal Candidates',
       group: 'decision-support',
     },
   ];
@@ -389,6 +490,138 @@ export default async function DeveloperLabPage({ searchParams }: { searchParams:
         </div>
       </section>
 
+      <section className="space-y-3">
+        <div>
+          <h2 className="text-lg font-semibold text-[var(--foreground)]">Score Connection Status</h2>
+          <p className="text-sm text-[var(--text-muted)]">
+            Each composite score must be Live or Snapshot to appear on operational pages.
+            Sandbox-only scores are simulation surfaces here in Developer Lab and do not affect
+            decisions taken on Command Center, Equipment, or Reports.
+          </p>
+        </div>
+        <div className="panel-surface overflow-x-auto rounded-lg">
+          <table className="w-full min-w-[960px] text-left text-sm">
+            <thead>
+              <tr className="border-b border-[var(--border-subtle)] text-xs uppercase tracking-wide text-[var(--text-muted)]">
+                <th className="px-3 py-2">Score</th>
+                <th className="px-3 py-2">Source</th>
+                <th className="px-3 py-2">Appears in</th>
+                <th className="px-3 py-2">Status</th>
+                <th className="px-3 py-2">Sandbox → live?</th>
+                <th className="px-3 py-2">Last refresh</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[var(--border-subtle)]/60">
+              {([
+                { name: 'RPN (FMEA)', src: 'equipment_risk_scores · fn_compute_rpn', pages: 'Command Center risk band, Equipment risk, Alerts', status: 'Snapshot', sandbox: 'No' },
+                { name: 'RPI (Replacement Priority)', src: 'replacement_priority_scores · v_replacement_decision', pages: 'Command Center, /replacement, /reports/replacement-planning, /developer-lab', status: 'Snapshot', sandbox: 'No' },
+                { name: 'Equipment Health Score', src: 'equipment_health_snapshots + operational fallback', pages: 'Command Center (interactive), Equipment detail', status: 'Snapshot', sandbox: 'No' },
+                { name: 'Department / Clinical Readiness', src: 'v_department_readiness', pages: 'Command Center readiness cards, /reports/department-readiness', status: 'Live', sandbox: 'No' },
+                { name: 'PM Compliance (PMC)', src: 'pm_compliance_metrics · fn_compute_pmc', pages: '/pm, /reports/pm, Command Center', status: 'Snapshot', sandbox: 'No' },
+                { name: 'Calibration Risk', src: 'calibration_records · calibration_requests · equipment_assets', pages: '/calibration, Command Center calibration triage, /alerts', status: 'Live', sandbox: 'No' },
+                { name: 'Critical Action Score', src: 'command-center-data.ts buildCriticalActions', pages: 'Command Center critical action strip', status: 'Live', sandbox: 'No' },
+                { name: 'Stock Blocker Priority', src: 'spare_parts · stock_issues · work_orders', pages: '/spare-parts, Command Center, /logistics', status: 'Live', sandbox: 'No' },
+                { name: 'Procurement Delay Priority', src: 'procurement_requests', pages: '/procurement, Command Center', status: 'Live', sandbox: 'No' },
+                { name: 'Workload / Capacity', src: 'work_orders · profiles (technician scope)', pages: 'Command Center workload, /work-orders', status: 'Live', sandbox: 'No' },
+                { name: 'Availability', src: 'equipment_reliability_metrics · fn_compute_availability', pages: 'Equipment detail, /reports', status: 'Snapshot', sandbox: 'No' },
+                { name: 'MTBF', src: 'equipment_reliability_metrics · fn_compute_mtbf', pages: 'Equipment detail, /reports', status: 'Snapshot', sandbox: 'No' },
+                { name: 'MTTR', src: 'equipment_reliability_metrics · fn_compute_mttr', pages: 'Equipment detail, /reports', status: 'Snapshot', sandbox: 'No' },
+                { name: 'Sensitivity sandbox RPI', src: 'In-memory recompute (Developer Lab only)', pages: 'Developer Lab Sandbox tab — never operational', status: 'Sandbox only', sandbox: 'No (simulation only)' },
+              ] as const).map((row) => (
+                <tr key={row.name}>
+                  <td className="px-3 py-2 font-medium text-[var(--foreground)]">{row.name}</td>
+                  <td className="px-3 py-2 text-[var(--text-muted)]">{row.src}</td>
+                  <td className="px-3 py-2 text-[var(--text-muted)]">{row.pages}</td>
+                  <td className="px-3 py-2">
+                    <Badge variant={row.status === 'Live' ? 'success' : row.status === 'Snapshot' ? 'info' : 'warning'}>{row.status}</Badge>
+                  </td>
+                  <td className="px-3 py-2 text-[var(--text-muted)]">{row.sandbox}</td>
+                  <td className="px-3 py-2 text-[var(--text-muted)]">
+                    {row.status === 'Snapshot' ? (lastRefresh?.started_at ? new Date(String(lastRefresh.started_at)).toLocaleString() : 'No log') : '—'}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p className="text-xs text-[var(--text-muted)]">
+          Live = computed from current operational rows on each request.
+          Snapshot = read from a precomputed table refreshed via the snapshot tools below.
+          Sandbox only = Developer Lab simulation that never writes to operational tables.
+        </p>
+      </section>
+
+      <section className="space-y-3">
+        <div>
+          <h2 className="text-lg font-semibold text-[var(--foreground)]">Role Demo Validation</h2>
+          <p className="text-sm text-[var(--text-muted)]">
+            Linkage status for the seven Supabase Auth demo logins. Source: profiles · user_roles · roles.
+            Driven by [[src/lib/rbac.ts]] capability matrix and supabase/seed/100_demo_role_users.sql.
+          </p>
+        </div>
+        <div className="panel-surface overflow-x-auto rounded-lg">
+          <table className="w-full min-w-[900px] text-left text-sm">
+            <thead>
+              <tr className="border-b border-[var(--border-subtle)] text-xs uppercase tracking-wide text-[var(--text-muted)]">
+                <th className="px-3 py-2">Demo Email</th>
+                <th className="px-3 py-2">Profile</th>
+                <th className="px-3 py-2">Auth linked</th>
+                <th className="px-3 py-2">Expected role</th>
+                <th className="px-3 py-2">Assigned roles</th>
+                <th className="px-3 py-2">Navigation focus</th>
+                <th className="px-3 py-2">Status</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[var(--border-subtle)]/60">
+              {DEMO_EXPECTED.map((expected) => {
+                const profile = demoProfiles.find((p) => p.email === expected.email);
+                const assignedRoles = (profile?.user_roles ?? []).flatMap((ur) => {
+                  const r = ur.roles;
+                  if (!r) return [];
+                  if (Array.isArray(r)) return r.map((x) => x.name);
+                  return [r.name];
+                }).filter(Boolean) as string[];
+                const hasExpected = assignedRoles.includes(expected.role);
+                const isLinked = !!profile?.user_id;
+                let status: 'ok' | 'warning' | 'critical';
+                let statusLabel: string;
+                if (!profile) {
+                  status = 'critical';
+                  statusLabel = 'Missing profile';
+                } else if (!isLinked) {
+                  status = 'warning';
+                  statusLabel = 'Profile exists, not linked';
+                } else if (!hasExpected) {
+                  status = 'warning';
+                  statusLabel = 'Linked, wrong role';
+                } else {
+                  status = 'ok';
+                  statusLabel = 'Healthy';
+                }
+                return (
+                  <tr key={expected.email}>
+                    <td className="px-3 py-2 font-mono text-xs text-[var(--foreground)]">{expected.email}</td>
+                    <td className="px-3 py-2 text-[var(--text-muted)]">{profile?.full_name ?? '—'}</td>
+                    <td className="px-3 py-2 text-[var(--text-muted)]">{isLinked ? 'Yes' : 'No'}</td>
+                    <td className="px-3 py-2 text-[var(--text-muted)]">{expected.role}</td>
+                    <td className="px-3 py-2 text-[var(--text-muted)]">{assignedRoles.length > 0 ? assignedRoles.join(', ') : '—'}</td>
+                    <td className="px-3 py-2 text-[var(--text-muted)]">{expected.nav}</td>
+                    <td className="px-3 py-2">
+                      <Badge variant={status === 'ok' ? 'success' : status === 'warning' ? 'warning' : 'error'}>
+                        {statusLabel}
+                      </Badge>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        <p className="text-xs text-[var(--text-muted)]">
+          Healthy = profile exists, linked to a Supabase Auth user, and has the expected role. Fix linkage via supabase/seed/100_demo_role_users.sql or by adjusting user_roles directly in Settings → Role Permissions.
+        </p>
+      </section>
+
       <DeveloperLabClient replacementRows={replacementRows} />
 
       <section className="space-y-4">
@@ -428,10 +661,14 @@ export default async function DeveloperLabPage({ searchParams }: { searchParams:
                       </div>
                       <Badge variant={variantForSeverity(check.severity)}>{check.count}</Badge>
                     </div>
-                    {check.href && (
-                      <Link className="mt-3 inline-flex text-xs text-[var(--brand)] hover:underline" href={check.href}>
-                        Open drilldown/action
+                    {check.href ? (
+                      <Link className="mt-3 inline-flex text-xs font-medium text-[var(--brand)] hover:underline" href={check.href}>
+                        {check.actionLabel ?? 'Open Source Records'}
                       </Link>
+                    ) : (
+                      <span className="mt-3 inline-flex text-xs text-[var(--text-subtle)]">
+                        No app-level action available
+                      </span>
                     )}
                   </Card>
                 ))}
@@ -443,32 +680,61 @@ export default async function DeveloperLabPage({ searchParams }: { searchParams:
 
       <Card>
         <CardHeader>
-          <CardTitle>Thesis Demo Tools</CardTitle>
+          <CardTitle>Thesis Defense Evidence Pack</CardTitle>
           <Beaker className="h-5 w-5 text-violet-300" />
         </CardHeader>
         <CardContent>
-          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <p className="mb-3 text-sm text-[var(--text-muted)]">
+            Defense / examiner evidence tools. These reports are intentionally hosted here
+            (not in the operational /reports surface) so the Reports page stays focused on
+            asset lifecycle, maintenance compliance, and resource workflows.
+          </p>
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            <Link href="/reports/biomedical-operations">
+              <div className="rounded-lg border border-[var(--border-subtle)] p-3 text-sm hover:border-[var(--brand)]/50">
+                <FileDown className="mb-2 h-4 w-4 text-[var(--brand)]" />
+                Biomedical Engineering Operations Report
+                <p className="mt-1 text-xs text-[var(--text-muted)]">Unified executive snapshot for defense.</p>
+              </div>
+            </Link>
             <Link href="/reports/evaluation-demo">
               <div className="rounded-lg border border-[var(--border-subtle)] p-3 text-sm hover:border-[var(--brand)]/50">
                 <FileDown className="mb-2 h-4 w-4 text-[var(--brand)]" />
-                Generate demo evidence report
+                Evaluation / Demo Evidence Report
+                <p className="mt-1 text-xs text-[var(--text-muted)]">Capability evidence and workflow coverage.</p>
+              </div>
+            </Link>
+            <Link href="/reports/department-readiness">
+              <div className="rounded-lg border border-[var(--border-subtle)] p-3 text-sm hover:border-[var(--brand)]/50">
+                <FileDown className="mb-2 h-4 w-4 text-[var(--brand)]" />
+                Department Readiness Report
+                <p className="mt-1 text-xs text-[var(--text-muted)]">Essential asset availability per department.</p>
+              </div>
+            </Link>
+            <Link href="/reports/decision-support-methodology">
+              <div className="rounded-lg border border-[var(--border-subtle)] p-3 text-sm hover:border-[var(--brand)]/50">
+                <FileDown className="mb-2 h-4 w-4 text-[var(--brand)]" />
+                Decision-Support Methodology Report
+                <p className="mt-1 text-xs text-[var(--text-muted)]">Formulas, weights, source tables, explainability.</p>
               </div>
             </Link>
             <Link href="/reports/replacement-planning">
               <div className="rounded-lg border border-[var(--border-subtle)] p-3 text-sm hover:border-[var(--brand)]/50">
                 <FileDown className="mb-2 h-4 w-4 text-[var(--brand)]" />
-                Export replacement evidence
+                Export Replacement Evidence
+                <p className="mt-1 text-xs text-[var(--text-muted)]">RPI rankings and lifecycle drivers.</p>
               </div>
             </Link>
             <Link href="/reports/audit-security">
               <div className="rounded-lg border border-[var(--border-subtle)] p-3 text-sm hover:border-[var(--brand)]/50">
                 <FileDown className="mb-2 h-4 w-4 text-[var(--brand)]" />
-                Audit/security evidence
+                Audit / Security Evidence
+                <p className="mt-1 text-xs text-[var(--text-muted)]">Governance and high-risk event log.</p>
               </div>
             </Link>
-            <div className="rounded-lg border border-[var(--border-subtle)] p-3 text-sm text-[var(--text-muted)]">
-              Demo reset is intentionally disabled until a safe reset migration/script exists.
-            </div>
+          </div>
+          <div className="mt-3 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-xs text-amber-300">
+            Demo reset is intentionally disabled until a safe reset migration/script exists.
           </div>
         </CardContent>
       </Card>

@@ -189,6 +189,78 @@ body {
   color: var(--text-muted);
 }
 
+/* ── Semantic text utilities — readable in both light and dark mode ─────────
+   Use these instead of raw text-gray-400/500 to guarantee theme parity.
+   Hierarchy: app-primary > app-secondary > app-muted > app-subtle.
+   ──────────────────────────────────────────────────────────────────────── */
+.text-app-primary {
+  color: var(--foreground);
+}
+
+.text-app-secondary {
+  color: color-mix(in oklab, var(--foreground) 78%, transparent);
+}
+
+.text-app-muted {
+  color: var(--text-muted);
+}
+
+.text-app-subtle {
+  color: var(--text-subtle);
+}
+
+/* Readable table-header text in both modes. */
+.table-header-text {
+  color: var(--text-muted);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+/* Readable badge text — semantic helpers that retune cleanly in dark mode. */
+.badge-readable {
+  color: var(--foreground);
+}
+
+/* Inputs/placeholders — visible without being shouty. */
+.input-surface {
+  background: var(--surface-1);
+  border: 1px solid var(--border-subtle);
+  color: var(--foreground);
+}
+
+.input-surface::placeholder {
+  color: var(--text-subtle);
+  opacity: 1;
+}
+
+/* ── Reduced motion respect ─────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .stat-card-pressable,
+  .filter-card-pressable {
+    transition: none !important;
+    transform: none !important;
+  }
+}
+
+/* ── Filter / stat card press behavior — consistent across the app ──────── */
+.filter-card-pressable {
+  transition: transform 150ms ease, box-shadow 150ms ease, border-color 150ms ease;
+}
+
+.filter-card-pressable:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-lg);
+}
+
+.filter-card-pressable:active {
+  transform: translateY(0);
+}
+
+.filter-card-active {
+  border-color: var(--brand) !important;
+  box-shadow: 0 0 0 2px var(--brand-soft), var(--shadow-md);
+}
+
 /* ── Tabular numbers for data-heavy UI ───────────────────────────────────── */
 .tabular,
 [class*="font-mono"],
@@ -252,8 +324,15 @@ body {
   }
 
   .text-muted,
-  [class*="text-muted"] {
-    color: #444444 !important;
+  [class*="text-muted"],
+  .text-app-muted,
+  .text-app-subtle,
+  .text-app-secondary {
+    color: #333333 !important;
+  }
+
+  .text-app-primary {
+    color: #000000 !important;
   }
 
   [class*="text-brand"],

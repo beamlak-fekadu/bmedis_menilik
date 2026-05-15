@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowRightLeft, Boxes, ClipboardCheck, HandHelping, PackageCheck, Warehouse } from 'lucide-react';
 import { PageHeader, Badge, StatCard } from '@/components/ui';
+import ClearFiltersButton from '@/components/ui/ClearFiltersButton';
 import Table from '@/components/ui/Table';
 import { AskAiButton } from '@/components/assistant/AskAiButton';
 import { getLowStockParts, getSpareParts } from '@/services/spare-parts.service';
@@ -412,6 +413,12 @@ export default function LogisticsPage() {
         <StatCard label="Low/Stockout Parts" value={summary.pendingIssue} icon={<ClipboardCheck className="h-5 w-5" />} color="orange" active={activeWorkflow === 'issue'} onClick={() => go('/logistics?workflow=issue')} />
         <StatCard label="WO-Linked Issues" value={summary.workOrderIssues} icon={<ArrowRightLeft className="h-5 w-5" />} color="blue" active={activeWorkflow === 'usage-linkage'} onClick={() => go('/logistics?workflow=usage-linkage')} />
       </div>
+
+      {(searchParams.get('workflow') || searchParams.get('panel')) && (
+        <div className="flex justify-end">
+          <ClearFiltersButton onClick={() => go('/logistics')} />
+        </div>
+      )}
 
       <section className="panel-surface rounded-lg p-4">
         <h2 className="mb-3 text-base font-semibold text-[var(--foreground)]">Store Workflow</h2>

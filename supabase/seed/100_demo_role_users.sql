@@ -60,12 +60,15 @@ demo_accounts AS (
   ) AS t(email, full_name, job_title, auth_user_id, expected_role, department_id)
 ),
 updated_profiles AS (
+  -- Preserve the seeded Ethiopian persona names (e.g. "Dr. Ermias Tadesse")
+  -- on existing rows. Only fill full_name / job_title when the seed row is
+  -- empty. Always link the auth user_id and ensure is_active.
   UPDATE profiles p
   SET
     user_id = d.auth_user_id,
-    full_name = d.full_name,
-    job_title = d.job_title,
-    department_id = d.department_id,
+    full_name = COALESCE(NULLIF(p.full_name, ''), d.full_name),
+    job_title = COALESCE(NULLIF(p.job_title, ''), d.job_title),
+    department_id = COALESCE(p.department_id, d.department_id),
     is_active = true
   FROM demo_accounts d
   WHERE p.email = d.email
