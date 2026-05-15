@@ -26,6 +26,7 @@ import * as usersService from '@/services/users.service';
 import { createReferenceRowAction, removeReferenceRowAction, updateReferenceRowAction, type ReferenceTable } from '@/actions/settings.actions';
 import { assignRoleAction, removeRoleAction, updateProfileAction } from '@/actions/users.actions';
 import { useRole } from '@/hooks/useRole';
+import { formatRoleName } from '@/utils/roles';
 import {
   Badge,
   Button,
@@ -277,11 +278,6 @@ function roleNames(profile: ProfileRow) {
   return (profile.user_roles ?? []).map((role) => role.roles?.name).filter(Boolean) as string[];
 }
 
-function humanize(value: string | null | undefined) {
-  if (!value) return '-';
-  return value.replace(/_/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase());
-}
-
 function permissionsCount(value: unknown) {
   return Array.isArray(value) ? value.length : value && typeof value === 'object' ? Object.keys(value).length : 0;
 }
@@ -486,7 +482,7 @@ export default function SettingsPage() {
         if (names.length === 0) return <Badge variant="warning">No role</Badge>;
         return (
           <div className="flex flex-wrap gap-1">
-            {names.map((name) => <Badge key={name} variant={ROLE_VARIANT[name] ?? 'default'}>{humanize(name)}</Badge>)}
+            {names.map((name) => <Badge key={name} variant={ROLE_VARIANT[name] ?? 'default'}>{formatRoleName(name)}</Badge>)}
           </div>
         );
       },
@@ -645,7 +641,7 @@ export default function SettingsPage() {
                 <tbody className="divide-y divide-[var(--border-subtle)]">
                   {roles.map((role) => (
                     <tr key={role.id}>
-                      <td className="py-3 pr-4"><Badge variant={ROLE_VARIANT[role.name] ?? 'default'}>{humanize(role.name)}</Badge></td>
+                      <td className="py-3 pr-4"><Badge variant={ROLE_VARIANT[role.name] ?? 'default'}>{formatRoleName(role.name)}</Badge></td>
                       <td className="py-3 pr-4">{profiles.filter((profile) => roleNames(profile).includes(role.name)).length}</td>
                       <td className="py-3 pr-4">{permissionsCount(role.permissions)} configured</td>
                       <td className="py-3 text-[var(--text-muted)]">{role.description ?? '-'}</td>
@@ -792,7 +788,7 @@ export default function SettingsPage() {
               <div className="flex justify-between gap-4"><span className="text-[var(--text-muted)]">System name</span><span>BMERMS</span></div>
               <div className="flex justify-between gap-4"><span className="text-[var(--text-muted)]">Implementation site</span><span>Menelik II Hospital</span></div>
               <div className="flex justify-between gap-4"><span className="text-[var(--text-muted)]">Implementation mode</span><Badge variant="info">Thesis/demo validation</Badge></div>
-              <div className="flex justify-between gap-4"><span className="text-[var(--text-muted)]">Current role</span><span>{humanize(primaryRole)}</span></div>
+              <div className="flex justify-between gap-4"><span className="text-[var(--text-muted)]">Current role</span><span>{formatRoleName(primaryRole)}</span></div>
             </CardContent>
           </Card>
           <Card>
@@ -933,7 +929,7 @@ export default function SettingsPage() {
               <div className="flex flex-wrap gap-2">
                 {selectedUser.user_roles.map((userRole) => (
                   <span key={userRole.id} className="inline-flex items-center gap-1 rounded-full border border-[var(--border-subtle)] px-2 py-1 text-sm">
-                    {humanize(userRole.roles.name)}
+                    {formatRoleName(userRole.roles.name)}
                     <button type="button" onClick={() => removeRole(selectedUser, userRole.role_id)} className="text-[var(--text-muted)] hover:text-[var(--danger)]">
                       <ShieldOff className="h-3.5 w-3.5" />
                     </button>
@@ -945,7 +941,7 @@ export default function SettingsPage() {
           <Select
             label="Add role"
             placeholder="Select role"
-            options={roles.filter((role) => role.name !== 'developer').map((role) => ({ value: role.id, label: humanize(role.name) }))}
+            options={roles.filter((role) => role.name !== 'developer').map((role) => ({ value: role.id, label: formatRoleName(role.name) }))}
             value={selectedRoleId}
             onChange={(event) => setSelectedRoleId(event.target.value)}
           />

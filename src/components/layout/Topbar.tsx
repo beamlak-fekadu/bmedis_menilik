@@ -6,6 +6,7 @@ import Button from '@/components/ui/Button';
 import Dropdown from '@/components/ui/Dropdown';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
 import { AssistantLauncher } from '@/components/assistant/AssistantLauncher';
+import { formatRoleName } from '@/utils/roles';
 
 interface TopbarProps {
   userName?: string;
@@ -71,7 +72,7 @@ export default function Topbar({
               </div>
               <div className="hidden text-left md:block">
                 <p className="font-medium">{userName}</p>
-                <p className="text-xs text-[var(--text-muted)]">{userRole}</p>
+                <p className="text-xs text-[var(--text-muted)]">{formatRoleName(userRole)}</p>
               </div>
             </button>
           }

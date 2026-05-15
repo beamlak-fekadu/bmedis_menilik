@@ -1,34 +1,51 @@
--- Seed 100: BMERMS demo login accounts (7 roles)
+-- documents/apply-demo-role-mapping.sql
 --
--- IMPORTANT — Job titles vs database roles:
---   Job titles are stored in profiles.job_title and are FREE TEXT
---   (e.g. "Clinical Engineer", "Radiologist", "ICU Head", "Biomedical Engineering Head",
---    "Medical Director", "Thesis Developer", "Medical Equipment Store Officer").
---   They are NOT database roles. Do NOT create roles like clinical_engineer,
---   radiologist, or icu_head.
+-- Apply the BMERMS demo login mapping to a LIVE Supabase database
+-- (Supabase SQL Editor, paste-and-run).
 --
---   Database roles are the lowercase role names used by RLS and the app's
---   useRole() hook. There are exactly eight valid role names:
---     developer, admin, bme_head, technician, department_head,
---     department_user, store_user, viewer
+-- This script is idempotent and safe to re-run.
 --
--- This file is idempotent and safe to re-run:
---   * It ensures the eight application roles exist.
---   * It looks up each demo Supabase Auth user BY EMAIL in auth.users
---     (no hardcoded auth UUIDs).
---   * It upserts the seven demo profiles and FORCES the intended
---     full_name and job_title (overwriting prior demo values like
---     "BME Department Head" or "Sr. Tigist Worku / ICU Head Nurse").
---   * It clears any pre-existing user_roles for those seven demo
---     profiles and assigns exactly one intended database role per profile.
---   * If a demo Auth user is missing, the corresponding profile row is
---     left unchanged (no profile is inserted with user_id = NULL,
---     because that would violate the login contract). The final
---     validation SELECT reports such cases as MISSING AUTH USER.
+-- It will:
+--   1. Ensure the eight application roles exist.
+--   2. Look up each demo Supabase Auth user BY EMAIL in auth.users
+--      (no hardcoded auth UUIDs).
+--   3. Update existing profiles by email and FORCE the intended
+--      full_name and job_title (overwriting prior values such as
+--      "BME Department Head", "Sr. Tigist Worku", "ICU Head Nurse").
+--   4. Insert a profile for any demo account that does not yet have one,
+--      but ONLY when the corresponding Auth user exists (so we never
+--      violate the profiles.user_id NOT NULL / FK contract).
+--   5. Clear all user_roles for the seven demo profiles and assign
+--      EXACTLY one intended role per demo profile.
+--   6. Print a validation result so you can confirm each row.
+--
+-- IMPORTANT — job titles vs database roles:
+--   * "Clinical Engineer", "Radiologist", "ICU Head",
+--     "Biomedical Engineering Head", "Medical Director",
+--     "Thesis Developer", "Medical Equipment Store Officer"
+--     are FREE-TEXT JOB TITLES stored in profiles.job_title.
+--   * The database roles are the eight lowercase names:
+--       developer, admin, bme_head, technician, department_head,
+--       department_user, store_user, viewer
+--   * Do NOT invent roles such as clinical_engineer, radiologist, icu_head.
+--
+-- Final intended mapping:
+--
+--   email                              | full_name           | job_title                       | role
+--   -----------------------------------+---------------------+---------------------------------+-----------------
+--   developer@bmerms-demo.local        | BMERMS Developer    | Thesis Developer                | developer
+--   bme.head@bmerms-demo.local         | Ermias Tadesse      | Biomedical Engineering Head     | bme_head
+--   technician@bmerms-demo.local       | Hanna Gebremedhin   | Clinical Engineer               | technician
+--   department.head@bmerms-demo.local  | Tigist Worku        | ICU Head                        | department_head
+--   department.user@bmerms-demo.local  | Dr. Fitsum Haile    | Radiologist                     | department_user
+--   store.user@bmerms-demo.local       | Ato Biniam Teshome  | Medical Equipment Store Officer | store_user
+--   viewer@bmerms-demo.local           | Dr. Amanuel Kifle   | Medical Director                | viewer
 
--- ============================================================================
--- 1) Ensure the eight application roles exist (lowercase database role names)
--- ============================================================================
+BEGIN;
+
+-- ----------------------------------------------------------------------------
+-- 1) Ensure the eight application roles exist
+-- ----------------------------------------------------------------------------
 INSERT INTO roles (name, description, permissions)
 VALUES
   ('developer', 'Thesis developer with full system access and demo/debug controls',
@@ -52,24 +69,9 @@ SET
   description = EXCLUDED.description,
   permissions = EXCLUDED.permissions;
 
--- ============================================================================
--- 2) Demo account mapping
---
---   email                              | full_name           | job_title (free text)         | role (lowercase DB role)
---   -----------------------------------+---------------------+-------------------------------+-------------------------
---   developer@bmerms-demo.local        | BMERMS Developer    | Thesis Developer              | developer
---   bme.head@bmerms-demo.local         | Ermias Tadesse      | Biomedical Engineering Head   | bme_head
---   technician@bmerms-demo.local       | Hanna Gebremedhin   | Clinical Engineer             | technician
---   department.head@bmerms-demo.local  | Tigist Worku        | ICU Head                      | department_head
---   department.user@bmerms-demo.local  | Dr. Fitsum Haile    | Radiologist                   | department_user
---   store.user@bmerms-demo.local       | Ato Biniam Teshome  | Medical Equipment Store Officer | store_user
---   viewer@bmerms-demo.local           | Dr. Amanuel Kifle   | Medical Director              | viewer
---
--- Reminder: "Clinical Engineer", "Radiologist", "ICU Head",
--- "Biomedical Engineering Head", "Medical Director" are JOB TITLES.
--- They are stored in profiles.job_title. They are NOT roles.
--- ============================================================================
-
+-- ----------------------------------------------------------------------------
+-- 2) Apply demo profile + role assignment by EMAIL lookup
+-- ----------------------------------------------------------------------------
 WITH demo_accounts AS (
   SELECT *
   FROM (
@@ -83,8 +85,6 @@ WITH demo_accounts AS (
       ('viewer@bmerms-demo.local',          'Dr. Amanuel Kifle',   'Medical Director',                  'viewer')
   ) AS t(email, full_name, job_title, expected_role)
 ),
--- Pick a department to attach the two department-scoped demo accounts to.
--- We prefer an ICU department because Tigist Worku is "ICU Head".
 department_target AS (
   SELECT id
   FROM departments
@@ -95,7 +95,6 @@ department_target AS (
     id
   LIMIT 1
 ),
--- Resolve auth.users.id by email (NO hardcoded UUIDs).
 auth_resolved AS (
   SELECT d.email,
          d.full_name,
@@ -110,9 +109,6 @@ auth_resolved AS (
   FROM demo_accounts d
   LEFT JOIN auth.users au ON au.email = d.email
 ),
--- Update existing profiles by email. FORCE the intended full_name and
--- job_title so older demo values ("BME Department Head", "Sr. Tigist
--- Worku", "ICU Head Nurse") are overwritten.
 updated_profiles AS (
   UPDATE profiles p
   SET
@@ -125,9 +121,6 @@ updated_profiles AS (
   WHERE p.email = a.email
   RETURNING p.id, p.email
 ),
--- Insert profiles for demo accounts that do not exist yet — but ONLY when
--- an auth user exists, since profiles.user_id has a FK to auth.users.id
--- and cannot be NULL for a working login.
 inserted_profiles AS (
   INSERT INTO profiles (user_id, full_name, email, department_id, job_title, is_active)
   SELECT a.auth_user_id, a.full_name, a.email, a.department_id, a.job_title, true
@@ -141,8 +134,6 @@ demo_profiles AS (
   UNION
   SELECT id, email FROM inserted_profiles
 ),
--- Clear all existing role assignments for the seven demo profiles so we end
--- up with exactly one role per demo profile after the INSERT below.
 removed_existing_roles AS (
   DELETE FROM user_roles ur
   USING demo_profiles dp
@@ -153,12 +144,24 @@ INSERT INTO user_roles (user_id, role_id)
 SELECT dp.id, r.id
 FROM demo_profiles dp
 JOIN demo_accounts d ON d.email = dp.email
-JOIN roles r ON r.name = d.expected_role  -- validates against LOWERCASE DB role names
+JOIN roles r ON r.name = d.expected_role  -- compared against LOWERCASE DB role names
 ON CONFLICT (user_id, role_id) DO NOTHING;
 
--- ============================================================================
--- 3) Validation: confirm name, job title, auth link, and role for each demo
--- ============================================================================
+COMMIT;
+
+-- ----------------------------------------------------------------------------
+-- 3) Validation (read-only). Inspect each row for correctness.
+--    Expected: status = 'OK' for every email.
+--    Possible status values:
+--      OK
+--      MISSING AUTH USER
+--      MISSING PROFILE
+--      PROFILE NOT LINKED TO AUTH
+--      WRONG NAME
+--      WRONG JOB TITLE
+--      WRONG ROLE
+--      MULTIPLE ROLES
+-- ----------------------------------------------------------------------------
 WITH demo_accounts AS (
   SELECT *
   FROM (
@@ -171,31 +174,59 @@ WITH demo_accounts AS (
       ('store.user@bmerms-demo.local',      'Ato Biniam Teshome',  'Medical Equipment Store Officer',   'store_user'),
       ('viewer@bmerms-demo.local',          'Dr. Amanuel Kifle',   'Medical Director',                  'viewer')
   ) AS t(email, expected_full_name, expected_job_title, expected_role)
+),
+aggregated AS (
+  SELECT
+    d.email,
+    au.id AS auth_user_uuid,
+    p.id  AS profile_id,
+    p.full_name,
+    d.expected_full_name,
+    p.job_title,
+    d.expected_job_title,
+    p.user_id AS linked_auth_user_uuid,
+    dep.name AS department_name,
+    d.expected_role,
+    ARRAY_REMOVE(ARRAY_AGG(DISTINCT r.name ORDER BY r.name), NULL) AS assigned_roles,
+    COUNT(DISTINCT r.name) AS role_count,
+    BOOL_OR(r.name = d.expected_role) AS has_expected_role
+  FROM demo_accounts d
+  LEFT JOIN auth.users au ON au.email = d.email
+  LEFT JOIN profiles   p  ON p.email = d.email
+  LEFT JOIN departments dep ON dep.id = p.department_id
+  LEFT JOIN user_roles ur ON ur.user_id = p.id
+  LEFT JOIN roles      r  ON r.id = ur.role_id
+  GROUP BY d.email, au.id, p.id, p.full_name, d.expected_full_name,
+           p.job_title, d.expected_job_title, p.user_id, dep.name, d.expected_role
 )
 SELECT
-  d.email,
-  CASE WHEN au.id IS NULL THEN 'MISSING AUTH USER' ELSE 'OK' END AS auth_user_status,
-  au.id AS auth_user_uuid,
-  p.id  AS profile_id,
-  p.full_name,
-  d.expected_full_name,
-  (p.full_name = d.expected_full_name) AS has_expected_name,
-  p.job_title,
-  d.expected_job_title,
-  (p.job_title = d.expected_job_title) AS has_expected_job_title,
-  p.user_id AS linked_auth_user_uuid,
-  (p.user_id = au.id) AS profile_link_matches_auth,
-  dep.name AS department_name,
-  d.expected_role,
-  ARRAY_REMOVE(ARRAY_AGG(DISTINCT r.name ORDER BY r.name), NULL) AS assigned_roles,
-  COUNT(DISTINCT r.name) AS role_count,
-  BOOL_OR(r.name = d.expected_role) AS has_expected_role
-FROM demo_accounts d
-LEFT JOIN auth.users au ON au.email = d.email
-LEFT JOIN profiles   p  ON p.email = d.email
-LEFT JOIN departments dep ON dep.id = p.department_id
-LEFT JOIN user_roles ur ON ur.user_id = p.id
-LEFT JOIN roles      r  ON r.id = ur.role_id
-GROUP BY d.email, au.id, p.id, p.full_name, d.expected_full_name,
-         p.job_title, d.expected_job_title, p.user_id, dep.name, d.expected_role
-ORDER BY d.email;
+  email,
+  CASE WHEN auth_user_uuid IS NULL THEN 'MISSING AUTH USER' ELSE 'OK' END AS auth_user_status,
+  auth_user_uuid,
+  profile_id,
+  full_name,
+  expected_full_name,
+  (full_name = expected_full_name) AS has_expected_name,
+  job_title,
+  expected_job_title,
+  (job_title = expected_job_title) AS has_expected_job_title,
+  linked_auth_user_uuid,
+  (linked_auth_user_uuid IS NOT NULL AND linked_auth_user_uuid = auth_user_uuid) AS profile_link_matches_auth,
+  department_name,
+  expected_role,
+  assigned_roles,
+  role_count,
+  has_expected_role,
+  CASE
+    WHEN auth_user_uuid IS NULL                                  THEN 'MISSING AUTH USER'
+    WHEN profile_id IS NULL                                      THEN 'MISSING PROFILE'
+    WHEN linked_auth_user_uuid IS NULL
+      OR linked_auth_user_uuid <> auth_user_uuid                 THEN 'PROFILE NOT LINKED TO AUTH'
+    WHEN full_name IS DISTINCT FROM expected_full_name           THEN 'WRONG NAME'
+    WHEN job_title IS DISTINCT FROM expected_job_title           THEN 'WRONG JOB TITLE'
+    WHEN NOT has_expected_role                                   THEN 'WRONG ROLE'
+    WHEN role_count > 1                                          THEN 'MULTIPLE ROLES'
+    ELSE 'OK'
+  END AS status
+FROM aggregated
+ORDER BY email;
