@@ -16,6 +16,14 @@ import * as settingsService from '@/services/settings.service';
 import type { ReportFilters } from '@/services/reports.service';
 import { exportToPDF, captureChartImages } from '@/utils/export';
 import { prepareReportSnapshotAction } from '@/actions/reports.actions';
+import { useRole } from '@/hooks/useRole';
+import {
+  formatQrLabelStatus,
+  formatQrReadinessState,
+  getQrLabelStatusBadgeVariant,
+  getQrReadinessState,
+  QR_ONLINE_STATUSES,
+} from '@/types/qr';
 import {
   REPLACEMENT_REVIEW_THRESHOLD,
   REPLACEMENT_STRONG_THRESHOLD,
@@ -67,6 +75,12 @@ const statusVariant: Record<string, 'default' | 'success' | 'warning' | 'error' 
   non_functional: 'error',
   under_maintenance: 'purple',
   decommissioned: 'default',
+  generated: 'info',
+  printed: 'warning',
+  attached: 'success',
+  needs_replacement: 'warning',
+  revoked: 'error',
+  not_generated: 'default',
 };
 
 /* Maps URL slug → internal data type for fetchData selection */
@@ -110,6 +124,32 @@ function buildReportKPIs(type: string, rows: Row[]): KpiCard[] {
       { label: 'Functional', value: functional, color: 'green', sub: `${Math.round((functional / rows.length) * 100)}%` },
       { label: 'Needs Repair', value: needsRepair, color: 'yellow' },
       { label: 'Non-Functional / Under Maint.', value: nonFunctional + underMaintenance, color: nonFunctional > 0 ? 'red' : 'yellow' },
+    ];
+  }
+
+  if (slug === 'qr-coverage') {
+    const missing = rows.filter((r) => !r.qr_token || r.qr_label_status === 'not_generated').length;
+    const attached = rows.filter((r) => !!r.qr_token && r.qr_label_status === 'attached').length;
+    const printed = rows.filter((r) => r.qr_label_status === 'printed').length;
+    const needsReplacement = rows.filter((r) => r.qr_label_status === 'needs_replacement').length;
+    const revoked = rows.filter((r) => r.qr_label_status === 'revoked').length;
+    return [
+      { label: 'Total Assets', value: rows.length, color: 'blue' },
+      { label: 'Ready to Scan', value: attached, color: 'green', sub: `${Math.round((attached / rows.length) * 100)}%` },
+      { label: 'Needs Token', value: missing, color: missing > 0 ? 'yellow' : 'green' },
+      { label: 'Printed / Replacement / Revoked', value: printed + needsReplacement + revoked, color: needsReplacement + revoked > 0 ? 'red' : 'yellow' },
+    ];
+  }
+
+  if (slug === 'qr-scan-evidence') {
+    const last7 = rows.filter((r) => r.scanned_at && new Date(String(r.scanned_at)).getTime() >= Date.now() - 7 * 24 * 60 * 60 * 1000).length;
+    const assets = new Set(rows.map((r) => r.asset_id).filter(Boolean));
+    const roles = new Set(rows.map((r) => r.role_name).filter(Boolean));
+    return [
+      { label: 'Total Scan Records', value: rows.length, color: 'blue' },
+      { label: 'Scans Last 7 Days', value: last7, color: 'green' },
+      { label: 'Assets Scanned', value: assets.size, color: 'purple' },
+      { label: 'Roles Observed', value: roles.size, color: 'yellow' },
     ];
   }
 
@@ -289,6 +329,34 @@ function buildPriorityFindings(type: string, rows: Row[]): Finding[] {
     findings.push({ severity: pct >= 80 ? 'info' : 'warning', finding: `${pct}% of tracked assets are functional (${functional} of ${rows.length}).` });
   }
 
+  if (type === 'qr-coverage') {
+    const missing = rows.filter((r) => !r.qr_token || r.qr_label_status === 'not_generated').length;
+    const generated = rows.filter((r) => !!r.qr_token && r.qr_label_status === 'generated').length;
+    const printed = rows.filter((r) => r.qr_label_status === 'printed').length;
+    const attached = rows.filter((r) => !!r.qr_token && r.qr_label_status === 'attached').length;
+    const needsReplacement = rows.filter((r) => r.qr_label_status === 'needs_replacement').length;
+    const revoked = rows.filter((r) => r.qr_label_status === 'revoked').length;
+    if (missing > 0) findings.push({ severity: 'warning', finding: `${missing} asset${missing > 1 ? 's' : ''} still need QR token generation.` });
+    if (generated > 0) findings.push({ severity: 'warning', finding: `${generated} generated label${generated > 1 ? 's' : ''} still need printing.` });
+    if (printed > 0) findings.push({ severity: 'warning', finding: `${printed} printed label${printed > 1 ? 's' : ''} still need physical attachment.` });
+    if (needsReplacement > 0) findings.push({ severity: 'critical', finding: `${needsReplacement} attached/issued label${needsReplacement > 1 ? 's' : ''} are flagged for replacement.` });
+    if (revoked > 0) findings.push({ severity: 'critical', finding: `${revoked} asset${revoked > 1 ? 's have' : ' has'} revoked QR status and should not be treated as field-ready.` });
+    findings.push({ severity: attached === rows.length ? 'info' : 'warning', finding: `${attached} of ${rows.length} active assets are ready to scan by label-readiness rules.` });
+  }
+
+  if (type === 'qr-scan-evidence') {
+    const last7 = rows.filter((r) => r.scanned_at && new Date(String(r.scanned_at)).getTime() >= Date.now() - 7 * 24 * 60 * 60 * 1000).length;
+    const byRole = countBy(rows, (r) => String(r.role_name ?? 'Unknown'));
+    const topAsset = countBy(rows, (r) => {
+      const asset = Array.isArray(r.equipment_assets) ? r.equipment_assets[0] : r.equipment_assets;
+      const a = asset as { asset_code?: string; name?: string } | null;
+      return `${a?.asset_code ?? 'Unknown'} ${a?.name ?? ''}`.trim();
+    })[0];
+    findings.push({ severity: last7 > 0 ? 'info' : 'warning', finding: `${last7} QR scan record${last7 === 1 ? '' : 's'} were recorded in the last 7 days.` });
+    if (byRole.length > 0) findings.push({ severity: 'info', finding: `Most common scanning role: ${byRole[0][0]} (${byRole[0][1]} scan${byRole[0][1] === 1 ? '' : 's'}).` });
+    if (topAsset) findings.push({ severity: 'info', finding: `Most frequently scanned asset in this snapshot: ${topAsset[0]} (${topAsset[1]} scan${topAsset[1] === 1 ? '' : 's'}).` });
+  }
+
   if (type === 'pm-compliance') {
     const overdue = rows.filter((r) => r.status === 'overdue').length;
     const completed = rows.filter((r) => r.status === 'completed').length;
@@ -433,6 +501,86 @@ function buildReportCharts(type: string, rows: Row[]): ChartSpec[] {
           values: statusCounts.map(([, v]) => v),
           colors: statusCounts.map(([l]) => statusColor(l.toLowerCase())),
         },
+      ];
+    }
+
+    case 'qr-coverage': {
+      const readinessCounts = countBy(rows, (r) => formatQrReadinessState(getQrReadinessState({
+        qr_token: (r.qr_token as string | null) ?? null,
+        qr_label_status: String(r.qr_label_status ?? 'not_generated'),
+      })));
+      const deptNeeds = countBy(
+        rows.filter((r) => getQrReadinessState({
+          qr_token: (r.qr_token as string | null) ?? null,
+          qr_label_status: String(r.qr_label_status ?? 'not_generated'),
+        }) !== 'ready_to_scan'),
+        (r) => {
+          const d = r.departments as { name?: string } | null;
+          return d?.name ?? 'Unknown';
+        },
+      ).slice(0, 10);
+      return [
+        {
+          title: 'QR Readiness Distribution',
+          description: 'Label readiness state computed from equipment QR fields',
+          type: 'doughnut',
+          labels: readinessCounts.map(([l]) => l),
+          values: readinessCounts.map(([, v]) => v),
+          colors: readinessCounts.map(([l]) => statusColor(l.toLowerCase())),
+        },
+        ...(deptNeeds.length > 0
+          ? [
+              {
+                title: 'QR Follow-Up by Department',
+                description: 'Assets that are not yet ready to scan by department',
+                type: 'bar' as const,
+                labels: deptNeeds.map(([l]) => l),
+                values: deptNeeds.map(([, v]) => v),
+                colors: deptNeeds.map(() => 'rgb(234,179,8)'),
+              },
+            ]
+          : []),
+      ];
+    }
+
+    case 'qr-scan-evidence': {
+      const roleCounts = countBy(rows, (r) => formatLabel(String(r.role_name ?? 'unknown')));
+      const statusCounts = countBy(rows, (r) => formatLabel(String(r.online_status ?? 'unknown')));
+      const deptCounts = countBy(rows, (r) => {
+        const asset = Array.isArray(r.equipment_assets) ? r.equipment_assets[0] : r.equipment_assets;
+        const a = asset as { departments?: { name?: string } | { name?: string }[] } | null;
+        const dept = Array.isArray(a?.departments) ? a?.departments[0] : a?.departments;
+        return dept?.name ?? 'Unknown';
+      }).slice(0, 10);
+      return [
+        {
+          title: 'Scans by Role',
+          description: 'Authenticated QR scan records by role snapshot',
+          type: 'doughnut',
+          labels: roleCounts.map(([l]) => l),
+          values: roleCounts.map(([, v]) => v),
+          colors: roleCounts.map((_, i) => PALETTE[i % PALETTE.length]),
+        },
+        {
+          title: 'Scans by Online Status',
+          description: 'Recorded online status values on QR scan rows',
+          type: 'doughnut',
+          labels: statusCounts.map(([l]) => l),
+          values: statusCounts.map(([, v]) => v),
+          colors: statusCounts.map(([l]) => statusColor(l.toLowerCase())),
+        },
+        ...(deptCounts.length > 0
+          ? [
+              {
+                title: 'Scans by Department',
+                description: 'QR scan records grouped by asset department',
+                type: 'bar' as const,
+                labels: deptCounts.map(([l]) => l),
+                values: deptCounts.map(([, v]) => v),
+                colors: deptCounts.map(() => 'rgb(37,99,235)'),
+              },
+            ]
+          : []),
       ];
     }
 
@@ -897,6 +1045,20 @@ function buildExecutiveSummary(type: string, rows: Row[]): string {
     return `This evaluation snapshot covers ${rows.length} active equipment assets demonstrating the BMERMS inventory management capability. The system supports condition tracking, risk analysis, PM compliance, calibration, procurement, and training modules across all hospital departments.`;
   }
 
+  if (type === 'qr-coverage') {
+    const attached = rows.filter((r) => !!r.qr_token && r.qr_label_status === 'attached').length;
+    const missing = rows.filter((r) => !r.qr_token || r.qr_label_status === 'not_generated').length;
+    const needsReplacement = rows.filter((r) => r.qr_label_status === 'needs_replacement').length;
+    const revoked = rows.filter((r) => r.qr_label_status === 'revoked').length;
+    return `This QR coverage snapshot covers ${rows.length} active equipment assets. ${attached} are physically ready to scan, ${missing} need token generation, ${needsReplacement} need label replacement, and ${revoked} have revoked QR status. These are label-readiness states only; scan history and deduplication are not part of this Phase 5 report.`;
+  }
+
+  if (type === 'qr-scan-evidence') {
+    const assets = new Set(rows.map((r) => r.asset_id).filter(Boolean)).size;
+    const last7 = rows.filter((r) => r.scanned_at && new Date(String(r.scanned_at)).getTime() >= Date.now() - 7 * 24 * 60 * 60 * 1000).length;
+    return `This QR scan evidence snapshot contains ${rows.length} authenticated online scan records across ${assets} asset${assets === 1 ? '' : 's'}. ${last7} scan record${last7 === 1 ? '' : 's'} occurred in the last 7 days. This report does not claim offline sync or deduplicated action analytics beyond the page-render deduplication implemented in Phase 6.`;
+  }
+
   if (type === 'maintenance-performance') {
     const totalCost = rows.reduce((acc, r) => acc + Number(r.service_cost ?? 0), 0);
     const withHours = rows.filter((r) => r.repair_duration_hours != null);
@@ -953,6 +1115,8 @@ function buildExecutiveSummary(type: string, rows: Row[]): string {
 /* ── methodology ──────────────────────────────────────────────────────────── */
 
 function methodologyFor(type: string): string {
+  if (['qr-coverage'].includes(type)) return 'QR coverage evidence comes from equipment_assets QR lifecycle fields only: qr_token, qr_label_status, qr_generated_at, qr_label_printed_at, qr_label_attached_at, qr_label_replaced_at, and qr_token_regenerated_at. Ready to Scan requires a token, qr_label_status = attached, and not revoked. Scan history, trends, and deduplication are intentionally excluded until Phase 6.';
+  if (['qr-scan-evidence'].includes(type)) return 'QR scan evidence comes from equipment_qr_scans joined to equipment_assets and profiles. Phase 6 deduplicates only open_qr_landing page-render scans from the same profile on the same asset within five minutes. User agent strings are not shown in the standard report table. Offline/PWA, background sync, browser notifications, and action-click analytics are outside this QR implementation.';
   if (['pm-compliance'].includes(type)) return 'PM compliance evidence comes from generated pm_schedule rows. Completed schedules count as completed evidence. Skipped, deferred, and overdue rows remain visible for audit. PM Compliance = completed ÷ total scheduled × 100.';
   if (['calibration-compliance'].includes(type)) return 'Calibration compliance uses calibration_records, result status, and next_due_date. Failed and adjusted results remain as evidence for follow-up work. Overdue detection compares next_due_date to the snapshot generation time.';
   if (['replacement-planning', 'decision-support-methodology'].includes(type)) return `Replacement planning uses RPI = Σ(wⱼ × sᵢⱼ) where components are age, failure history, availability, maintenance burden, spare-part support, and FMEA risk score. Component scores are min-max normalized. Thresholds: ≥${REPLACEMENT_STRONG_THRESHOLD.toFixed(2)} strong candidate, ${REPLACEMENT_REVIEW_THRESHOLD.toFixed(2)}–${(REPLACEMENT_STRONG_THRESHOLD - 0.01).toFixed(2)} review, <${REPLACEMENT_REVIEW_THRESHOLD.toFixed(2)} monitor. These are prototype thresholds for demonstration and sensitivity testing.`;
@@ -1058,6 +1222,62 @@ function getReportConfig(type: string): ReportConfig | null {
           { key: 'status', header: 'Status', render: (row: Row) => <Badge variant={statusVariant[row.status as string] || 'default'}>{formatLabel(String(row.status ?? ''))}</Badge> },
           { key: 'installation_date', header: 'Installed', render: (row: Row) => row.installation_date ? new Date(row.installation_date as string).toLocaleDateString() : '—' },
           { key: 'purchase_cost', header: 'Purchase Cost (ETB)', render: (row: Row) => row.purchase_cost != null ? `${(row.purchase_cost as number).toLocaleString()}` : '—' },
+        ],
+      };
+
+    case 'qr-coverage':
+      return {
+        title: 'QR Coverage Evidence Report',
+        description: 'QR label-readiness evidence for active equipment assets: token, generated, printed, attached, replacement, and revoked states.',
+        methodologyNote: methodologyFor('qr-coverage'),
+        filterDefs: ['department', 'category', 'qr_status'],
+        fetchData: reportsService.getQrCoverageReport,
+        columns: [
+          { key: 'asset_code', header: 'Asset Code', sortable: true },
+          { key: 'name', header: 'Name', sortable: true },
+          { key: 'department', header: 'Department', render: (row: Row) => { const d = row.departments as { name: string } | null; return d?.name || '-'; } },
+          { key: 'category', header: 'Category', render: (row: Row) => { const c = row.equipment_categories as { name: string } | null; return c?.name || '-'; } },
+          { key: 'criticality', header: 'Criticality', render: (row: Row) => { const c = row.equipment_categories as { criticality_level?: string } | null; return c?.criticality_level || '-'; } },
+          {
+            key: 'qr_label_status',
+            header: 'QR Status',
+            sortable: true,
+            render: (row: Row) => (
+              <Badge variant={row.qr_token ? getQrLabelStatusBadgeVariant(String(row.qr_label_status ?? 'not_generated')) : 'default'}>
+                {!row.qr_token || row.qr_label_status === 'not_generated' ? 'No Token' : formatQrLabelStatus(String(row.qr_label_status ?? 'not_generated'))}
+              </Badge>
+            ),
+          },
+          {
+            key: 'readiness',
+            header: 'Readiness',
+            render: (row: Row) => formatQrReadinessState(getQrReadinessState({
+              qr_token: (row.qr_token as string | null) ?? null,
+              qr_label_status: String(row.qr_label_status ?? 'not_generated'),
+            })),
+          },
+          { key: 'qr_generated_at', header: 'Generated', render: (row: Row) => row.qr_generated_at ? new Date(row.qr_generated_at as string).toLocaleDateString() : '-' },
+          { key: 'qr_label_printed_at', header: 'Printed', render: (row: Row) => row.qr_label_printed_at ? new Date(row.qr_label_printed_at as string).toLocaleDateString() : '-' },
+          { key: 'qr_label_attached_at', header: 'Attached', render: (row: Row) => row.qr_label_attached_at ? new Date(row.qr_label_attached_at as string).toLocaleDateString() : '-' },
+        ],
+      };
+
+    case 'qr-scan-evidence':
+      return {
+        title: 'QR Scan Evidence Report',
+        description: 'Authenticated online QR scan records by asset, scanner, role, department, source, status, and action.',
+        methodologyNote: methodologyFor('qr-scan-evidence'),
+        filterDefs: ['department', 'status', 'date_range'],
+        fetchData: reportsService.getQrScanEvidenceReport,
+        columns: [
+          { key: 'scanned_at', header: 'Scanned At', sortable: true, render: (row: Row) => row.scanned_at ? new Date(row.scanned_at as string).toLocaleString() : '-' },
+          { key: 'asset', header: 'Asset', render: (row: Row) => { const a = Array.isArray(row.equipment_assets) ? row.equipment_assets[0] : row.equipment_assets as { asset_code?: string; name?: string } | null; return a ? `${a.asset_code ?? '-'} — ${a.name ?? '-'}` : '-'; } },
+          { key: 'department', header: 'Department', render: (row: Row) => { const a = Array.isArray(row.equipment_assets) ? row.equipment_assets[0] : row.equipment_assets as { departments?: { name?: string } | { name?: string }[] } | null; const d = Array.isArray(a?.departments) ? a?.departments[0] : a?.departments; return d?.name ?? '-'; } },
+          { key: 'scanner', header: 'Scanned By', render: (row: Row) => { const p = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles as { full_name?: string; email?: string } | null; return p?.full_name ?? p?.email ?? 'Unknown user'; } },
+          { key: 'role_name', header: 'Role', render: (row: Row) => <Badge variant="info">{formatLabel(String(row.role_name ?? 'unknown'))}</Badge> },
+          { key: 'scan_source', header: 'Source', render: (row: Row) => formatLabel(String(row.scan_source ?? 'unknown')) },
+          { key: 'online_status', header: 'Online Status', render: (row: Row) => <Badge variant={String(row.online_status) === 'online' ? 'success' : 'warning'}>{formatLabel(String(row.online_status ?? 'unknown'))}</Badge> },
+          { key: 'action_taken', header: 'Action', render: (row: Row) => formatLabel(String(row.action_taken ?? 'unknown')) },
         ],
       };
 
@@ -1312,7 +1532,10 @@ export default function ReportTypePage() {
   const params = useParams();
   const router = useRouter();
   const { toast } = useToast();
+  const { roles } = useRole();
   const reportType = params.type as string;
+  const canViewQrAdminReport = roles.some((role) => role === 'developer' || role === 'admin' || role === 'bme_head');
+  const isQrAdminReport = reportType === 'qr-coverage' || reportType === 'qr-scan-evidence';
 
   const [data, setData] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1345,6 +1568,7 @@ export default function ReportTypePage() {
 
   const loadData = useCallback(async () => {
     if (!config) return;
+    if (isQrAdminReport && !canViewQrAdminReport) return;
     setLoading(true);
     try {
       const snapshot = await prepareReportSnapshotAction(reportType);
@@ -1370,12 +1594,12 @@ export default function ReportTypePage() {
     } finally {
       setLoading(false);
     }
-  }, [config, filterValues, reportType, toast]);
+  }, [config, filterValues, reportType, toast, canViewQrAdminReport, isQrAdminReport]);
 
   useEffect(() => { loadReferenceData(); }, [loadReferenceData]);
   useEffect(() => { loadData(); }, [loadData]);
 
-  if (!config) {
+  if (!config || (isQrAdminReport && !canViewQrAdminReport)) {
     return (
       <div className="flex flex-col items-center justify-center py-20">
         <p className="text-lg font-medium text-[var(--foreground)]">Report type not found</p>
@@ -1423,6 +1647,18 @@ export default function ReportTypePage() {
     { value: 'delivered', label: 'Delivered' },
     { value: 'canceled', label: 'Canceled' },
   ];
+  const qrOnlineStatusOptions = QR_ONLINE_STATUSES.map((status) => ({
+    value: status,
+    label: formatLabel(status),
+  }));
+  const qrStatusOptions = [
+    { value: 'missing_token', label: 'Missing Token' },
+    { value: 'generated', label: 'Generated' },
+    { value: 'printed', label: 'Printed' },
+    { value: 'attached', label: 'Attached' },
+    { value: 'needs_replacement', label: 'Needs Replacement' },
+    { value: 'revoked', label: 'Revoked' },
+  ];
 
   const filterDefs = config.filterDefs.flatMap((f) => {
     switch (f) {
@@ -1437,9 +1673,11 @@ export default function ReportTypePage() {
             : norm === 'equipment' ? equipmentStatusOptions
             : norm === 'work-orders' ? workOrderStatusOptions
             : norm === 'procurement-pipeline' ? procurementStatusOptions
+            : norm === 'qr-scan-evidence' ? qrOnlineStatusOptions
             : [],
         }];
       }
+      case 'qr_status': return [{ key: 'status', label: 'QR Status', options: qrStatusOptions }];
       case 'date_range': return [];
       default: return [];
     }

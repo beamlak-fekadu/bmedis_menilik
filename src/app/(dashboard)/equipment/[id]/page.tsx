@@ -32,6 +32,7 @@ import {
   getMaintenanceStateBadgeClass,
 } from '@/utils/equipment/maintenance-state';
 import { useRole } from '@/hooks/useRole';
+import QrIdentityPanel from './QrIdentityPanel';
 import type {
   EquipmentCondition, PMScheduleStatus, CalibrationResult, RiskLevel,
 } from '@/types/domain';
@@ -829,6 +830,18 @@ export default function EquipmentDetailPage({ params }: { params: Promise<{ id: 
             </>
           )}
         </HealthCard>
+      </div>
+
+      {/* QR Identity panel (admin actions for developer/admin/bme_head; read-only badge otherwise) */}
+      <div id="qr-identity" className="mb-6 scroll-mt-24">
+        <QrIdentityPanel
+          assetId={id}
+          assetCode={equipment.asset_code}
+          assetName={equipment.name}
+          departmentName={equipment.departments?.name ?? null}
+          categoryName={equipment.equipment_categories?.name ?? null}
+          criticalityLevel={equipment.equipment_categories?.criticality_level ?? null}
+        />
       </div>
 
       {/* Risk watch banner if high/critical */}

@@ -21,6 +21,7 @@ import {
   BarChart3,
   FileText,
   Info,
+  QrCode,
 } from 'lucide-react';
 import PageHeader from '@/components/ui/PageHeader';
 import Badge from '@/components/ui/Badge';
@@ -36,6 +37,7 @@ interface ReportDef {
   iconBg: string;
   priority?: boolean;
   devOnly?: boolean;
+  adminOnly?: boolean;
 }
 
 interface ReportSection {
@@ -64,6 +66,30 @@ const sections: ReportSection[] = [
         tables: 1,
         icon: <Monitor className="h-5 w-5" />,
         iconBg: 'text-cyan-400 bg-cyan-500/15',
+      },
+      {
+        type: 'qr-coverage',
+        title: 'QR Coverage Evidence Report',
+        purpose:
+          'QR readiness by asset: missing tokens, generated, printed, attached, needs-replacement, and revoked label states.',
+        evidenceTag: 'QR readiness',
+        charts: 2,
+        tables: 1,
+        icon: <QrCode className="h-5 w-5" />,
+        iconBg: 'text-teal-400 bg-teal-500/15',
+        adminOnly: true,
+      },
+      {
+        type: 'qr-scan-evidence',
+        title: 'QR Scan Evidence Report',
+        purpose:
+          'Authenticated QR scan activity by asset, scanner role, department, online status, and action evidence.',
+        evidenceTag: 'Scan activity',
+        charts: 3,
+        tables: 1,
+        icon: <QrCode className="h-5 w-5" />,
+        iconBg: 'text-blue-400 bg-blue-500/15',
+        adminOnly: true,
       },
       {
         type: 'risk-fmea',
@@ -296,6 +322,7 @@ const DEPARTMENT_ALLOWED_REPORTS = new Set([
 
 export default function ReportsPage() {
   const { roles, isViewer, isDeveloper, isAdmin, isBmeHead, isTechnician, isStoreUser } = useRole();
+  const canViewQrAdminReports = roles.some((role) => role === 'developer' || role === 'admin' || role === 'bme_head');
   const isViewerOnly = isViewer && !isDeveloper && !isAdmin && !isBmeHead && !isTechnician;
   const isStoreOnly = isStoreUser && !isDeveloper && !isAdmin && !isBmeHead && !isTechnician;
   const isDepartmentOnly =
@@ -410,6 +437,13 @@ export default function ReportsPage() {
     );
   }
 
+  const operationalSections = sections
+    .map((section) => ({
+      ...section,
+      reports: section.reports.filter((report) => !report.adminOnly || canViewQrAdminReports),
+    }))
+    .filter((section) => section.reports.length > 0);
+
   return (
     <div className="space-y-8">
       <PageHeader
@@ -426,7 +460,7 @@ export default function ReportsPage() {
         </p>
       </div>
 
-      {sections.map((section) => (
+      {operationalSections.map((section) => (
         <section key={section.id}>
           <div className={`mb-4 flex items-start justify-between gap-3 rounded-lg border px-4 py-3 ${section.sectionColor}`}>
             <div>

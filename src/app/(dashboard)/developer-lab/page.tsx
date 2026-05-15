@@ -4,6 +4,8 @@ import { requireRole } from '@/lib/auth/helpers';
 import { createClient } from '@/lib/supabase/server';
 import { Badge, Card, CardContent, CardHeader, CardTitle, PageHeader } from '@/components/ui';
 import DeveloperLabClient, { type LabReplacementRow } from './DeveloperLabClient';
+import QrCoverageSection from './QrCoverageSection';
+import { getQrCoverageStats, getQrScanCoverageStats } from '@/services/qr.service';
 import {
   countLowStock,
   countStockout,
@@ -429,6 +431,11 @@ export default async function DeveloperLabPage({ searchParams }: { searchParams:
 
   const lastRefresh = refreshLogRes.data as Record<string, unknown> | null;
 
+  const [qrCoverageStats, qrScanStats] = await Promise.all([
+    getQrCoverageStats(),
+    getQrScanCoverageStats(),
+  ]);
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -463,6 +470,8 @@ export default async function DeveloperLabPage({ searchParams }: { searchParams:
           </Badge>
         </Card>
       </div>
+
+      <QrCoverageSection stats={qrCoverageStats} scanStats={qrScanStats} />
 
       <section className="space-y-3">
         <div>

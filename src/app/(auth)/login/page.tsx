@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { signIn } from '@/services/auth.service';
 import Button from '@/components/ui/Button';
@@ -11,8 +11,21 @@ import { APP_NAME_FULL, APP_NAME_SHORT, HOSPITAL_NAME } from '@/constants';
 
 const SIGN_IN_TAGLINE = 'Secure access to biomedical equipment analytics and operations.';
 
+// Only accept internal, same-origin paths for returnTo. Rejects protocol-relative
+// URLs (`//evil.com/...`), absolute URLs (`http://...`), and anything that does
+// not start with a single `/`. Used to safely round-trip QR scans through login.
+function safeReturnPath(value: string | null | undefined): string | null {
+  if (!value) return null;
+  if (typeof value !== 'string') return null;
+  if (!value.startsWith('/')) return null;
+  if (value.startsWith('//') || value.startsWith('/\\')) return null;
+  return value;
+}
+
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const returnTo = safeReturnPath(searchParams.get('returnTo'));
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -30,7 +43,7 @@ export default function LoginPage() {
       setLoading(false);
       return;
     }
-    router.push('/');
+    router.push(returnTo ?? '/');
     router.refresh();
   }
 

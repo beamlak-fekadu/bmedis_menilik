@@ -1,7 +1,7 @@
 # AGENTS.md — BMERMS Codebase Reference for AI Agents
 
-Last updated: 2026-05-12 (Reports module redesign — professional evidence/export center)
-Branch: BMERMS_V4
+Last updated: 2026-05-15 (QR Scan Logging and Evidence — Phase 6)
+Branch: QR
 Supabase project ID: fgqyszbxzpmqzpqvdivx
 
 This file is the canonical technical reference for any AI agent working in this repo.
@@ -167,6 +167,164 @@ supabase.rpc('refresh_decision_support_snapshots')
 - Called from server components and server actions only
 - Never imported into client components
 - One file per domain (equipment.service.ts, maintenance.service.ts, etc.)
+
+### QR identity — src/utils/qr/, src/services/qr.service.ts, src/actions/qr.actions.ts (Phase 1, 2026-05-15)
+- Token: `qra_<base64url(crypto.randomBytes(24))>`. Server-only generation via
+  `src/utils/qr/token.ts:generateQrToken`. NEVER `Math.random`. NEVER client-side.
+- `isValidQrTokenFormat(token)` validates `^qra_[A-Za-z0-9_-]{16,}$`.
+- `maskQrToken(token)` for admin UI — full token never lands in logs/screenshots.
+- Service `src/services/qr.service.ts` (server-only): `getAssetQrIdentity`, `getAssetByQrToken`
+  (rejects revoked tokens — used by future /qr/a/[token]), `ensureAssetQrToken`,
+  `regenerateAssetQrToken`, `markQrLabelPrinted/Attached/NeedsReplacement`, `revokeAssetQrToken`
+  (soft: keeps token, sets status='revoked'), `bulkGenerateMissingQrTokens`, `logQrScan`,
+  `getQrCoverageStats`. Token collisions retried up to 5 times.
+- Actions `src/actions/qr.actions.ts` gated to capability `equipment.edit` (developer/admin/bme_head).
+  Every action writes `audit_logs` (qr.token.generate / qr.token.regenerate / qr.label.printed /
+  qr.label.attached / qr.label.needs_replacement / qr.token.revoke / qr.token.bulk_generate).
+  Revalidates /equipment, /inventory, /developer-lab, /command, and per-asset paths.
+- Types: `src/types/qr.ts` (kept outside generated `database.ts`). Exports `QrLabelStatus`,
+  `QrScanSource`, `QrOnlineStatus`, `QrCoverageStats`, `formatQrLabelStatus`,
+  `getQrLabelStatusBadgeVariant`, `isQrLabelStatus`, `QR_TOKEN_PREFIX`.
+- DB: migration 00045 — adds 7 qr_* columns to equipment_assets (unique partial index on qr_token,
+  CHECK on qr_label_status), creates `equipment_qr_scans` (RLS: developer/admin/bme_head + self read;
+  authenticated insert; no update/delete).
+- UI: `/developer-lab` shows `QrCoverageSection`; `/equipment/[id]` shows `QrIdentityPanel`
+  (admin actions for developer/admin/bme_head; read-only badge for everyone else).
+- NOT implemented in Phase 1: label image/print, /qr/a/[token] route, role-aware scan, scan logging
+  UI, offline scan logging, PWA, sync. See documents/qr-identity-design.md.
+
+### QR label generation — Phase 2 (2026-05-15)
+- QR image: rendered locally with the already-installed `qrcode.react` (`QRCodeSVG` for preview,
+  `QRCodeCanvas` for PNG export). No external QR API, no Math.random.
+- URL helper `src/utils/qr/url.ts`: `getQrBaseUrl()` resolves NEXT_PUBLIC_APP_URL → SITE_URL →
+  VERCEL_URL (with https://) → http://localhost:3000. `buildAssetQrUrl(token)` returns the
+  fully-qualified `/qr/a/<token>` URL or `null` for invalid tokens.
+- Render helper `src/utils/qr/render.ts`: `renderQrLabelToDataUrl({ qrSource, info })` composes the
+  full sticker (BMERMS header, code, name, dept, QR, scan instruction, login-required footer) on an
+  offscreen canvas and returns a PNG data URL. `createQrLabelFileName(assetCode, name)`,
+  `sanitizeFileName(input)`, and `triggerDataUrlDownload(dataUrl, filename)` are the supporting helpers.
+- Components: `src/components/qr/QrCodeImage.tsx`, `src/components/qr/QrLabelPreview.tsx`,
+  `src/components/qr/QrLabelPrintSheet.tsx` (grid that respects existing globals.css `@media print`
+  rules; outer `qr-print-sheet` wrapper).
+- Service additions in `src/services/qr.service.ts`: `getQrLabelAssets({status?, search?, ids?})`,
+  `getQrLabelAsset(id)`, `bulkMarkQrLabelsPrinted/Attached/NeedsReplacement(ids)` (only updates rows
+  with `qr_token` present; returns `{ updated, skipped }`).
+- Action additions in `src/actions/qr.actions.ts`: `markQrLabelsPrintedBulkAction`,
+  `markQrLabelsAttachedBulkAction`, `markQrLabelsNeedsReplacementBulkAction`. All gate on
+  `equipment.edit` capability and emit audit actions `qr.label.printed.bulk`,
+  `qr.label.attached.bulk`, `qr.label.needs_replacement.bulk`. Revalidate
+  `/equipment`, `/inventory`, `/developer-lab`, `/command`, `/equipment/qr-labels`.
+- Route `/equipment/qr-labels`: server-gated to admin/bme_head (developer passes via `requireRole`).
+  Renders `QrLabelSheetClient` with coverage cards, filter chips, search, selectable table, print
+  preview grid, and bulk lifecycle actions. Accepts `?status=`, `?assets=<id,...>`, and `?print=1`
+  query params (auto-triggers `window.print()` after mount).
+- Equipment detail `QrIdentityPanel` (Phase 2 update): embeds `QrLabelPreview`, shows the QR URL
+  path, adds Download PNG (canvas composition) and Print Label (`/equipment/qr-labels?assets=<id>&print=1`).
+  Status banners for revoked / needs_replacement. Lifecycle is never auto-marked.
+- Developer Lab QR Coverage: gains *Open QR Label Sheet*, *Print Generated (n)*, *Print Needs
+  Replacement (n)* entry points alongside the existing Generate Missing Tokens action.
+- Phase plan: 1 ✅, 2 ✅, 3 ✅ online landing, 4 ✅ role-specific QR experience,
+  5 ✅ coverage expansion, 6 ✅ scan logging/evidence. Phase 6 is the final planned QR phase for now.
+  Offline/PWA is explicitly OUT of the six-phase plan.
+
+### QR online landing — Phase 3 (2026-05-15)
+- Route: `src/app/qr/a/[token]/page.tsx` (outside `(dashboard)` so it doesn't load the dashboard shell
+  before authentication). `dynamic = 'force-dynamic'`, `revalidate = 0`.
+- Components: `QrLoginRequired.tsx` (unauthenticated, no asset data), `QrInvalidState.tsx`
+  (invalid / not_found / revoked variants), `QrAssetLandingPage.tsx` (authenticated, role-aware).
+- Service additions in `src/services/qr.service.ts`:
+  - `resolveQrLandingAsset(token)` → discriminated `{ status: 'invalid'|'not_found'|'revoked'|'ok' }`.
+    Revoked returns no asset metadata.
+  - `getQrAssetContext(assetId)` → live evidence: openRequestsCount, openWorkOrdersCount,
+    upcomingOrOverduePmCount, overduePmCount, calibrationDueState (overdue|due_soon|current|
+    no_history|unavailable), lastWorkOrderStatus. Errors are collected into `errors[]` so the route
+    can show "Not available" cards without crashing.
+- Middleware: `src/lib/supabase/middleware.ts` includes `/qr` in `PUBLIC_PATHS`. Authenticated visits
+  to `/login?returnTo=<safe-path>` redirect to that path (safe paths: single leading `/`, not `//`
+  or `/\`).
+- Login (`src/app/(auth)/login/page.tsx`): `safeReturnPath()` filters `?returnTo=` before
+  `router.push`. External / protocol-relative redirects rejected.
+- Scan logging: enabled (Option A). Authenticated success branch calls `logQrScan` from Phase 1 with
+  `scan_source='web'`, `online_status='online'`, `action_taken='open_qr_landing'`, fire-and-forget;
+  failures don't block render. Refreshes write duplicate rows in Phase 3 (Phase 6 will dedupe).
+- Equipment detail `QrIdentityPanel` now exposes Open QR Page (new tab to /qr/a/<token>) and Copy URL
+  (clipboard write of buildAssetQrUrl). Both gated to developer / admin / bme_head; disabled when
+  token is missing or revoked.
+- Phase 3 limits now superseded by Phase 4 role-specific page. Still no scan history UI yet (Phase 6);
+  no PWA/offline (out of the six-phase plan).
+
+### QR role-specific scan experience — Phase 4 (2026-05-15)
+- New service `src/services/qr-context.service.ts` (server-only): exports `getQrRoleCategory()` and
+  `getQrRoleContext({ asset, profile, client })`. It uses the normal Supabase server client/RLS,
+  never service_role, and wraps every evidence query with section-level availability.
+- Role categories: developer, bme_head (admin behaves operationally as BME Head), technician,
+  department_head, department_user, store_user, viewer, unknown. No new database roles.
+- Department scoping: `department_head` and `department_user` must have `profile.department_id` and it
+  must match `asset.department_id`; otherwise the QR page shows a restricted state with no asset
+  details, no request actions, and no operational rows. Never fallback to all-hospital data.
+- `QrAssetLandingPage` now renders: common header/security note, asset identity card,
+  role-specific primary actions, metric cards, and tabs for Current Status, Requests & Work,
+  PM & Calibration, Parts / Blockers, History, and QR Info (developer/admin category only).
+- Developer sees QR/debug data: masked token, token format validity, QR lifecycle timestamps,
+  route path/base URL, role category, query health, Developer Lab, QR Label Sheet, Copy QR URL,
+  asset profile, maintenance, and reports.
+- BME Head/Admin sees operational context and state-aware navigation: critical/high request first,
+  then open work order, condition repair flow, overdue PM, overdue calibration, or asset profile.
+  Risk/RPN and replacement band appear only when existing score rows are available.
+- Technician sees assigned-to-me work first, other open work second, PM/calibration status, recent
+  service history, corrective request, and maintenance-event logging only when assigned work exists.
+- Department Head/User see department-scoped request/readiness context only for their own department.
+  Department User gets request-focused actions and no BME workflow controls.
+- Store User sees direct stock/blocker/procurement context only: on-hold work, stock issues linked
+  through maintenance_events, stock recommendation flags, and procurement links via
+  specification_requests.procurement_request_id. No fuzzy matching and no maintenance execution actions.
+- Viewer sees read-only summary/evidence/report actions only. No mutation actions.
+- Scan logging remains Phase 3 behavior; metadata route is now `qr.landing.v2` with roleCategory.
+  Phase 4 does not add scan history UI, deduplication, action-click logging, offline/PWA, or a new DB migration.
+
+### QR coverage expansion — Phase 5 (2026-05-15)
+- QR readiness answers only physical label readiness: Ready to Scan requires `qr_token` present,
+  `qr_label_status='attached'`, and not revoked. Needs Label Generation = missing token or
+  `not_generated`; Needs Printing = `generated`; Needs Attachment = `printed`; Needs Replacement =
+  `needs_replacement`; Invalid/Revoked = `revoked`.
+- Equipment list now shows Developer/Admin/BME Head-only QR summary cards, QR status filter, QR Status
+  badge column, row selection, bulk QR toolbar, and row QR actions. Viewer/Store/Technician/Department
+  tailored equipment views must not show QR admin controls.
+- New route `/equipment/qr-coverage`: server-gated to admin/bme_head (developer passes via
+  `requireRole`). Shows real coverage cards from `equipment_assets` plus scan record count from
+  `equipment_qr_scans`, grouped tables (Missing QR Tokens, Generated Not Printed, Printed Not Attached,
+  Needs Replacement, Revoked Labels, Recently Regenerated), and bulk Generate/Print/Mark Printed/Mark
+  Attached/Needs Replacement actions. Bulk revoke/regenerate intentionally not added.
+- Developer Lab QR section links to `/equipment/qr-coverage`, QR Label Sheet, Print Generated, and Print
+  Needs Replacement, and documents the current phase state through Phase 6.
+- Reports adds Developer/Admin/BME Head-only `/reports/qr-coverage` evidence report using existing
+  report/PDF infrastructure. It reads QR lifecycle fields from `equipment_assets`; it does not add scan
+  history, scan trends, deduplication, analytics dashboard, offline/PWA, fake data, or hardcoded counts.
+
+### QR scan logging and evidence — Phase 6 (2026-05-15)
+- Dedup constant: `QR_SCAN_DEDUP_WINDOW_MINUTES = 5`. `logQrScan` dedups only
+  `action_taken='open_qr_landing'` rows for the same `asset_id` + `scanned_by` inside that window.
+  Dedup failure never blocks QR page render, and historical duplicate rows are not deleted.
+- Scan evidence service functions live in `src/services/qr.service.ts`: `getQrScanHistory`,
+  `getAssetQrScanSummary`, `getRecentAssetQrScans`, `getQrScanCoverageStats`,
+  `getAssetsNeverScanned`, `getAttachedAssetsNeverScanned`, `getMostScannedAssets`,
+  `getQrScansByRole`, `getQrScansByDepartment`, `getQrAssetScanMetrics`, and
+  `shouldLogQrScan`.
+- Reusable table: `src/components/qr/QrScanHistoryTable.tsx`. Standard scan tables do not expose raw
+  `user_agent`; scanner display is full_name → email → Unknown user.
+- Full admin route: `/equipment/qr-scans`, gated to developer/admin/bme_head via `requireRole`. Filters:
+  date range, role, department, asset id, online status, scan source, and action.
+- Equipment detail `QrIdentityPanel` shows a collapsible QR Scan Evidence section only for
+  Developer/Admin/BME Head. Other roles see no scan history UI.
+- Developer Lab QR section now shows total scans, scans last 7 days, attached assets never scanned,
+  most scanned asset, scans by role, scans by department, recent scans, and revoked/needs-replacement
+  scan risks.
+- `/equipment/qr-coverage` adds scan-aware groups/columns: Never Scanned, Scanned Recently, Attached
+  Never Scanned, Revoked Recently Scanned, total scans, last scanned, last role, and scans last 30 days.
+- Reports adds Developer/Admin/BME Head-only `/reports/qr-scan-evidence`.
+- Still intentionally out of scope: offline/PWA/service worker/IndexedDB, background sync, browser
+  notifications, real `synced_later` queue behavior, action-click tracking, fake scan rows, generated
+  adoption rates, and destructive duplicate cleanup.
 
 ### Analytics utilities — src/utils/analytics/
 - formulas.ts — all 7 thesis formulas (computeRPN, computeAvailability, computeMTBF,

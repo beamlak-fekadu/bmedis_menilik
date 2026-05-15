@@ -15,6 +15,8 @@ const EQUIPMENT_SELECT = `
   manufacturer_id, vendor_id, supplier_id, installation_date, warranty_expiry,
   service_contract_expiry, condition, status, purchase_date, purchase_cost,
   source, notes, photo_url, created_at, updated_at,
+  qr_token, qr_generated_at, qr_label_status, qr_label_printed_at,
+  qr_label_attached_at, qr_label_replaced_at, qr_token_regenerated_at,
   departments(id, name, code),
   equipment_categories(id, name, code, criticality_level),
   manufacturers(id, name, country),
@@ -58,6 +60,18 @@ export async function getEquipmentById(id: string) {
     .eq('id', id)
     .is('deleted_at', null)
     .single();
+}
+
+export async function getEquipmentQrIdentityClient(id: string) {
+  const supabase = createClient();
+  return supabase
+    .from('equipment_assets')
+    .select(
+      'id, qr_token, qr_generated_at, qr_label_status, qr_label_printed_at, qr_label_attached_at, qr_label_replaced_at, qr_token_regenerated_at',
+    )
+    .eq('id', id)
+    .is('deleted_at', null)
+    .maybeSingle();
 }
 
 export async function createEquipment(data: Omit<EquipmentAsset, 'id' | 'created_at' | 'updated_at' | 'deleted_at' | 'department' | 'category' | 'manufacturer' | 'model'>) {

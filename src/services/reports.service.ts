@@ -29,6 +29,62 @@ export async function getEquipmentReport(filters: ReportFilters = {}) {
   return query.order('asset_code', { ascending: true });
 }
 
+export async function getQrCoverageReport(filters: ReportFilters = {}) {
+  const supabase = createClient();
+  let query = supabase
+    .from('equipment_assets')
+    .select(`
+      id, asset_code, name, condition, status,
+      qr_token, qr_generated_at, qr_label_status, qr_label_printed_at,
+      qr_label_attached_at, qr_label_replaced_at, qr_token_regenerated_at,
+      departments(id, name, code),
+      equipment_categories(id, name, code, criticality_level)
+    `)
+    .is('deleted_at', null);
+
+  if (filters.department_id) query = query.eq('department_id', filters.department_id);
+  if (filters.category_id) query = query.eq('category_id', filters.category_id);
+  if (filters.status) {
+    if (filters.status === 'missing_token') query = query.or('qr_token.is.null,qr_label_status.eq.not_generated');
+    else query = query.eq('qr_label_status', filters.status);
+  }
+
+  return query.order('asset_code', { ascending: true });
+}
+
+export async function getQrScanEvidenceReport(filters: ReportFilters = {}) {
+  const supabase = createClient();
+  let query = supabase
+    .from('equipment_qr_scans')
+    .select(`
+      id, asset_id, scanned_by, role_name, scanned_at, scan_source,
+      online_status, action_taken, metadata, created_at,
+      equipment_assets(id, asset_code, name, department_id, departments(id, name)),
+      profiles(id, full_name, email)
+    `)
+    .order('scanned_at', { ascending: false })
+    .limit(2000);
+
+  if (filters.date_from) query = query.gte('scanned_at', filters.date_from);
+  if (filters.date_to) query = query.lte('scanned_at', filters.date_to);
+  if (filters.status) query = query.eq('online_status', filters.status);
+
+  const result = await query;
+  if (filters.department_id && result.data) {
+    return {
+      ...result,
+      data: (result.data as Array<Record<string, unknown>>).filter((row) => {
+        const asset = Array.isArray(row.equipment_assets)
+          ? row.equipment_assets[0] as { department_id?: string } | undefined
+          : row.equipment_assets as { department_id?: string } | null;
+        return asset?.department_id === filters.department_id;
+      }),
+    };
+  }
+
+  return result;
+}
+
 export async function getMaintenanceReport(filters: ReportFilters = {}) {
   const supabase = createClient();
   let query = supabase

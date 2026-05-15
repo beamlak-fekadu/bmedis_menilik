@@ -1,13 +1,13 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
   Plus, Activity, ShieldAlert, AlertTriangle, Wrench, CheckCircle2,
-  Clock, AlertCircle, TrendingUp,
+  Clock, AlertCircle, TrendingUp, QrCode, Printer, Stamp, RefreshCw,
 } from 'lucide-react';
-import { PageHeader, Button, Spinner } from '@/components/ui';
+import { PageHeader, Button, Spinner, Badge } from '@/components/ui';
 import { BarChart, DoughnutChart, ChartCard } from '@/components/charts';
 import { getEquipmentList } from '@/services/equipment.service';
 import { getAll } from '@/services/settings.service';
@@ -37,6 +37,24 @@ import {
 import type { EquipmentCondition } from '@/types/domain';
 import ViewerEquipmentOverview from './_components/ViewerEquipmentOverview';
 import DepartmentEquipmentOverview from './_components/DepartmentEquipmentOverview';
+import {
+  bulkGenerateMissingQrTokensAction,
+  ensureAssetQrTokenAction,
+  markQrLabelAttachedAction,
+  markQrLabelNeedsReplacementAction,
+  markQrLabelPrintedAction,
+  markQrLabelsAttachedBulkAction,
+  markQrLabelsNeedsReplacementBulkAction,
+  markQrLabelsPrintedBulkAction,
+  regenerateAssetQrTokenAction,
+  revokeQrTokenAction,
+} from '@/actions/qr.actions';
+import {
+  formatQrLabelStatus,
+  getQrLabelStatusBadgeVariant,
+  getQrReadinessState,
+  type QrLabelStatus,
+} from '@/types/qr';
 
 interface EquipmentRow {
   id: string;
@@ -49,6 +67,13 @@ interface EquipmentRow {
   equipment_categories: { id: string; name: string } | null;
   manufacturers: { id: string; name: string } | null;
   equipment_models: { id: string; name: string } | null;
+  qr_token: string | null;
+  qr_generated_at: string | null;
+  qr_label_status: QrLabelStatus | null;
+  qr_label_printed_at: string | null;
+  qr_label_attached_at: string | null;
+  qr_label_replaced_at: string | null;
+  qr_token_regenerated_at: string | null;
   [key: string]: unknown;
 }
 
@@ -78,6 +103,15 @@ type QuickFilter =
   | 'high_risk'
   | 'replacement_candidate';
 
+type QrStatusFilter =
+  | ''
+  | 'missing_token'
+  | 'generated'
+  | 'printed'
+  | 'attached'
+  | 'needs_replacement'
+  | 'revoked';
+
 function rpnBandLabel(rpn: number): string {
   if (rpn <= 100) return 'Low';
   if (rpn <= 200) return 'Medium';
@@ -105,6 +139,15 @@ const QUICK_FILTERS: { key: QuickFilter; label: string }[] = [
   { key: 'under_maintenance', label: 'Under maintenance' },
   { key: 'high_risk', label: 'High / Critical risk' },
   { key: 'replacement_candidate', label: 'Replacement candidate' },
+];
+
+const QR_STATUS_FILTERS: { key: QrStatusFilter; label: string }[] = [
+  { key: 'missing_token', label: 'Missing Token' },
+  { key: 'generated', label: 'Generated' },
+  { key: 'printed', label: 'Printed' },
+  { key: 'attached', label: 'Attached' },
+  { key: 'needs_replacement', label: 'Needs Replacement' },
+  { key: 'revoked', label: 'Revoked' },
 ];
 
 const COLOR_MAP: Record<string, string> = {
@@ -168,6 +211,22 @@ const CONDITION_CHART_COLORS: Record<string, string> = {
   decommissioned: 'rgb(107, 114, 128)',
 };
 
+function getQrStatusLabel(row: Pick<EquipmentRow, 'qr_token' | 'qr_label_status'>): string {
+  if (!row.qr_token || row.qr_label_status === 'not_generated') return 'No Token';
+  return formatQrLabelStatus(row.qr_label_status);
+}
+
+function getQrStatusVariant(row: Pick<EquipmentRow, 'qr_token' | 'qr_label_status'>) {
+  if (!row.qr_token || row.qr_label_status === 'not_generated') return 'default' as const;
+  return getQrLabelStatusBadgeVariant(row.qr_label_status);
+}
+
+function matchesQrFilter(row: EquipmentRow, filter: QrStatusFilter): boolean {
+  if (!filter) return true;
+  if (filter === 'missing_token') return !row.qr_token || row.qr_label_status === 'not_generated';
+  return row.qr_label_status === filter;
+}
+
 export default function EquipmentListPage() {
   const { roles } = useRole();
   const isViewerOnly =
@@ -183,7 +242,8 @@ export default function EquipmentListPage() {
 
 function OperationalEquipmentListPage() {
   const router = useRouter();
-  const { canManageEquipment, canCreateRequests } = useRole();
+  const { roles, canManageEquipment, canCreateRequests } = useRole();
+  const canManageQr = roles.some((role) => role === 'developer' || role === 'admin' || role === 'bme_head');
 
   const [allRows, setAllRows] = useState<EnrichedRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -193,10 +253,16 @@ function OperationalEquipmentListPage() {
   const [filterDept, setFilterDept] = useState('');
   const [filterCat, setFilterCat] = useState('');
   const [filterCondition, setFilterCondition] = useState('');
+  const [filterQrStatus, setFilterQrStatus] = useState<QrStatusFilter>('');
   const [quickFilter, setQuickFilter] = useState<QuickFilter>('');
   const [sortKey, setSortKey] = useState<string>('name');
   const [sortAsc, setSortAsc] = useState(true);
   const [page, setPage] = useState(1);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [pendingQr, startQrTransition] = useTransition();
+  const [qrMessage, setQrMessage] = useState<string | null>(null);
+  const [qrError, setQrError] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
   const PAGE_SIZE = 20;
 
   useEffect(() => {
@@ -243,11 +309,12 @@ function OperationalEquipmentListPage() {
     }
     void fetchAll();
     return () => { cancelled = true; };
-  }, []);
+  }, [reloadKey]);
 
   // Computed summary counts from all rows
   const counts = useMemo(() => {
     let functional = 0, needsRepair = 0, nonFunctional = 0, underMaintenance = 0, faultedNoReq = 0, highRisk = 0;
+    let qrReady = 0, qrNeedsGeneration = 0, qrNeedsPrinting = 0, qrNeedsAttachment = 0, qrNeedsReplacement = 0, qrRevoked = 0;
     for (const row of allRows) {
       if (row.condition === 'functional') functional++;
       if (row.condition === 'needs_repair') needsRepair++;
@@ -255,8 +322,29 @@ function OperationalEquipmentListPage() {
       if (row.condition === 'under_maintenance') underMaintenance++;
       if (isFaulted(row.condition) && !row.openRequest && !row.openWorkOrder) faultedNoReq++;
       if (isHighRisk(row.riskInfo)) highRisk++;
+      const readiness = getQrReadinessState(row);
+      if (readiness === 'ready_to_scan') qrReady++;
+      if (readiness === 'needs_label_generation') qrNeedsGeneration++;
+      if (readiness === 'needs_printing') qrNeedsPrinting++;
+      if (readiness === 'needs_attachment') qrNeedsAttachment++;
+      if (readiness === 'needs_replacement') qrNeedsReplacement++;
+      if (readiness === 'invalid_revoked') qrRevoked++;
     }
-    return { total: allRows.length, functional, needsRepair, nonFunctional, underMaintenance, faultedNoReq, highRisk };
+    return {
+      total: allRows.length,
+      functional,
+      needsRepair,
+      nonFunctional,
+      underMaintenance,
+      faultedNoReq,
+      highRisk,
+      qrReady,
+      qrNeedsGeneration,
+      qrNeedsPrinting,
+      qrNeedsAttachment,
+      qrNeedsReplacement,
+      qrRevoked,
+    };
   }, [allRows]);
 
   // Chart data derived from all rows
@@ -290,6 +378,7 @@ function OperationalEquipmentListPage() {
     if (filterDept) rows = rows.filter((r) => r.departments?.id === filterDept);
     if (filterCat) rows = rows.filter((r) => r.equipment_categories?.id === filterCat);
     if (filterCondition) rows = rows.filter((r) => r.condition === filterCondition);
+    if (canManageQr && filterQrStatus) rows = rows.filter((r) => matchesQrFilter(r, filterQrStatus));
     if (search) {
       const q = search.toLowerCase();
       rows = rows.filter((r) =>
@@ -327,6 +416,7 @@ function OperationalEquipmentListPage() {
       else if (sortKey === 'department') { av = a.departments?.name ?? ''; bv = b.departments?.name ?? ''; }
       else if (sortKey === 'category') { av = a.equipment_categories?.name ?? ''; bv = b.equipment_categories?.name ?? ''; }
       else if (sortKey === 'condition') { av = a.condition; bv = b.condition; }
+      else if (sortKey === 'qr_status') { av = getQrStatusLabel(a); bv = getQrStatusLabel(b); }
       else if (sortKey === 'rpn') { av = a.riskInfo?.rpn ?? 0; bv = b.riskInfo?.rpn ?? 0; }
       if (av < bv) return sortAsc ? -1 : 1;
       if (av > bv) return sortAsc ? 1 : -1;
@@ -334,10 +424,19 @@ function OperationalEquipmentListPage() {
     });
 
     return rows;
-  }, [allRows, filterDept, filterCat, filterCondition, search, quickFilter, sortKey, sortAsc]);
+  }, [allRows, filterDept, filterCat, filterCondition, filterQrStatus, canManageQr, search, quickFilter, sortKey, sortAsc]);
 
   const totalPages = Math.max(1, Math.ceil(filteredRows.length / PAGE_SIZE));
   const pageRows = filteredRows.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const selectedRows = useMemo(
+    () => allRows.filter((row) => selected.has(row.id)),
+    [allRows, selected],
+  );
+  const selectedIds = useMemo(() => Array.from(selected), [selected]);
+  const selectedTokenizedIds = useMemo(
+    () => selectedRows.filter((row) => !!row.qr_token && row.qr_label_status !== 'revoked').map((row) => row.id),
+    [selectedRows],
+  );
 
   function handleCardFilter(qf: QuickFilter) {
     setQuickFilter((prev) => (prev === qf ? '' : qf));
@@ -355,8 +454,67 @@ function OperationalEquipmentListPage() {
     if (key === 'department_id') setFilterDept(value);
     if (key === 'category_id') setFilterCat(value);
     if (key === 'condition') setFilterCondition(value);
+    if (key === 'qr_status') setFilterQrStatus(value as QrStatusFilter);
     setQuickFilter('');
     setPage(1);
+  }
+
+  function toggleSelected(id: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function setAllPageSelected(checked: boolean) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      pageRows.forEach((row) => {
+        if (checked) next.add(row.id);
+        else next.delete(row.id);
+      });
+      return next;
+    });
+  }
+
+  function runQrAction(
+    label: string,
+    action: () => Promise<{ success: boolean; error?: string; data?: unknown }>,
+    options: { clearSelection?: boolean } = {},
+  ) {
+    setQrMessage(null);
+    setQrError(null);
+    startQrTransition(async () => {
+      const result = await action();
+      if (!result.success) {
+        setQrError(result.error ?? `${label} failed`);
+        return;
+      }
+      setQrMessage(`${label} succeeded.`);
+      if (options.clearSelection) setSelected(new Set());
+      setReloadKey((key) => key + 1);
+    });
+  }
+
+  function handleSelectedAction(
+    label: string,
+    action: (ids: string[]) => Promise<{ success: boolean; error?: string }>,
+  ) {
+    if (selectedIds.length === 0) {
+      setQrError('Select at least one asset first.');
+      return;
+    }
+    runQrAction(label, () => action(selectedIds), { clearSelection: true });
+  }
+
+  function handlePrintSelected() {
+    if (selectedTokenizedIds.length === 0) {
+      setQrError('Select at least one tokenized, non-revoked asset before printing labels.');
+      return;
+    }
+    router.push(`/equipment/qr-labels?assets=${encodeURIComponent(selectedTokenizedIds.join(','))}&print=1`);
   }
 
   function getRowAction(row: EnrichedRow): { label: string; href: string; variant: string } {
@@ -418,14 +576,38 @@ function OperationalEquipmentListPage() {
         title="Equipment"
         description="Asset-level operational control — condition, maintenance state, risk, and actions"
         actions={
-          canManageEquipment ? (
-            <Link href={ROUTES.EQUIPMENT_NEW}>
-              <Button>
-                <Plus className="h-4 w-4" />
-                Register Equipment
-              </Button>
-            </Link>
-          ) : null
+          <div className="flex flex-wrap gap-2">
+            {canManageQr && (
+              <>
+                <Link href="/equipment/qr-coverage">
+                  <Button variant="outline">
+                    <QrCode className="h-4 w-4" />
+                    QR Coverage
+                  </Button>
+                </Link>
+                <Link href="/equipment/qr-labels">
+                  <Button variant="outline">
+                    <Printer className="h-4 w-4" />
+                    QR Labels
+                  </Button>
+                </Link>
+                <Link href="/equipment/qr-scans">
+                  <Button variant="outline">
+                    <QrCode className="h-4 w-4" />
+                    QR Scans
+                  </Button>
+                </Link>
+              </>
+            )}
+            {canManageEquipment ? (
+              <Link href={ROUTES.EQUIPMENT_NEW}>
+                <Button>
+                  <Plus className="h-4 w-4" />
+                  Register Equipment
+                </Button>
+              </Link>
+            ) : null}
+          </div>
         }
       />
 
@@ -456,6 +638,32 @@ function OperationalEquipmentListPage() {
           );
         })}
       </div>
+
+      {canManageQr && (
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
+          {[
+            { key: 'attached' as QrStatusFilter, label: 'Ready to Scan', value: counts.qrReady, tone: 'green' },
+            { key: 'missing_token' as QrStatusFilter, label: 'Needs Token', value: counts.qrNeedsGeneration, tone: counts.qrNeedsGeneration > 0 ? 'yellow' : 'green' },
+            { key: 'generated' as QrStatusFilter, label: 'Needs Printing', value: counts.qrNeedsPrinting, tone: 'blue' },
+            { key: 'printed' as QrStatusFilter, label: 'Needs Attachment', value: counts.qrNeedsAttachment, tone: 'orange' },
+            { key: 'needs_replacement' as QrStatusFilter, label: 'Needs Replacement', value: counts.qrNeedsReplacement, tone: counts.qrNeedsReplacement > 0 ? 'red' : 'green' },
+            { key: 'revoked' as QrStatusFilter, label: 'Revoked', value: counts.qrRevoked, tone: counts.qrRevoked > 0 ? 'red' : 'gray' },
+          ].map((card) => (
+            <SummaryCard
+              key={card.label}
+              label={card.label}
+              value={card.value}
+              icon={<QrCode className="h-4 w-4" />}
+              color={card.tone}
+              active={filterQrStatus === card.key}
+              onClick={() => {
+                setFilterQrStatus((prev) => (prev === card.key ? '' : card.key));
+                setPage(1);
+              }}
+            />
+          ))}
+        </div>
+      )}
 
       {/* Charts */}
       <div className="grid gap-4 xl:grid-cols-2">
@@ -532,9 +740,19 @@ function OperationalEquipmentListPage() {
           <option value="">All Conditions</option>
           {EQUIPMENT_CONDITION_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
         </select>
-        {(search || filterDept || filterCat || filterCondition || quickFilter) && (
+        {canManageQr && (
+          <select
+            value={filterQrStatus}
+            onChange={(e) => handleFilterChange('qr_status', e.target.value)}
+            className="h-9 rounded-md border border-[var(--surface-3)] bg-[var(--surface-1)] px-2 text-sm text-[var(--foreground)] focus:outline-none focus:ring-1 focus:ring-[var(--brand)]"
+          >
+            <option value="">All QR Statuses</option>
+            {QR_STATUS_FILTERS.map((o) => <option key={o.key} value={o.key}>{o.label}</option>)}
+          </select>
+        )}
+        {(search || filterDept || filterCat || filterCondition || filterQrStatus || quickFilter) && (
           <button
-            onClick={() => { setSearch(''); setFilterDept(''); setFilterCat(''); setFilterCondition(''); setQuickFilter(''); setPage(1); }}
+            onClick={() => { setSearch(''); setFilterDept(''); setFilterCat(''); setFilterCondition(''); setFilterQrStatus(''); setQuickFilter(''); setPage(1); }}
             className="text-xs text-[var(--text-muted)] hover:text-[var(--foreground)] underline"
           >
             Clear filters
@@ -545,12 +763,90 @@ function OperationalEquipmentListPage() {
         </span>
       </div>
 
+      {canManageQr && (
+        <div className="panel-surface space-y-3 rounded-lg p-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="mr-auto">
+              <p className="text-sm font-semibold text-[var(--foreground)]">QR Coverage Actions</p>
+              <p className="text-xs text-[var(--text-muted)]">
+                {selected.size} selected. Ready to scan means token present, label attached, and not revoked.
+              </p>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => runQrAction('Generate missing QR tokens', () => bulkGenerateMissingQrTokensAction())}
+              disabled={pendingQr || counts.qrNeedsGeneration === 0}
+            >
+              <RefreshCw className={`h-4 w-4 ${pendingQr ? 'animate-spin' : ''}`} />
+              Generate Missing ({counts.qrNeedsGeneration})
+            </Button>
+            <Button size="sm" variant="outline" onClick={handlePrintSelected} disabled={pendingQr || selectedTokenizedIds.length === 0}>
+              <Printer className="h-4 w-4" />
+              Print Selected ({selectedTokenizedIds.length})
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => handleSelectedAction('Mark selected printed', markQrLabelsPrintedBulkAction)}
+              disabled={pendingQr || selected.size === 0}
+            >
+              <Stamp className="h-4 w-4" />
+              Mark Printed
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => handleSelectedAction('Mark selected attached', markQrLabelsAttachedBulkAction)}
+              disabled={pendingQr || selected.size === 0}
+            >
+              <Wrench className="h-4 w-4" />
+              Mark Attached
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => handleSelectedAction('Flag selected for replacement', markQrLabelsNeedsReplacementBulkAction)}
+              disabled={pendingQr || selected.size === 0}
+            >
+              <AlertTriangle className="h-4 w-4" />
+              Needs Replacement
+            </Button>
+          </div>
+          {(counts.qrNeedsGeneration > 0 || counts.qrNeedsPrinting > 0 || counts.qrNeedsAttachment > 0 || counts.qrNeedsReplacement > 0 || counts.qrRevoked > 0) && (
+            <div className="rounded-md border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-xs text-amber-200">
+              QR readiness is label readiness only. Assets are operationally ready to scan only after a token exists and the physical label is attached.
+            </div>
+          )}
+          {qrMessage && (
+            <div className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-200">
+              {qrMessage}
+            </div>
+          )}
+          {qrError && (
+            <div className="rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">
+              {qrError}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Table */}
       <div className="panel-surface overflow-hidden rounded-lg">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="border-b border-[var(--surface-3)] bg-[var(--surface-2)]">
               <tr>
+                {canManageQr && (
+                  <th className="w-10 px-4 py-3">
+                    <input
+                      type="checkbox"
+                      aria-label="Select all visible equipment on this page"
+                      checked={pageRows.length > 0 && pageRows.every((row) => selected.has(row.id))}
+                      onChange={(e) => setAllPageSelected(e.target.checked)}
+                    />
+                  </th>
+                )}
                 <SortHeader label="Asset Code" sortable colKey="asset_code" sortKey={sortKey} sortAsc={sortAsc} onSort={handleSort} />
                 <SortHeader label="Equipment" sortable colKey="name" sortKey={sortKey} sortAsc={sortAsc} onSort={handleSort} />
                 <SortHeader label="Department" sortable colKey="department" sortKey={sortKey} sortAsc={sortAsc} onSort={handleSort} />
@@ -558,13 +854,14 @@ function OperationalEquipmentListPage() {
                 <SortHeader label="Condition" sortable colKey="condition" sortKey={sortKey} sortAsc={sortAsc} onSort={handleSort} />
                 <SortHeader label="Maintenance State" />
                 <SortHeader label="Risk" sortable colKey="rpn" sortKey={sortKey} sortAsc={sortAsc} onSort={handleSort} />
+                {canManageQr && <SortHeader label="QR Status" sortable colKey="qr_status" sortKey={sortKey} sortAsc={sortAsc} onSort={handleSort} />}
                 <SortHeader label="Actions" />
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--surface-3)]">
               {pageRows.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-12 text-center text-sm text-[var(--text-muted)]">
+                  <td colSpan={canManageQr ? 10 : 8} className="px-4 py-12 text-center text-sm text-[var(--text-muted)]">
                     No equipment found. Adjust your filters or register new equipment.
                   </td>
                 </tr>
@@ -578,6 +875,16 @@ function OperationalEquipmentListPage() {
                       className="cursor-pointer transition-colors hover:bg-[var(--surface-2)]"
                       onClick={() => router.push(`/equipment/${row.id}`)}
                     >
+                      {canManageQr && (
+                        <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                          <input
+                            type="checkbox"
+                            aria-label={`Select ${row.asset_code}`}
+                            checked={selected.has(row.id)}
+                            onChange={() => toggleSelected(row.id)}
+                          />
+                        </td>
+                      )}
                       <td className="px-4 py-3 font-mono text-xs text-[var(--text-muted)]">{row.asset_code}</td>
                       <td className="px-4 py-3">
                         <div className="font-medium text-[var(--foreground)]">{row.name}</div>
@@ -606,22 +913,120 @@ function OperationalEquipmentListPage() {
                           <span className="text-xs text-[var(--text-muted)]">Not assessed</span>
                         )}
                       </td>
+                      {canManageQr && (
+                        <td className="px-4 py-3">
+                          <div className="flex flex-col gap-1">
+                            <Badge variant={getQrStatusVariant(row)}>
+                              {getQrStatusLabel(row)}
+                            </Badge>
+                            <span className="text-[10px] text-[var(--text-muted)]">
+                              {getQrReadinessState(row) === 'ready_to_scan' ? 'Ready' : 'Action needed'}
+                            </span>
+                          </div>
+                        </td>
+                      )}
                       <td className="px-4 py-3">
-                        <a
-                          href={action.href}
-                          onClick={(e) => e.stopPropagation()}
-                          className={`inline-flex items-center rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
-                            action.variant === 'primary'
-                              ? 'bg-[var(--brand)] text-white hover:opacity-90'
-                              : action.variant === 'danger'
-                              ? 'bg-rose-500/15 text-rose-300 hover:bg-rose-500/25'
-                              : action.variant === 'ghost'
-                              ? 'text-[var(--text-muted)] hover:text-[var(--foreground)]'
-                              : 'border border-[var(--surface-3)] bg-[var(--surface-2)] text-[var(--foreground)] hover:bg-[var(--surface-3)]'
-                          }`}
-                        >
-                          {action.label}
-                        </a>
+                        <div className="flex min-w-[220px] flex-wrap gap-1.5" onClick={(e) => e.stopPropagation()}>
+                          <a
+                            href={action.href}
+                            className={`inline-flex items-center rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+                              action.variant === 'primary'
+                                ? 'bg-[var(--brand)] text-white hover:opacity-90'
+                                : action.variant === 'danger'
+                                ? 'bg-rose-500/15 text-rose-300 hover:bg-rose-500/25'
+                                : action.variant === 'ghost'
+                                ? 'text-[var(--text-muted)] hover:text-[var(--foreground)]'
+                                : 'border border-[var(--surface-3)] bg-[var(--surface-2)] text-[var(--foreground)] hover:bg-[var(--surface-3)]'
+                            }`}
+                          >
+                            {action.label}
+                          </a>
+                          {canManageQr && (
+                            <>
+                              <Link
+                                href={`/equipment/${row.id}#qr-identity`}
+                                className="rounded-lg border border-[var(--border-subtle)] px-2 py-1 text-xs font-medium hover:bg-[var(--surface-2)]"
+                              >
+                                QR Panel
+                              </Link>
+                              {!row.qr_token ? (
+                                <button
+                                  type="button"
+                                  disabled={pendingQr}
+                                  onClick={() => runQrAction('Generate QR token', () => ensureAssetQrTokenAction(row.id))}
+                                  className="rounded-lg bg-[var(--brand)] px-2 py-1 text-xs font-medium text-white hover:bg-[var(--brand-strong)] disabled:opacity-50"
+                                >
+                                  Generate
+                                </button>
+                              ) : (
+                                <>
+                                  {row.qr_label_status !== 'revoked' && (
+                                    <button
+                                      type="button"
+                                      disabled={pendingQr}
+                                      onClick={() => router.push(`/equipment/qr-labels?assets=${encodeURIComponent(row.id)}&print=1`)}
+                                      className="rounded-lg border border-[var(--border-subtle)] px-2 py-1 text-xs font-medium hover:bg-[var(--surface-2)] disabled:opacity-50"
+                                    >
+                                      Print
+                                    </button>
+                                  )}
+                                  {row.qr_label_status !== 'revoked' && (
+                                    <>
+                                      <button
+                                        type="button"
+                                        disabled={pendingQr}
+                                        onClick={() => runQrAction('Mark printed', () => markQrLabelPrintedAction(row.id))}
+                                        className="rounded-lg border border-amber-500/60 bg-amber-500/10 px-2 py-1 text-xs font-medium text-amber-400 hover:bg-amber-500/20 disabled:opacity-50"
+                                      >
+                                        Printed
+                                      </button>
+                                      <button
+                                        type="button"
+                                        disabled={pendingQr}
+                                        onClick={() => runQrAction('Mark attached', () => markQrLabelAttachedAction(row.id))}
+                                        className="rounded-lg bg-emerald-600 px-2 py-1 text-xs font-medium text-white hover:bg-emerald-500 disabled:opacity-50"
+                                      >
+                                        Attached
+                                      </button>
+                                      <button
+                                        type="button"
+                                        disabled={pendingQr}
+                                        onClick={() => runQrAction('Flag for replacement', () => markQrLabelNeedsReplacementAction(row.id))}
+                                        className="rounded-lg bg-amber-600 px-2 py-1 text-xs font-medium text-white hover:bg-amber-500 disabled:opacity-50"
+                                      >
+                                        Replace
+                                      </button>
+                                      <button
+                                        type="button"
+                                        disabled={pendingQr}
+                                        onClick={() => {
+                                          if (window.confirm('Regenerate this asset QR token and reset its label lifecycle?')) {
+                                            runQrAction('Regenerate QR token', () => regenerateAssetQrTokenAction(row.id));
+                                          }
+                                        }}
+                                        className="rounded-lg border border-[var(--border-subtle)] px-2 py-1 text-xs font-medium hover:bg-[var(--surface-2)] disabled:opacity-50"
+                                      >
+                                        Regenerate
+                                      </button>
+                                      <button
+                                        type="button"
+                                        disabled={pendingQr}
+                                        onClick={() => {
+                                          if (window.confirm('Revoke this QR token? Scans of this label will be rejected.')) {
+                                            runQrAction('Revoke QR token', () => revokeQrTokenAction(row.id));
+                                          }
+                                        }}
+                                        className="rounded-lg bg-red-600 px-2 py-1 text-xs font-medium text-white hover:bg-red-500 disabled:opacity-50"
+                                      >
+                                        Revoke
+                                      </button>
+                                    </>
+                                  )}
+                                </>
+                              )}
+                            </>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );
