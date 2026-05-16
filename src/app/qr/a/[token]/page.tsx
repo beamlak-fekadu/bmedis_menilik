@@ -20,6 +20,7 @@ import AssistantPageContextBridge from '@/components/assistant/AssistantPageCont
 import QrInvalidState from './QrInvalidState';
 import QrLoginRequired from './QrLoginRequired';
 import QrAssetLandingPage from './QrAssetLandingPage';
+import QrLandingClientShell from './QrLandingClientShell';
 
 type RouteParams = Promise<{ token: string }>;
 
@@ -94,7 +95,7 @@ export default async function QrLandingRoute({ params }: { params: RouteParams }
   }
 
   return (
-    <>
+    <QrLandingClientShell>
       <AssistantPageContextBridge
         moduleLabel="QR Field Scan"
         pageLabel={`${asset.asset_code} · ${asset.name}`}
@@ -122,6 +123,6 @@ export default async function QrLandingRoute({ params }: { params: RouteParams }
         profile={profileContext}
         context={context}
       />
-    </>
+    </QrLandingClientShell>
   );
 }
