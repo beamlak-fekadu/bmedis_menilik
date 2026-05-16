@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { AlertTriangle, CalendarClock, CheckCircle, ClipboardList, Gauge, Plus, ShieldAlert, Wrench } from 'lucide-react';
 import PageHeader from '@/components/ui/PageHeader';
+import AssistantPageContextBridge from '@/components/assistant/AssistantPageContextBridge';
 import InfoPopover from '@/components/ui/InfoPopover';
 import DataTable from '@/components/ui/DataTable';
 import Tabs from '@/components/ui/Tabs';
@@ -730,6 +731,23 @@ export default function CalibrationPage() {
 
   return (
     <div className="space-y-6">
+      <AssistantPageContextBridge
+        moduleLabel="Calibration"
+        pageLabel="Calibration control center"
+        activeTab={selectedTab}
+        currentFilters={{ filter: selectedFilter }}
+        pageSummary="Calibration page with open requests, upcoming and overdue calibration, failed or adjusted results, external calibration, and completed-this-month evidence."
+        visibleCounts={{
+          records: records.length,
+          openRequests: countOpenCalibrationRequests(requests as Array<{ status?: string | null }>),
+          dueSoon: dueSoonRows.length,
+          overdue: countOverdueCalibration(upcoming as Array<{ next_due_date?: string | null }>),
+          criticalOverdue: criticalOverdueRows.length,
+          failedAdjusted: countFailedOrAdjustedCalibration(records as Array<{ result?: string | null }>),
+        }}
+        availableEvidenceLinks={[{ label: 'Calibration', href: '/calibration', type: 'module' }, { label: 'Calendar', href: '/calendar?type=calibration', type: 'calendar' }]}
+        quickPrompts={['Which calibration items are urgent?', 'What compliance issues need attention?', 'Prepare a calibration summary.']}
+      />
       <PageHeader
         title="Calibration"
         descriptionInfo="Accuracy and safety compliance control center for due, overdue, failed, adjusted, and requested calibrations."

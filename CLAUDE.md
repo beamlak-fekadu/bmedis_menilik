@@ -1,7 +1,7 @@
 # CLAUDE.md — BMERMS Project Intelligence
 
-Last updated: 2026-05-16 (Offline Capability — Phase 3 Completion: cached views + migration 00046)
-Branch: Offline
+Last updated: 2026-05-16 (AI Copilot — Phase 3: action drafts, confirmation UI, server executor, offline-capable drafts, audit, hardened usage)
+Branch: copilot
 Deployment: https://project-git-bmermsv3-beamlak-fekadus-projects.vercel.app
 Supabase project ID: fgqyszbxzpmqzpqvdivx
 
@@ -253,7 +253,7 @@ DONE:
     online landing route, Phase 4 role-specific scan experience, Phase 5 coverage expansion,
     Phase 6 scan logging/evidence (end of current plan). Offline/PWA is explicitly OUT of the
     six-phase plan; if pursued later it is a separate initiative.
-  - No DB migration added. Next migration must still be 00046.
+  - No DB migration was added in that offline pass.
   - Static checks: no Math.random in QR utils, no external QR API, no hardcoded qra_ demo tokens,
     no fake scan/label data, /qr/a/[token] route NOT present in src/app/.
   - Build: tsc --noEmit ✅ npm run lint ✅ npm run build ✅.
@@ -300,7 +300,7 @@ DONE:
   - Intentionally NOT in Phase 3: full role-specific in-page workflows (Phase 4), scan logging UI /
     history / analytics (Phase 6), refresh/prefetch scan dedup, offline/PWA. Action cards are
     navigation only; no broken/fake actions; no fake asset details for unauthenticated or revoked.
-  - No DB migration in Phase 3. Next migration must still be 00046.
+  - No DB migration was added in that Phase 3 pass.
   - Static checks: no Math.random in QR code, no external QR API, no service_role usage in
     src/app/qr or src/services/qr.service.ts, no fake/mock/placeholder/demoScan data, returnTo
     rejects external/protocol-relative URLs at both client and middleware.
@@ -344,7 +344,7 @@ DONE:
     blockers, or schema changes. Empty/unavailable sections render honest empty states.
   - Intentionally NOT in Phase 4: Phase 5 coverage expansion, Phase 6 scan history/dedup/dashboard,
     action-click logging, offline/PWA/service worker/IndexedDB/offline QR logging, broad schema
-    redesign, new migration. Next migration remains 00046.
+    redesign, new migration.
 
 - QR Coverage Expansion — Phase 5 (2026-05-15, branch QR):
   - Goal: show which active hospital assets are physically ready to scan and which need token
@@ -765,6 +765,41 @@ recompute_equipment_analytics() and recompute_all_equipment_analytics() in migra
 10. Developer Lab shows Offline & Sync Diagnostics using real browser state. Unknown service-worker/cache status must render as Unknown, not healthy.
 11. The offline phases are: 1) Foundation/App Shell/Sync Infrastructure, 2) Offline-Capable Role Workflows, 3) Conflict Handling/Cached Read Views/Sync Evidence.
 
+## AI Copilot Upgrade — Phase 1 (2026-05-16)
+
+1. Central copilot RBAC added at `src/services/chatbot/copilot-rbac.ts`; chat loaders now understand developer/admin/bme_head/technician/store_user/department_head/department_user/viewer instead of shallow admin-only checks.
+2. Gemini output handling hardened in `assistant-response-pipeline.ts` and `gemini-provider.ts`: fenced JSON, embedded JSON, safe repairs, plain text, empty/error content, and schema mismatches normalize to valid `AssistantContent` with parser metadata.
+3. Deterministic structured fallback now uses retrieved system context when Gemini/provider/parser output fails, instead of dropping to generic unavailable copy when useful data exists.
+4. Migration `00047_copilot_usage_tracking.sql` adds `copilot_usage_events` and broadens `chat_messages.answer_basis` CHECK. Usage is app-tracked BMERMS Gemini usage, not Google AI Studio billing usage.
+5. Usage limit config lives in `src/services/chatbot/usage-limits.ts`; hard blocking is opt-in with `COPILOT_HARD_LIMIT_ENABLED=true`.
+6. AssistantPanel shows personal daily app-tracked usage. Developer Lab includes AI Copilot Diagnostics with smoke test, provider/usage/fallback/parser/telemetry summaries.
+7. Added planned/fallback capabilities: `qr_asset_context`, `offline_sync_status`, `report_summary`, `metric_debug`, `copilot_diagnostics`, and `usage_status`.
+8. Documentation added: `documents/copilot-architecture.md`.
+
+## AI Copilot Upgrade — Phase 2 (2026-05-16)
+
+1. Page-aware copilot context bridge added at `src/components/assistant/AssistantPageContextBridge.tsx`; pages register lightweight module/page context instead of relying only on pathname inference.
+2. `AssistantProvider` now stores registered page context, selected entity context, page quick prompts, and context timestamps. Chat requests include bounded page facts: active tab, filters, selected record, report type, QR token, offline queue status, visible counts, page data hints, and evidence links.
+3. Major pages now register context: Command Center, Equipment, Equipment Detail, Maintenance, Maintenance Request Detail, Work Order Detail, Requests Hub, PM, Calibration, Spare Parts, Logistics, Procurement, Training, Replacement, Disposal, Alerts, Calendar, Reports, Report Detail, Offline Sync, QR Coverage, QR Scan History, QR landing, and Developer Lab.
+4. Formal read-only tool contracts live in `src/services/chatbot/tools/tool-types.ts`, `tool-registry.ts`, and `tool-executor.ts`. The executor validates role and required context, applies department/selected-record scoping, and returns structured data, evidence signals, source tables, exact route links, warnings, and denied reasons.
+5. Route link helpers live in `src/services/chatbot/route-link-builder.ts`. Assistant responses now support explicit `evidence_used`, `links`, `limitations`, `data_freshness`, and `source_tables`.
+6. `AssistantPanel` quick prompts are role-tailored and page-aware for developer, admin/BME Head, technician, store user, department head/user, and viewer roles.
+7. QR context includes selected asset, label status, scan evidence links, role category hints, and QR route links. Offline context includes queue status and Sync Review Center links. Phase 2 remains read-only; action drafts/confirmations are Phase 3.
+
+## AI Copilot Upgrade — Phase 3 (2026-05-16)
+
+1. Safe, reviewable action drafts. The copilot proposes, drafts, explains, and links — it never silently mutates. The pattern is: ask → gather context → propose draft → user reviews card → user confirms in modal → existing server action executes → audit log records assistant-assisted action → UI shows exact created/open record link.
+2. Action draft types live in `src/types/copilot-actions.ts` with strict Zod validation at every boundary. Kinds include `maintenance_request_create`, `calibration_request_create`, `training_request_create`, `reorder_request_create`, `maintenance_event_note`, `work_order_closure_note` (draft-only), `department_issue_report`, `open_record`, `open_report`, `copy_summary`, and `offline_queue_action`. Execution modes: `link_only`, `draft_only`, `confirm_then_execute`, `online_only`, `offline_capable`.
+3. Drafts are generated in `src/services/chatbot/action-draft-service.ts` only when (a) the message clearly matches an intent regex and (b) `canCreateCopilotDraft()` permits the active role/draft type. Viewer never receives mutation drafts. Department roles are auto-scoped to their own department. At most four drafts per response and one per kind. Drafts always go through `CopilotActionDraftSchema.safeParse` before being attached to the assistant payload.
+4. AssistantContent gained `action_drafts: CopilotActionDraft[]` (default `[]`). The orchestrator attaches drafts after normalization; all provider-output and deterministic-fallback paths still produce a schema-safe payload.
+5. UI components: `src/components/assistant/CopilotActionCard.tsx` renders each draft (risk badge, execution-mode badge, validation warnings, evidence used, Open/Copy/Review buttons). `CopilotActionConfirmDialog.tsx` opens a Modal with readonly linked context and editable safe fields. Server re-validates everything regardless.
+6. Server executor: `src/actions/copilot-actions.actions.ts` exposes `executeCopilotActionDraftAction(input)`. It re-authenticates, re-checks `canCreateCopilotDraft`, re-checks department scope for `department_head`/`department_user`, refuses `draft_only`/`link_only`, merges only declared-editable overrides as primitives, calls existing server actions (`createMaintenanceRequestAction`, `createCalibrationRequestAction`, `createTrainingRequestAction`, `createProcurementRequestAction`, `createMaintenanceEventAction`), surfaces duplicate-open-request as `status: 'conflict'` with exact existing record link, and writes an `audit_logs` row keyed `action='copilot.draft.executed.<kind>'` containing chat session id, message id, draft id, role category, evidence used, and source route.
+7. Offline integration: `src/components/assistant/copilot-offline.ts` maps offline-capable kinds to existing `OfflineActionType` values and queues via `enqueueOfflineAction()` when navigator is offline. No new offline action types added. Procurement approval, disposal approval, QR token admin, settings/security changes, analytics refresh, final work-order assignment/closure, and replacement decisions stay online-only and not draftable.
+8. Usage hardening: AssistantPanel now shows a soft warning band near limit and a hard-stop band when `COPILOT_HARD_LIMIT_ENABLED=true`. Hard-limit skips the provider call but still returns a deterministic local response. Local intro responses are not counted.
+9. Developer Lab Copilot Diagnostics now includes an Action Drafts Executed Today metric and a per-kind breakdown derived from `audit_logs` rows where `action LIKE 'copilot.draft.executed.%'`. Non-privileged roles only see their own drafts.
+10. Tests: 7 new tests in `src/services/chatbot/__tests__/copilot-action-drafts.test.ts` cover viewer-no-mutation, BME-head maintenance draft Zod validity, department-scope auto-binding, technician event note, store reorder, non-mutation intent has no mutation drafts, and offline-capable kind mapping. Total chatbot tests: 129/129 pass.
+11. No new database migration in Phase 3. Audit metadata uses existing `audit_logs.details` jsonb. Existing chat session/message persistence is unchanged.
+
 ## Offline Capability — Phase 2 Role Workflows (2026-05-16)
 
 1. Phase 2 wires selected low-risk workflows through `runOfflineCapableAction()`. Do not route risky authority actions through this helper.
@@ -830,5 +865,6 @@ recompute_equipment_analytics() and recompute_all_equipment_analytics() in migra
 00044 — v_open_work_orders adds asset_id + department_id; v_overdue_pm adds department_id (non-breaking)
 00045 — Equipment QR Identity Foundation (Phase 1): adds qr_token + label lifecycle metadata to equipment_assets (unique-when-not-null index, CHECK on qr_label_status); creates equipment_qr_scans audit table with RLS (admin/developer/bme_head + self can read; authenticated can insert)
 00046 — Offline Sync Events Phase 3: adds first-class columns to offline_sync_events (reported_status, resolution_status, conflict_type, conflict_reason, error_message, role_name, source_route, asset_id, retry_count, resolved_by, resolved_at); relaxes sync_status CHECK to accept queued/syncing/conflict/under_review/resolved_synced/resolved_discarded; new CHECK on resolution_status; hot-path indexes; one-shot payload backfill; RLS UPDATE policy reaffirms bme_head/admin/developer/technician
+00047 — Copilot usage tracking: updates chat_messages answer_basis CHECK, creates copilot_usage_events with app-tracked Gemini usage, provider/fallback status, estimated/provider token fields, and RLS for own usage plus developer/admin/bme_head aggregate reads
 
-NEVER modify 00001–00046. Next migration must be 00047.
+NEVER modify 00001–00047. Next migration must be 00048.

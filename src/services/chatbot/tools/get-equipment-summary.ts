@@ -1,7 +1,8 @@
 import type { ChatContextRefs } from '@/types/chatbot';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { UserChatProfile } from '@/types/chatbot';
-import { isAdmin, loadRiskAndAnalytics } from './task-data-loaders';
+import { loadRiskAndAnalytics } from './task-data-loaders';
+import { canReadCopilotDepartment } from '../copilot-rbac';
 
 function sliceForAsset(
   equipmentId: string,
@@ -37,12 +38,12 @@ export async function getEquipmentSummary(
 
   if (equipment) {
     const dep = equipment.department_id as string | null | undefined;
-    if (!isAdmin(profile) && dep && dep !== profile.departmentId) {
+    if (!canReadCopilotDepartment(profile, dep)) {
       return { equipment: null, note: 'Equipment not in your department scope.' };
     }
   }
 
-  const riskAnalytics = await loadRiskAndAnalytics(supabase, contextRefs);
+  const riskAnalytics = await loadRiskAndAnalytics(supabase, contextRefs, profile);
   return {
     equipment: (equipment as Record<string, unknown> | null) ?? null,
     focusedAssetAnalytics: equipment ? sliceForAsset(equipmentId, riskAnalytics) : null,

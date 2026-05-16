@@ -10,6 +10,7 @@ import {
 import { requireRole } from '@/lib/auth/helpers';
 import { createClient } from '@/lib/supabase/server';
 import { Badge, Card, CardContent, CardHeader, CardTitle, PageHeader } from '@/components/ui';
+import AssistantPageContextBridge from '@/components/assistant/AssistantPageContextBridge';
 import ExpandableText from '@/components/ui/ExpandableText';
 import { RefreshButton } from './_components/RefreshButton';
 import { AutoRefreshStatus } from './_components/AutoRefreshStatus';
@@ -452,7 +453,26 @@ export default async function CommandCenterPage() {
       fetchDepartmentOverdueCalibration(supabase, departmentId).catch(() => []),
     ]);
     return (
-      <DepartmentDashboard
+      <>
+        <AssistantPageContextBridge
+          moduleLabel="Command Center"
+          pageLabel={departmentName ? `${departmentName} command view` : 'Department command view'}
+          contextRefs={departmentId ? { departmentId } : undefined}
+          selectedRecordType="department"
+          selectedRecordId={departmentId ?? undefined}
+          selectedRecordLabel={departmentName ?? undefined}
+          pageSummary="Department-scoped readiness, requests, work orders, PM, and calibration signals."
+          visibleCounts={{
+            totalAssets: deptMetrics?.totalAssets ?? 0,
+            openRequests: deptMetrics?.openRequests ?? 0,
+            openWorkOrders: deptMetrics?.openWorkOrders ?? 0,
+            overduePm: deptMetrics?.overduePm ?? 0,
+            overdueCalibration: deptMetrics?.overdueCalibration ?? 0,
+          }}
+          availableEvidenceLinks={[{ label: 'Command Center', href: '/command', type: 'page' }]}
+          quickPrompts={['Prepare a department readiness summary.', 'Which work orders are delayed?', 'Which compliance issues need attention?']}
+        />
+        <DepartmentDashboard
         departmentId={departmentId}
         departmentName={departmentName}
         profileId={profileIdLocal}
@@ -473,6 +493,7 @@ export default async function CommandCenterPage() {
         overdueCalibration={overdueCal}
         generatedAt={now}
       />
+      </>
     );
   }
 
@@ -493,14 +514,30 @@ export default async function CommandCenterPage() {
       recentIssues: 0, pendingIssueRequests: 0,
     };
     return (
-      <StoreOperationsCommandCenter
-        metrics={storeMetrics}
-        stockRisk={stockRisk}
-        receiving={receiving}
-        issueQueue={issueQueue}
-        blockers={blockers}
-        generatedAt={now}
-      />
+      <>
+        <AssistantPageContextBridge
+          moduleLabel="Command Center"
+          pageLabel="Store operations command view"
+          pageSummary="Store-scoped stock risk, receiving, issue queue, procurement, and maintenance blockers."
+          visibleCounts={{
+            lowStockParts: storeMetrics.lowStockParts,
+            stockoutParts: storeMetrics.stockoutParts,
+            blockedWorkOrders: storeMetrics.blockedWorkOrders,
+            deliveredItemsToReceive: storeMetrics.deliveredItemsToReceive,
+            approvedItemsToIssue: storeMetrics.approvedItemsToIssue,
+          }}
+          availableEvidenceLinks={[{ label: 'Spare Parts', href: '/spare-parts', type: 'module' }, { label: 'Logistics', href: '/logistics', type: 'module' }]}
+          quickPrompts={['Which parts are stocked out?', 'Which stockouts are blocking work?', 'What deliveries are expected?']}
+        />
+        <StoreOperationsCommandCenter
+          metrics={storeMetrics}
+          stockRisk={stockRisk}
+          receiving={receiving}
+          issueQueue={issueQueue}
+          blockers={blockers}
+          generatedAt={now}
+        />
+      </>
     );
   }
 
@@ -542,6 +579,20 @@ export default async function CommandCenterPage() {
     };
     return (
       <>
+        <AssistantPageContextBridge
+          moduleLabel="Command Center"
+          pageLabel="Executive oversight"
+          pageSummary="Read-only hospital readiness, operational risk, department risk, and replacement pressure."
+          visibleCounts={{
+            clinicalReadinessPercent: vMetrics.clinicalReadinessPercent,
+            criticalOpenWork: vMetrics.criticalOpenWork,
+            departmentsAtRisk,
+            replacementReviewCandidates: vMetrics.replacementReviewCandidates,
+            strongReplacementCandidates: vMetrics.strongReplacementCandidates,
+          }}
+          availableEvidenceLinks={[{ label: 'Reports', href: '/reports', type: 'module' }, { label: 'Command Center', href: '/command', type: 'page' }]}
+          quickPrompts={['Summarize hospital readiness.', 'Explain top management risks.', 'Which departments need attention?']}
+        />
         {profileId && (
           <OfflineCacheRegistrar
             cacheKey="viewer.executive_summary"
@@ -720,6 +771,22 @@ export default async function CommandCenterPage() {
     };
     return (
       <div className="space-y-8">
+        <AssistantPageContextBridge
+          moduleLabel="Command Center"
+          pageLabel="Biomedical operations command"
+          pageSummary="Hospital-wide operational decision support from current equipment, work, PM, calibration, stock, replacement, and department readiness records."
+          visibleCounts={{
+            totalEquipment: equipmentSummary.total,
+            openWorkOrders: mergedWorkOrderSummary.total,
+            criticalActions: criticalActions.length,
+            pmDue: pmTriage.total,
+            calibrationDue: calibrationTriage.total,
+            stockBlockers: stockBlockers.total,
+            replacementCandidates: replacement.total,
+          }}
+          availableEvidenceLinks={[{ label: 'Work Queue', href: '/maintenance', type: 'module' }, { label: 'Replacement', href: '/replacement', type: 'module' }, { label: 'Reports', href: '/reports', type: 'module' }]}
+          quickPrompts={['What should I prioritize today?', 'Which equipment is blocking clinical service?', 'Prepare a concise operations summary.']}
+        />
         {profileId && primaryRole !== 'developer' && (
           <OfflineCacheRegistrar
             cacheKey="bme_head.operational_summary"
@@ -1021,6 +1088,22 @@ export default async function CommandCenterPage() {
   // ── SIMPLIFIED VIEW (technician / dept_head / dept_user / store_user / viewer) ──
   return (
     <div className="space-y-8">
+      <AssistantPageContextBridge
+        moduleLabel="Command Center"
+        pageLabel={triageHeading}
+        contextRefs={departmentId ? { departmentId } : undefined}
+        pageSummary="Role-tailored command overview using the current visible triage, readiness, work-in-progress, risk, and replacement signals."
+        visibleCounts={{
+          triageTotalItems: triage.totalItems,
+          openWorkOrders: wip.open_work_orders,
+          inProgress: wip.in_progress,
+          onHold: wip.on_hold,
+          overduePm: wip.overdue_pm,
+          calibrationDue30d: wip.calibration_due_30d,
+        }}
+        availableEvidenceLinks={[{ label: 'Command Center', href: '/command', type: 'page' }]}
+        quickPrompts={['Summarize what needs attention here.', 'Which items are urgent?', 'What evidence supports this view?']}
+      />
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <PageHeader
           title="Command Center"

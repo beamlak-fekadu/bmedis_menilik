@@ -1,5 +1,6 @@
 import { requireRole } from '@/lib/auth/helpers';
 import { PageHeader, Badge } from '@/components/ui';
+import AssistantPageContextBridge from '@/components/assistant/AssistantPageContextBridge';
 import { getOfflineSyncServerSummary, listOfflineSyncEvents } from '@/services/offline-sync.service';
 import SyncReviewCenterClient from './SyncReviewCenterClient';
 
@@ -13,9 +14,35 @@ export default async function SyncReviewCenterPage() {
   ]);
 
   const isDeveloper = profile.roleNames.includes('developer');
+  const pendingCount = summary.reportedStatusCounts.find((row) => row.status === 'pending' || row.status === 'queued')?.count ?? 0;
+  const failedCount = summary.recentFailedEvents.length;
+  const conflictCount = summary.inferredConflictEvents.length;
+  const syncedCount = summary.reportedStatusCounts.find((row) => row.status === 'synced')?.count ?? 0;
+  const lastSuccessfulSyncAt = summary.recentEvents.find((row) => row.synced_at)?.synced_at ?? null;
 
   return (
     <div className="space-y-6">
+      <AssistantPageContextBridge
+        moduleLabel="Offline Sync"
+        pageLabel="Sync Review Center"
+        offlineStatus="unknown"
+        queueStatus={{
+          queued: pendingCount,
+          failed: failedCount,
+          conflict: conflictCount,
+          lastSyncedAt: lastSuccessfulSyncAt,
+        }}
+        pageSummary="Offline sync review page for queued actions, failed syncs, conflicts, stale cached data, and retry or discard evidence."
+        visibleCounts={{
+          serverEvents: events.length,
+          pending: pendingCount,
+          failed: failedCount,
+          conflicts: conflictCount,
+          synced: syncedCount,
+        }}
+        availableEvidenceLinks={[{ label: 'Offline Sync', href: '/offline-sync', type: 'offline' }]}
+        quickPrompts={['Show failed offline sync conflicts.', 'Explain these conflicts.', 'Identify failed sync causes.']}
+      />
       <PageHeader
         title="Sync Review Center"
         description="Review, retry, and resolve offline actions that need attention across this hospital's BMERMS devices."

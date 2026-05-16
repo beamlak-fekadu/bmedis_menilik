@@ -7,6 +7,7 @@ import type {
   SafetyEvaluation,
   UserChatProfile,
 } from '@/types/chatbot';
+import { canUseDeveloperCopilotDiagnostics } from './copilot-rbac';
 
 export const STANDARD_RESPONSES = {
   checkManual:
@@ -24,8 +25,11 @@ const ROLE_INTENT_BLOCKS: Record<string, ChatIntent[]> = {
 };
 
 const ROLE_CAPABILITY_BLOCKS: Record<string, CapabilityId[]> = {
-  viewer: ['procurement_status'],
-  store_user: ['safe_troubleshooting'],
+  viewer: ['procurement_status', 'metric_debug', 'copilot_diagnostics'],
+  store_user: ['safe_troubleshooting', 'metric_debug', 'copilot_diagnostics'],
+  technician: ['metric_debug', 'copilot_diagnostics'],
+  department_head: ['metric_debug', 'copilot_diagnostics'],
+  department_user: ['metric_debug', 'copilot_diagnostics'],
 };
 
 const EXACT_ERROR_CODE_PATTERN = /\b(error\s*code|code\s*[a-z]?\d{2,}|E\d{2,})\b/i;
@@ -33,6 +37,7 @@ const CALIBRATION_EXACT_PATTERN = /\b(exact|step[-\s]?by[-\s]?step|service mode|
 const DEEP_REPAIR_PATTERN = /\b(board|component|pcb|solder|firmware|internal repair|replace board)\b/i;
 
 function roleRestrictedIntent(intent: ChatIntent, roleNames: string[]): boolean {
+  if (roleNames.some((role) => role === 'developer' || role === 'admin' || role === 'bme_head')) return false;
   for (const role of roleNames) {
     const blocked = ROLE_INTENT_BLOCKS[role];
     if (blocked?.includes(intent)) return true;
@@ -41,6 +46,10 @@ function roleRestrictedIntent(intent: ChatIntent, roleNames: string[]): boolean 
 }
 
 function roleRestrictedCapability(capability: CapabilityId, roleNames: string[]) {
+  if (capability === 'copilot_diagnostics' || capability === 'metric_debug') {
+    return !canUseDeveloperCopilotDiagnostics({ roleNames });
+  }
+  if (roleNames.some((role) => role === 'developer' || role === 'admin' || role === 'bme_head')) return false;
   for (const role of roleNames) {
     const blocked = ROLE_CAPABILITY_BLOCKS[role];
     if (blocked?.includes(capability)) return true;

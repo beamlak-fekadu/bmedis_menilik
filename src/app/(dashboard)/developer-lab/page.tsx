@@ -3,9 +3,11 @@ import { Activity, Beaker, ClipboardCheck, DatabaseZap, FileDown, ShieldCheck } 
 import { requireRole } from '@/lib/auth/helpers';
 import { createClient } from '@/lib/supabase/server';
 import { Badge, Card, CardContent, CardHeader, CardTitle, PageHeader } from '@/components/ui';
+import AssistantPageContextBridge from '@/components/assistant/AssistantPageContextBridge';
 import DeveloperLabClient, { type LabReplacementRow } from './DeveloperLabClient';
 import QrCoverageSection from './QrCoverageSection';
 import OfflineDiagnosticsPanel from './OfflineDiagnosticsPanel';
+import CopilotDiagnosticsSection from './CopilotDiagnosticsSection';
 import { getQrCoverageStats, getQrScanCoverageStats } from '@/services/qr.service';
 import { getOfflineSyncServerSummary } from '@/services/offline-sync.service';
 import {
@@ -130,7 +132,7 @@ function countByMissing<T>(rows: T[], predicate: (row: T) => boolean) {
 }
 
 export default async function DeveloperLabPage({ searchParams }: { searchParams: SearchParams }) {
-  await requireRole(['developer']);
+  const profile = await requireRole(['developer']);
   await searchParams;
   const supabase = await createClient();
 
@@ -441,6 +443,23 @@ export default async function DeveloperLabPage({ searchParams }: { searchParams:
 
   return (
     <div className="space-y-6">
+      <AssistantPageContextBridge
+        moduleLabel="Developer Lab"
+        pageLabel="Developer Lab"
+        pageSummary="Developer-only diagnostics for scoring methods, data health, QR evidence, offline sync, copilot provider/parser/usage telemetry, and thesis demonstration controls."
+        visibleCounts={{
+          rankedAssets: replacementRows.length,
+          healthChecks: healthChecks.length,
+          qrAttached: qrCoverageStats.attached,
+          qrNeedsReplacement: qrCoverageStats.needsReplacement,
+          qrScansLast7Days: qrScanStats.scansLast7Days,
+          offlineEvents: offlineSyncSummary.totalEvents,
+          offlineFailures: offlineSyncSummary.recentFailedEvents.length,
+          offlineConflicts: offlineSyncSummary.inferredConflictEvents.length,
+        }}
+        availableEvidenceLinks={[{ label: 'Developer Lab', href: '/developer-lab', type: 'developer' }, { label: 'QR Coverage', href: '/equipment/qr-coverage', type: 'qr' }, { label: 'Offline Sync', href: '/offline-sync', type: 'offline' }]}
+        quickPrompts={['Review copilot telemetry.', 'Run Gemini smoke test.', 'Show failed offline sync conflicts.', 'Which table/view feeds this card?']}
+      />
       <PageHeader
         title="Developer Lab"
         description="Scoring methods, sensitivity testing, data health, debug tools, and thesis demonstration controls."
@@ -477,6 +496,8 @@ export default async function DeveloperLabPage({ searchParams }: { searchParams:
       <QrCoverageSection stats={qrCoverageStats} scanStats={qrScanStats} />
 
       <OfflineDiagnosticsPanel serverSummary={offlineSyncSummary} />
+
+      <CopilotDiagnosticsSection profileId={String(profile.id)} roleNames={(profile.roleNames ?? []) as string[]} />
 
       <section className="space-y-3">
         <div>

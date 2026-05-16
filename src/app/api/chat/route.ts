@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { orchestrateAssistantResponse } from '@/services/chatbot/assistant-orchestrator';
 import { ChatRequestSchema, ChatResponseSchema, type ChatDecision, type UserChatProfile } from '@/types/chatbot';
+import { getOwnCopilotUsageSnapshot } from '@/services/chatbot/usage-service';
 
 function debugPolicyLogsEnabled() {
   return (process.env.CHAT_DEBUG_POLICY ?? '').toLowerCase() === 'true';
@@ -167,6 +168,12 @@ function buildInvalidPayloadResponse(rawBody: unknown) {
       follow_up_suggestions: ['hi', 'what can you help me with?', "what's on my to-do?"],
       proactive_signals: [],
       routing_explanation: ['Request failed schema validation at /api/chat.'],
+      evidence_used: [],
+      links: [],
+      limitations: ['Client request payload did not match the /api/chat contract.'],
+      data_freshness: undefined,
+      source_tables: [],
+      action_drafts: [],
     },
   });
 }
@@ -304,7 +311,16 @@ export async function POST(request: Request) {
     confidenceScore: orchestrated.confidenceScore,
     fallbackReason: orchestrated.fallbackReason,
     assistant: orchestrated.assistant,
+    usageStatus: await getOwnCopilotUsageSnapshot(supabase, profile.profileId),
   });
 
   return NextResponse.json(responsePayload, { status: 200 });
+}
+
+export async function GET() {
+  const { supabase, user, profile } = await getUserChatProfile();
+  if (!user || !profile) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+  return NextResponse.json(await getOwnCopilotUsageSnapshot(supabase, profile.profileId), { status: 200 });
 }

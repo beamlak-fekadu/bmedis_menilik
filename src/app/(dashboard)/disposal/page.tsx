@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { AlertTriangle, CheckCircle, ClipboardList, FileWarning, Plus, Recycle, Trash2, XCircle } from 'lucide-react';
 import PageHeader from '@/components/ui/PageHeader';
+import AssistantPageContextBridge from '@/components/assistant/AssistantPageContextBridge';
 import ClearFiltersButton from '@/components/ui/ClearFiltersButton';
 import DataTable from '@/components/ui/DataTable';
 import Tabs from '@/components/ui/Tabs';
@@ -506,6 +507,25 @@ export default function DisposalPage() {
 
   return (
     <div className="space-y-6">
+      <AssistantPageContextBridge
+        moduleLabel="Disposal"
+        pageLabel="Disposal workflow"
+        activeTab={selectedTab}
+        currentFilters={{ filter: activeFilter }}
+        pageSummary="Disposal workflow page with formal disposal requests, lifecycle candidates, disposed asset evidence, approvals, and missing-evidence signals."
+        visibleCounts={{
+          requests: disposalRequests.length,
+          pending: pending.length,
+          approved: approved.length,
+          completed: completed.length,
+          candidates: candidates.length,
+          disposedAssets: disposedAssets.length,
+          nonRepairable: nonRepairable.length,
+          missingEvidence: missingEvidence.length,
+        }}
+        availableEvidenceLinks={[{ label: 'Disposal', href: '/disposal', type: 'module' }, { label: 'Replacement', href: '/replacement', type: 'module' }]}
+        quickPrompts={['Which disposal requests need attention?', 'Summarize disposal evidence gaps.', 'Which replacement candidates may need disposal review?']}
+      />
       <PageHeader
         title="Disposal"
         description="End-of-life workflow for formal disposal requests, lifecycle candidates, approvals, and disposal evidence."

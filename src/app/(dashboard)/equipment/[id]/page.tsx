@@ -11,6 +11,7 @@ import {
   Tabs, Table, Spinner,
 } from '@/components/ui';
 import { ConditionBadge, PMStatusBadge, RiskBadge } from '@/components/ui/StatusBadge';
+import AssistantPageContextBridge from '@/components/assistant/AssistantPageContextBridge';
 import { getEquipmentById } from '@/services/equipment.service';
 import { getMaintenanceEvents, getOpenRequestsForAsset, getOpenWorkOrdersForAsset, getLastCompletedWorkOrderForAsset } from '@/services/maintenance.service';
 import { getPMSchedules } from '@/services/pm.service';
@@ -574,6 +575,37 @@ export default function EquipmentDetailPage({ params }: { params: Promise<{ id: 
 
   return (
     <div>
+      <AssistantPageContextBridge
+        moduleLabel="Equipment"
+        pageLabel={`${equipment.asset_code} · ${equipment.name}`}
+        contextRefs={{ equipmentId: id, departmentId: equipment.departments?.id }}
+        selectedRecordType="equipment"
+        selectedRecordId={id}
+        selectedRecordLabel={`${equipment.asset_code} · ${equipment.name}`}
+        pageSummary="Equipment detail page with asset identity, department, condition, open maintenance records, PM, calibration, QR identity, risk, and replacement evidence."
+        visibleCounts={{
+          maintenanceEvents: events.length,
+          pmSchedules: schedules.length,
+          calibrationRecords: calibrations.length,
+          hasOpenRequest: Boolean(openRequest),
+          hasOpenWorkOrder: Boolean(openWorkOrder),
+          riskLevel: risk?.risk_level ?? null,
+          condition: equipment.condition,
+        }}
+        pageDataHints={[
+          `Department: ${equipment.departments?.name ?? 'Unassigned'}`,
+          `Condition: ${formatEquipmentCondition(equipment.condition)}`,
+          openWorkOrder ? `Open work order: ${openWorkOrder.status}` : 'No open work order loaded',
+          openRequest ? `Open request: ${openRequest.status}` : 'No open maintenance request loaded',
+        ]}
+        availableEvidenceLinks={[
+          { label: 'Asset profile', href: `/equipment/${id}`, type: 'equipment' },
+          ...(openWorkOrder ? [{ label: 'Open work order', href: workOrderDetail(openWorkOrder.id), type: 'work_order' }] : []),
+          ...(openRequest ? [{ label: 'Open request', href: maintenanceRequestDetail(openRequest.id), type: 'request' }] : []),
+          { label: 'Replacement evidence', href: replacementEvidence(id), type: 'replacement' },
+        ]}
+        quickPrompts={['Summarize this asset before inspection.', 'What evidence explains this status?', 'What safe first-line checks should I do?']}
+      />
       <PageHeader
         title={equipment.name}
         breadcrumbs={[

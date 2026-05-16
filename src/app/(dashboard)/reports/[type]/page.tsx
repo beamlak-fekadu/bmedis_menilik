@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Download, ArrowLeft, RefreshCw, AlertTriangle, CheckCircle, Info } from 'lucide-react';
 import PageHeader from '@/components/ui/PageHeader';
+import AssistantPageContextBridge from '@/components/assistant/AssistantPageContextBridge';
 import InfoPopover from '@/components/ui/InfoPopover';
 import DataTable from '@/components/ui/DataTable';
 import FilterBar from '@/components/ui/FilterBar';
@@ -1732,6 +1733,24 @@ export default function ReportTypePage() {
 
   return (
     <div className="space-y-6">
+      <AssistantPageContextBridge
+        moduleLabel="Reports"
+        pageLabel={config.title}
+        reportType={reportType}
+        selectedRecordType="report"
+        selectedRecordId={reportType}
+        selectedRecordLabel={config.title}
+        currentFilters={filterValues}
+        pageSummary="Report snapshot page with current filtered rows, methodology note, KPI cards, findings, charts, evidence table, and PDF export."
+        visibleCounts={{
+          rows: data.length,
+          kpis: reportKPIs.length,
+          findings: priorityFindings.length,
+          charts: reportCharts.length,
+        }}
+        availableEvidenceLinks={[{ label: config.title, href: `/reports/${reportType}`, type: 'report' }, { label: 'Reports', href: '/reports', type: 'module' }]}
+        quickPrompts={['Summarize this report.', 'Explain the top risks in this report.', 'Prepare management report notes.']}
+      />
       {/* Print-only header — hidden on screen */}
       <div className="report-print-header hidden">
         <h1 className="text-xl font-bold">{config.title}</h1>

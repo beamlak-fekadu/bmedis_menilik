@@ -8,6 +8,7 @@ import {
   AlertCircle, TrendingUp, Play, ShieldAlert,
 } from 'lucide-react';
 import { PageHeader, DataTable, Button, Spinner } from '@/components/ui';
+import AssistantPageContextBridge from '@/components/assistant/AssistantPageContextBridge';
 import ClearFiltersButton from '@/components/ui/ClearFiltersButton';
 import { UrgencyBadge, WorkOrderStatusBadge, RequestStatusBadge } from '@/components/ui/StatusBadge';
 import { getMaintenanceRequests, getWorkOrders } from '@/services/maintenance.service';
@@ -504,6 +505,30 @@ function OperationalMaintenancePage() {
 
   return (
     <div className="space-y-6">
+      <AssistantPageContextBridge
+        moduleLabel="Maintenance"
+        pageLabel="Maintenance requests and work orders"
+        activeTab={activeTab}
+        currentFilters={{ requestFilter: reqFilter, workOrderFilter: woFilter }}
+        pageSummary="Maintenance control page with request triage, open work orders, assignment state, hold blockers, and exact request/work-order routes."
+        visibleCounts={{
+          requests: requests.length,
+          workOrders: workOrders.length,
+          visibleRequests: filteredRequests.length,
+          visibleWorkOrders: filteredWorkOrders.length,
+          pendingRequests: counts.pending,
+          needsWorkOrder: counts.needsWO,
+          openWorkOrders: counts.openWO,
+          unassigned: counts.unassigned,
+          onHold: counts.onHold,
+        }}
+        availableEvidenceLinks={[
+          { label: 'Maintenance', href: '/maintenance', type: 'module' },
+          { label: 'New request', href: '/maintenance/requests/new', type: 'request' },
+          { label: 'New work order', href: '/maintenance/work-orders/new', type: 'work_order' },
+        ]}
+        quickPrompts={['Which work is blocking service?', 'What is assigned to me?', 'Summarize maintenance bottlenecks.']}
+      />
       <PageHeader
         title="Maintenance"
         description="Requests, work orders, and workflow management"

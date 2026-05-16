@@ -1,7 +1,7 @@
 # AGENTS.md — BMERMS Codebase Reference for AI Agents
 
-Last updated: 2026-05-16 (Offline Capability — Phase 3 Completion: cached views + migration 00046)
-Branch: Offline
+Last updated: 2026-05-16 (AI Copilot — Phase 3: action drafts, confirmation UI, server executor, offline-capable drafts, audit, hardened usage)
+Branch: copilot
 Supabase project ID: fgqyszbxzpmqzpqvdivx
 
 This file is the canonical technical reference for any AI agent working in this repo.
@@ -1324,9 +1324,21 @@ One active corrective maintenance request per asset is the rule.
    - One-shot backfill copies the most important payload fields into the new columns for historical rows (idempotent).
    - RLS UPDATE policy reaffirmed for `bme_head` alongside admin/developer/technician so Sync Review Center can patch resolution columns.
 5. `recordOfflineSyncEventAction` writes BOTH the new columns and the payload mirror. `recordOfflineConflictResolutionAction` writes resolution_status/resolved_by/resolved_at/role_name into columns. Service `enrichSyncEvent` prefers columns when present, falls back to payload for pre-migration rows.
-6. After applying migration 00046 with `supabase db push --linked`, regenerate Supabase types: `npx supabase gen types typescript --linked > src/types/database.ts`. The insert path uses `as never` casts until types are regenerated. Next migration must be 00047.
+6. After applying migration 00046 with `supabase db push --linked`, regenerate Supabase types: `npx supabase gen types typescript --linked > src/types/database.ts`. Historical note: migration 00047 is now used by Copilot Phase 1; next migration is 00048.
 7. IndexedDB v1→v2 upgrade path verified: `onupgradeneeded` uses an explicit `oldVersion` check. v0→v1 creates `offline_actions`; v1→v2 adds `offline_read_cache` WITHOUT touching the existing queue store. Queued offline actions survive the upgrade.
 8. Build, tsc, and lint clean. Manual browser validation (multi-user logout/login cache isolation, IDB v1→v2 with pre-existing queue, post-migration event insertion) deferred to QA.
+
+## AI Copilot Upgrade — Phase 1 (2026-05-16)
+
+1. Central copilot RBAC lives in `src/services/chatbot/copilot-rbac.ts`. Use it for chat/context decisions; do not reintroduce `roleNames[0]` or `admin`-only checks.
+2. Final copilot roles are developer, admin, bme_head, technician, department_head, department_user, store_user, and viewer. Developer gets raw diagnostics; admin/bme_head get operational breadth; department roles stay department-scoped; store_user stays logistics-scoped; viewer is read-only.
+3. Provider output normalization is in `src/services/chatbot/assistant-response-pipeline.ts`. It must always return schema-safe `AssistantContent` and parser metadata; malformed Gemini output must never reach the UI raw.
+4. App-tracked Gemini usage is stored in `copilot_usage_events` (migration `00047_copilot_usage_tracking.sql`). This is BMERMS request/token tracking, not the Google AI Studio billing dashboard. If provider tokens are absent, estimate tokens by character count and mark usage as estimated.
+5. Usage limits live in `src/services/chatbot/usage-limits.ts`. Hard blocking is off unless `COPILOT_HARD_LIMIT_ENABLED=true`; otherwise show warnings only.
+6. Developer Lab has AI Copilot Diagnostics via `CopilotDiagnosticsSection`, `CopilotDiagnosticsClient`, and `src/actions/copilot-diagnostics.actions.ts`.
+7. AssistantPanel shows the signed-in user's own app-tracked usage status from `/api/chat` GET/POST responses.
+8. New/planned capabilities added: `qr_asset_context`, `offline_sync_status`, `report_summary`, `metric_debug`, `copilot_diagnostics`, and `usage_status`. Do not claim page-aware workflows or mutation execution until later phases implement tools/drafts.
+9. Architecture notes live in `documents/copilot-architecture.md`.
 
 ## Known bugs — do not repeat these
 
@@ -1384,7 +1396,7 @@ One active corrective maintenance request per asset is the rule.
 - Do not use useEffect for initial data fetching in server components
 - Do not create a Supabase client outside of src/lib/supabase/
 - Do not modify seed files (supabase/seed/)
-- Do not modify migrations 00001–00045; next migration is 00046
+- Do not modify migrations 00001–00047; next migration is 00048
 - Do not add npm dependencies without checking existing packages first
   (chart.js, jsPDF, jspdf-autotable, lucide-react, zod, date-fns are all available)
 - Do not use rounded-2xl on cards — rounded-lg maximum
@@ -1417,3 +1429,32 @@ One active corrective maintenance request per asset is the rule.
 5. Storage bucket 'equipment-documents' must be created with appropriate RLS policies
 6. Supabase Auth users must be created and linked to profiles via
    supabase/seed/99_link_auth_users.sql for RLS to work with seeded data
+
+---
+
+## AI Copilot Upgrade — Phase 2 (2026-05-16)
+
+1. Page-aware copilot context bridge: use `src/components/assistant/AssistantPageContextBridge.tsx` to register lightweight page context with the global assistant. Do not rely on pathname-only inference for new major pages.
+2. Safe `ChatModuleContext` fields include module/page labels, route/pathname, active tab, search, selected record type/id/label, report type, QR token, offline status, queue status, page summary, role hints, page data hints, visible counts, current filters, and evidence links. Keep this bounded; never send full table rows through module context.
+3. Covered pages include Command Center, Equipment list/detail, Maintenance list/request/work-order detail, Requests Hub, PM, Calibration, Spare Parts, Logistics, Procurement, Training, Replacement, Disposal, Alerts, Calendar, Reports/index/detail, Offline Sync, QR Coverage, QR Scans, QR landing, and Developer Lab.
+4. Formal copilot tool contracts live in `src/services/chatbot/tools/tool-types.ts`, `tool-registry.ts`, and `tool-executor.ts`. Tools are read-only in Phase 2 and return `{ ok, data, evidenceSignals, sourceTables, routeLinks, warnings, deniedReason, staleDataWarning }`.
+5. Tool access must validate roles and required context before querying. Department roles stay department-scoped. Developer/admin/bme_head have operational broad reads. Developer-only diagnostics remain developer-only. Store, technician, and viewer selected-record reads must not become all-hospital data fetches.
+6. Exact route link helpers live in `src/services/chatbot/route-link-builder.ts`; use these for assistant evidence links to equipment, work orders, maintenance requests, PM schedules, calibration records/requests, procurement evidence, replacement evidence, reports, QR, offline sync, and Developer Lab.
+7. Assistant responses support `evidence_used`, `links`, `limitations`, `data_freshness`, and `source_tables`; render them as safe UI links/chips only. Never render raw HTML from model output.
+8. QR integration: QR landing registers `qrToken`, selected equipment, role category hint, label status, and evidence links. `read_qr_asset_context` and `read_qr_scan_evidence` are read-only; raw token exposure remains role-aware.
+9. Offline integration: pages can register `offlineStatus` and `queueStatus`; `read_offline_sync_summary` is read-only and non-operational users are scoped to own visible events. Do not execute sync mutations from the copilot in Phase 2.
+10. Phase 3 is for action drafts, confirmations, approvals, and audited mutation execution. Do not add copilot workflow-changing actions yet.
+
+## AI Copilot Upgrade — Phase 3 (2026-05-16)
+
+1. Action drafts are proposals, never silent mutations. Pattern: ask → context → propose → review card → confirm in dialog → existing server action executes → audit log → exact created-record link.
+2. Types live in `src/types/copilot-actions.ts` (`CopilotActionDraft`, `CopilotActionResult`, `CopilotActionKind`, execution modes). Strict Zod validation at every boundary. Kinds: `maintenance_request_create`, `calibration_request_create`, `training_request_create`, `reorder_request_create`, `maintenance_event_note`, `work_order_closure_note` (draft-only), `department_issue_report`, `open_record`, `open_report`, `copy_summary`, `offline_queue_action`.
+3. Draft generation lives in `src/services/chatbot/action-draft-service.ts`. Drafts are proposed only when (a) the user message regex-matches an intent AND (b) `canCreateCopilotDraft()` allows the active role/draft type. Viewer never gets mutation drafts. Department roles are auto-scoped to their own department. At most 4 drafts per response, one per kind.
+4. `AssistantContent.action_drafts` is the carrier (default `[]`). The orchestrator attaches drafts after normalization. All deterministic-fallback paths include `action_drafts: []` to keep schema-safe.
+5. UI: `src/components/assistant/CopilotActionCard.tsx` and `CopilotActionConfirmDialog.tsx`. Card shows risk + execution mode + warnings + evidence + Open/Copy/Review actions. Dialog shows readonly linked context + editable safe fields. Server re-validates regardless.
+6. Server executor: `src/actions/copilot-actions.actions.ts#executeCopilotActionDraftAction`. Re-authenticates, re-checks role + department scope, refuses `draft_only`/`link_only`, merges only editable overrides, calls existing actions (`createMaintenanceRequestAction`, `createCalibrationRequestAction`, `createTrainingRequestAction`, `createProcurementRequestAction`, `createMaintenanceEventAction`), surfaces `duplicate_open_request` as `conflict`, audit-logs `action='copilot.draft.executed.<kind>'`.
+7. Offline integration via `src/components/assistant/copilot-offline.ts`: offline-capable kinds map to existing `OfflineActionType`s and queue via `enqueueOfflineAction`. Online-only kinds (procurement approval, disposal, QR token admin, settings/security, analytics refresh, final closure/assignment, replacement decisions) never queue from copilot.
+8. Usage hardening: AssistantPanel shows warning + hard-stop bands. Orchestrator skips Gemini call when `usageBeforeProvider.hardLimited` is true and returns a deterministic limited response. Local intros are not counted.
+9. Developer Lab Copilot Diagnostics adds an Action Drafts Executed Today metric and per-kind breakdown derived from `audit_logs` rows.
+10. Tests: `src/services/chatbot/__tests__/copilot-action-drafts.test.ts` covers role gating, department scoping, intent matching, Zod validity, and offline mapping. 129/129 chatbot tests pass.
+11. No new migration. Audit metadata uses `audit_logs.details` jsonb. No new offline action types. Existing server actions remain the authority for RLS, validation, audit, and revalidation.

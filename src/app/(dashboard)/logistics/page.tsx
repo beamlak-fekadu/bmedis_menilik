@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowRightLeft, Boxes, ClipboardCheck, HandHelping, PackageCheck, Warehouse } from 'lucide-react';
 import { PageHeader, Badge, StatCard } from '@/components/ui';
+import AssistantPageContextBridge from '@/components/assistant/AssistantPageContextBridge';
 import ClearFiltersButton from '@/components/ui/ClearFiltersButton';
 import Table from '@/components/ui/Table';
 import { AskAiButton } from '@/components/assistant/AskAiButton';
@@ -48,7 +49,7 @@ export default function LogisticsPage() {
   const isStoreOnly =
     roles.includes('store_user') &&
     !roles.some((r) => r === 'developer' || r === 'admin' || r === 'bme_head' || r === 'technician');
-  if (isStoreOnly) return <StoreLogisticsConsole />;
+  if (isStoreOnly) return <><AssistantPageContextBridge moduleLabel="Logistics" pageLabel="Store logistics console" pageSummary="Store-scoped logistics console for receiving, issue, request, balance, and usage linkage." quickPrompts={['What deliveries are expected?', 'Which issued parts need usage linkage?', 'Which stockouts are blocking work?']} /><StoreLogisticsConsole /></>;
   return <OperationalLogisticsPage />;
 }
 
@@ -398,6 +399,23 @@ function OperationalLogisticsPage() {
 
   return (
     <div className="space-y-6">
+      <AssistantPageContextBridge
+        moduleLabel="Logistics"
+        pageLabel={current.title}
+        activeTab={activeWorkflow}
+        pageSummary="Logistics workflow page for receiving, item requests, issue, bin-card stock balance, and usage linkage."
+        visibleCounts={{
+          activeParts: summary.totalParts,
+          lowStock: summary.lowStock,
+          openProcurement: summary.procurementOpen,
+          pendingReceiving: summary.pendingReceiving,
+          pendingIssue: summary.pendingIssue,
+          receipts: summary.receipts,
+          issues: summary.issues,
+        }}
+        availableEvidenceLinks={[{ label: 'Logistics', href: '/logistics', type: 'module' }, { label: 'Spare Parts', href: '/spare-parts', type: 'module' }, { label: 'Procurement', href: '/procurement', type: 'module' }]}
+        quickPrompts={['Which stockouts are blocking work?', 'What deliveries are expected?', 'Which issued parts need usage linkage?']}
+      />
       <PageHeader
         title="Logistics"
         description="Store operations for stock receiving, request, issue, balance, and usage traceability."

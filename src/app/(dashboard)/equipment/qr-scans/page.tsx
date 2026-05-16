@@ -5,6 +5,7 @@ import QrScanHistoryTable from '@/components/qr/QrScanHistoryTable';
 import { getQrScanHistory } from '@/services/qr.service';
 import { QR_ONLINE_STATUSES, QR_SCAN_SOURCES, type QrScanHistoryFilters } from '@/types/qr';
 import { Button, PageHeader } from '@/components/ui';
+import AssistantPageContextBridge from '@/components/assistant/AssistantPageContextBridge';
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
@@ -46,6 +47,26 @@ export default async function QrScansPage({ searchParams }: { searchParams: Sear
 
   return (
     <div className="space-y-6">
+      <AssistantPageContextBridge
+        moduleLabel="QR"
+        pageLabel="QR Scan History"
+        selectedRecordType="qr_scan_history"
+        activeTab={filters.role ?? filters.scanSource ?? filters.onlineStatus ?? undefined}
+        currentFilters={{
+          dateFrom: filters.dateFrom ?? null,
+          dateTo: filters.dateTo ?? null,
+          role: filters.role ?? null,
+          departmentId: filters.departmentId ?? null,
+          assetId: filters.assetId ?? null,
+          onlineStatus: filters.onlineStatus ?? null,
+          scanSource: filters.scanSource ?? null,
+          actionTaken: filters.actionTaken ?? null,
+        }}
+        pageSummary="QR scan evidence page with date, role, department, asset, online status, source, and action filters."
+        visibleCounts={{ scans: scans.length, roles: roles.length, departments: departments.length }}
+        availableEvidenceLinks={[{ label: 'QR Scan History', href: '/equipment/qr-scans', type: 'qr' }, { label: 'QR Scan Evidence Report', href: '/reports/qr-scan-evidence', type: 'report' }, { label: 'QR Coverage', href: '/equipment/qr-coverage', type: 'qr' }]}
+        quickPrompts={['Review QR scan evidence.', 'Which QR scan risks need attention?', 'Explain scan coverage by role.']}
+      />
       <PageHeader
         title="QR Scan History"
         description="Admin-only online QR scan activity from authenticated QR page renders. Raw user agents are not shown in this table."

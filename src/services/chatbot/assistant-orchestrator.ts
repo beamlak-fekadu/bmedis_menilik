@@ -21,6 +21,8 @@ import { normalizeAssistantResponse } from './assistant-response-pipeline';
 import { buildDeterministicStructuredFallback, hasUsableStructuredContext } from './structured-context-fallback';
 import { logCopilotTelemetry } from './telemetry-service';
 import { getCapabilityDefinition, normalizeCapabilityId } from './capability-registry';
+import { getOwnCopilotUsageSnapshot, logCopilotUsageEvent } from './usage-service';
+import { buildActionDraftsFromContext } from './action-draft-service';
 
 function debugProviderFlowEnabled() {
   return (process.env.CHAT_DEBUG_PROVIDER_FLOW ?? '').toLowerCase() === 'true';
@@ -94,6 +96,12 @@ export function buildDeterministicAssistantIntro(): AssistantContent {
     ],
     proactive_signals: [],
     routing_explanation: [],
+    evidence_used: [],
+    links: [],
+    limitations: [],
+    data_freshness: undefined,
+    source_tables: [],
+    action_drafts: [],
     escalation_required: false,
   };
 }
@@ -110,6 +118,18 @@ function enrichAssistantPayload(params: {
       ? (blocks.proactiveSignals as string[])
       : [];
   const mergedProactive = [...new Set([...fromBlocks, ...(assistant.proactive_signals ?? [])])].slice(0, 3);
+  const evidenceUsed = Array.isArray(blocks.evidenceUsed) ? (blocks.evidenceUsed as string[]) : [];
+  const sourceTables = Array.isArray(blocks.sourceTables) ? (blocks.sourceTables as string[]) : [];
+  const routeLinks = Array.isArray(blocks.routeLinks)
+    ? (blocks.routeLinks as Array<{ label?: unknown; href?: unknown; type?: unknown }>)
+        .map((link) => ({
+          label: String(link.label ?? '').slice(0, 120),
+          href: String(link.href ?? '').slice(0, 250),
+          type: link.type ? String(link.type).slice(0, 60) : undefined,
+        }))
+        .filter((link) => link.label && link.href.startsWith('/'))
+    : [];
+  const warnings = Array.isArray(blocks.toolWarnings) ? (blocks.toolWarnings as string[]) : [];
   const routing = buildRoutingExplanation(classified);
   const routingEcho =
     capability === 'assistant_intro' ? [] : assistant.routing_explanation?.length ? assistant.routing_explanation : routing;
@@ -117,6 +137,11 @@ function enrichAssistantPayload(params: {
     ...assistant,
     proactive_signals: mergedProactive,
     routing_explanation: routingEcho.slice(0, 8),
+    evidence_used: [...new Set([...(assistant.evidence_used ?? []), ...evidenceUsed])].slice(0, 12),
+    links: [...(assistant.links ?? []), ...routeLinks].slice(0, 10),
+    limitations: [...new Set([...(assistant.limitations ?? []), ...warnings])].slice(0, 8),
+    source_tables: [...new Set([...(assistant.source_tables ?? []), ...sourceTables])].slice(0, 12),
+    data_freshness: assistant.data_freshness ?? 'Current system records available to the request; page context is lightweight and bounded.',
     intelligence_mode: assistant.intelligence_mode ?? defaultIntelligenceMode(capability),
   };
 }
@@ -154,6 +179,12 @@ function buildBlockedAssistantContent(decision: ChatDecision, reason: string): A
     follow_up_suggestions: [],
     proactive_signals: [],
     routing_explanation: [],
+    evidence_used: [],
+    links: [],
+    limitations: [],
+    data_freshness: undefined,
+    source_tables: [],
+    action_drafts: [],
     intelligence_mode: 'standard',
     escalation_recommendation: decision === 'escalate' ? STANDARD_RESPONSES.escalate : undefined,
     escalation_guidance: decision === 'escalate' ? STANDARD_RESPONSES.escalate : undefined,
@@ -378,6 +409,39 @@ export async function orchestrateAssistantResponse(params: OrchestrateParams): P
     responseMode: capabilityDef.responseMode,
   });
 
+  const usageBeforeProvider = await getOwnCopilotUsageSnapshot(supabase, profile.profileId);
+  if (usageBeforeProvider.hardLimited) {
+    const limitedAssistant = ensureUiSafeAssistant(
+      {
+        ...buildAiUnavailableAssistant('limited_answer'),
+        title: 'AI usage limit reached',
+        summary: 'AI usage for today has reached the configured app limit. System data was not sent to Gemini.',
+        reason_for_limit: usageBeforeProvider.warning ?? 'Configured copilot hard limit is enabled.',
+        answer_basis: 'insufficient_data',
+        confidence: 'low',
+      },
+      'limited_answer'
+    );
+    return {
+      intent: classified.intent,
+      capability: classified.capability,
+      confidenceScore: classified.confidence,
+      confidenceLabel: classified.confidenceLabel,
+      decision: 'limited_answer',
+      blocked: false,
+      fallbackReason: 'insufficient_context',
+      assistant: limitedAssistant,
+      evidence: taskContext.evidence,
+      classified,
+      memory,
+      resolvedEntities,
+      provider: undefined,
+      model: undefined,
+      providerMetadata: { usageHardLimited: true, usageBeforeProvider },
+      policyReason: usageBeforeProvider.warning ?? 'Configured copilot hard limit is enabled.',
+    };
+  }
+
   try {
     if (debugProviderFlowEnabled()) {
       console.info('[chatbot][provider-flow]', {
@@ -423,9 +487,10 @@ export async function orchestrateAssistantResponse(params: OrchestrateParams): P
     }
 
     const parser = providerResult.providerMetadata?.parser as
-      | { usedFallback?: boolean; parserStrategy?: string }
+      | { usedFallback?: boolean; parserStrategy?: string; parserRecoveryUsed?: boolean; parserFailureReason?: string | null }
       | undefined;
-    const parserRecoveryUsed = Boolean(parser?.usedFallback) || parser?.parserStrategy === 'format_recovery';
+    const parserRecoveryUsed =
+      Boolean(parser?.parserRecoveryUsed) || Boolean(parser?.usedFallback) || parser?.parserStrategy === 'format_recovery';
     const contextBlocksAvailable = hasUsableStructuredContext(taskContext.blocks, taskContext.evidence);
     const toolTraceAvailable = Array.isArray(taskContext.blocks.toolTrace) && taskContext.blocks.toolTrace.length > 0;
     let deterministicContextFallbackUsed = false;
@@ -470,7 +535,7 @@ export async function orchestrateAssistantResponse(params: OrchestrateParams): P
       toolTraceAvailable,
     };
 
-    const safeAssistant = normalizeAssistantResponse({
+    const normalizedAssistant = normalizeAssistantResponse({
       rawProviderContent: scopedAssistant,
       capability,
       responseMode: capabilityDef.responseMode,
@@ -478,6 +543,19 @@ export async function orchestrateAssistantResponse(params: OrchestrateParams): P
       requiredDecision: safety.decision,
       fallbackReason: providerFallback ? 'provider_failure' : classified.fallbackReason,
     }).assistant;
+    const actionDrafts = buildActionDraftsFromContext({
+      profile,
+      capability,
+      message,
+      moduleContext,
+      contextRefs: {
+        equipmentId: contextRefs?.equipmentId ?? resolvedEntities.find((entity) => entity.type === 'equipment')?.id,
+        workOrderId: contextRefs?.workOrderId ?? resolvedEntities.find((entity) => entity.type === 'work_order')?.id,
+        departmentId: contextRefs?.departmentId ?? resolvedEntities.find((entity) => entity.type === 'department')?.id,
+      },
+      evidenceSignals: taskContext.evidence.evidenceSignals,
+    });
+    const safeAssistant: AssistantContent = { ...normalizedAssistant, action_drafts: actionDrafts };
     const responseFallbackReason = providerFallback && !deterministicContextFallbackUsed ? 'provider_failure' : classified.fallbackReason;
 
     await logCopilotTelemetry(supabase, {
@@ -516,6 +594,21 @@ export async function orchestrateAssistantResponse(params: OrchestrateParams): P
         toolTraceAvailable,
         toolTrace: taskContext.blocks.toolTrace,
       },
+    });
+    await logCopilotUsageEvent({
+      supabase,
+      profile,
+      sessionId,
+      provider: providerResult.provider,
+      model: providerResult.model,
+      capability,
+      route: moduleContext?.route ?? moduleContext?.pathname ?? null,
+      promptChars: prompt.systemPrompt.length + prompt.userPrompt.length,
+      completionChars: providerResult.assistant.summary?.length ?? 0,
+      providerStatus: providerFallback ? (deterministicContextFallbackUsed ? 'fallback' : 'failure') : 'success',
+      fallbackReason: responseFallbackReason ?? null,
+      latencyMs: Date.now() - startedAt,
+      providerMetadata: enhancedProviderMetadata,
     });
     await persistConversationMemory(supabase, {
       ...memory,
@@ -586,6 +679,21 @@ export async function orchestrateAssistantResponse(params: OrchestrateParams): P
         answerType: 'provider_error',
         orchestratorFallback: true,
       },
+    });
+    await logCopilotUsageEvent({
+      supabase,
+      profile,
+      sessionId,
+      provider: 'gemini',
+      model: process.env.GEMINI_MODEL ?? 'gemini-2.5-flash',
+      capability,
+      route: moduleContext?.route ?? moduleContext?.pathname ?? null,
+      promptChars: prompt.systemPrompt.length + prompt.userPrompt.length,
+      completionChars: fallbackAssistant.summary.length,
+      providerStatus: 'failure',
+      fallbackReason: 'provider_failure',
+      latencyMs: Date.now() - startedAt,
+      providerMetadata: { orchestratorFallback: true, error: error instanceof Error ? error.message : String(error) },
     });
 
     await persistConversationMemory(supabase, {

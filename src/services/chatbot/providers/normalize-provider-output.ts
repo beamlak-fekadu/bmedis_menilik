@@ -26,6 +26,12 @@ function buildSafeFallback(requiredDecision: ChatDecision): AssistantContent {
     follow_up_suggestions: [],
     proactive_signals: [],
     routing_explanation: [],
+    evidence_used: [],
+    links: [],
+    limitations: [],
+    data_freshness: undefined,
+    source_tables: [],
+    action_drafts: [],
     intelligence_mode: undefined,
     reason_for_limit: 'Provider output was not reliably parseable into the required structure.',
     answer_basis: 'insufficient_data',
@@ -60,6 +66,12 @@ export function buildAiUnavailableAssistant(requiredDecision: ChatDecision): Ass
     follow_up_suggestions: [AI_UNAVAILABLE_SUGGESTION],
     proactive_signals: [],
     routing_explanation: [],
+    evidence_used: [],
+    links: [],
+    limitations: [],
+    data_freshness: undefined,
+    source_tables: [],
+    action_drafts: [],
     intelligence_mode: undefined,
     reason_for_limit: 'The AI service could not complete this request. You can retry in a moment.',
     answer_basis: 'insufficient_data',
@@ -100,6 +112,12 @@ export function ensureUiSafeAssistant(
     follow_up_suggestions: Array.isArray(assistant.follow_up_suggestions) ? assistant.follow_up_suggestions : [],
     proactive_signals: Array.isArray(assistant.proactive_signals) ? assistant.proactive_signals : [],
     routing_explanation: Array.isArray(assistant.routing_explanation) ? assistant.routing_explanation : [],
+    evidence_used: Array.isArray(assistant.evidence_used) ? assistant.evidence_used : [],
+    links: Array.isArray(assistant.links) ? assistant.links : [],
+    limitations: Array.isArray(assistant.limitations) ? assistant.limitations : [],
+    data_freshness: typeof assistant.data_freshness === 'string' ? assistant.data_freshness : undefined,
+    source_tables: Array.isArray(assistant.source_tables) ? assistant.source_tables : [],
+    action_drafts: Array.isArray(assistant.action_drafts) ? assistant.action_drafts : [],
     intelligence_mode: assistant.intelligence_mode,
     escalation_recommendation: assistant.escalation_recommendation,
     escalation_guidance: assistant.escalation_guidance,
@@ -121,4 +139,3 @@ export function ensureUiSafeAssistant(
   const withDecision = AssistantContentSchema.safeParse({ ...out, decision: requiredDecision });
   return withDecision.success ? withDecision.data : buildAiUnavailableAssistant(requiredDecision);
 }
-

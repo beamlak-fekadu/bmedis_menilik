@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Plus, PackagePlus, PackageMinus, AlertTriangle, Boxes, ClipboardList, DollarSign, Wrench } from 'lucide-react';
 import PageHeader from '@/components/ui/PageHeader';
+import AssistantPageContextBridge from '@/components/assistant/AssistantPageContextBridge';
 import DataTable from '@/components/ui/DataTable';
 import Tabs from '@/components/ui/Tabs';
 import Button from '@/components/ui/Button';
@@ -54,7 +55,7 @@ export default function SparePartsPage() {
   const isStoreOnly =
     roles.includes('store_user') &&
     !roles.some((r) => r === 'developer' || r === 'admin' || r === 'bme_head' || r === 'technician');
-  if (isStoreOnly) return <StoreSparePartsStockControl />;
+  if (isStoreOnly) return <><AssistantPageContextBridge moduleLabel="Spare Parts" pageLabel="Store stock control" pageSummary="Store-scoped stock control view for low stock, stockouts, receiving, issue, and procurement blockers." quickPrompts={['Which parts are stocked out?', 'Which stockouts are blocking work?', 'What reorder drafts should I prepare?']} /><StoreSparePartsStockControl /></>;
   return <OperationalSparePartsPage />;
 }
 
@@ -637,6 +638,25 @@ function OperationalSparePartsPage() {
 
   return (
     <div className="space-y-6">
+      <AssistantPageContextBridge
+        moduleLabel="Spare Parts"
+        pageLabel="Spare parts stock control"
+        activeTab={selectedTab}
+        currentFilters={{ filter: selectedFilter }}
+        pageSummary="Spare parts stock-control page with catalog, low-stock rows, stockouts, receipts, issues, procurement links, and maintenance blockers."
+        visibleCounts={{
+          parts: parts.length,
+          lowStock: lowStock.length,
+          stockouts: stockouts.length,
+          lowStockNoProcurement: lowStockNoProcurement.length,
+          lowStockWithProcurement: lowStockWithProcurement.length,
+          receipts: receipts.length,
+          issues: issues.length,
+          openProcurement: canonicalOpenProcurementCount,
+        }}
+        availableEvidenceLinks={[{ label: 'Spare Parts', href: '/spare-parts', type: 'module' }, { label: 'Logistics', href: '/logistics', type: 'module' }, { label: 'Procurement', href: '/procurement', type: 'module' }]}
+        quickPrompts={['Which parts are stocked out?', 'Which stockouts are blocking work?', 'What reorder drafts should I prepare?']}
+      />
       <PageHeader
         title="Spare Parts"
         description="Stock-control and maintenance support center for availability, low stock, receipts, issues, and procurement blockers."

@@ -10,6 +10,7 @@ import {
   Button, Modal, Table, Input, Select, Textarea, Spinner, Badge,
 } from '@/components/ui';
 import { UrgencyBadge, WorkOrderStatusBadge } from '@/components/ui/StatusBadge';
+import AssistantPageContextBridge from '@/components/assistant/AssistantPageContextBridge';
 import {
   getWorkOrderById, getMaintenanceEvents, getRequestById,
 } from '@/services/maintenance.service';
@@ -493,6 +494,38 @@ export default function WorkOrderDetailPage() {
 
   return (
     <div>
+      <AssistantPageContextBridge
+        moduleLabel="Maintenance"
+        pageLabel={wo.work_order_number}
+        contextRefs={{ workOrderId: id, equipmentId: wo.asset_id }}
+        selectedRecordType="work_order"
+        selectedRecordId={id}
+        selectedRecordLabel={wo.work_order_number}
+        activeTab={requestedAction ?? undefined}
+        offlineStatus="unknown"
+        queueStatus={{ queued: queuedActions.length }}
+        pageSummary="Work order detail page with assigned technician, equipment, originating request, status, offline-capable event capture, and maintenance evidence."
+        visibleCounts={{
+          maintenanceEvents: events.length,
+          queuedActions: queuedActions.length,
+          status: wo.status,
+          priority: wo.priority,
+          isTerminal,
+        }}
+        pageDataHints={[
+          `Equipment: ${wo.equipment_assets ? `${wo.equipment_assets.asset_code} - ${wo.equipment_assets.name}` : wo.asset_id}`,
+          `Assigned technician: ${wo.profiles?.full_name ?? 'Unassigned'}`,
+          `Status: ${wo.status}`,
+          originatingRequest ? `Originating request: ${originatingRequest.request_number}` : 'No originating request loaded',
+        ]}
+        availableEvidenceLinks={[
+          { label: 'Work order', href: `/maintenance/work-orders/${id}`, type: 'work_order' },
+          { label: 'Equipment', href: `/equipment/${wo.asset_id}`, type: 'equipment' },
+          ...(originatingRequest ? [{ label: 'Originating request', href: `/maintenance/requests/${originatingRequest.id}`, type: 'request' }] : []),
+          { label: 'Offline Sync', href: '/offline-sync', type: 'offline' },
+        ]}
+        quickPrompts={['Summarize this work order.', 'What safe first-line checks should I do?', 'What should I escalate?']}
+      />
       <PageHeader
         title={wo.work_order_number}
         description="Work Order"

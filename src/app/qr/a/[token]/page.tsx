@@ -16,6 +16,7 @@ import { createClient } from '@/lib/supabase/server';
 import { getServerProfile } from '@/lib/auth/helpers';
 import { resolveQrLandingAsset, logQrScan } from '@/services/qr.service';
 import { getQrRoleContext } from '@/services/qr-context.service';
+import AssistantPageContextBridge from '@/components/assistant/AssistantPageContextBridge';
 import QrInvalidState from './QrInvalidState';
 import QrLoginRequired from './QrLoginRequired';
 import QrAssetLandingPage from './QrAssetLandingPage';
@@ -93,10 +94,34 @@ export default async function QrLandingRoute({ params }: { params: RouteParams }
   }
 
   return (
-    <QrAssetLandingPage
-      asset={asset}
-      profile={profileContext}
-      context={context}
-    />
+    <>
+      <AssistantPageContextBridge
+        moduleLabel="QR Field Scan"
+        pageLabel={`${asset.asset_code} · ${asset.name}`}
+        contextRefs={{ equipmentId: asset.id, departmentId: asset.department_id ?? undefined }}
+        selectedRecordType="equipment"
+        selectedRecordId={asset.id}
+        selectedRecordLabel={`${asset.asset_code} · ${asset.name}`}
+        qrToken={token}
+        offlineStatus="online"
+        roleHints={[context.roleCategory]}
+        pageSummary="Authenticated QR field scan page with role-tailored asset context, work status, PM/calibration, parts blockers, scan evidence, and QR lifecycle hints."
+        visibleCounts={{
+          openRequests: context.requests.open.length,
+          openWorkOrders: context.workOrders.open.length,
+          overduePm: context.pm.overdue.length,
+          activePm: context.pm.active.length,
+          calibrationDueState: context.calibration.state,
+          qrLabelStatus: asset.qr_label_status,
+        }}
+        availableEvidenceLinks={[{ label: 'QR page', href: `/qr/a/${token}`, type: 'qr' }, { label: 'Equipment', href: `/equipment/${asset.id}`, type: 'equipment' }]}
+        quickPrompts={['Summarize this asset before inspection.', 'What should I know before inspecting this?', 'What safe first-line checks should I do?']}
+      />
+      <QrAssetLandingPage
+        asset={asset}
+        profile={profileContext}
+        context={context}
+      />
+    </>
   );
 }

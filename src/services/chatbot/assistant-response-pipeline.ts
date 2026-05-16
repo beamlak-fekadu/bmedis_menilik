@@ -1,4 +1,12 @@
-import { AssistantContentSchema, type AssistantContent, type CapabilityId, type ChatDecision, type ResponseMode } from '@/types/chatbot';
+import {
+  AssistantContentSchema,
+  type AssistantContent,
+  type CapabilityId,
+  type ChatDecision,
+  type CopilotParserMetadata,
+  type CopilotParserStrategy,
+  type ResponseMode,
+} from '@/types/chatbot';
 import { getCapabilityResponseDefaults } from './capability-response-defaults';
 import { AI_UNAVAILABLE_SUMMARY, buildAiUnavailableAssistant, ensureUiSafeAssistant } from './providers/normalize-provider-output';
 
@@ -16,8 +24,42 @@ type NormalizeAssistantResponseParams = {
   fallbackReason?: string;
 };
 
-function coerceString(value: unknown) {
-  return typeof value === 'string' ? value : '';
+function parserMetadata(params: {
+  strategy: CopilotParserStrategy;
+  rawText?: string;
+  responseMode: ResponseMode;
+  structuredValidationPassed?: boolean;
+  recovery?: boolean;
+  failureReason?: string | null;
+  deterministicFallbackUsed?: boolean;
+  candidateCount?: number;
+}): CopilotParserMetadata {
+  return {
+    parserStrategy: params.strategy,
+    parserRecoveryUsed: Boolean(params.recovery),
+    parserFailureReason: params.failureReason ?? null,
+    rawContentLength: params.rawText?.length ?? 0,
+    structuredValidationPassed: Boolean(params.structuredValidationPassed),
+    deterministicFallbackUsed: Boolean(params.deterministicFallbackUsed),
+    responseMode: params.responseMode,
+    candidateCount: params.candidateCount,
+    rawPreview: process.env.CHAT_DEBUG_RAW_PROVIDER === 'true' ? params.rawText?.slice(0, 500) ?? '' : undefined,
+  };
+}
+
+function coerceString(value: unknown): string {
+  if (typeof value === 'string') return value;
+  if (value == null) return '';
+  if (typeof value === 'number' || typeof value === 'boolean' || typeof value === 'bigint') return String(value);
+  if (Array.isArray(value)) return value.map(coerceString).filter(Boolean).join('; ');
+  if (typeof value === 'object') {
+    try {
+      return JSON.stringify(value).slice(0, 1000);
+    } catch {
+      return '[object]';
+    }
+  }
+  return '';
 }
 
 function stripCodeFences(text: string) {
@@ -104,12 +146,29 @@ function likelyJsonPayload(raw: string) {
 function stringArray(value: unknown, maxItems: number, maxLength: number) {
   if (Array.isArray(value)) {
     return value
-      .map((item) => (typeof item === 'string' ? item.trim() : ''))
+      .map((item) => coerceString(item).trim())
       .filter(Boolean)
       .slice(0, maxItems)
       .map((item) => item.slice(0, maxLength));
   }
+  const scalar = coerceString(value).trim();
+  if (scalar) return [scalar.slice(0, maxLength)];
   return [];
+}
+
+function linkArray(value: unknown) {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((item) => item && typeof item === 'object')
+    .map((item) => {
+      const row = item as Record<string, unknown>;
+      const label = coerceString(row.label).trim().slice(0, 120);
+      const href = coerceString(row.href).trim().slice(0, 250);
+      const type = coerceString(row.type).trim().slice(0, 60);
+      return label && href.startsWith('/') ? { label, href, type: type || undefined } : null;
+    })
+    .filter(Boolean)
+    .slice(0, 10) as Array<{ label: string; href: string; type?: string }>;
 }
 
 function sanitizeAssistantSummaryForUi(summary: string) {
@@ -129,7 +188,7 @@ function sanitizeAssistantSummaryForUi(summary: string) {
   return text.slice(0, 2000);
 }
 
-function normalizeObjectPayload(rawObject: Record<string, unknown>, requiredDecision: ChatDecision): AssistantContent {
+function normalizeObjectPayload(rawObject: Record<string, unknown>, requiredDecision: ChatDecision): { assistant: AssistantContent; validationPassed: boolean } {
   const normalized: AssistantContent = {
     decision: (typeof rawObject.decision === 'string' ? rawObject.decision : requiredDecision) as ChatDecision,
     title: typeof rawObject.title === 'string' ? rawObject.title.slice(0, 180) : undefined,
@@ -167,10 +226,19 @@ function normalizeObjectPayload(rawObject: Record<string, unknown>, requiredDeci
     follow_up_suggestions: stringArray(rawObject.follow_up_suggestions ?? rawObject.followUpSuggestions, 8, 240),
     proactive_signals: stringArray(rawObject.proactive_signals ?? rawObject.proactiveSignals, 3, 400),
     routing_explanation: stringArray(rawObject.routing_explanation ?? rawObject.routingExplanation, 8, 320),
+    evidence_used: stringArray(rawObject.evidence_used ?? rawObject.evidenceUsed, 12, 320),
+    links: linkArray(rawObject.links),
+    limitations: stringArray(rawObject.limitations, 8, 320),
+    data_freshness: typeof rawObject.data_freshness === 'string' ? rawObject.data_freshness.slice(0, 200) : undefined,
+    source_tables: stringArray(rawObject.source_tables ?? rawObject.sourceTables, 12, 120),
+    action_drafts: [],
   };
 
   const parsed = AssistantContentSchema.safeParse(normalized);
-  return ensureUiSafeAssistant(parsed.success ? parsed.data : normalized, requiredDecision);
+  return {
+    assistant: ensureUiSafeAssistant(parsed.success ? parsed.data : normalized, requiredDecision),
+    validationPassed: parsed.success,
+  };
 }
 
 function wrapPlainTextAsAssistant(params: { text: string; capability: CapabilityId; requiredDecision: ChatDecision }): AssistantContent {
@@ -203,6 +271,12 @@ function wrapPlainTextAsAssistant(params: { text: string; capability: Capability
       follow_up_suggestions: defaults.follow_up_suggestions,
       proactive_signals: [],
       routing_explanation: [],
+      evidence_used: [],
+      links: [],
+      limitations: [],
+      data_freshness: undefined,
+      source_tables: [],
+      action_drafts: [],
     },
     requiredDecision
   );
@@ -236,6 +310,12 @@ function formatRecoveryAssistant(capability: CapabilityId, requiredDecision: Cha
       follow_up_suggestions: defaults.follow_up_suggestions,
       proactive_signals: [],
       routing_explanation: [],
+      evidence_used: [],
+      links: [],
+      limitations: [],
+      data_freshness: undefined,
+      source_tables: [],
+      action_drafts: [],
     },
     requiredDecision
   );
@@ -248,26 +328,26 @@ export function normalizeAssistantResponse(params: NormalizeAssistantResponsePar
     const assistant = buildAiUnavailableAssistant(requiredDecision);
     return {
       assistant,
-      metadata: {
-        parserStrategy: 'provider_failure',
-        usedFallback: true,
+      metadata: parserMetadata({
+        strategy: 'provider_failure',
         responseMode,
-        fallbackReason: fallbackReason ?? 'provider_unavailable',
-        rawPreview: '',
-      },
+        recovery: true,
+        failureReason: fallbackReason ?? 'provider_unavailable',
+      }),
     };
   }
 
   if (rawProviderContent && typeof rawProviderContent === 'object' && !Array.isArray(rawProviderContent)) {
-    const assistant = normalizeObjectPayload(rawProviderContent as Record<string, unknown>, requiredDecision);
+    const normalized = normalizeObjectPayload(rawProviderContent as Record<string, unknown>, requiredDecision);
     return {
-      assistant,
-      metadata: {
-        parserStrategy: 'assistant_object',
-        usedFallback: assistant.summary === AI_UNAVAILABLE_SUMMARY,
+      assistant: normalized.assistant,
+      metadata: parserMetadata({
+        strategy: 'assistant_object',
         responseMode,
-        rawPreview: '',
-      },
+        structuredValidationPassed: normalized.validationPassed,
+        recovery: !normalized.validationPassed || normalized.assistant.summary === AI_UNAVAILABLE_SUMMARY,
+        failureReason: normalized.validationPassed ? null : 'schema_validation_recovered',
+      }),
     };
   }
 
@@ -276,12 +356,13 @@ export function normalizeAssistantResponse(params: NormalizeAssistantResponsePar
     const assistant = formatRecoveryAssistant(capability, requiredDecision);
     return {
       assistant,
-      metadata: {
-        parserStrategy: 'empty_content',
-        usedFallback: true,
+      metadata: parserMetadata({
+        strategy: 'empty_content',
+        rawText,
         responseMode,
-        rawPreview: '',
-      },
+        recovery: true,
+        failureReason: 'empty_provider_content',
+      }),
     };
   }
 
@@ -289,12 +370,11 @@ export function normalizeAssistantResponse(params: NormalizeAssistantResponsePar
     const assistant = wrapPlainTextAsAssistant({ text: rawText, capability, requiredDecision });
     return {
       assistant,
-      metadata: {
-        parserStrategy: 'plain_text_wrapped',
-        usedFallback: false,
+      metadata: parserMetadata({
+        strategy: 'plain_text_wrapped',
+        rawText,
         responseMode,
-        rawPreview: rawText.slice(0, 500),
-      },
+      }),
     };
   }
 
@@ -302,15 +382,20 @@ export function normalizeAssistantResponse(params: NormalizeAssistantResponsePar
   for (const candidate of candidates) {
     const parsed = safeJsonParse(candidate);
     if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) continue;
-    const assistant = normalizeObjectPayload(parsed as Record<string, unknown>, requiredDecision);
+    const normalized = normalizeObjectPayload(parsed as Record<string, unknown>, requiredDecision);
     return {
-      assistant,
+      assistant: normalized.assistant,
       metadata: {
+        ...parserMetadata({
+          strategy: candidate === stripCodeFences(rawText) && /^```/i.test(rawText.trim()) ? 'markdown_fenced_json' : 'json_candidate',
+          rawText,
+          responseMode,
+          structuredValidationPassed: normalized.validationPassed,
+          recovery: !normalized.validationPassed,
+          failureReason: normalized.validationPassed ? null : 'schema_validation_recovered',
+          candidateCount: candidates.length,
+        }),
         parserStrategy: 'json_candidate',
-        usedFallback: assistant.summary === DISPLAY_REPAIR_SUMMARY,
-        responseMode,
-        candidateCount: candidates.length,
-        rawPreview: rawText.slice(0, 500),
       },
     };
   }
@@ -319,15 +404,17 @@ export function normalizeAssistantResponse(params: NormalizeAssistantResponsePar
   if (balanced) {
     const parsed = safeJsonParse(balanced);
     if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-      const assistant = normalizeObjectPayload(parsed as Record<string, unknown>, requiredDecision);
+      const normalized = normalizeObjectPayload(parsed as Record<string, unknown>, requiredDecision);
       return {
-        assistant,
-        metadata: {
-          parserStrategy: 'balanced_json',
-          usedFallback: assistant.summary === DISPLAY_REPAIR_SUMMARY,
+        assistant: normalized.assistant,
+        metadata: parserMetadata({
+          strategy: 'balanced_json',
+          rawText,
           responseMode,
-          rawPreview: rawText.slice(0, 500),
-        },
+          structuredValidationPassed: normalized.validationPassed,
+          recovery: !normalized.validationPassed,
+          failureReason: normalized.validationPassed ? null : 'schema_validation_recovered',
+        }),
       };
     }
   }
@@ -337,23 +424,23 @@ export function normalizeAssistantResponse(params: NormalizeAssistantResponsePar
     const assistant = wrapPlainTextAsAssistant({ text: cleanedText, capability, requiredDecision });
     return {
       assistant,
-      metadata: {
-        parserStrategy: 'plain_text_wrapped',
-        usedFallback: false,
+      metadata: parserMetadata({
+        strategy: 'plain_text_wrapped',
+        rawText,
         responseMode,
-        rawPreview: rawText.slice(0, 500),
-      },
+      }),
     };
   }
 
   const assistant = formatRecoveryAssistant(capability, requiredDecision);
   return {
     assistant,
-    metadata: {
-      parserStrategy: 'format_recovery',
-      usedFallback: true,
+    metadata: parserMetadata({
+      strategy: 'format_recovery',
+      rawText,
       responseMode,
-      rawPreview: rawText.slice(0, 500),
-    },
+      recovery: true,
+      failureReason: 'no_parseable_provider_output',
+    }),
   };
 }

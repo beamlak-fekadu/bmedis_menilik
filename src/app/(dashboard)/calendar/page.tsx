@@ -1,4 +1,5 @@
 import { Badge, PageHeader } from '@/components/ui';
+import AssistantPageContextBridge from '@/components/assistant/AssistantPageContextBridge';
 import { requireRole } from '@/lib/auth/helpers';
 import HospitalCalendarClient from './_components/HospitalCalendarClient';
 import { fetchHospitalCalendarEvents } from './_lib/calendar-data';
@@ -19,6 +20,20 @@ export default async function HospitalCalendarPage() {
 
   return (
     <div className="space-y-6">
+      <AssistantPageContextBridge
+        moduleLabel="Calendar"
+        pageLabel="Hospital operations calendar"
+        contextRefs={data.scope.departmentId ? { departmentId: data.scope.departmentId } : undefined}
+        pageSummary="Calendar page for upcoming and overdue PM, calibration, work orders, training, installation, procurement, and lifecycle events."
+        visibleCounts={{
+          events: data.events.length,
+          departmentScoped: isDepartmentOnly,
+          storeScoped: isStoreOnly,
+          readOnly: !data.scope.canMutate,
+        }}
+        availableEvidenceLinks={[{ label: 'Calendar', href: '/calendar', type: 'calendar' }, { label: 'Command Center', href: '/command', type: 'module' }]}
+        quickPrompts={['What is coming due soon?', 'Which calendar items need attention?', 'Prepare an operations calendar summary.']}
+      />
       <PageHeader
         title="Hospital Operations Calendar"
         description={

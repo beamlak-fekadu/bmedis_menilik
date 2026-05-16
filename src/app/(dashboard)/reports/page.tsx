@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import PageHeader from '@/components/ui/PageHeader';
 import Badge from '@/components/ui/Badge';
+import AssistantPageContextBridge from '@/components/assistant/AssistantPageContextBridge';
 
 interface ReportDef {
   type: string;
@@ -458,6 +459,18 @@ export default function ReportsPage() {
 
   return (
     <div className="space-y-8">
+      <AssistantPageContextBridge
+        moduleLabel="Reports"
+        pageLabel="Reports index"
+        pageSummary="Evidence and export center for biomedical engineering operations, decision support, compliance, lifecycle, inventory, training, audit, QR, offline, and thesis reports."
+        visibleCounts={{
+          sections: operationalSections.length,
+          reports: operationalSections.reduce((total, section) => total + section.reports.length, 0),
+          qrAdminReportsVisible: canViewQrAdminReports,
+        }}
+        availableEvidenceLinks={[{ label: 'Reports', href: '/reports', type: 'module' }]}
+        quickPrompts={['Summarize hospital readiness.', 'Prepare management report notes.', 'Which report should I use for this evidence?']}
+      />
       <PageHeader
         title="Reports"
         description="Evidence and export center for biomedical engineering operations, decision support, compliance, lifecycle, inventory, training, audit, and thesis demonstration reporting."

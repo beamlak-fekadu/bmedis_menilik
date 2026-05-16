@@ -27,6 +27,47 @@ import {
   loadLogistics,
   loadDecisionSupportSnapshot,
 } from './tools';
+import { executeCopilotTool } from './tools/tool-executor';
+import type { CopilotToolName as FormalCopilotToolName, CopilotToolResult } from './tools/tool-types';
+
+function planFormalTools(capability: CapabilityId, moduleContext?: ChatModuleContext): FormalCopilotToolName[] {
+  const tools: FormalCopilotToolName[] = ['read_current_user_context', 'read_current_page_context'];
+  if (capability === 'summarize_equipment' || capability === 'explain_equipment_risk' || moduleContext?.selectedRecordType === 'equipment') {
+    tools.push('read_equipment_status', 'read_equipment_history');
+  }
+  if (capability === 'summarize_work_order' || moduleContext?.selectedRecordType === 'work_order') {
+    tools.push('read_work_order_status');
+  }
+  if (capability === 'prioritize_tasks') tools.push('read_command_center_snapshot', 'read_alerts_summary');
+  if (capability === 'summarize_department_readiness') tools.push('read_department_readiness');
+  if (capability === 'explain_pm_status') tools.push('read_pm_compliance');
+  if (moduleContext?.moduleLabel === 'Calibration' || capability === 'explain_pm_status') tools.push('read_calibration_status');
+  if (capability === 'logistics_status') tools.push('read_stock_blockers');
+  if (capability === 'procurement_status') tools.push('read_procurement_pipeline');
+  if (capability === 'training_status') tools.push('read_training_status');
+  if (capability === 'disposal_status') tools.push('read_disposal_status');
+  if (capability === 'qr_asset_context' || moduleContext?.qrToken || moduleContext?.moduleLabel === 'QR Field Scan') {
+    tools.push('read_qr_asset_context', 'read_qr_scan_evidence');
+  }
+  if (capability === 'offline_sync_status' || moduleContext?.queueStatus || moduleContext?.moduleLabel === 'Offline Sync') {
+    tools.push('read_offline_sync_summary');
+  }
+  if (capability === 'report_summary' || moduleContext?.reportType) tools.push('read_report_snapshot');
+  if (capability === 'metric_debug' || capability === 'copilot_diagnostics') {
+    tools.push('read_tool_trace', 'read_routing_trace', 'read_provider_trace', 'read_parser_failures');
+  }
+  if (capability === 'usage_status' || capability === 'copilot_diagnostics') tools.push('read_gemini_usage_summary');
+  return Array.from(new Set(tools));
+}
+
+function summarizeToolResults(results: CopilotToolResult[]) {
+  return {
+    evidenceUsed: Array.from(new Set(results.flatMap((result) => result.evidenceSignals))).slice(0, 12),
+    sourceTables: Array.from(new Set(results.flatMap((result) => result.sourceTables))).slice(0, 12),
+    routeLinks: results.flatMap((result) => result.routeLinks).slice(0, 10),
+    warnings: Array.from(new Set(results.flatMap((result) => [...result.warnings, result.deniedReason ?? '', result.staleDataWarning ?? ''].filter(Boolean)))).slice(0, 8),
+  };
+}
 
 export interface TaskContextParams {
   supabase: SupabaseClient;
@@ -200,6 +241,17 @@ function selectCapabilityBlocks(
       return { trainingRequests: shared.trainingRequests, workloadSnapshot: decisionSupport.workloadSnapshot };
     case 'disposal_status':
       return { disposalPipeline: shared.disposalPipeline, disposalApprovals: shared.disposalApprovals };
+    case 'qr_asset_context':
+      return { ...shared, ...riskAnalytics, note: 'QR page-aware scan tools are planned; current response is limited to visible asset and evidence context.' };
+    case 'offline_sync_status':
+      return { note: 'Offline sync page-aware retrieval is planned for a later phase; use Developer Lab offline diagnostics for live queue evidence.' };
+    case 'report_summary':
+      return { ...riskAnalytics, ...decisionSupport, note: 'Report-specific retrieval is planned; current response is limited to visible operational evidence.' };
+    case 'metric_debug':
+      return { ...riskAnalytics, ...decisionSupport, toolTrace: shared.toolTrace, note: 'Metric debug uses available context and telemetry only; raw developer traces stay gated.' };
+    case 'copilot_diagnostics':
+    case 'usage_status':
+      return { note: 'Copilot diagnostics are available in Developer Lab. Chat responses do not expose raw telemetry unless developer-gated UI is used.' };
     default:
       return { ...shared, ...riskAnalytics, ...logistics, ...decisionSupport };
   }
@@ -240,9 +292,9 @@ async function collectToolResults(params: {
         recommendationFlags: (riskAnalytics.recommendationFlags as Record<string, unknown>[]) ?? [],
       });
     } else if (name === 'getInventoryLogisticsStatus') {
-      toolResults[name] = await getInventoryLogisticsStatus(supabase);
+      toolResults[name] = await getInventoryLogisticsStatus(supabase, profile);
     } else if (name === 'getProcurementStatus') {
-      toolResults[name] = await getProcurementStatus(supabase);
+      toolResults[name] = await getProcurementStatus(supabase, profile);
     } else if (name === 'getSafeTroubleshootingContext') {
       toolResults[name] = getSafeTroubleshootingContext(evidence, { openWorkOrderOnAsset, userMessage: message });
     }
@@ -293,9 +345,9 @@ export async function buildTaskContext(params: TaskContextParams): Promise<TaskC
         ? 'calibration_or_logistics'
         : capability === 'procurement_status'
           ? 'calibration_or_logistics'
-          : capability === 'safe_troubleshooting'
+        : capability === 'safe_troubleshooting'
             ? 'troubleshooting'
-            : capability === 'explain_equipment_risk' || capability === 'summarize_alerts' || capability === 'summarize_department_readiness'
+            : capability === 'explain_equipment_risk' || capability === 'summarize_alerts' || capability === 'summarize_department_readiness' || capability === 'qr_asset_context' || capability === 'offline_sync_status' || capability === 'report_summary' || capability === 'metric_debug' || capability === 'copilot_diagnostics' || capability === 'usage_status'
               ? 'analytics_explanation'
               : capability === 'summarize_work_order'
                 ? 'work_order_help'
@@ -310,9 +362,9 @@ export async function buildTaskContext(params: TaskContextParams): Promise<TaskC
   const evidence: ChatEvidence = await buildChatEvidence(supabase, contextRefs, profile, intentForEvidence);
   const [shared, riskAnalytics, logistics, decisionSupport] = await Promise.all([
     loadTaskBlocks(supabase, profile, capability),
-    loadRiskAndAnalytics(supabase, contextRefs),
-    loadLogistics(supabase),
-    loadDecisionSupportSnapshot(supabase),
+    loadRiskAndAnalytics(supabase, contextRefs, profile),
+    loadLogistics(supabase, profile),
+    loadDecisionSupportSnapshot(supabase, profile),
   ]);
 
   const selectedTools = planToolRetrieval(classified);
@@ -338,6 +390,18 @@ export async function buildTaskContext(params: TaskContextParams): Promise<TaskC
   })) as Record<string, unknown>;
 
   const toolTrace = { selectedTools, toolResults };
+  const formalToolNames = planFormalTools(capability, moduleContext);
+  const formalToolResults = await Promise.all(
+    formalToolNames.map((toolName) =>
+      executeCopilotTool(supabase, toolName, {
+        profile,
+        contextRefs,
+        moduleContext,
+        route: moduleContext?.route ?? moduleContext?.pathname ?? null,
+      })
+    )
+  );
+  const formalToolSummary = summarizeToolResults(formalToolResults);
   let blocks: Record<string, unknown> = selectCapabilityBlocks(capability, shared, riskAnalytics, logistics, decisionSupport);
   if (assetFocus) {
     blocks = {
@@ -352,6 +416,15 @@ export async function buildTaskContext(params: TaskContextParams): Promise<TaskC
   blocks = {
     ...blocks,
     toolTrace,
+    formalToolTrace: {
+      selectedTools: formalToolNames,
+      results: formalToolResults,
+      summary: formalToolSummary,
+    },
+    evidenceUsed: formalToolSummary.evidenceUsed,
+    sourceTables: formalToolSummary.sourceTables,
+    routeLinks: formalToolSummary.routeLinks,
+    toolWarnings: formalToolSummary.warnings,
     crossModuleSnapshot: buildCrossModuleSnapshot({
       workOrders: (shared.assignedWorkOrders as Record<string, unknown>[]) ?? [],
       flags: (riskAnalytics.recommendationFlags as Record<string, unknown>[]) ?? [],

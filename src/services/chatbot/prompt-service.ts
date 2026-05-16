@@ -13,6 +13,7 @@ import type {
   ResponseMode,
 } from '@/types/chatbot';
 import { buildRoutingExplanation } from './classifier-service';
+import { buildCopilotRolePromptPolicy } from './role-prompt-policy';
 
 export const CHATBOT_SYSTEM_PROMPT = `
 You are the BMERMS hospital biomedical operations assistant embedded in a biomedical engineering resource management system.
@@ -94,6 +95,18 @@ function capabilityAddendum(capability: CapabilityId): string {
       return 'Use getInventoryLogisticsStatus / getProcurementStatus in toolTrace; do not invent SKUs or delivery dates.';
     case 'summarize_department_readiness':
       return 'Use getDepartmentReadiness and decision-support blocks; stay role-scoped.';
+    case 'qr_asset_context':
+      return 'Use read_qr_asset_context and read_qr_scan_evidence when available. Do not expose raw QR tokens unless already provided by page context and role allows it.';
+    case 'offline_sync_status':
+      return 'Use read_offline_sync_summary. Explain queue/conflict/stale state without executing sync actions.';
+    case 'report_summary':
+      return 'Use read_report_snapshot and exact report route links. Summarize evidence and limitations.';
+    case 'metric_debug':
+      return 'Developer-only metric debugging: explain source table/view, missing data, zero/null meaning, and exact route evidence.';
+    case 'copilot_diagnostics':
+      return 'Developer-only diagnostics: explain routing/tool/provider/parser/telemetry metadata using provided traces only.';
+    case 'usage_status':
+      return 'Explain app-tracked Gemini usage. Do not claim exact Google AI Studio billing usage unless provider metadata explicitly reports tokens.';
     default:
       return 'Stay within capability scope; prefer system_data and toolTrace fields over speculation.';
   }
@@ -153,6 +166,7 @@ export function buildPromptPayload(params: {
     },
     routingExplanation,
     capabilityInstructions: capabilityAddendum(capability),
+    rolePolicy: buildCopilotRolePromptPolicy(profile),
     sessionContext: {
       lastFocus: lastFocus || null,
       threadIntent: memory?.threadIntent,
@@ -218,6 +232,11 @@ export function buildPromptPayload(params: {
       follow_up_suggestions: 'string[]',
       proactive_signals: 'string[]',
       routing_explanation: 'string[]',
+      evidence_used: 'string[]',
+      links: '{ label: string, href: string, type?: string }[]',
+      limitations: 'string[]',
+      data_freshness: 'string | optional',
+      source_tables: 'string[]',
     },
   };
 
@@ -239,6 +258,8 @@ export function buildPromptPayload(params: {
 - Include reason_for_limit whenever requiredDecision is limited_answer, check_manual, escalate, or refuse.
 - If decision is limited_answer, provide only safe first-line checks and clearly recommend escalation criteria.
 - Always populate actions, insights, and recommendations arrays.
+- Populate evidence_used, source_tables, limitations, data_freshness, and links when tool results provide them.
+- Links must use exact href values from tool/page context only; never invent routes or raw HTML.
 - Set escalation_guidance when escalation_required is true.
 - Keep proactive_signals concise and sparse (max 3) and never include them in summary.
 - Do not include routing metadata, matcher confidence, toolTrace, or telemetry details in summary/actions/insights/recommendations.

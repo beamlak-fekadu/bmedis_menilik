@@ -1,14 +1,10 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { ChatContextRefs, ChatEvidence, ChatIntent, UserChatProfile } from '@/types/chatbot';
-
-function isDepartmentScoped(profile: UserChatProfile) {
-  return profile.roleNames.includes('department_user') && !profile.roleNames.includes('admin');
-}
+import { canReadCopilotDepartment, requiresDepartmentScope } from './copilot-rbac';
 
 function canSeeDepartment(profile: UserChatProfile, departmentId: string | null | undefined) {
   if (!departmentId) return true;
-  if (!isDepartmentScoped(profile)) return true;
-  return profile.departmentId === departmentId;
+  return canReadCopilotDepartment(profile, departmentId);
 }
 
 export async function buildChatEvidence(
@@ -184,7 +180,7 @@ export async function buildChatEvidence(
       }
     } else {
       let scopedAssetIds: string[] = [];
-      if (isDepartmentScoped(profile) && selectedDepartmentId) {
+      if (requiresDepartmentScope(profile) && selectedDepartmentId) {
         const { data: scopedAssets } = await supabase
           .from('equipment_assets')
           .select('id')

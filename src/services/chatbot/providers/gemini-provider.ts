@@ -29,12 +29,41 @@ import { buildAiUnavailableAssistant } from './normalize-provider-output';
 interface GeminiResponse {
   id?: string;
   model?: string;
+  usage?: {
+    prompt_tokens?: number;
+    completion_tokens?: number;
+    total_tokens?: number;
+    promptTokens?: number;
+    completionTokens?: number;
+    totalTokens?: number;
+  };
+  usageMetadata?: {
+    promptTokenCount?: number;
+    candidatesTokenCount?: number;
+    totalTokenCount?: number;
+  };
   choices?: Array<{
     finish_reason?: string | null;
     message?: {
       content?: string | null;
     };
   }>;
+}
+
+function extractUsage(payload: GeminiResponse | null, promptChars: number, completionChars: number) {
+  const promptTokens = payload?.usage?.prompt_tokens ?? payload?.usage?.promptTokens ?? payload?.usageMetadata?.promptTokenCount ?? null;
+  const completionTokens =
+    payload?.usage?.completion_tokens ?? payload?.usage?.completionTokens ?? payload?.usageMetadata?.candidatesTokenCount ?? null;
+  const totalTokens = payload?.usage?.total_tokens ?? payload?.usage?.totalTokens ?? payload?.usageMetadata?.totalTokenCount ?? null;
+  return {
+    promptChars,
+    completionChars,
+    promptTokens,
+    completionTokens,
+    totalTokens,
+    estimatedTokens: totalTokens == null ? Math.ceil((promptChars + completionChars) / 4) : null,
+    usageSource: totalTokens == null ? 'estimated' : 'provider_reported',
+  };
 }
 
 function readNumberEnv(name: string, fallback: number) {
@@ -296,6 +325,7 @@ export async function runGeminiConnectivitySmoke(): Promise<GeminiSmokeResult> {
 export const geminiProvider: ChatLlmProvider = {
   name: 'gemini',
   async generate(params: LlmGenerateParams): Promise<LlmProviderResult> {
+    const promptChars = params.messages.reduce((sum, message) => sum + message.content.length, 0);
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey?.trim()) {
       console.error('[chatbot][gemini]', { event: 'provider_failure_fallback', reason: 'missing_api_key' });
@@ -307,6 +337,7 @@ export const geminiProvider: ChatLlmProvider = {
           providerFallback: true,
           fallbackReason: 'provider_unavailable',
           error: 'GEMINI_API_KEY is missing or empty.',
+          usage: extractUsage(null, promptChars, 0),
         },
       };
     }
@@ -344,6 +375,7 @@ export const geminiProvider: ChatLlmProvider = {
       const primaryText = typeof choiceContent === 'string' ? choiceContent : '';
       const fallbackText = !primaryText.trim() && looksLikeUsableAssistantText(rawResponseText) ? rawResponseText : '';
       const modelTextForParser = primaryText.trim() ? primaryText : fallbackText;
+      const completionChars = modelTextForParser.length;
       const responseMode = params.responseMode ?? 'structured';
       const normalized = normalizeAssistantResponse({
         rawProviderContent: modelTextForParser.trim() ? modelTextForParser : '',
@@ -379,6 +411,7 @@ export const geminiProvider: ChatLlmProvider = {
           emptyModelContent,
           httpStatus: response.status,
           http503RetriesUsed,
+          usage: extractUsage(parsedPayload, promptChars, completionChars),
         },
       };
     } catch (error) {
@@ -395,6 +428,7 @@ export const geminiProvider: ChatLlmProvider = {
           providerFallback: true,
           fallbackReason: 'provider_unavailable',
           error: message.slice(0, 500),
+          usage: extractUsage(null, promptChars, 0),
         },
       };
     }

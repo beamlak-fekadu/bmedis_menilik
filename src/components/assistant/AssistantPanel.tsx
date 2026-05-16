@@ -7,6 +7,12 @@ import { AssistantContextChips } from './AssistantContextChips';
 import { AssistantMessageCard } from './AssistantMessageCard';
 import { useAssistantContext } from './AssistantProvider';
 import { ASSISTANT_NAME } from '@/constants';
+import { useRole } from '@/hooks/useRole';
+
+function formatApproxTokens(tokens: number) {
+  if (tokens >= 1000) return `${(tokens / 1000).toFixed(tokens >= 10_000 ? 0 : 1)}k`;
+  return String(tokens);
+}
 
 const QUICK_PROMPTS_BY_MODULE: Record<string, string[]> = {
   Equipment: [
@@ -33,13 +39,78 @@ const QUICK_PROMPTS_BY_MODULE: Record<string, string[]> = {
   Operations: ['What should I check first based on current operations context?'],
 };
 
+const QUICK_PROMPTS_BY_ROLE: Record<string, string[]> = {
+  developer: [
+    'Explain why this metric is 0.',
+    'Which table/view feeds this card?',
+    'Show failed offline sync conflicts.',
+    'Check QR coverage issues.',
+    'Run Gemini smoke test.',
+    'Review copilot telemetry.',
+    'Why was my last prompt classified this way?',
+  ],
+  admin: [
+    'What should I prioritize today?',
+    'Which equipment is blocking clinical service?',
+    'Which departments are least ready?',
+    'Which PM/calibration items are urgent?',
+    'Prepare a concise operations summary.',
+  ],
+  bme_head: [
+    'What should I prioritize today?',
+    'Which equipment is blocking clinical service?',
+    'Which departments are least ready?',
+    'Which PM/calibration items are urgent?',
+    'Which replacement risks need management attention?',
+  ],
+  technician: [
+    'What is assigned to me?',
+    'Summarize this asset before inspection.',
+    'What safe first-line checks should I do?',
+    'What parts may be needed?',
+    'What should I escalate?',
+  ],
+  store_user: [
+    'Which parts are stocked out?',
+    'Which stockouts are blocking work?',
+    'What reorder drafts should I prepare?',
+    'What deliveries are expected?',
+    'Which issued parts need usage linkage?',
+  ],
+  department_head: [
+    'Which equipment in my department is unavailable?',
+    'What requests are pending in my department?',
+    'Which work orders are delayed?',
+    'Which compliance issues need attention?',
+    'Prepare a department readiness summary.',
+  ],
+  department_user: [
+    'Help me report this equipment problem.',
+    'Track my department requests.',
+    'Which devices in my department are down?',
+    'Request calibration for this asset.',
+    'Request training for this equipment.',
+  ],
+  viewer: [
+    'Summarize hospital readiness.',
+    'Explain top management risks.',
+    'Which departments need attention?',
+    'Summarize replacement pressure.',
+    'Prepare management report notes.',
+  ],
+};
+
 export function AssistantPanel() {
   const {
     isOpen,
     sending,
     draftInput,
     messages,
+    usageStatus,
     moduleLabel,
+    pageQuickPrompts,
+    selectedEntityContext,
+    registeredPageContext,
     closeAssistant,
     sendMessage,
     setDraftInput,
@@ -47,11 +118,16 @@ export function AssistantPanel() {
     clearContextRefs,
     startNewSession,
   } = useAssistantContext();
+  const { primaryRole } = useRole();
   const messagesRef = useRef<HTMLDivElement | null>(null);
 
   const quickPrompts = useMemo(
-    () => QUICK_PROMPTS_BY_MODULE[moduleLabel] ?? QUICK_PROMPTS_BY_MODULE.Operations,
-    [moduleLabel]
+    () => {
+      const rolePrompts = QUICK_PROMPTS_BY_ROLE[primaryRole] ?? QUICK_PROMPTS_BY_ROLE.viewer;
+      const modulePrompts = QUICK_PROMPTS_BY_MODULE[moduleLabel] ?? QUICK_PROMPTS_BY_MODULE.Operations;
+      return Array.from(new Set([...pageQuickPrompts, ...rolePrompts, ...modulePrompts])).slice(0, 7);
+    },
+    [moduleLabel, pageQuickPrompts, primaryRole]
   );
 
   useEffect(() => {
@@ -95,6 +171,11 @@ export function AssistantPanel() {
 
           <div className="border-b border-[var(--border-subtle)] px-4 py-3">
             <AssistantContextChips moduleLabel={moduleLabel} contextRefs={contextRefs} onClear={clearContextRefs} />
+            {(selectedEntityContext || registeredPageContext?.pageSummary) && (
+              <p className="mt-2 text-xs text-[var(--text-muted)]">
+                {selectedEntityContext ? `Context: ${selectedEntityContext}` : registeredPageContext?.pageSummary}
+              </p>
+            )}
           </div>
 
           <div ref={messagesRef} className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-4">
@@ -119,6 +200,24 @@ export function AssistantPanel() {
           </div>
 
           <div className="space-y-3 border-t border-[var(--assistant-accent-soft)] px-4 py-4">
+            {usageStatus && (
+              <div className={`rounded-md border px-2 py-1 text-xs ${
+                usageStatus.hardLimited
+                  ? 'border-red-500/40 bg-red-500/10 text-red-200'
+                  : usageStatus.warning
+                    ? 'border-amber-500/40 bg-amber-500/10 text-amber-200'
+                    : 'border-[var(--border-subtle)] text-[var(--text-muted)]'
+              }`}>
+                <p>
+                  {usageStatus.warning ?? 'AI usage today'}: {usageStatus.requestsToday} requests · approx. {formatApproxTokens(usageStatus.tokensToday)} tokens
+                  {' '}
+                  <span className="opacity-70">({usageStatus.usageSource})</span>
+                </p>
+                {usageStatus.hardLimited ? (
+                  <p className="mt-0.5">AI provider calls are paused until tomorrow. Deterministic local responses still work.</p>
+                ) : null}
+              </div>
+            )}
             {!contextRefs && (
               <p className="text-xs text-[var(--text-muted)]">
                 No entity linked yet. Responses will stay general until equipment, work-order, or department context is attached.

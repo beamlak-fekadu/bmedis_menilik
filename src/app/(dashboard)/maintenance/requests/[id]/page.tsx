@@ -11,6 +11,7 @@ import {
   Button, Spinner,
 } from '@/components/ui';
 import { UrgencyBadge, RequestStatusBadge, WorkOrderStatusBadge } from '@/components/ui/StatusBadge';
+import AssistantPageContextBridge from '@/components/assistant/AssistantPageContextBridge';
 import { getRequestById, getWorkOrdersByRequestId } from '@/services/maintenance.service';
 import { getEquipmentById } from '@/services/equipment.service';
 import { updateRequestStatusAction } from '@/actions/maintenance.actions';
@@ -146,6 +147,35 @@ export default function RequestDetailPage() {
 
   return (
     <div className="space-y-6">
+      <AssistantPageContextBridge
+        moduleLabel="Maintenance"
+        pageLabel={request.request_number}
+        contextRefs={{ equipmentId: assetId }}
+        selectedRecordType="maintenance_request"
+        selectedRecordId={id}
+        selectedRecordLabel={request.request_number}
+        pageSummary="Maintenance request detail page with equipment context, department, reported condition, approval state, linked work orders, and condition trace."
+        visibleCounts={{
+          linkedWorkOrders: linkedWOs.length,
+          hasOpenWorkOrder: Boolean(openWO),
+          status: request.status,
+          urgency: request.urgency,
+          isPending,
+          isTerminal,
+        }}
+        pageDataHints={[
+          `Equipment: ${request.equipment_assets ? `${request.equipment_assets.asset_code} - ${request.equipment_assets.name}` : assetId}`,
+          `Department: ${request.departments?.name ?? 'Unassigned'}`,
+          `Reported condition: ${request.reported_condition ?? 'Not specified'}`,
+          openWO ? `Open work order: ${openWO.work_order_number}` : 'No open work order linked',
+        ]}
+        availableEvidenceLinks={[
+          { label: 'Request', href: `/maintenance/requests/${id}`, type: 'request' },
+          ...(assetId ? [{ label: 'Equipment', href: `/equipment/${assetId}`, type: 'equipment' }] : []),
+          ...(openWO ? [{ label: 'Open work order', href: `/maintenance/work-orders/${openWO.id}`, type: 'work_order' }] : []),
+        ]}
+        quickPrompts={['Summarize this request.', 'What is blocking completion?', 'What evidence supports the next action?']}
+      />
       <PageHeader
         title={request.request_number}
         description="Maintenance Request"

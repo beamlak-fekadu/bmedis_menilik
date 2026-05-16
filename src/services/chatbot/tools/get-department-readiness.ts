@@ -1,7 +1,7 @@
 import type { ChatContextRefs } from '@/types/chatbot';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { UserChatProfile } from '@/types/chatbot';
-import { isAdmin } from './task-data-loaders';
+import { canReadAllOperationalCopilotContext, canReadCopilotDepartment } from '../copilot-rbac';
 import { loadDecisionSupportSnapshot } from './task-data-loaders';
 
 export async function getDepartmentReadiness(
@@ -11,8 +11,8 @@ export async function getDepartmentReadiness(
 ) {
   const targetDept = contextRefs?.departmentId ?? profile.departmentId;
   if (!targetDept) {
-    const ds = await loadDecisionSupportSnapshot(supabase);
-    if (isAdmin(profile)) {
+    const ds = await loadDecisionSupportSnapshot(supabase, profile);
+    if (canReadAllOperationalCopilotContext(profile)) {
       return { readinessRows: ds.readinessSnapshot.slice(0, 8), scope: 'organization' as const };
     }
     const scoped = (ds.readinessSnapshot as Record<string, unknown>[]).filter(
@@ -31,7 +31,7 @@ export async function getDepartmentReadiness(
     return { readinessRows: [], error: 'readiness_query_failed' };
   }
 
-  if (!isAdmin(profile) && targetDept !== profile.departmentId) {
+  if (!canReadCopilotDepartment(profile, targetDept)) {
     return { readinessRows: [], note: 'Department scope limited to your org unit.' };
   }
 

@@ -40,6 +40,12 @@ const CAPABILITY_TOOLS: Record<CapabilityId, CopilotToolName[]> = {
   summarize_department_readiness: ['getCurrentUserContext', 'getDepartmentReadiness', 'getAlertsSummary'],
   training_status: ['getCurrentUserContext', 'getMyTasks', 'getDepartmentReadiness'],
   disposal_status: ['getCurrentUserContext', 'getMyTasks'],
+  qr_asset_context: ['getCurrentUserContext', 'getEquipmentSummary', 'getAlertsSummary'],
+  offline_sync_status: ['getCurrentUserContext'],
+  report_summary: ['getCurrentUserContext', 'getDepartmentReadiness', 'getAlertsSummary'],
+  metric_debug: ['getCurrentUserContext', 'getEquipmentSummary', 'getDepartmentReadiness', 'getAlertsSummary'],
+  copilot_diagnostics: ['getCurrentUserContext'],
+  usage_status: ['getCurrentUserContext'],
   unsafe_or_restricted: [],
   general_system_fallback: ['getCurrentUserContext', 'getMyTasks', 'getAlertsSummary'],
 };

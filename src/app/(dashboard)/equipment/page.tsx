@@ -8,6 +8,7 @@ import {
   Clock, AlertCircle, TrendingUp, QrCode, Printer, Stamp, RefreshCw,
 } from 'lucide-react';
 import { PageHeader, Button, Spinner, Badge } from '@/components/ui';
+import AssistantPageContextBridge from '@/components/assistant/AssistantPageContextBridge';
 import { BarChart, DoughnutChart, ChartCard } from '@/components/charts';
 import { getEquipmentList } from '@/services/equipment.service';
 import { getAll } from '@/services/settings.service';
@@ -572,6 +573,39 @@ function OperationalEquipmentListPage() {
 
   return (
     <div className="space-y-6">
+      <AssistantPageContextBridge
+        moduleLabel="Equipment"
+        pageLabel="Equipment inventory"
+        pageSummary="Asset list with condition, maintenance state, risk, QR readiness, and exact asset routes."
+        searchQuery={search || undefined}
+        activeTab={quickFilter || filterQrStatus || undefined}
+        currentFilters={{
+          departmentId: filterDept || null,
+          categoryId: filterCat || null,
+          condition: filterCondition || null,
+          qrStatus: filterQrStatus || null,
+          quickFilter: quickFilter || null,
+          sortKey,
+          sortAsc,
+        }}
+        visibleCounts={{
+          total: counts.total,
+          visible: filteredRows.length,
+          functional: counts.functional,
+          needsRepair: counts.needsRepair,
+          nonFunctional: counts.nonFunctional,
+          highRisk: counts.highRisk,
+          qrReady: counts.qrReady,
+          qrNeedsReplacement: counts.qrNeedsReplacement,
+          selected: selected.size,
+        }}
+        availableEvidenceLinks={[
+          { label: 'Equipment', href: '/equipment', type: 'module' },
+          { label: 'QR Coverage', href: '/equipment/qr-coverage', type: 'qr' },
+          { label: 'QR Scans', href: '/equipment/qr-scans', type: 'qr' },
+        ]}
+        quickPrompts={['Which equipment needs attention?', 'Check QR coverage issues.', 'Which assets have high risk?']}
+      />
       <PageHeader
         title="Equipment"
         description="Asset-level operational control — condition, maintenance state, risk, and actions"

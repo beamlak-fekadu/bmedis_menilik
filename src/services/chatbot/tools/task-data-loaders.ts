@@ -1,14 +1,32 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { CapabilityId, ChatContextRefs, UserChatProfile } from '@/types/chatbot';
+import {
+  canReadAllOperationalCopilotContext,
+  canUseStoreCopilotContext,
+  canUseTechnicianCopilotContext,
+  requiresDepartmentScope,
+} from '../copilot-rbac';
 
 export function isAdmin(profile: UserChatProfile) {
-  return profile.roleNames.includes('admin');
+  return canReadAllOperationalCopilotContext(profile);
 }
 
 export function usesBroadWorkOrderPool(profile: UserChatProfile, capability: CapabilityId) {
-  if (isAdmin(profile)) return true;
-  if (capability === 'prioritize_tasks' && profile.roleNames.includes('technician')) return true;
+  if (canReadAllOperationalCopilotContext(profile)) return true;
+  if (capability === 'prioritize_tasks' && canUseTechnicianCopilotContext(profile)) return true;
   return false;
+}
+
+async function scopedAssetIdsForProfile(supabase: SupabaseClient, profile: UserChatProfile) {
+  if (!requiresDepartmentScope(profile)) return null;
+  if (!profile.departmentId) return [];
+  const { data } = await supabase
+    .from('equipment_assets')
+    .select('id')
+    .eq('department_id', profile.departmentId)
+    .is('deleted_at', null)
+    .limit(5000);
+  return (data ?? []).map((row) => row.id as string).filter(Boolean);
 }
 
 export async function loadTaskBlocks(
@@ -97,8 +115,26 @@ export async function loadTaskBlocks(
   };
 }
 
-export async function loadRiskAndAnalytics(supabase: SupabaseClient, contextRefs?: ChatContextRefs) {
+export async function loadRiskAndAnalytics(supabase: SupabaseClient, contextRefs?: ChatContextRefs, profile?: UserChatProfile) {
   const equipmentId = contextRefs?.equipmentId;
+  const scopedAssetIds = profile ? await scopedAssetIdsForProfile(supabase, profile) : null;
+  const denyEquipment = Boolean(equipmentId && scopedAssetIds && !scopedAssetIds.includes(equipmentId));
+  const applyAssetScope = <T extends { in: (column: string, values: string[]) => T }>(query: T) => {
+    if (!scopedAssetIds) return query;
+    if (scopedAssetIds.length === 0) return query.in('asset_id', ['00000000-0000-0000-0000-000000000000']);
+    return query.in('asset_id', scopedAssetIds);
+  };
+
+  if (denyEquipment) {
+    return {
+      riskScores: [],
+      reliabilityMetrics: [],
+      replacementPriority: [],
+      recommendationFlags: [],
+      decisionSupportQueue: [],
+    };
+  }
+
   const [riskRes, reliabilityRes, replacementRes, flagsRes, decisionRes] = await Promise.all([
     equipmentId
       ? supabase
@@ -107,11 +143,11 @@ export async function loadRiskAndAnalytics(supabase: SupabaseClient, contextRefs
           .eq('asset_id', equipmentId)
           .order('assessed_at', { ascending: false })
           .limit(3)
-      : supabase
+      : applyAssetScope(supabase
           .from('equipment_risk_scores')
           .select('asset_id, rpn, risk_level, assessed_at')
           .order('assessed_at', { ascending: false })
-          .limit(8),
+          .limit(8)),
     equipmentId
       ? supabase
           .from('equipment_reliability_metrics')
@@ -119,11 +155,11 @@ export async function loadRiskAndAnalytics(supabase: SupabaseClient, contextRefs
           .eq('asset_id', equipmentId)
           .order('computed_at', { ascending: false })
           .limit(3)
-      : supabase
+      : applyAssetScope(supabase
           .from('equipment_reliability_metrics')
           .select('asset_id, mttr_hours, mtbf_hours, availability_ratio, computed_at')
           .order('computed_at', { ascending: false })
-          .limit(8),
+          .limit(8)),
     equipmentId
       ? supabase
           .from('replacement_priority_scores')
@@ -131,23 +167,23 @@ export async function loadRiskAndAnalytics(supabase: SupabaseClient, contextRefs
           .eq('asset_id', equipmentId)
           .order('computed_at', { ascending: false })
           .limit(3)
-      : supabase
+      : applyAssetScope(supabase
           .from('replacement_priority_scores')
           .select('asset_id, replacement_priority_index, rank, justification, computed_at')
           .order('rank', { ascending: true })
-          .limit(8),
-    supabase
+          .limit(8)),
+    applyAssetScope(supabase
       .from('recommendation_flags')
       .select('id, asset_id, severity, flag_type, message, generated_at')
       .eq('is_acknowledged', false)
       .order('generated_at', { ascending: false })
-      .limit(12),
-    supabase
+      .limit(12)),
+    applyAssetScope(supabase
       .from('triage_action_queue')
       .select('id, asset_id, priority_score, recommendation, rationale')
       .eq('status', 'open')
       .order('priority_score', { ascending: false })
-      .limit(10),
+      .limit(10)),
   ]);
 
   return {
@@ -159,7 +195,10 @@ export async function loadRiskAndAnalytics(supabase: SupabaseClient, contextRefs
   };
 }
 
-export async function loadLogistics(supabase: SupabaseClient) {
+export async function loadLogistics(supabase: SupabaseClient, profile?: UserChatProfile) {
+  if (profile && !canUseStoreCopilotContext(profile)) {
+    return { lowStockParts: [], procurementPipeline: [] };
+  }
   const [lowStockRes, procurementRes] = await Promise.all([
     supabase
       .from('v_low_stock_parts')
@@ -179,13 +218,19 @@ export async function loadLogistics(supabase: SupabaseClient) {
   };
 }
 
-export async function loadDecisionSupportSnapshot(supabase: SupabaseClient) {
+export async function loadDecisionSupportSnapshot(supabase: SupabaseClient, profile?: UserChatProfile) {
   const [readinessRes, workloadRes] = await Promise.all([
-    supabase
+    (() => {
+      let query = supabase
       .from('clinical_readiness_snapshots')
       .select('department_id, readiness_score, essential_total, essential_functional, snapshot_date')
       .order('snapshot_date', { ascending: false })
-      .limit(15),
+      .limit(15);
+      if (profile && requiresDepartmentScope(profile)) {
+        query = profile.departmentId ? query.eq('department_id', profile.departmentId) : query.eq('department_id', '00000000-0000-0000-0000-000000000000');
+      }
+      return query;
+    })(),
     supabase
       .from('workload_capacity_snapshots')
       .select('assignee_id, open_assignments, overdue_assignments, estimated_hours, snapshot_date')

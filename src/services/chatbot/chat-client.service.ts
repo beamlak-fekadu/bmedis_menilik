@@ -158,9 +158,25 @@ function cleanModuleContext(moduleContext?: ChatModuleContext) {
     pathname: moduleContext.pathname?.trim() || undefined,
     route: moduleContext.route?.trim() || undefined,
     pageLabel: moduleContext.pageLabel?.trim() || undefined,
+    activeTab: moduleContext.activeTab?.trim() || undefined,
+    searchQuery: moduleContext.searchQuery?.trim() || undefined,
+    selectedRecordType: moduleContext.selectedRecordType?.trim() || undefined,
+    selectedRecordId: moduleContext.selectedRecordId?.trim() || undefined,
+    selectedRecordLabel: moduleContext.selectedRecordLabel?.trim() || undefined,
+    reportType: moduleContext.reportType?.trim() || undefined,
+    qrToken: moduleContext.qrToken?.trim() || undefined,
+    offlineStatus: moduleContext.offlineStatus,
+    queueStatus: moduleContext.queueStatus,
+    pageSummary: moduleContext.pageSummary?.trim() || undefined,
+    roleHints: moduleContext.roleHints,
+    selectedEntityLabels: moduleContext.selectedEntityLabels,
+    availableActions: moduleContext.availableActions,
+    pageDataHints: moduleContext.pageDataHints,
+    visibleCounts: moduleContext.visibleCounts,
+    availableEvidenceLinks: moduleContext.availableEvidenceLinks,
     currentFilters: moduleContext.currentFilters,
   };
-  if (!cleaned.moduleLabel && !cleaned.pathname && !cleaned.route && !cleaned.pageLabel && !cleaned.currentFilters) {
+  if (!Object.values(cleaned).some((value) => value !== undefined)) {
     return undefined;
   }
   return cleaned;

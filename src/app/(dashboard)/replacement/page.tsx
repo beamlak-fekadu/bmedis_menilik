@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { getReplacementPriorities } from '@/services/analytics.service';
 import { PageHeader, StatCard, DataTable, Badge, Button } from '@/components/ui';
+import AssistantPageContextBridge from '@/components/assistant/AssistantPageContextBridge';
 import ClearFiltersButton from '@/components/ui/ClearFiltersButton';
 import { PageLoader } from '@/components/ui/Spinner';
 import Card, { CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
@@ -307,6 +308,25 @@ function OperationalReplacementPage() {
 
   return (
     <div className="space-y-6">
+      <AssistantPageContextBridge
+        moduleLabel="Replacement"
+        pageLabel="Replacement priority"
+        activeTab={activeFilter}
+        currentFilters={{ filter: activeFilter }}
+        pageSummary="Replacement planning page with RPI candidate bands, score drivers, maintenance burden, availability, failure, age, spare support, and FMEA risk evidence."
+        visibleCounts={{
+          totalScored: ranked.length,
+          visible: filteredRows.length,
+          candidates: replacementCandidates.length,
+          strongCandidates: highPriority.length,
+          reviewCandidates: reviewCandidates.length,
+          monitorCandidates: monitorCandidates.length,
+          highMaintenanceBurden: highMaintenanceBurden.length,
+          lowAvailability: lowAvailability.length,
+        }}
+        availableEvidenceLinks={[{ label: 'Replacement', href: '/replacement', type: 'module' }, { label: 'Reports', href: '/reports/replacement', type: 'report' }]}
+        quickPrompts={['Which replacement risks need management attention?', 'Summarize replacement pressure.', 'Explain this replacement score.']}
+      />
       <PageHeader
         title="Replacement Priority"
         description="Replacement planning evidence for BME Head decisions. Scoring sliders and sensitivity testing live in Developer Lab."

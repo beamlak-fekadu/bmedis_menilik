@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { AlertTriangle, ClipboardCheck, PackageCheck, Truck, Timer, CircleDollarSign } from 'lucide-react';
 import { PageHeader, StatCard, Card, CardHeader, CardTitle, DataTable, Badge, Button, Modal, Input, Select, Textarea } from '@/components/ui';
+import AssistantPageContextBridge from '@/components/assistant/AssistantPageContextBridge';
 import ClearFiltersButton from '@/components/ui/ClearFiltersButton';
 import { getProcurementPipeline } from '@/services/procurement.service';
 import { createProcurementRequestAction, updateProcurementStatusAction } from '@/actions/procurement.actions';
@@ -35,7 +36,7 @@ export default function ProcurementPage() {
     roles.includes('store_user') &&
     !roles.some((r) => r === 'developer' || r === 'admin' || r === 'bme_head' || r === 'technician');
   const searchParams = useSearchParams();
-  if (isStoreOnly) return <StoreProcurementTracking source={searchParams.get('source')} />;
+  if (isStoreOnly) return <><AssistantPageContextBridge moduleLabel="Procurement" pageLabel="Store procurement tracking" pageSummary="Store-scoped procurement tracking for stock, logistics, deliveries, delays, and blockers." quickPrompts={['What deliveries are expected?', 'Which procurement rows are delayed?', 'What reorder drafts should I prepare?']} /><StoreProcurementTracking source={searchParams.get('source')} /></>;
   return <OperationalProcurementPage />;
 }
 
@@ -276,6 +277,27 @@ function OperationalProcurementPage() {
 
   return (
     <div className="space-y-6">
+      <AssistantPageContextBridge
+        moduleLabel="Procurement"
+        pageLabel="Procurement pipeline"
+        activeTab={activeFilter}
+        currentFilters={{ filter: activeFilter, source: source ?? null }}
+        pageSummary="Procurement tracking page with requested, approved, ordered, in-transit, delivered, delayed, stock-linked, and replacement-linked rows."
+        visibleCounts={{
+          total: rows.length,
+          visible: filteredRows.length,
+          requested: summary.requested,
+          approved: summary.approved,
+          ordered: summary.ordered,
+          inTransit: summary.inTransit,
+          delivered: summary.delivered,
+          delayed: summary.delayed,
+          stockBlockers: summary.stockBlockers,
+          replacementLinked: summary.replacementLinked,
+        }}
+        availableEvidenceLinks={[{ label: 'Procurement', href: '/procurement', type: 'module' }, { label: 'Spare Parts', href: '/spare-parts', type: 'module' }]}
+        quickPrompts={['Summarize procurement blockers.', 'What deliveries are expected?', 'Which procurement rows are delayed?']}
+      />
       <PageHeader
         title="Procurement Tracking"
         description="Track procurement request pipeline from request through delivery."

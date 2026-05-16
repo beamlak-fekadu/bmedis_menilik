@@ -17,6 +17,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
 import { useRole } from '@/hooks/useRole';
 import { PageHeader, StatCard, Badge, Button, Tabs, FilterBar } from '@/components/ui';
+import AssistantPageContextBridge from '@/components/assistant/AssistantPageContextBridge';
 import ClearFiltersButton from '@/components/ui/ClearFiltersButton';
 import { PageLoader } from '@/components/ui/Spinner';
 import { useToast } from '@/components/ui/Toast';
@@ -137,9 +138,9 @@ export default function AlertsPage() {
   const isDepartmentOnly =
     (roles.includes('department_head') || roles.includes('department_user')) &&
     !roles.some((r) => r === 'developer' || r === 'admin' || r === 'bme_head' || r === 'technician');
-  if (isDepartmentOnly) return <DepartmentAlerts />;
-  if (isStoreOnly) return <StoreLogisticsAlerts />;
-  if (isViewerOnly) return <ViewerManagementAlerts />;
+  if (isDepartmentOnly) return <><AssistantPageContextBridge moduleLabel="Alerts" pageLabel="Department alerts" pageSummary="Department-scoped alert view." quickPrompts={['Which department alerts need attention?', 'Summarize alert risks for my department.']} /><DepartmentAlerts /></>;
+  if (isStoreOnly) return <><AssistantPageContextBridge moduleLabel="Alerts" pageLabel="Store logistics alerts" pageSummary="Store-scoped logistics and stock alert view." quickPrompts={['Which stock alerts need attention?', 'Which stockouts are blocking work?']} /><StoreLogisticsAlerts /></>;
+  if (isViewerOnly) return <><AssistantPageContextBridge moduleLabel="Alerts" pageLabel="Management alerts" pageSummary="Read-only management alert view." quickPrompts={['Summarize management risks.', 'Which departments need attention?']} /><ViewerManagementAlerts /></>;
   return <OperationalAlertsPage />;
 }
 
@@ -363,6 +364,26 @@ function OperationalAlertsPage() {
 
   return (
     <div className="space-y-6">
+      <AssistantPageContextBridge
+        moduleLabel="Alerts"
+        pageLabel="Alerts and recommendations"
+        activeTab={activeTab}
+        currentFilters={{ severity: filters.severity || null, flagType: filters.flag_type || null }}
+        pageSummary="Operational alert inbox using recommendation flags, severity, type filters, exact source actions, and acknowledgement evidence."
+        visibleCounts={{
+          total: data.length,
+          unacknowledged: unacknowledged.length,
+          visible: filtered.length,
+          critical: criticalCount,
+          high: highCount,
+          medium: mediumCount,
+          overdue: overdueCount,
+          stock: stockCount,
+          risk: riskCount,
+        }}
+        availableEvidenceLinks={[{ label: 'Alerts', href: '/alerts', type: 'module' }, { label: 'Command Center', href: '/command', type: 'module' }]}
+        quickPrompts={['Summarize active alerts.', 'Which alerts should be handled first?', 'Explain the evidence behind these alerts.']}
+      />
       <PageHeader
         title="Alerts & Recommendations"
         description={`${unacknowledged.length} active alert${unacknowledged.length !== 1 ? 's' : ''} requiring attention`}

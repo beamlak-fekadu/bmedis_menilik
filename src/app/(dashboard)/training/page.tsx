@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { CalendarClock, CheckCircle, ClipboardList, GraduationCap, Plus, ShieldAlert, Users, ChevronLeft } from 'lucide-react';
 import PageHeader from '@/components/ui/PageHeader';
+import AssistantPageContextBridge from '@/components/assistant/AssistantPageContextBridge';
 import ClearFiltersButton from '@/components/ui/ClearFiltersButton';
 import DataTable from '@/components/ui/DataTable';
 import Tabs from '@/components/ui/Tabs';
@@ -545,6 +546,24 @@ export default function TrainingPage() {
 
   return (
     <div className="space-y-6">
+      <AssistantPageContextBridge
+        moduleLabel="Training"
+        pageLabel="Training workflow"
+        activeTab={selectedTab}
+        currentFilters={{ filter: activeFilter }}
+        pageSummary="Training workflow page with requests, upcoming sessions, completed sessions, attendance evidence, new-equipment training, and user-error follow-up."
+        visibleCounts={{
+          sessions: sessions.length,
+          pendingRequests: pendingRequests.length,
+          upcomingSessions: upcomingSessions.length,
+          completedThisMonth: completedThisMonth.length,
+          newEquipmentTraining,
+          userErrorRelated,
+          criticalEquipmentTraining,
+        }}
+        availableEvidenceLinks={[{ label: 'Training', href: '/training', type: 'module' }, { label: 'Requests Hub', href: '/requests', type: 'module' }]}
+        quickPrompts={['Which training requests are pending?', 'Request training for this equipment.', 'Prepare a training status summary.']}
+      />
       <PageHeader
         title="Training"
         description="Equipment safety training workflow for requests, scheduled sessions, attendance evidence, and user-error follow-up."

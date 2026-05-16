@@ -1,11 +1,10 @@
 import type { ChatContextRefs } from '@/types/chatbot';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { UserChatProfile } from '@/types/chatbot';
+import { canReadCopilotDepartment } from '../copilot-rbac';
 
 function canScope(profile: UserChatProfile, departmentId: string | null | undefined) {
-  if (profile.roleNames.includes('admin')) return true;
-  if (!departmentId) return true;
-  return profile.departmentId === departmentId;
+  return canReadCopilotDepartment(profile, departmentId);
 }
 
 export async function getWorkOrderSummary(

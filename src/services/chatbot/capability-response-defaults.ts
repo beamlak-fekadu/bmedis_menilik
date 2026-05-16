@@ -99,6 +99,36 @@ const DEFAULTS: Record<CapabilityId, CapabilityResponseDefaults> = {
     intelligence_mode: 'synthesis',
     follow_up_suggestions: ['Show disposal blockers', 'What is pending approval?', 'What should move first?'],
   },
+  qr_asset_context: {
+    title: 'QR Asset Context',
+    intelligence_mode: 'synthesis',
+    follow_up_suggestions: ['Check QR coverage issues', 'Show scan evidence', 'Explain this asset QR state'],
+  },
+  offline_sync_status: {
+    title: 'Offline Sync Status',
+    intelligence_mode: 'synthesis',
+    follow_up_suggestions: ['Show failed sync conflicts', 'Explain offline queue health', 'What needs replay?'],
+  },
+  report_summary: {
+    title: 'Report Summary',
+    intelligence_mode: 'synthesis',
+    follow_up_suggestions: ['Explain this report', 'Show evidence basis', 'Summarize top risks'],
+  },
+  metric_debug: {
+    title: 'Metric Debug',
+    intelligence_mode: 'synthesis',
+    follow_up_suggestions: ['Explain why this metric is 0', 'Which source feeds this card?', 'Show calculation evidence'],
+  },
+  copilot_diagnostics: {
+    title: 'Copilot Diagnostics',
+    intelligence_mode: 'synthesis',
+    follow_up_suggestions: ['Run Gemini smoke test', 'Review copilot telemetry', 'Explain prompt classification'],
+  },
+  usage_status: {
+    title: 'AI Usage Status',
+    intelligence_mode: 'standard',
+    follow_up_suggestions: ['Show usage today', 'Explain estimated tokens', 'Show provider health'],
+  },
   unsafe_or_restricted: {
     title: 'Safety Restriction',
     intelligence_mode: 'standard',

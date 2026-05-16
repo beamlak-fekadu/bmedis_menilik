@@ -64,6 +64,12 @@ function baseAssistant(
     follow_up_suggestions: defaults.follow_up_suggestions.slice(0, 4),
     proactive_signals: [],
     routing_explanation: [],
+    evidence_used: [],
+    links: [],
+    limitations: [],
+    data_freshness: 'Current system records available to this request.',
+    source_tables: [],
+    action_drafts: [],
   };
 }
 

@@ -147,6 +147,13 @@ const INTENT_PATTERNS: Array<{ intent: ChatIntent; patterns: RegExp[] }> = [
       /\bwhy is .* high risk\b/i,
       /\boverdue pm\b/i,
       /\bdecision support\b/i,
+      /\bmetric\b/i,
+      /\bdata source\b/i,
+      /\btelemetry\b/i,
+      /\busage\b/i,
+      /\boffline sync\b/i,
+      /\bqr\b/i,
+      /\breport\b/i,
     ],
   },
   {
@@ -235,6 +242,36 @@ const CAPABILITY_KEYWORDS: Array<{ capability: CapabilityId; patterns: RegExp[];
     capability: 'disposal_status',
     patterns: [/\bdisposal status\b/i, /\bdisposal requests?\b/i, /\basset disposal\b/i, /\bend of life\b/i],
     baseScore: 0.76,
+  },
+  {
+    capability: 'qr_asset_context',
+    patterns: [/\bqr\b/i, /\bscan evidence\b/i, /\bqr coverage\b/i, /\blabel status\b/i],
+    baseScore: 0.8,
+  },
+  {
+    capability: 'offline_sync_status',
+    patterns: [/\boffline sync\b/i, /\bsync conflicts?\b/i, /\bfailed sync\b/i, /\breplay queue\b/i],
+    baseScore: 0.8,
+  },
+  {
+    capability: 'report_summary',
+    patterns: [/\breport summary\b/i, /\bsummarize.*report\b/i, /\bexplain.*report\b/i],
+    baseScore: 0.76,
+  },
+  {
+    capability: 'metric_debug',
+    patterns: [/\bwhy.*metric.*0\b/i, /\bwhy.*metric\b/i, /\bdata source feeds\b/i, /\bsource feeds this card\b/i, /\bwhich data source\b/i],
+    baseScore: 0.84,
+  },
+  {
+    capability: 'copilot_diagnostics',
+    patterns: [/\bcopilot diagnostics?\b/i, /\bgemini smoke test\b/i, /\brun gemini\b/i, /\breview copilot telemetry\b/i, /\bwhy.*classified\b/i],
+    baseScore: 0.86,
+  },
+  {
+    capability: 'usage_status',
+    patterns: [/\bai usage\b/i, /\bgemini usage\b/i, /\btoken usage\b/i, /\busage limit\b/i],
+    baseScore: 0.82,
   },
 ];
 

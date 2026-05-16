@@ -1,9 +1,9 @@
 'use client';
 
-import { createContext, useContext, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
 import { usePathname } from 'next/navigation';
 import { sendChatMessage } from '@/services/chatbot/chat-client.service';
-import type { AssistantContent, ChatContextRefs, ChatDecision } from '@/types/chatbot';
+import type { AssistantContent, ChatContextRefs, ChatDecision, ChatModuleContext, ChatResponse } from '@/types/chatbot';
 import { useToast } from '@/components/ui/Toast';
 import { normalizeAssistantPayloadForUi } from '@/services/chatbot/chat-response-normalizer';
 import { buildAiUnavailableAssistant } from '@/services/chatbot/providers/normalize-provider-output';
@@ -23,7 +23,14 @@ export interface AssistantUiMessage {
 export interface AssistantLaunchOptions {
   moduleLabel?: string;
   contextRefs?: ChatContextRefs;
+  moduleContext?: ChatModuleContext;
+  quickPrompts?: string[];
   seedPrompt?: string;
+}
+
+export interface AssistantRegisteredPageContext extends ChatModuleContext {
+  contextRefs?: ChatContextRefs;
+  quickPrompts?: string[];
 }
 
 interface AssistantContextValue {
@@ -32,12 +39,19 @@ interface AssistantContextValue {
   draftInput: string;
   activeSessionId?: string;
   messages: AssistantUiMessage[];
+  usageStatus?: ChatResponse['usageStatus'];
   moduleLabel: string;
   contextRefs?: ChatContextRefs;
+  registeredPageContext?: AssistantRegisteredPageContext;
+  pageQuickPrompts: string[];
+  selectedEntityContext?: string;
+  contextLastUpdatedAt?: string;
   openAssistant: (options?: AssistantLaunchOptions) => void;
   closeAssistant: () => void;
   sendMessage: (message?: string) => Promise<void>;
   setDraftInput: (value: string) => void;
+  setPageContext: (context: AssistantRegisteredPageContext) => void;
+  clearPageContext: () => void;
   clearContextRefs: () => void;
   startNewSession: () => void;
 }
@@ -63,17 +77,52 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
   const [draftInput, setDraftInput] = useState('');
   const [activeSessionId, setActiveSessionId] = useState<string | undefined>();
   const [messages, setMessages] = useState<AssistantUiMessage[]>([]);
+  const [usageStatus, setUsageStatus] = useState<ChatResponse['usageStatus']>();
   const [contextRefs, setContextRefs] = useState<ChatContextRefs | undefined>();
   const routeModuleLabel = useMemo(() => mapModuleFromPathname(pathname), [pathname]);
   const [moduleLabel, setModuleLabel] = useState(routeModuleLabel);
+  const [registeredPageContext, setRegisteredPageContext] = useState<AssistantRegisteredPageContext | undefined>();
+  const [contextLastUpdatedAt, setContextLastUpdatedAt] = useState<string | undefined>();
+
+  const effectiveModuleLabel = registeredPageContext?.moduleLabel ?? moduleLabel;
+  const effectiveContextRefs = contextRefs ?? registeredPageContext?.contextRefs;
+  const pageQuickPrompts = registeredPageContext?.quickPrompts ?? [];
+  const selectedEntityContext = registeredPageContext?.selectedRecordLabel ?? registeredPageContext?.pageLabel;
+
+  const setPageContext = useCallback((context: AssistantRegisteredPageContext) => {
+    setRegisteredPageContext(context);
+    setContextLastUpdatedAt(new Date().toISOString());
+  }, []);
+
+  const clearPageContext = useCallback(() => {
+    setRegisteredPageContext(undefined);
+    setContextLastUpdatedAt(undefined);
+  }, []);
 
   const openAssistant = (options?: AssistantLaunchOptions) => {
     setIsOpen(true);
-    setModuleLabel(options?.moduleLabel ?? routeModuleLabel);
+    void fetch('/api/chat')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((json) => {
+        if (json && typeof json === 'object' && 'requestsToday' in json) {
+          setUsageStatus(json as ChatResponse['usageStatus']);
+        }
+      })
+      .catch(() => undefined);
+    setModuleLabel(options?.moduleLabel ?? registeredPageContext?.moduleLabel ?? routeModuleLabel);
     if (options?.contextRefs) {
       setContextRefs(options.contextRefs);
     } else if (options) {
       setContextRefs(undefined);
+    }
+    if (options?.moduleContext) {
+      setRegisteredPageContext({
+        ...registeredPageContext,
+        ...options.moduleContext,
+        contextRefs: options.contextRefs ?? registeredPageContext?.contextRefs,
+        quickPrompts: options.quickPrompts ?? registeredPageContext?.quickPrompts,
+      });
+      setContextLastUpdatedAt(new Date().toISOString());
     }
     if (options?.seedPrompt) {
       setDraftInput(options.seedPrompt);
@@ -104,19 +153,24 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
     setSending(true);
 
     try {
+      const pageModuleContext = { ...(registeredPageContext ?? {}) };
+      delete (pageModuleContext as Partial<AssistantRegisteredPageContext>).contextRefs;
+      delete (pageModuleContext as Partial<AssistantRegisteredPageContext>).quickPrompts;
       const response = await sendChatMessage({
         message: text,
         sessionId: activeSessionId,
-        contextRefs,
+        contextRefs: effectiveContextRefs,
         moduleContext: {
-          moduleLabel,
+          ...pageModuleContext,
+          moduleLabel: effectiveModuleLabel,
           pathname,
           route: pathname,
-          pageLabel: moduleLabel,
+          pageLabel: registeredPageContext?.pageLabel ?? effectiveModuleLabel,
         },
       });
 
       setActiveSessionId(response.sessionId);
+      setUsageStatus(response.usageStatus);
       const assistantNormalized = normalizeAssistantPayloadForUi(
         response.assistant,
         undefined,
@@ -158,12 +212,19 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
         draftInput,
         activeSessionId,
         messages,
-        moduleLabel,
-        contextRefs,
+        usageStatus,
+        moduleLabel: effectiveModuleLabel,
+        contextRefs: effectiveContextRefs,
+        registeredPageContext,
+        pageQuickPrompts,
+        selectedEntityContext,
+        contextLastUpdatedAt,
         openAssistant,
         closeAssistant,
         sendMessage,
         setDraftInput,
+        setPageContext,
+        clearPageContext,
         clearContextRefs,
         startNewSession,
       }}

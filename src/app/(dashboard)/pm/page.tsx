@@ -18,6 +18,7 @@ import {
   UserRound,
 } from 'lucide-react';
 import { PageHeader, DataTable, Table, Button, Badge, Spinner } from '@/components/ui';
+import AssistantPageContextBridge from '@/components/assistant/AssistantPageContextBridge';
 import { PMStatusBadge } from '@/components/ui/StatusBadge';
 import { getPMPlans, getPMSchedules, getOverduePMSchedules } from '@/services/pm.service';
 import { generateNextPMScheduleAction, pausePMPlanAction, resumePMPlanAction } from '@/actions/pm.actions';
@@ -672,6 +673,30 @@ export default function PMPage() {
 
   return (
     <div className="space-y-6">
+      <AssistantPageContextBridge
+        moduleLabel="Preventive Maintenance"
+        pageLabel="PM control center"
+        activeTab={activeTab}
+        currentFilters={{
+          departmentId: departmentFilter || null,
+          planFilter,
+          scheduleFilter,
+          overdueFilter,
+        }}
+        pageSummary="Preventive maintenance page with PM plans, active schedules, overdue tasks, assignment state, and compliance signals."
+        visibleCounts={{
+          plans: plans.length,
+          schedules: schedules.length,
+          overdue: overdueRaw.length,
+          visiblePlans: filteredPlans.length,
+          visibleSchedules: filteredSchedules.length,
+          visibleOverdue: filteredOverdue.length,
+          activeTasks: scheduleMetrics.activeTasks,
+          unassigned: scheduleMetrics.unassigned,
+        }}
+        availableEvidenceLinks={[{ label: 'PM', href: '/pm', type: 'module' }, { label: 'Calendar', href: '/calendar?type=pm', type: 'calendar' }]}
+        quickPrompts={['Which PM items are urgent?', 'Explain overdue PM concerns.', 'Which PM work should be assigned first?']}
+      />
       <PageHeader
         title="Preventive Maintenance"
         description="Planned-maintenance control center for PM plans, schedules, overdue work, assignment, and compliance impact."
