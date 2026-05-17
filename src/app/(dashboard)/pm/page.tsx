@@ -17,8 +17,9 @@ import {
   RefreshCw,
   UserRound,
 } from 'lucide-react';
-import { PageHeader, DataTable, Table, Button, Badge, Spinner } from '@/components/ui';
+import { PageHeader, DataTable, Table, Button, Badge, Spinner, AssetFilterChip } from '@/components/ui';
 import AssistantPageContextBridge from '@/components/assistant/AssistantPageContextBridge';
+import { useAssetFilter } from '@/hooks/useAssetFilter';
 import { PMStatusBadge } from '@/components/ui/StatusBadge';
 import { getPMPlans, getPMSchedules, getOverduePMSchedules } from '@/services/pm.service';
 import { generateNextPMScheduleAction, pausePMPlanAction, resumePMPlanAction } from '@/actions/pm.actions';
@@ -240,6 +241,7 @@ export default function PMPage() {
   const { toast } = useToast();
   const { isAdmin, isBmeHead } = useRole();
   const canManagePlans = isAdmin || isBmeHead;
+  const assetFilter = useAssetFilter();
 
   const [activeTab, setActiveTab] = useState<TabId>('plans');
   const [planFilter, setPlanFilter] = useState<PlanFilter>('all');
@@ -422,6 +424,7 @@ export default function PMPage() {
   }, [plans, scheduleMetrics.deptCompliance]);
 
   const filteredPlans = useMemo(() => plans.filter((row) => {
+    if (assetFilter.assetId && row.asset_id !== assetFilter.assetId) return false;
     if (departmentFilter && row.department_id !== departmentFilter) return false;
     if (planFilter === 'active') return row.is_active;
     if (planFilter === 'inactive') return !row.is_active;
@@ -429,9 +432,10 @@ export default function PMPage() {
     if (planFilter === 'low_compliance') return row.department_id ? lowComplianceDeptIds.has(row.department_id) : false;
     if (planFilter === 'critical') return row.criticality === 'high' || row.criticality === 'critical';
     return true;
-  }), [departmentFilter, lowComplianceDeptIds, planFilter, plans]);
+  }), [assetFilter.assetId, departmentFilter, lowComplianceDeptIds, planFilter, plans]);
 
   const filteredSchedules = useMemo(() => schedules.filter((row) => {
+    if (assetFilter.assetId && row.asset_id !== assetFilter.assetId) return false;
     if (departmentFilter && row.department_id !== departmentFilter) return false;
     if (scheduleFilter === 'active') return isActivePMTask(row.status);
     if (scheduleFilter === 'scheduled') return row.status === 'scheduled';
@@ -442,9 +446,10 @@ export default function PMPage() {
     if (scheduleFilter === 'skipped_deferred') return row.status === 'skipped' || row.status === 'deferred';
     if (scheduleFilter === 'low_compliance') return row.department_id ? lowComplianceDeptIds.has(row.department_id) : false;
     return true;
-  }), [departmentFilter, lowComplianceDeptIds, scheduleFilter, schedules]);
+  }), [assetFilter.assetId, departmentFilter, lowComplianceDeptIds, scheduleFilter, schedules]);
 
   const filteredOverdue = useMemo(() => overdueRaw.filter((row) => {
+    if (assetFilter.assetId && (row as { asset_id?: string | null }).asset_id !== assetFilter.assetId) return false;
     if (departmentFilter && !schedules.some((schedule) => schedule.id === row.id && schedule.department_id === departmentFilter)) return false;
     const critical = row.criticality_level === 'high' || row.criticality_level === 'critical';
     if (overdueFilter === 'critical') return critical;
@@ -453,7 +458,7 @@ export default function PMPage() {
     if (overdueFilter === '90_plus') return row.days_overdue >= 90;
     if (overdueFilter === 'department_critical') return critical || lowComplianceDeptIds.size > 0;
     return true;
-  }), [departmentFilter, lowComplianceDeptIds.size, overdueFilter, overdueRaw, schedules]);
+  }), [assetFilter.assetId, departmentFilter, lowComplianceDeptIds.size, overdueFilter, overdueRaw, schedules]);
 
   const summaryCards = [
     { id: 'active_plans', label: 'Active PM Plans', sublabel: 'Enabled recurring PM plans', count: plans.filter((p) => p.is_active).length, icon: ClipboardCheck, tab: 'plans' as TabId, planFilter: 'active' as PlanFilter },
@@ -725,6 +730,14 @@ export default function PMPage() {
           </div>
         }
       />
+
+      {assetFilter.assetId ? (
+        <AssetFilterChip
+          asset={assetFilter.asset}
+          clearHref={assetFilter.clearHref}
+          source={assetFilter.source}
+        />
+      ) : null}
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {summaryCards.map((card) => {

@@ -1458,3 +1458,14 @@ One active corrective maintenance request per asset is the rule.
 9. Developer Lab Copilot Diagnostics adds an Action Drafts Executed Today metric and per-kind breakdown derived from `audit_logs` rows.
 10. Tests: `src/services/chatbot/__tests__/copilot-action-drafts.test.ts` covers role gating, department scoping, intent matching, Zod validity, and offline mapping. 129/129 chatbot tests pass.
 11. No new migration. Audit metadata uses `audit_logs.details` jsonb. No new offline action types. Existing server actions remain the authority for RLS, validation, audit, and revalidation.
+
+## AI Copilot Quality/Grounding Pass (2026-05-16)
+
+1. Copilot answers must follow the tool/data-first path: role + page/entity context → scoped BMERMS tools/services → deterministic answer candidate → Gemini naturalization → response normalization → usefulness guard. BMERMS data and current page context are the source of truth.
+2. Deterministic builders live in `src/services/chatbot/deterministic-answer-builders.ts`; they cover operational priority, asset context, work orders, department readiness, stock blockers, viewer summaries, developer diagnostics, safe troubleshooting, reports, offline sync, QR asset context, and RPN/MTTR/MTBF/PM compliance concepts.
+3. `src/services/chatbot/response-usefulness-guard.ts` replaces generic/failure-style provider output with deterministic system-data answers when evidence exists. Gemini failure and hard-limit paths should prefer retrieved system context before showing unavailable copy.
+4. Classifier/page-aware routing now handles normal chat, "how do I use this page", page summaries, QR asset questions, reports, offline conflicts, stock blockers, priority questions, safe troubleshooting, and developer diagnostic phrasing.
+5. Action cards are rare: summary/explain/prioritize/evidence questions must not show mutation drafts. Drafts require explicit create/draft/request/report/log/reorder/write/submit/queue intent. Viewer never receives mutation drafts.
+6. Normal users see natural paragraphs, compact evidence chips, and useful next steps. Provider/parser/classifier/tool traces stay hidden from normal roles; developer debug remains collapsed and can expose routing/tools/provider/parser details.
+7. Troubleshooting remains safe first-line only: external inspection, power/accessories, visible damage, battery, ventilation, cleaning, error observation, PM/calibration/history, and escalation criteria. Never provide bypass, service mode, firmware, internal board, hidden-menu, or manufacturer-specific calibration steps.
+8. Chatbot tests now include deterministic builder/usefulness-guard coverage; current count after this pass is 137/137.

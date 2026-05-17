@@ -7,6 +7,7 @@ import { ThemeProvider } from '@/components/theme/ThemeProvider';
 import ThemeScript from '@/components/theme/ThemeScript';
 import { getServerThemeFromPreference, isThemePreference, THEME_COOKIE_KEY } from '@/components/theme/theme-contract';
 import ServiceWorkerRegister from '@/components/offline/ServiceWorkerRegister';
+import QueryProvider from '@/providers/QueryProvider';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -49,7 +50,9 @@ export default async function RootLayout({
         <ThemeScript />
         <ThemeProvider>
           <ServiceWorkerRegister />
-          {children}
+          <QueryProvider>
+            {children}
+          </QueryProvider>
         </ThemeProvider>
       </body>
     </html>

@@ -84,6 +84,15 @@ export type QrCalibrationRecordRow = {
   updated_at: string | null;
 };
 
+export type QrCalibrationRequestRow = {
+  id: string;
+  request_number: string | null;
+  status: string | null;
+  urgency: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+};
+
 export type QrMaintenanceEventRow = {
   id: string;
   event_type: string | null;
@@ -169,6 +178,7 @@ export type QrRoleContext = {
     latest: QrCalibrationRecordRow | null;
     recent: QrCalibrationRecordRow[];
     state: 'overdue' | 'due_soon' | 'current' | 'no_history' | 'unavailable';
+    openRequests: QrCalibrationRequestRow[];
   };
   parts: {
     stockIssues: QrStockIssueRow[];
@@ -257,7 +267,7 @@ function baseContext(asset: QrLandingAsset, roleCategory: QrRoleCategory): QrRol
     requests: { open: [], department: [], mine: [] },
     workOrders: { open: [], assignedToMe: [], otherOpen: [], onHold: [], completedRecent: [] },
     pm: { active: [], overdue: [], assignedToMe: [] },
-    calibration: { latest: null, recent: [], state: 'unavailable' },
+    calibration: { latest: null, recent: [], state: 'unavailable', openRequests: [] },
     parts: { stockIssues: [], procurementLinks: [], stockFlags: [], hasDirectStockEvidence: false },
     history: { maintenanceEvents: [], completedWorkOrders: [], calibrationRecords: [] },
     decisionSupport: { risk: null, replacement: null },
@@ -502,6 +512,28 @@ export async function getQrRoleContext({
   context.calibration.recent = calibrationRows;
   context.calibration.latest = calibrationRows[0] ?? null;
   context.calibration.state = calibrationState(context.calibration.latest);
+
+  // Source table: calibration_requests. Used for "open calibration request"
+  // routing in the QR action builder — when present, calibration row actions
+  // open the exact pending/approved request instead of a filtered list.
+  context.calibration.openRequests = await runQuery(health, 'calibration_requests', async () => {
+    const { data, error } = await supabase
+      .from('calibration_requests')
+      .select('id, request_number, status, urgency, created_at, updated_at')
+      .eq('asset_id', asset.id)
+      .in('status', ['pending', 'approved', 'in_progress'])
+      .order('created_at', { ascending: false })
+      .limit(10);
+    if (error) throw error;
+    return ((data ?? []) as Array<Record<string, unknown>>).map((row) => ({
+      id: String(row.id),
+      request_number: asText(row.request_number),
+      status: asText(row.status),
+      urgency: asText(row.urgency),
+      created_at: asText(row.created_at),
+      updated_at: asText(row.updated_at),
+    }));
+  }, []);
 
   // Source table: maintenance_events. Used as service history evidence only.
   const maintenanceEvents = await runQuery(health, 'maintenance_events', async () => {

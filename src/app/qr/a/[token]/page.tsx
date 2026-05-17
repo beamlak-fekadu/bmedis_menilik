@@ -23,6 +23,7 @@ import QrAssetLandingPage from './QrAssetLandingPage';
 import QrLandingClientShell from './QrLandingClientShell';
 
 type RouteParams = Promise<{ token: string }>;
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 // Always render fresh — scans should reflect live asset state, and we record
 // a scan row per successful authenticated resolution.
@@ -56,6 +57,8 @@ export default async function QrLandingRoute({ params }: { params: RouteParams }
   }
 
   const asset = resolution.asset;
+  const chatDepartmentId =
+    asset.department_id && UUID_RE.test(asset.department_id) ? asset.department_id : undefined;
   const profileContext = {
     id: profile.id as string,
     full_name: (profile.full_name as string | null) ?? null,
@@ -99,7 +102,7 @@ export default async function QrLandingRoute({ params }: { params: RouteParams }
       <AssistantPageContextBridge
         moduleLabel="QR Field Scan"
         pageLabel={`${asset.asset_code} · ${asset.name}`}
-        contextRefs={{ equipmentId: asset.id, departmentId: asset.department_id ?? undefined }}
+        contextRefs={{ equipmentId: asset.id, departmentId: chatDepartmentId }}
         selectedRecordType="equipment"
         selectedRecordId={asset.id}
         selectedRecordLabel={`${asset.asset_code} · ${asset.name}`}

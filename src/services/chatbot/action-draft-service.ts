@@ -21,22 +21,20 @@ import {
 // The copilot suggests drafts only when the user message clearly intends one.
 // Drafts are PROPOSALS — server validation + user confirmation still gate execution.
 const MAINTENANCE_INTENT_PATTERNS = [
-  /\b(?:create|log|file|open|submit|draft|report|raise)\s+(?:a\s+)?(?:maintenance|repair|corrective|fault|issue)\b/i,
-  /\b(?:not working|broken|won['’]?t|doesn['’]?t|stopped|failed|fault(?:y)?|error)\b/i,
-  /\bneed(?:s)?\s+(?:repair|fix|service|maintenance)\b/i,
+  /\b(?:create|request|log|file|open|submit|draft|report|raise)\s+(?:a\s+)?(?:maintenance|repair|corrective|fault|issue|problem)\b/i,
+  /\bhelp me (?:report|file|submit|raise)\b.*\b(?:problem|issue|fault|maintenance|repair)\b/i,
+  /\b(?:create|request|file|submit|draft|raise)\b.*\b(?:maintenance request|corrective request|repair request)\b/i,
 ];
 const CALIBRATION_INTENT_PATTERNS = [
   /\b(?:create|request|schedule|draft|raise|submit)\s+(?:a\s+)?calibration\b/i,
-  /\bneeds?\s+calibration\b/i,
-  /\bdue\s+for\s+calibration\b/i,
 ];
 const TRAINING_INTENT_PATTERNS = [
   /\b(?:request|need|schedule|draft)\s+(?:training|in[- ]?service|orientation)\b/i,
   /\btraining\s+(?:on|for|request)\b/i,
 ];
 const REORDER_INTENT_PATTERNS = [
-  /\b(?:reorder|re-order|restock|order|procurement|procure|purchase)\b/i,
-  /\b(?:stockout|stock out|out of stock|low stock)\b/i,
+  /\b(?:create|draft|submit|request|raise|prepare)\b.*\b(?:reorder|re-order|restock|procurement|purchase|procure)\b/i,
+  /\b(?:reorder|re-order|restock|procure|purchase)\b/i,
 ];
 const MAINTENANCE_NOTE_PATTERNS = [
   /\b(?:log|record|add|draft)\s+(?:a\s+)?(?:maintenance|service|repair|inspection)\s+(?:note|event|entry)\b/i,
@@ -52,8 +50,12 @@ const DEPARTMENT_REPORT_PATTERNS = [
 ];
 
 const SUMMARY_INTENT_PATTERNS = [
-  /\b(?:summary|summarize|summarise|brief|overview|recap)\b/i,
-  /\bprepare\s+(?:a\s+)?(?:report|note|update|brief)\b/i,
+  /\b(?:write|draft|prepare|copy|compose|rewrite)\b.*\b(?:summary|note|update|brief|director|management)\b/i,
+  /\bmake this (?:shorter|clearer|more formal)\b/i,
+];
+const OPEN_RECORD_PATTERNS = [
+  /\b(?:open|show|take me to|go to)\b.*\b(?:asset|record|evidence|profile)\b/i,
+  /\bopen the evidence\b/i,
 ];
 
 interface DraftBuildContext {
@@ -384,6 +386,7 @@ function buildOpenRecordDraft(ctx: DraftBuildContext): CopilotActionDraft | null
   // Convenience open-record draft when the user references a specific asset/work order.
   const assetId = ctx.contextRefs?.equipmentId ?? ctx.moduleContext?.selectedRecordId;
   if (!assetId) return null;
+  if (!matchesAny(ctx.message, OPEN_RECORD_PATTERNS)) return null;
   if (ctx.moduleContext?.selectedRecordType !== 'equipment_asset' && !ctx.contextRefs?.equipmentId) return null;
   return safeDraft({
     kind: 'open_record',

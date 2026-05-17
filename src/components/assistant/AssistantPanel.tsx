@@ -150,9 +150,13 @@ export function AssistantPanel() {
       />
 
       <aside
-        className={`assistant-panel fixed bottom-0 right-0 top-0 z-[82] w-full max-w-xl transform border-l border-[var(--assistant-accent-soft)] transition-transform duration-200 ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Assistant"
+        className={`assistant-panel fixed bottom-0 right-0 top-0 z-[82] w-full max-w-xl transform border-l border-[var(--border-subtle)] transition-transform duration-200 ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}
+        style={{ height: '100dvh' }}
       >
-        <div className="assistant-panel-surface flex h-full flex-col">
+        <div className="assistant-panel-surface flex h-full min-h-0 flex-col text-[var(--foreground)]">
           <div className="flex items-center justify-between border-b border-[var(--assistant-accent-soft)] px-4 py-3">
             <div className="inline-flex items-center gap-2">
               <MessageSquareText className="h-4 w-4 text-[var(--assistant-accent)]" />
@@ -163,7 +167,7 @@ export function AssistantPanel() {
                 <Plus className="h-4 w-4" />
                 New chat
               </Button>
-              <Button variant="ghost" size="icon" onClick={closeAssistant}>
+              <Button variant="ghost" size="icon" onClick={closeAssistant} aria-label="Close assistant">
                 <X className="h-4 w-4" />
               </Button>
             </div>
@@ -199,7 +203,7 @@ export function AssistantPanel() {
             )}
           </div>
 
-          <div className="space-y-3 border-t border-[var(--assistant-accent-soft)] px-4 py-4">
+          <div className="space-y-3 border-t border-[var(--assistant-accent-soft)] px-4 py-3 pb-[max(env(safe-area-inset-bottom),0.75rem)]">
             {usageStatus && (
               <div className={`rounded-md border px-2 py-1 text-xs ${
                 usageStatus.hardLimited
@@ -239,8 +243,8 @@ export function AssistantPanel() {
               value={draftInput}
               onChange={(event) => setDraftInput(event.target.value)}
               onKeyDown={onInputKeyDown}
-              placeholder="Ask for safe operational guidance..."
-              className="border-[var(--assistant-accent-soft)] bg-[var(--surface-1)]"
+              placeholder="Ask anything about equipment, work orders, PM, calibration, stock, or troubleshooting..."
+              className="border-[var(--border-subtle)] bg-[var(--assistant-surface-elev)]"
               disabled={sending}
             />
             <div className="flex justify-end">

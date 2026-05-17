@@ -36,39 +36,40 @@ export default function Topbar({
   // like "bme_head" never appear in the Topbar.
   const subtitle = userJobTitle?.trim() ? userJobTitle : formatRoleName(userRole);
   return (
-    <header className="panel-surface-muted flex h-16 items-center justify-between border-b border-[var(--border-subtle)] px-4 lg:px-6">
-      <div className="flex items-center gap-3">
+    <header className="panel-surface-muted flex h-16 min-w-0 items-center justify-between gap-2 border-b border-[var(--border-subtle)] px-3 sm:px-4 lg:px-6">
+      <div className="flex min-w-0 items-center gap-2 sm:gap-3">
         {onMenuToggle && (
           <button
             onClick={onMenuToggle}
+            aria-label="Open navigation menu"
             className="rounded-lg p-2 text-[var(--text-muted)] transition-colors hover:bg-[var(--surface-1)] lg:hidden"
           >
             <Menu className="h-5 w-5" />
           </button>
         )}
-        <div>
-          <p className="text-[10px] uppercase tracking-[0.12em] text-[var(--text-subtle)]">
+        <div className="min-w-0">
+          <p className="truncate text-[10px] uppercase tracking-[0.12em] text-[var(--text-subtle)]">
             {HOSPITAL_NAME}
           </p>
-          <h2 className="text-sm font-semibold tracking-tight text-[var(--foreground)]">
+          <h2 className="truncate text-sm font-semibold tracking-tight text-[var(--foreground)]">
             {APP_NAME_SHORT}
           </h2>
         </div>
       </div>
 
-      <div className="hidden min-w-[260px] items-center gap-2 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-1)] px-3 py-2 text-sm text-[var(--text-muted)] backdrop-blur md:flex lg:min-w-[360px]">
+      <div className="hidden min-w-[260px] items-center gap-2 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-1)] px-3 py-2 text-sm text-[var(--text-muted)] backdrop-blur lg:flex lg:min-w-[360px]">
         <Search className="h-4 w-4" />
-        <span>Search equipment, requests, work orders...</span>
+        <span className="truncate">Search equipment, requests, work orders...</span>
         <span className="ml-auto rounded border border-[var(--border-subtle)] bg-[var(--surface-2)] px-1.5 py-0.5 font-mono text-[10px] text-[var(--text-subtle)]">
           ⌘K
         </span>
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex shrink-0 items-center gap-1 sm:gap-2">
         <SyncStatusIndicator userRoles={userRoles} />
         <AssistantLauncher />
         <ThemeToggle />
-        <Button variant="ghost" size="icon" className="relative">
+        <Button variant="ghost" size="icon" className="relative" aria-label={`Alerts${alertCount > 0 ? ` (${alertCount > 9 ? '9+' : alertCount})` : ''}`}>
           <Bell className="h-5 w-5 text-[var(--text-muted)]" />
           {alertCount > 0 && (
             <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-[var(--danger)] text-[10px] font-bold text-white">
@@ -79,13 +80,16 @@ export default function Topbar({
 
         <Dropdown
           trigger={
-            <button className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-[var(--foreground)] transition-colors hover:bg-[var(--surface-1)]">
-              <div className="flex h-8 w-8 items-center justify-center rounded-full text-white" style={{ background: 'var(--brand-gradient)' }}>
+            <button
+              aria-label={`Account: ${userName}`}
+              className="flex max-w-[40vw] items-center gap-2 rounded-lg px-2 py-2 text-sm text-[var(--foreground)] transition-colors hover:bg-[var(--surface-1)] sm:max-w-none sm:px-3"
+            >
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-white" style={{ background: 'var(--brand-gradient)' }}>
                 <User className="h-4 w-4" />
               </div>
-              <div className="hidden text-left md:block">
-                <p className="font-medium">{userName}</p>
-                <p className="text-xs text-[var(--text-muted)]">{subtitle}</p>
+              <div className="hidden min-w-0 text-left md:block">
+                <p className="truncate font-medium">{userName}</p>
+                <p className="truncate text-xs text-[var(--text-muted)]">{subtitle}</p>
               </div>
             </button>
           }

@@ -800,6 +800,17 @@ recompute_equipment_analytics() and recompute_all_equipment_analytics() in migra
 10. Tests: 7 new tests in `src/services/chatbot/__tests__/copilot-action-drafts.test.ts` cover viewer-no-mutation, BME-head maintenance draft Zod validity, department-scope auto-binding, technician event note, store reorder, non-mutation intent has no mutation drafts, and offline-capable kind mapping. Total chatbot tests: 129/129 pass.
 11. No new database migration in Phase 3. Audit metadata uses existing `audit_logs.details` jsonb. Existing chat session/message persistence is unchanged.
 
+## AI Copilot Quality/Grounding Pass (2026-05-16)
+
+1. The copilot answer pipeline is now tool/data-first: role + page/entity context → scoped BMERMS tool retrieval → deterministic answer candidate → Gemini naturalization → normalization → usefulness guard. BMERMS records and page/tool context are the source of truth; Gemini must not invent operational facts.
+2. Deterministic builders live in `src/services/chatbot/deterministic-answer-builders.ts` and cover operational priority, asset context, work orders, department readiness, stock blockers, viewer summaries, developer diagnostics, safe troubleshooting, reports, offline sync, QR asset context, and common concepts (RPN/MTTR/MTBF/PM compliance).
+3. `src/services/chatbot/response-usefulness-guard.ts` replaces/augments generic, failure-style, or low-evidence provider output when system evidence exists. Provider failure/hard-limit paths now prefer deterministic system-data answers before user-facing AI-unavailable copy.
+4. Classifier/page-aware routing was expanded for normal chat, page summaries, QR asset pages, reports, offline sync conflicts, stock blockers, prioritization, troubleshooting, and developer diagnostic phrasing.
+5. Action drafts are rarer: summary/explain/prioritize/evidence questions do not show draft cards. Draft cards require explicit create/draft/request/report/log/reorder/write/submit/queue-style intent. Viewer remains read-only.
+6. Gemini prompt now requires natural copilot language, compact evidence, role-safe answer depth, no "I think/probably/maybe" phrasing for grounded answers, safe first-line troubleshooting only, and no provider/parser/classifier/tool-trace clutter for normal roles.
+7. Assistant UI uses opaque assistant surfaces and natural chat rendering; normal users see paragraphs, compact evidence chips, useful next steps, and action cards only when requested. Developer-only debug remains collapsed.
+8. Tests added in `src/services/chatbot/__tests__/deterministic-answer-builders.test.ts`; chatbot test count is now 137/137.
+
 ## Offline Capability — Phase 2 Role Workflows (2026-05-16)
 
 1. Phase 2 wires selected low-risk workflows through `runOfflineCapableAction()`. Do not route risky authority actions through this helper.

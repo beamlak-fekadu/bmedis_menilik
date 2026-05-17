@@ -1,16 +1,17 @@
 import { AssistantContentSchema, type AssistantContent, type ChatDecision } from '@/types/chatbot';
 
 export const FALLBACK_SUMMARY =
-  "I couldn't generate a reliably structured response from the AI provider. Please try again or use the equipment manual/escalation path.";
+  "I could not load the structured details for that request right now. Try rephrasing, or open the asset, work order, or report page and ask again.";
 
-export const AI_UNAVAILABLE_SUMMARY = 'AI temporarily unavailable';
-export const AI_UNAVAILABLE_SUGGESTION = 'Try again shortly';
+export const AI_UNAVAILABLE_SUMMARY =
+  "The AI service is busy at the moment. Try again in a few seconds, or open the related asset, work order, or report page to keep working.";
+export const AI_UNAVAILABLE_SUGGESTION = 'Try again in a few seconds';
 
 function buildSafeFallback(requiredDecision: ChatDecision): AssistantContent {
   const fallbackDecision: ChatDecision = requiredDecision === 'answer' ? 'limited_answer' : requiredDecision;
   return {
     decision: fallbackDecision,
-    title: 'Operational guidance unavailable',
+    title: 'I need a bit more context',
     summary: FALLBACK_SUMMARY,
     key_findings: [],
     recommended_actions: [],
@@ -50,7 +51,7 @@ export function buildAiUnavailableAssistant(requiredDecision: ChatDecision): Ass
     requiredDecision === 'refuse' || requiredDecision === 'escalate' ? 'limited_answer' : requiredDecision;
   const candidate: AssistantContent = {
     decision,
-    title: 'Service notice',
+    title: 'One moment',
     summary: AI_UNAVAILABLE_SUMMARY,
     key_findings: [],
     recommended_actions: [],
@@ -73,7 +74,7 @@ export function buildAiUnavailableAssistant(requiredDecision: ChatDecision): Ass
     source_tables: [],
     action_drafts: [],
     intelligence_mode: undefined,
-    reason_for_limit: 'The AI service could not complete this request. You can retry in a moment.',
+    reason_for_limit: 'Provider call did not complete; retry will most likely succeed.',
     answer_basis: 'insufficient_data',
     confidence: 'low',
     escalation_required: false,

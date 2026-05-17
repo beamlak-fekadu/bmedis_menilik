@@ -2,6 +2,8 @@
 
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
+import AssetFilterChip from '@/components/ui/AssetFilterChip';
+import { useAssetFilter } from '@/hooks/useAssetFilter';
 import {
   ClipboardList,
   FileSearch,
@@ -84,6 +86,7 @@ export default function RequestsHubClient({ data }: { data: RequestsHubData }) {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const pageSize = 12;
+  const assetFilter = useAssetFilter();
 
   const departments = useMemo(() => {
     const seen = new Map<string, string>();
@@ -95,13 +98,14 @@ export default function RequestsHubClient({ data }: { data: RequestsHubData }) {
 
   const filteredRows = useMemo(() => {
     return data.unifiedRequests.filter((row) => {
+      if (assetFilter.assetId && row.assetId !== assetFilter.assetId) return false;
       if (selectedType !== 'all' && row.type !== selectedType) return false;
       if (statusFilter !== 'all' && row.normalizedStatus !== statusFilter) return false;
       if (departmentFilter !== 'all' && row.departmentId !== departmentFilter) return false;
       if (!matchesScope(row, scopeFilter, data.roleScope.profileId, data.roleScope.departmentId)) return false;
       return searchRow(row, search);
     });
-  }, [data.roleScope.departmentId, data.roleScope.profileId, data.unifiedRequests, departmentFilter, scopeFilter, search, selectedType, statusFilter]);
+  }, [assetFilter.assetId, data.roleScope.departmentId, data.roleScope.profileId, data.unifiedRequests, departmentFilter, scopeFilter, search, selectedType, statusFilter]);
 
   const totalPages = Math.ceil(filteredRows.length / pageSize);
   const pageRows = filteredRows.slice((page - 1) * pageSize, page * pageSize);
@@ -113,6 +117,13 @@ export default function RequestsHubClient({ data }: { data: RequestsHubData }) {
 
   return (
     <div className="space-y-6">
+      {assetFilter.assetId ? (
+        <AssetFilterChip
+          asset={assetFilter.asset}
+          clearHref={assetFilter.clearHref}
+          source={assetFilter.source}
+        />
+      ) : null}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
         {data.categoryCards.map((card) => {
           const Icon = ICONS[card.type];

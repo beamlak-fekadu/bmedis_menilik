@@ -1,7 +1,9 @@
 import type { AssistantContent } from '@/types/chatbot';
 
-const DISPLAY_REPAIR_SUMMARY = 'I generated a response but it could not be displayed reliably. Please try again.';
-const EMPTY_SUMMARY = 'The assistant could not return text. Please retry or escalate via standard channels.';
+const DISPLAY_REPAIR_SUMMARY =
+  "I could not finish formatting a response. Try rephrasing, or open the relevant page (asset, work order, report) and ask again.";
+const EMPTY_SUMMARY =
+  "I do not have enough context to answer that yet. Open the asset, work order, request, or report you want help with and ask again.";
 
 export function displayableAssistantSummary(summary: string | undefined) {
   const raw = (summary ?? '').trim();

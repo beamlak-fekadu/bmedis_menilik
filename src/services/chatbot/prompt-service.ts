@@ -16,15 +16,17 @@ import { buildRoutingExplanation } from './classifier-service';
 import { buildCopilotRolePromptPolicy } from './role-prompt-policy';
 
 export const CHATBOT_SYSTEM_PROMPT = `
-You are the BMERMS hospital biomedical operations assistant embedded in a biomedical engineering resource management system.
-You only answer within medical equipment management workflows.
-Allowed scope: maintenance tips, preventive maintenance, safe first-line troubleshooting, work-order support, equipment status explanation, analytics explanation, calibration/logistics explanation.
-Never provide manufacturer-specific repair steps, exact error-code meanings, calibration service-mode procedures, board-level servicing, bypass or override instructions unless explicitly grounded in provided context.
-If context is insufficient, say:
-"I can't provide that reliably from the available information. Check the equipment manual or escalate to a qualified biomedical engineer/vendor."
-For safe first-line operational troubleshooting, prefer limited safe guidance over refusal.
-Use check-manual or escalation for exact unsupported technical specifics or unsafe requests.
-Keep responses concise, operational, and professional.
+You are BMERMS Copilot, a role-aware biomedical equipment management assistant embedded in a hospital equipment management system.
+BMERMS records, retrieved tools, current page context, scoped Supabase data, reports, QR/offline context, and deterministic system logic are the source of truth.
+Gemini is used only to explain, summarize, and draft from the provided facts. Do not invent asset status, counts, work orders, calibration state, PM compliance, stockouts, procurement state, QR evidence, usage numbers, or department readiness.
+If system records are provided, answer from them first. If a deterministicAnswerDraft is provided, treat it as the grounding skeleton and make it clearer, more natural, and more role-appropriate without changing its facts.
+Write naturally, like a useful biomedical operations copilot. Avoid raw bullet dumps unless the user asks for a list or the task is operational prioritization.
+For normal roles, do not expose routing, parser, provider, telemetry, classifier, or tool-trace details. Developer diagnostics may summarize those details only when the role policy/context allows it.
+Include compact evidence and limitations when useful. If data is missing, say exactly what could not be accessed.
+For harmless general or conceptual questions, answer normally and connect back to BMERMS when relevant.
+For troubleshooting, provide safe first-line checks only. Never provide internal board-level repair, alarm bypass, service mode, hidden-menu, firmware, component-level, or manufacturer-specific calibration steps.
+Only support action drafts when the user clearly asks to create, draft, request, report, log, reorder, write, submit, or queue something.
+Avoid phrases like "I think", "probably", or "maybe." Use "Based on current system records", "The available evidence shows", or "This is an inference because..." when needed.
 Return JSON only.
 `.trim();
 
@@ -78,7 +80,7 @@ function capabilityAddendum(capability: CapabilityId): string {
       return 'Describe BMERMS copilot capabilities briefly and operationally.';
     case 'general_conversation':
     case 'off_topic_safe':
-      return 'Give a short, harmless general response, then redirect to BMERMS help in one sentence. Do not invent system data.';
+      return 'Give a short, harmless natural response. If relevant, connect it to BMERMS help in one sentence. Do not invent system data.';
     case 'my_tasks':
       return 'Focus on commitments visible in contextBlocks (work orders, approvals, PM signals). Do not invent assignments. Prefer toolTrace.getMyTasks when present.';
     case 'prioritize_tasks':
@@ -246,11 +248,13 @@ export function buildPromptPayload(params: {
 - Provide a concise, plain-language response.
 - Do not output JSON unless explicitly requested.
 - Keep it short and safe.
-- For harmless off-topic prompts, answer briefly and add one line inviting BMERMS operational questions.
+- For harmless off-topic prompts, answer briefly and add one line inviting BMERMS operational questions only when it feels relevant.
 - Never include toolTrace, routing, telemetry, or provider metadata in the response text.`
       : `Instructions:
 - Respect requiredDecision.
 - Do not add unsupported technical details.
+- Use deterministicAnswerDraft as the factual skeleton when it is present.
+- If retrieved records exist, never answer with generic advice alone.
 - Preserve capability focus and avoid drifting into unrelated domains.
 - Keep list fields concise and practical.
 - If requiredDecision is check_manual/escalate/refuse, make summary direct and operational.
@@ -263,6 +267,8 @@ export function buildPromptPayload(params: {
 - Set escalation_guidance when escalation_required is true.
 - Keep proactive_signals concise and sparse (max 3) and never include them in summary.
 - Do not include routing metadata, matcher confidence, toolTrace, or telemetry details in summary/actions/insights/recommendations.
+- Do not show action-draft language unless the user explicitly asked to draft/create/request/log/report/reorder/write/submit/queue.
+- Do not say "couldn't generate" or "AI unavailable" when system data or deterministicAnswerDraft can answer the request.
 - Set intelligence_mode to troubleshooting when capability is safe_troubleshooting; prioritization for prioritize_tasks; synthesis for summarize_alerts; otherwise standard.
 - Return JSON only and match outputContract keys exactly.
 - Follow strict output contract:

@@ -122,7 +122,7 @@ export async function sendChatMessage(payload: {
   })();
 
   if (!json) {
-    throw new Error('The assistant response could not be displayed safely. Please try again.');
+    throw new Error('I could not load the assistant response. Try refreshing this page or opening the related asset, work order, or report and ask again.');
   }
 
   if (!response.ok) {

@@ -5,7 +5,9 @@ import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { AlertTriangle, CalendarClock, CheckCircle, ClipboardList, Gauge, Plus, ShieldAlert, Wrench } from 'lucide-react';
 import PageHeader from '@/components/ui/PageHeader';
+import AssetFilterChip from '@/components/ui/AssetFilterChip';
 import AssistantPageContextBridge from '@/components/assistant/AssistantPageContextBridge';
+import { useAssetFilter } from '@/hooks/useAssetFilter';
 import InfoPopover from '@/components/ui/InfoPopover';
 import DataTable from '@/components/ui/DataTable';
 import Tabs from '@/components/ui/Tabs';
@@ -149,8 +151,10 @@ export default function CalibrationPage() {
   const { toast } = useToast();
   const { user } = useAuth();
   const { profile } = useProfile(user?.id);
-  const { canManageMaintenance, primaryRole, roles } = useRole();
+  const { canManageMaintenance, can, primaryRole, roles } = useRole();
+  const canRequestCalibration = can('calibration.request.create');
   const searchParams = useSearchParams();
+  const assetFilter = useAssetFilter();
   const [records, setRecords] = useState<CalRecord[]>([]);
   const [requests, setRequests] = useState<CalRequest[]>([]);
   const [upcoming, setUpcoming] = useState<CalRecord[]>([]);
@@ -604,17 +608,26 @@ export default function CalibrationPage() {
 
   if (loading) return <PageLoader />;
 
+  const filterAsset = assetFilter.assetId;
+  const matchesAsset = (row: CalRecord | CalRequest): boolean => {
+    if (!filterAsset) return true;
+    const id = (row as { asset_id?: string | null }).asset_id ?? calibrationAsset(row)?.id ?? null;
+    return id === filterAsset;
+  };
+  const recordsScoped: CalRecord[] = filterAsset ? records.filter(matchesAsset) : records;
+  const requestsScoped: CalRequest[] = filterAsset ? requests.filter(matchesAsset) : requests;
+  const upcomingScoped: CalRecord[] = filterAsset ? upcoming.filter(matchesAsset) : upcoming;
   const now = new Date();
-  const overdueRows = upcoming.filter((row) => row.next_due_date && new Date(row.next_due_date as string) < now);
+  const overdueRows = upcomingScoped.filter((row) => row.next_due_date && new Date(row.next_due_date as string) < now);
   const criticalOverdueRows = overdueRows.filter(isCriticalCalibration);
-  const dueSoonRows = upcoming.filter((row) => {
+  const dueSoonRows = upcomingScoped.filter((row) => {
     if (!row.next_due_date) return false;
     const due = new Date(row.next_due_date as string);
     const days = Math.ceil((due.getTime() - now.getTime()) / 86_400_000);
     return days >= 0 && days <= 30;
   });
   const upcomingOnlyRows = dueSoonRows.filter((row) => daysFromToday(row.next_due_date) >= 0);
-  const awaitingActionRequests = requests.filter((row) => ['pending', 'approved'].includes(String(row.status ?? '')));
+  const awaitingActionRequests = requestsScoped.filter((row) => ['pending', 'approved'].includes(String(row.status ?? '')));
   const needsSchedulingRows = [...overdueRows, ...upcomingOnlyRows]
     .filter((row) => !openRequestForAsset(String(row.asset_id ?? calibrationAsset(row)?.id ?? '')))
     .sort((a, b) => daysFromToday(a.next_due_date) - daysFromToday(b.next_due_date));
@@ -624,30 +637,30 @@ export default function CalibrationPage() {
   const longestOverdueRows = [...overdueRows].sort((a, b) => daysFromToday(a.next_due_date) - daysFromToday(b.next_due_date)).slice(0, 5);
   const sortedUpcoming = [...upcomingOnlyRows].sort((a, b) => calibrationPriorityScore(b, openRequestForAsset(String(b.asset_id ?? calibrationAsset(b)?.id ?? ''))) - calibrationPriorityScore(a, openRequestForAsset(String(a.asset_id ?? calibrationAsset(a)?.id ?? ''))));
   const sortedOverdue = [...overdueRows].sort((a, b) => calibrationPriorityScore(b, openRequestForAsset(String(b.asset_id ?? calibrationAsset(b)?.id ?? ''))) - calibrationPriorityScore(a, openRequestForAsset(String(a.asset_id ?? calibrationAsset(a)?.id ?? ''))));
-  const failedAdjusted = records.filter((row) => ['fail', 'adjusted'].includes(row.result as string));
-  const completedThisMonth = records.filter((row) => {
+  const failedAdjusted = recordsScoped.filter((row) => ['fail', 'adjusted'].includes(row.result as string));
+  const completedThisMonth = recordsScoped.filter((row) => {
     if (!row.calibration_date) return false;
     const date = new Date(row.calibration_date as string);
     return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
   });
-  const externalCalibration = records.filter((row) => {
+  const externalCalibration = recordsScoped.filter((row) => {
     const by = String(row.calibrated_by ?? '').toLowerCase();
     const notes = String(row.notes ?? '').toLowerCase();
     return by.includes('vendor') || by.includes('external') || notes.includes('vendor') || notes.includes('external');
   });
-  const externalRequests = requests.filter((row) => String(row.notes ?? '').toLowerCase().match(/vendor|external|third[- ]party/));
+  const externalRequests = requestsScoped.filter((row) => String(row.notes ?? '').toLowerCase().match(/vendor|external|third[- ]party/));
   const defaultTab: CalibrationTab = normalizeCalibrationTab(searchParams.get('tab'))
     || (awaitingActionRequests.length > 0 ? 'requests' : overdueRows.length > 0 ? 'overdue' : dueSoonRows.length > 0 ? 'upcoming' : 'records');
   const selectedTab = activeTab || defaultTab;
   const selectedFilter = activeFilter;
 
-  const filteredRecords = records.filter((row) => {
+  const filteredRecords = recordsScoped.filter((row) => {
     if (selectedFilter === 'failed-adjusted') return ['fail', 'adjusted'].includes(String(row.result ?? ''));
     if (selectedFilter === 'external') return externalCalibration.some((item) => item.id === row.id);
     if (selectedFilter === 'completed-month') return completedThisMonth.some((item) => item.id === row.id);
     return true;
   });
-  const filteredRequests = requests.filter((row) => {
+  const filteredRequests = requestsScoped.filter((row) => {
     if (selectedFilter === 'pending-requests') return row.status === 'pending';
     if (selectedFilter === 'approved-requests') return row.status === 'approved';
     if (selectedFilter === 'external') return externalRequests.some((item) => item.id === row.id);
@@ -668,19 +681,19 @@ export default function CalibrationPage() {
     {
       id: 'requests',
       label: 'Requests',
-      count: requests.length,
+      count: requestsScoped.length,
       content: (
         <DataTable
           columns={requestColumns}
           data={filteredRequests}
           searchPlaceholder="Search calibration requests..."
           emptyMessage="No calibration requests found"
-          actions={
+          actions={canRequestCalibration ? (
             <Button onClick={() => setRequestModalOpen(true)}>
               <ClipboardList className="h-4 w-4" />
               New Request
             </Button>
-          }
+          ) : undefined}
         />
       ),
     },
@@ -711,19 +724,19 @@ export default function CalibrationPage() {
     {
       id: 'records',
       label: 'Records',
-      count: records.length,
+      count: recordsScoped.length,
       content: (
         <DataTable
           columns={recordColumns}
           data={filteredRecords}
           searchPlaceholder="Search calibration records..."
           emptyMessage="No calibration records found"
-          actions={
+          actions={canManageMaintenance ? (
             <Button onClick={() => setRecordModalOpen(true)}>
               <Plus className="h-4 w-4" />
               New Record
             </Button>
-          }
+          ) : undefined}
         />
       ),
     },
@@ -738,12 +751,12 @@ export default function CalibrationPage() {
         currentFilters={{ filter: selectedFilter }}
         pageSummary="Calibration page with open requests, upcoming and overdue calibration, failed or adjusted results, external calibration, and completed-this-month evidence."
         visibleCounts={{
-          records: records.length,
-          openRequests: countOpenCalibrationRequests(requests as Array<{ status?: string | null }>),
+          records: recordsScoped.length,
+          openRequests: countOpenCalibrationRequests(requestsScoped as Array<{ status?: string | null }>),
           dueSoon: dueSoonRows.length,
-          overdue: countOverdueCalibration(upcoming as Array<{ next_due_date?: string | null }>),
+          overdue: countOverdueCalibration(upcomingScoped as Array<{ next_due_date?: string | null }>),
           criticalOverdue: criticalOverdueRows.length,
-          failedAdjusted: countFailedOrAdjustedCalibration(records as Array<{ result?: string | null }>),
+          failedAdjusted: countFailedOrAdjustedCalibration(recordsScoped as Array<{ result?: string | null }>),
         }}
         availableEvidenceLinks={[{ label: 'Calibration', href: '/calibration', type: 'module' }, { label: 'Calendar', href: '/calendar?type=calibration', type: 'calendar' }]}
         quickPrompts={['Which calibration items are urgent?', 'What compliance issues need attention?', 'Prepare a calibration summary.']}
@@ -756,15 +769,27 @@ export default function CalibrationPage() {
             <Button onClick={() => setRequestModalOpen(true)} variant="outline"><ClipboardList className="h-4 w-4" /> New Request</Button>
             <Button onClick={() => setRecordModalOpen(true)}><Plus className="h-4 w-4" /> New Record</Button>
           </div>
+        ) : canRequestCalibration ? (
+          <div className="flex flex-wrap gap-2">
+            <Button onClick={() => setRequestModalOpen(true)} variant="outline"><ClipboardList className="h-4 w-4" /> Request Calibration</Button>
+          </div>
         ) : <Badge variant="info">{primaryRole === 'viewer' ? 'Read-only' : 'View access'}</Badge>}
       />
 
+      {assetFilter.assetId ? (
+        <AssetFilterChip
+          asset={assetFilter.asset}
+          clearHref={assetFilter.clearHref}
+          source={assetFilter.source}
+        />
+      ) : null}
+
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Calibration Records" value={records.length} icon={<Gauge className="h-6 w-6" />} color="blue" active={selectedTab === 'records' && selectedFilter === 'all'} onClick={() => selectCalibrationView('records')} />
-        <StatCard label="Open Requests" value={countOpenCalibrationRequests(requests as Array<{ status?: string | null }>)} icon={<ClipboardList className="h-6 w-6" />} color="purple" active={selectedTab === 'requests' && selectedFilter === 'all'} onClick={() => selectCalibrationView('requests')} />
+        <StatCard label="Calibration Records" value={recordsScoped.length} icon={<Gauge className="h-6 w-6" />} color="blue" active={selectedTab === 'records' && selectedFilter === 'all'} onClick={() => selectCalibrationView('records')} />
+        <StatCard label="Open Requests" value={countOpenCalibrationRequests(requestsScoped as Array<{ status?: string | null }>)} icon={<ClipboardList className="h-6 w-6" />} color="purple" active={selectedTab === 'requests' && selectedFilter === 'all'} onClick={() => selectCalibrationView('requests')} />
         <StatCard label="Due Soon" value={dueSoonRows.length} icon={<CalendarClock className="h-6 w-6" />} color="yellow" active={selectedTab === 'upcoming' && selectedFilter === 'due-soon'} onClick={() => selectCalibrationView('upcoming', 'due-soon')} />
-        <StatCard label="Overdue" value={countOverdueCalibration(upcoming as Array<{ next_due_date?: string | null }>)} icon={<AlertTriangle className="h-6 w-6" />} color="red" active={selectedTab === 'overdue' && selectedFilter === 'overdue'} onClick={() => selectCalibrationView('overdue', 'overdue')} />
-        <StatCard label="Failed / Adjusted" value={countFailedOrAdjustedCalibration(records as Array<{ result?: string | null }>)} icon={<ShieldAlert className="h-6 w-6" />} color="orange" active={selectedFilter === 'failed-adjusted'} onClick={() => selectCalibrationView('records', 'failed-adjusted')} />
+        <StatCard label="Overdue" value={countOverdueCalibration(upcomingScoped as Array<{ next_due_date?: string | null }>)} icon={<AlertTriangle className="h-6 w-6" />} color="red" active={selectedTab === 'overdue' && selectedFilter === 'overdue'} onClick={() => selectCalibrationView('overdue', 'overdue')} />
+        <StatCard label="Failed / Adjusted" value={countFailedOrAdjustedCalibration(recordsScoped as Array<{ result?: string | null }>)} icon={<ShieldAlert className="h-6 w-6" />} color="orange" active={selectedFilter === 'failed-adjusted'} onClick={() => selectCalibrationView('records', 'failed-adjusted')} />
         <StatCard label="Critical Overdue" value={criticalOverdueRows.length} icon={<AlertTriangle className="h-6 w-6" />} color="red" active={selectedFilter === 'critical-overdue'} onClick={() => selectCalibrationView('overdue', 'critical-overdue')} />
         <StatCard label="External Calibration" value={externalCalibration.length + externalRequests.length} icon={<Wrench className="h-6 w-6" />} color="gray" active={selectedFilter === 'external'} onClick={() => selectCalibrationView(externalRequests.length > 0 ? 'requests' : 'records', 'external')} />
         <StatCard label="Completed This Month" value={completedThisMonth.length} icon={<CheckCircle className="h-6 w-6" />} color="green" active={selectedFilter === 'completed-month'} onClick={() => selectCalibrationView('records', 'completed-month')} />

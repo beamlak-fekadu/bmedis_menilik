@@ -101,21 +101,21 @@ export default function QrRoleActions({ actions }: { actions: QrAction[] }) {
         const Icon = iconMap[action.icon];
         const content = (
           <>
-            <div className="flex flex-1 items-start gap-3">
-              <Icon className={`mt-0.5 h-5 w-5 ${iconClass(action.variant)}`} />
-              <div>
-                <p className="text-sm font-semibold text-[var(--foreground)]">
+            <div className="flex min-w-0 flex-1 items-start gap-3">
+              <Icon className={`mt-0.5 h-5 w-5 shrink-0 ${iconClass(action.variant)}`} />
+              <div className="min-w-0">
+                <p className="break-words text-sm font-semibold text-[var(--foreground)]">
                   {copiedId === action.id ? 'Copied QR URL' : action.label}
                 </p>
                 {action.description && (
-                  <p className="mt-1 text-xs text-[var(--text-muted)]">{action.description}</p>
+                  <p className="mt-1 break-words text-xs text-[var(--text-muted)]">{action.description}</p>
                 )}
               </div>
             </div>
-            <ArrowRight className="mt-1 h-4 w-4 text-[var(--text-muted)] transition group-hover:translate-x-0.5" />
+            <ArrowRight className="mt-1 h-4 w-4 shrink-0 text-[var(--text-muted)] transition group-hover:translate-x-0.5" />
           </>
         );
-        const className = `group flex min-h-24 items-start justify-between gap-3 rounded-xl border p-4 text-left transition ${cardClass(action.variant)}`;
+        const className = `group flex min-h-[5.5rem] items-start justify-between gap-3 rounded-xl border p-3 text-left transition sm:p-4 ${cardClass(action.variant)}`;
 
         if (action.copyText) {
           return (

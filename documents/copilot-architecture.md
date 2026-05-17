@@ -6,7 +6,18 @@ Last updated: 2026-05-16
 
 The copilot is built around `/api/chat`. The route authenticates the user, resolves the linked profile and all assigned roles, persists the user message, and calls `orchestrateAssistantResponse()` in `src/services/chatbot/assistant-orchestrator.ts`.
 
-The orchestrator performs classification, entity resolution, role-scoped context retrieval, safety evaluation, prompt construction, Gemini generation, provider-output normalization, deterministic fallback, telemetry logging, usage logging, memory updates, and final `AssistantContent` validation.
+The orchestrator performs classification, entity resolution, role-scoped context retrieval, safety evaluation, deterministic answer drafting, prompt construction, Gemini generation, provider-output normalization, usefulness guarding, telemetry logging, usage logging, memory updates, and final `AssistantContent` validation.
+
+The production answer path is:
+
+1. understand role and page/entity context
+2. retrieve scoped BMERMS data through services/tools
+3. build a deterministic system-data answer candidate
+4. send Gemini the retrieved facts plus that deterministic skeleton
+5. normalize and validate provider output
+6. replace weak/generic/provider-failure output with the deterministic candidate when real evidence exists
+7. attach compact evidence links and role-safe next steps
+8. attach action drafts only when the user clearly asks to create/draft/request/report/log/reorder/write/submit/queue something
 
 ## Role Behavior And Scope
 
@@ -51,7 +62,15 @@ Parser metadata is attached under provider metadata:
 - `structuredValidationPassed`
 - `deterministicFallbackUsed`
 
-If provider output fails but retrieved system context exists, the orchestrator uses `buildDeterministicStructuredFallback()` to answer from validated context. If both provider and context are unavailable, it returns a limited AI-unavailable response.
+If provider output fails but retrieved system context exists, the orchestrator uses `buildDeterministicAnswerCandidate()` / `buildDeterministicStructuredFallback()` to answer from validated context. If both provider and context are unavailable, it returns a limited human-readable retry/context message.
+
+## Answer Quality And Grounding
+
+`src/services/chatbot/deterministic-answer-builders.ts` builds natural, role-aware answer candidates from real BMERMS context. Builders cover operational priority, asset context, work orders, department readiness, stock blockers, viewer summaries, developer diagnostics, safe troubleshooting, reports, offline sync, QR asset context, and common conceptual explanations such as RPN/MTTR/MTBF/PM compliance.
+
+`src/services/chatbot/response-usefulness-guard.ts` checks provider output for generic filler, provider-failure copy, missing evidence, and uncertain language. When Gemini is weak but system evidence exists, the guard replaces or augments the response with the deterministic system-data candidate. This keeps BMERMS data as the source of truth while still letting Gemini improve tone and readability.
+
+The Gemini prompt now explicitly states that BMERMS records/tool context are authoritative, that Gemini must not invent operational facts, and that normal users should not see provider/parser/classifier/tool trace clutter. Developer diagnostic detail remains available through collapsed debug UI and Developer Lab telemetry.
 
 ## App-Tracked Gemini Usage
 
@@ -220,7 +239,7 @@ Phase 3 adds review-before-submit action drafts, role-scoped server execution, o
 - All actions go through existing server actions, so RLS, capability matrix, duplicate prevention, condition sync, audit logging, and revalidation all apply.
 
 ### Tests
-Added `src/services/chatbot/__tests__/copilot-action-drafts.test.ts` covering: viewer never gets mutation drafts, BME head gets maintenance request drafts with Zod-valid payload, department user is auto-scoped, technician gets maintenance-event-note draft, store user gets reorder draft, non-mutation intent yields no mutations, and offline capability mapping. The existing 122 chatbot tests still pass (total 129 after Phase 3).
+Added `src/services/chatbot/__tests__/copilot-action-drafts.test.ts` covering: viewer never gets mutation drafts, BME head gets maintenance request drafts with Zod-valid payload, department user is auto-scoped, technician gets maintenance-event-note draft, store user gets reorder draft, non-mutation intent yields no mutations, and offline capability mapping. The grounding pass adds deterministic-answer/usefulness-guard coverage for page-aware asset, QR, priority, troubleshooting, viewer, and generic-provider replacement behavior. Total chatbot tests: 137/137 pass.
 
 ### Honest limitations
 - Heuristic draft proposal is regex-based and may miss creative phrasings; users can also start the action from the module page directly.

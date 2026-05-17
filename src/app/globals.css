@@ -54,6 +54,11 @@
   --assistant-warning-bg: rgb(251 191 36 / 18%);
   --assistant-warning-text: #8a4c05;
   --assistant-warning-text-strong: #7a4306;
+  /* Solid assistant surfaces — opaque so the panel is always readable */
+  --assistant-surface: #ffffff;
+  --assistant-surface-elev: #f8fafc;
+  --assistant-bubble-user: #eef2ff;
+  --assistant-bubble-assistant: #ffffff;
   --chatbot-nav-bg: linear-gradient(135deg, rgb(214 165 71 / 18%), rgb(214 165 71 / 4%));
   --chatbot-nav-bg-hover: linear-gradient(135deg, rgb(214 165 71 / 30%), rgb(214 165 71 / 8%));
   --chatbot-nav-bg-active: linear-gradient(135deg, rgb(214 165 71 / 36%), rgb(214 165 71 / 12%));
@@ -119,6 +124,10 @@ html.dark {
   --assistant-warning-bg: rgb(251 191 36 / 12%);
   --assistant-warning-text: #fde68a;
   --assistant-warning-text-strong: #fef3c7;
+  --assistant-surface: #0f172a;
+  --assistant-surface-elev: #111c33;
+  --assistant-bubble-user: #1e293b;
+  --assistant-bubble-assistant: #111c33;
   --chatbot-nav-bg: linear-gradient(135deg, rgb(214 165 71 / 26%), rgb(214 165 71 / 8%));
   --chatbot-nav-bg-hover: linear-gradient(135deg, rgb(214 165 71 / 36%), rgb(214 165 71 / 12%));
   --chatbot-nav-bg-active: linear-gradient(135deg, rgb(214 165 71 / 44%), rgb(214 165 71 / 16%));
@@ -154,6 +163,28 @@ body {
   font-feature-settings: 'cv11', 'ss01';
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
+
+html,
+body,
+#__next {
+  max-width: 100%;
+}
+
+/* ── Mobile utilities ──────────────────────────────────────────────────────
+   Helpers used by the dashboard shell to keep mobile usable without breaking
+   the desktop layout. Keep these in sync with the V4 theme tokens. */
+.table-scroll-shell {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.mobile-only { display: block; }
+.desktop-only { display: none; }
+@media (min-width: 1024px) {
+  .mobile-only { display: none; }
+  .desktop-only { display: block; }
 }
 
 /* ── App shell — ambient color backdrop ──────────────────────────────────── */
@@ -281,14 +312,33 @@ body {
 
 .assistant-panel {
   box-shadow: -18px 0 34px rgb(0 0 0 / 38%);
+  background: var(--assistant-surface);
 }
 
 .assistant-panel-surface {
   background:
     radial-gradient(420px 180px at 85% 0%, var(--assistant-glow), transparent 70%),
-    var(--surface-1);
-  backdrop-filter: var(--backdrop-blur);
-  -webkit-backdrop-filter: var(--backdrop-blur);
+    var(--assistant-surface);
+  color: var(--foreground);
+}
+
+.assistant-bubble-user {
+  background: var(--assistant-bubble-user);
+  color: var(--foreground);
+  border: 1px solid var(--border-subtle);
+}
+
+.assistant-bubble-assistant {
+  background: var(--assistant-bubble-assistant);
+  color: var(--foreground);
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-sm);
+}
+
+.assistant-chip {
+  background: var(--assistant-surface-elev);
+  color: var(--text-muted);
+  border: 1px solid var(--border-subtle);
 }
 
 .assistant-warning {

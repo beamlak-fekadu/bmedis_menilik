@@ -5,6 +5,7 @@ import { evaluateSafetyDecision } from '@/services/chatbot/safety-service';
 import { normalizeAssistantPayload } from '@/services/chatbot/chat-response-normalizer';
 import { buildAiUnavailableAssistant, ensureUiSafeAssistant } from '@/services/chatbot/providers/normalize-provider-output';
 import { EVALUATION_PROMPTS } from '@/services/chatbot/evaluation/capability-evaluation-dataset';
+import { ChatRequestSchema } from '@/types/chatbot';
 import type { ChatEvidence, UserChatProfile } from '@/types/chatbot';
 
 const BASE_PROFILE: UserChatProfile = {
@@ -165,4 +166,35 @@ test('follow-up routes why high priority to prioritize_tasks with memory hint', 
     threadIntent: 'equipment_lookup',
   });
   assert.equal(c.capability, 'prioritize_tasks');
+});
+
+test('short follow-up why that one first stays on priority explanation', () => {
+  const c = classifyChatRequest('why that one first?', {
+    activeCapability: 'prioritize_tasks',
+    threadIntent: 'analytics_explanation',
+  });
+  assert.equal(c.capability, 'prioritize_tasks');
+  assert.equal(c.matchedSignals.includes('follow_up_priority'), true);
+});
+
+test('developer classifier diagnostic phrasing routes to copilot diagnostics', () => {
+  const c = classifyChatRequest('Why was my last prompt classified this way?');
+  assert.equal(c.capability, 'copilot_diagnostics');
+  assert.equal(c.confidenceLabel, 'high');
+  assert.match(c.reasons.join(' '), /copilot diagnostics/);
+});
+
+test('chat request accepts seeded app record IDs in page context refs', () => {
+  const parsed = ChatRequestSchema.safeParse({
+    message: 'Summarize this asset before inspection.',
+    contextRefs: {
+      equipmentId: 'a0000001-0000-0000-0000-000000000016',
+    },
+    moduleContext: {
+      moduleLabel: 'QR Field Scan',
+      route: '/qr/a/qra_masked',
+      qrToken: 'qra_masked',
+    },
+  });
+  assert.equal(parsed.success, true);
 });

@@ -10,8 +10,10 @@ import {
 import { getCapabilityResponseDefaults } from './capability-response-defaults';
 import { AI_UNAVAILABLE_SUMMARY, buildAiUnavailableAssistant, ensureUiSafeAssistant } from './providers/normalize-provider-output';
 
-const DISPLAY_REPAIR_SUMMARY = 'I generated a response but it could not be displayed reliably. Please try again.';
-const DEFAULT_SUMMARY = "I couldn't generate a reliably structured response from the AI provider. Please try again.";
+const DISPLAY_REPAIR_SUMMARY =
+  "I could not finish formatting that response. Try rephrasing your question or open the related asset, work order, or report and ask again.";
+const DEFAULT_SUMMARY =
+  "I could not load the structured details for that question yet. Try rephrasing, or open the related asset/work order/report and ask again.";
 
 type ProviderStatus = 'success' | 'failure';
 
@@ -175,7 +177,7 @@ function sanitizeAssistantSummaryForUi(summary: string) {
   const text = stripCodeFences(summary).trim();
   if (!text) return DISPLAY_REPAIR_SUMMARY;
   if (/toolTrace|providerMetadata|routingExplanation|top candidates|matcher confidence|telemetry/gi.test(text)) {
-    return 'I generated a response but removed internal metadata for display safety.';
+    return 'I cleaned up internal metadata before showing this response. Try rephrasing if the answer feels incomplete.';
   }
   if (/^```/.test(summary.trim())) return DISPLAY_REPAIR_SUMMARY;
   if (/^\{[\s\S]*\}$/.test(text)) {

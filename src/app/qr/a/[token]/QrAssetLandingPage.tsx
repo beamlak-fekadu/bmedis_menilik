@@ -109,6 +109,15 @@ function calibrationHref(id: string) {
   return `/calibration?calibrationId=${id}&source=qr-scan`;
 }
 
+function calibrationRequestHref(id: string) {
+  return `/calibration/requests/${id}`;
+}
+
+function shortLabel(value: string | null | undefined, fallback: string): string {
+  if (!value) return fallback;
+  return value;
+}
+
 function rowsAvailable(context: QrRoleContext, section: string): boolean {
   return context.queryHealth.find((item) => item.section === section)?.ok ?? false;
 }
@@ -120,110 +129,227 @@ function strongestOpenRequest(requests: QrMaintenanceRequestRow[]) {
 
 function buildActions(asset: QrLandingAsset, context: QrRoleContext): QrAction[] {
   const id = asset.id;
-  const source = 'source=qr-scan';
-  const assetProfile = `/equipment/${id}?${source}`;
-  const maintenanceNew = `/maintenance/requests/new?assetId=${id}&source=qr-scan&type=corrective`;
-  const calibrationNew = `/calibration/requests/new?assetId=${id}&source=qr-scan`;
-  const trainingNew = `/training?action=new-request&assetId=${id}&source=qr-scan`;
-  const requestsTrack = `/requests?assetId=${id}&source=qr-scan`;
-  const maintenanceFiltered = `/maintenance?assetId=${id}&source=qr-scan`;
-  const pmEvidence = `/pm?assetId=${id}&source=qr-scan`;
-  const calibrationEvidence = `/calibration?assetId=${id}&source=qr-scan`;
+  const assetLabel = `${asset.asset_code}${asset.name ? ` · ${asset.name}` : ''}`;
+  const filterTag = `asset_id=${id}&source=qr-scan`;
+  const assetProfile = `/equipment/${id}?source=qr-scan`;
+  const maintenanceNew = `/maintenance/requests/new?assetId=${id}&asset_id=${id}&source=qr-scan&type=corrective`;
+  const workOrderNew = `/maintenance/work-orders/new?asset_id=${id}&work_type=corrective&source=qr-scan`;
+  const calibrationNew = `/calibration/requests/new?assetId=${id}&asset_id=${id}&source=qr-scan`;
+  const trainingNew = `/training?action=new-request&assetId=${id}&asset_id=${id}&source=qr-scan`;
+  const requestsTrack = `/requests?${filterTag}`;
+  const maintenanceFiltered = `/maintenance?${filterTag}`;
+  const pmFiltered = `/pm?${filterTag}`;
+  const calibrationFiltered = `/calibration?${filterTag}`;
   const replacementEvidence = `/command/drilldown/replacement/${id}?source=qr-scan`;
   const openRequest = strongestOpenRequest(context.requests.open);
   const openWorkOrder = context.workOrders.open[0] ?? null;
   const assignedWork = context.workOrders.assignedToMe[0] ?? null;
+  const onHoldWork = context.workOrders.onHold[0] ?? null;
   const firstStockIssue = context.parts.stockIssues[0] ?? null;
   const firstProcurement = context.parts.procurementLinks[0] ?? null;
+  const overduePmExact = context.pm.overdue[0] ?? null;
+  const activePmExact = context.pm.active[0] ?? null;
+  const latestCalibrationRecord = context.calibration.latest;
+  const openCalibrationRequest = context.calibration.openRequests[0] ?? null;
+  const hasMaintenanceEvidence = context.requests.open.length > 0 || context.workOrders.open.length > 0 || context.history.completedWorkOrders.length > 0;
+  const hasPmEvidence = context.pm.active.length > 0 || context.pm.overdue.length > 0;
+  const hasCalibrationEvidence = context.calibration.recent.length > 0 || context.calibration.openRequests.length > 0;
+  const myDepartmentRequests = context.requests.mine.length > 0 || context.requests.department.length > 0;
+
+  // Resolve the most asset-specific destination for the four common evidence
+  // intents. Each helper returns null when no honest asset-specific route can
+  // be built — callers omit the action rather than open a generic page.
+  const resolveMaintenanceHref = (): string | null => {
+    if (openWorkOrder) return workOrderHref(openWorkOrder.id);
+    if (openRequest) return requestHref(openRequest.id);
+    if (hasMaintenanceEvidence) return maintenanceFiltered;
+    return null;
+  };
+  const resolvePmHref = (): string | null => {
+    if (overduePmExact) return pmHref(overduePmExact.id);
+    if (activePmExact) return pmHref(activePmExact.id);
+    if (hasPmEvidence) return pmFiltered;
+    return null;
+  };
+  const resolveCalibrationHref = (): string | null => {
+    if (openCalibrationRequest) return calibrationRequestHref(openCalibrationRequest.id);
+    if (latestCalibrationRecord) return calibrationHref(latestCalibrationRecord.id);
+    if (hasCalibrationEvidence) return calibrationFiltered;
+    return null;
+  };
+  const resolveRequestsHref = (): string | null => {
+    if (openRequest) return requestHref(openRequest.id);
+    if (myDepartmentRequests) return requestsTrack;
+    return null;
+  };
 
   if (context.restricted) return [];
 
   if (context.roleCategory === 'developer') {
+    const maintenanceHref = resolveMaintenanceHref();
     return [
-      { id: 'asset', label: 'Open Asset Profile', description: 'Open the full equipment detail and QR identity panel.', href: assetProfile, icon: 'asset', variant: 'primary' },
+      { id: 'asset', label: 'Open Asset Profile', description: `Asset detail for ${assetLabel}.`, href: assetProfile, icon: 'asset', variant: 'primary' },
       { id: 'developer-lab', label: 'Open Developer Lab', description: 'Review QR coverage, data health, and thesis controls.', href: '/developer-lab', icon: 'shield' },
-      { id: 'qr-labels', label: 'Open QR Label Sheet', description: 'Print or lifecycle-manage QR labels.', href: `/equipment/qr-labels?assets=${id}`, icon: 'qr' },
+      { id: 'qr-labels', label: 'Open QR Label Sheet', description: `Print or lifecycle-manage QR labels for ${assetLabel}.`, href: `/equipment/qr-labels?assets=${id}`, icon: 'qr' },
       ...(context.route.url ? [{ id: 'copy-qr', label: 'Copy QR URL', description: 'Copy the public scan URL for this label.', copyText: context.route.url, icon: 'copy' as const }] : []),
-      { id: 'maintenance', label: 'Review Maintenance', description: 'Open the asset-filtered maintenance surface.', href: maintenanceFiltered, icon: 'wrench' },
-      { id: 'reports', label: 'Open Reports', description: 'Review operational and evidence exports.', href: '/reports', icon: 'file' },
+      ...(maintenanceHref ? [{
+        id: 'maintenance',
+        label: 'Review Maintenance for This Asset',
+        description: openWorkOrder
+          ? `Open exact work order ${shortLabel(openWorkOrder.work_order_number, 'WO')}.`
+          : openRequest
+            ? `Open exact request ${shortLabel(openRequest.request_number, 'request')}.`
+            : `Filtered maintenance view for ${assetLabel}.`,
+        href: maintenanceHref,
+        icon: 'wrench' as const,
+      }] : []),
+      { id: 'qr-scans', label: 'Open QR Scan Evidence', description: `Scan history filtered to ${assetLabel}.`, href: `/equipment/qr-scans?assetId=${id}`, icon: 'shield' },
     ];
   }
 
   if (context.roleCategory === 'bme_head') {
     const primary = openRequest && ['critical', 'high'].includes(openRequest.urgency ?? '')
-      ? { id: 'review-request', label: 'Review Request', description: `${openRequest.request_number ?? 'Open request'} is ${formatLabel(openRequest.urgency)} urgency.`, href: requestHref(openRequest.id), icon: 'clipboard' as const, variant: 'primary' as const }
+      ? { id: 'review-request', label: 'Review Request for This Asset', description: `${shortLabel(openRequest.request_number, 'Open request')} · ${formatLabel(openRequest.urgency)} urgency.`, href: requestHref(openRequest.id), icon: 'clipboard' as const, variant: 'primary' as const }
       : openWorkOrder
-        ? { id: 'open-work', label: 'Open Work Order', description: `${openWorkOrder.work_order_number ?? 'Open work'} is ${formatLabel(openWorkOrder.status)}.`, href: workOrderHref(openWorkOrder.id), icon: 'wrench' as const, variant: 'primary' as const }
+        ? { id: 'open-work', label: 'Open Work Order for This Asset', description: `${shortLabel(openWorkOrder.work_order_number, 'Open work')} · ${formatLabel(openWorkOrder.status)}.`, href: workOrderHref(openWorkOrder.id), icon: 'wrench' as const, variant: 'primary' as const }
         : ['needs_repair', 'non_functional'].includes(asset.condition ?? '')
-          ? { id: 'create-work', label: 'Create Work Order', description: 'Asset condition needs operational review.', href: `/maintenance/work-orders/new?asset_id=${id}&work_type=corrective&source=qr-scan`, icon: 'wrench' as const, variant: 'primary' as const }
-          : context.pm.overdue.length > 0
-            ? { id: 'pm', label: 'Open PM Evidence', description: `${context.pm.overdue.length} overdue PM item(s).`, href: pmEvidence, icon: 'clipboard' as const, variant: 'primary' as const }
-            : context.calibration.state === 'overdue'
-              ? { id: 'calibration', label: 'Open Calibration Evidence', description: 'Latest calibration is overdue.', href: calibrationEvidence, icon: 'beaker' as const, variant: 'primary' as const }
-              : { id: 'asset', label: 'Open Asset Profile', description: 'Review complete equipment evidence.', href: assetProfile, icon: 'asset' as const, variant: 'primary' as const };
-    return [
-      primary,
-      { id: 'requests', label: 'Review Requests', href: requestsTrack, icon: 'clipboard' },
-      { id: 'maintenance', label: 'Open Maintenance', href: maintenanceFiltered, icon: 'wrench' },
-      { id: 'pm-evidence', label: 'PM Evidence', href: pmEvidence, icon: 'clipboard' },
-      { id: 'cal-evidence', label: 'Calibration Evidence', href: calibrationEvidence, icon: 'beaker' },
-      ...(context.decisionSupport.replacement ? [{ id: 'replacement', label: 'Replacement Evidence', href: replacementEvidence, icon: 'file' as const }] : []),
-      { id: 'qr-label', label: 'Open QR Label Sheet', href: `/equipment/qr-labels?assets=${id}`, icon: 'qr' },
-      { id: 'reports', label: 'Open Reports', href: '/reports', icon: 'file' },
-    ];
+          ? { id: 'create-work', label: 'Create Work Order for This Asset', description: `Condition: ${formatLabel(asset.condition)} — needs operational review.`, href: workOrderNew, icon: 'wrench' as const, variant: 'primary' as const }
+          : overduePmExact
+            ? { id: 'pm-exact', label: 'Open Overdue PM for This Asset', description: `PM due ${formatDate(overduePmExact.scheduled_date)} · ${formatLabel(overduePmExact.status)}.`, href: pmHref(overduePmExact.id), icon: 'clipboard' as const, variant: 'primary' as const }
+            : context.calibration.state === 'overdue' && (openCalibrationRequest || latestCalibrationRecord)
+              ? (openCalibrationRequest
+                ? { id: 'cal-req', label: 'Open Calibration Request for This Asset', description: `${shortLabel(openCalibrationRequest.request_number, 'Calibration request')} · ${formatLabel(openCalibrationRequest.status)}.`, href: calibrationRequestHref(openCalibrationRequest.id), icon: 'beaker' as const, variant: 'primary' as const }
+                : { id: 'cal-record', label: 'Open Calibration Record for This Asset', description: `Latest ${formatLabel(latestCalibrationRecord!.result)} · next due ${formatDate(latestCalibrationRecord!.next_due_date)}.`, href: calibrationHref(latestCalibrationRecord!.id), icon: 'beaker' as const, variant: 'primary' as const })
+              : { id: 'asset', label: 'Open Asset Profile', description: `Review complete evidence for ${assetLabel}.`, href: assetProfile, icon: 'asset' as const, variant: 'primary' as const };
+
+    const requestsHref = resolveRequestsHref();
+    const maintenanceHref = resolveMaintenanceHref();
+    const pmHrefValue = resolvePmHref();
+    const calibrationHrefValue = resolveCalibrationHref();
+
+    const actions: QrAction[] = [primary];
+
+    // De-duplicate: skip secondary action when it points at the same href as primary.
+    const used = new Set<string>([primary.href ?? '']);
+    const push = (action: QrAction) => {
+      if (!action.href) { actions.push(action); return; }
+      if (used.has(action.href)) return;
+      used.add(action.href);
+      actions.push(action);
+    };
+
+    if (requestsHref) {
+      push({
+        id: 'requests',
+        label: 'Review Requests for This Asset',
+        description: openRequest ? `Exact request ${shortLabel(openRequest.request_number, '')} · ${formatLabel(openRequest.status)}.` : `Filtered request hub for ${assetLabel}.`,
+        href: requestsHref,
+        icon: 'clipboard',
+      });
+    }
+    if (maintenanceHref) {
+      push({
+        id: 'maintenance',
+        label: 'Open Maintenance for This Asset',
+        description: openWorkOrder ? `Work order ${shortLabel(openWorkOrder.work_order_number, '')}.` : openRequest ? `Request ${shortLabel(openRequest.request_number, '')}.` : `Filtered maintenance view for ${assetLabel}.`,
+        href: maintenanceHref,
+        icon: 'wrench',
+      });
+    }
+    if (pmHrefValue) {
+      push({
+        id: 'pm-evidence',
+        label: 'View PM for This Asset',
+        description: overduePmExact ? `Overdue PM scheduled ${formatDate(overduePmExact.scheduled_date)}.` : activePmExact ? `Active PM scheduled ${formatDate(activePmExact.scheduled_date)}.` : `Filtered PM view for ${assetLabel}.`,
+        href: pmHrefValue,
+        icon: 'clipboard',
+      });
+    }
+    if (calibrationHrefValue) {
+      push({
+        id: 'cal-evidence',
+        label: 'View Calibration for This Asset',
+        description: openCalibrationRequest ? `Open request ${shortLabel(openCalibrationRequest.request_number, '')}.` : latestCalibrationRecord ? `Last calibration ${formatDate(latestCalibrationRecord.calibration_date)}.` : `Filtered calibration view for ${assetLabel}.`,
+        href: calibrationHrefValue,
+        icon: 'beaker',
+      });
+    }
+    if (context.decisionSupport.replacement) {
+      push({ id: 'replacement', label: 'Replacement Evidence for This Asset', description: 'Exact replacement scoring evidence.', href: replacementEvidence, icon: 'file' });
+    }
+    push({ id: 'qr-label', label: 'Open QR Label Sheet', description: `Label lifecycle for ${assetLabel}.`, href: `/equipment/qr-labels?assets=${id}`, icon: 'qr' });
+    return actions;
   }
 
   if (context.roleCategory === 'technician') {
+    const pmHrefValue = resolvePmHref();
+    const calibrationHrefValue = resolveCalibrationHref();
     return [
-      ...(assignedWork ? [{ id: 'assigned', label: 'Open Assigned Work', description: `${assignedWork.work_order_number ?? 'Assigned work'} on this asset.`, href: workOrderHref(assignedWork.id), icon: 'wrench' as const, variant: 'primary' as const }] : []),
-      ...(assignedWork ? [{ id: 'log-event', label: 'Log Maintenance Event', description: 'Use the existing work-order event form.', href: `/maintenance/work-orders/${assignedWork.id}/events/new`, icon: 'clipboard' as const, variant: 'success' as const }] : []),
-      { id: 'corrective-request', label: 'Create Corrective Request', description: assignedWork ? 'Report a separate issue if needed.' : 'No assigned work was found for you on this asset.', href: maintenanceNew, icon: 'clipboard', variant: assignedWork ? 'secondary' : 'primary' },
-      { id: 'asset', label: 'Open Asset Profile', href: assetProfile, icon: 'asset' },
-      { id: 'pm', label: 'View PM Evidence', href: pmEvidence, icon: 'clipboard' },
-      { id: 'calibration', label: 'View Calibration Evidence', href: calibrationEvidence, icon: 'beaker' },
+      ...(assignedWork ? [{ id: 'assigned', label: 'Open Assigned Work for This Asset', description: `${shortLabel(assignedWork.work_order_number, 'Assigned work')} · ${formatLabel(assignedWork.status)}.`, href: workOrderHref(assignedWork.id), icon: 'wrench' as const, variant: 'primary' as const }] : []),
+      ...(assignedWork ? [{ id: 'log-event', label: 'Log Maintenance Event on This Asset', description: 'Open the work-order event form.', href: `/maintenance/work-orders/${assignedWork.id}/events/new`, icon: 'clipboard' as const, variant: 'success' as const }] : []),
+      { id: 'corrective-request', label: 'Create Corrective Request for This Asset', description: assignedWork ? `Report a separate issue on ${assetLabel}.` : `No assigned work found — prefilled request for ${assetLabel}.`, href: maintenanceNew, icon: 'clipboard', variant: assignedWork ? 'secondary' : 'primary' },
+      { id: 'asset', label: 'Open Asset Profile', description: `Open ${assetLabel}.`, href: assetProfile, icon: 'asset' },
+      ...(pmHrefValue ? [{ id: 'pm', label: 'View PM for This Asset', description: overduePmExact ? `Overdue PM scheduled ${formatDate(overduePmExact.scheduled_date)}.` : activePmExact ? `Active PM scheduled ${formatDate(activePmExact.scheduled_date)}.` : `PM evidence filtered to ${assetLabel}.`, href: pmHrefValue, icon: 'clipboard' as const }] : []),
+      ...(calibrationHrefValue ? [{ id: 'calibration', label: 'View Calibration for This Asset', description: latestCalibrationRecord ? `Last calibration ${formatDate(latestCalibrationRecord.calibration_date)}.` : openCalibrationRequest ? `Open calibration request.` : `Calibration evidence filtered to ${assetLabel}.`, href: calibrationHrefValue, icon: 'beaker' as const }] : []),
     ];
   }
 
   if (context.roleCategory === 'department_head') {
+    const requestsHref = resolveRequestsHref();
     return [
-      { id: 'maintenance-request', label: 'Create Maintenance Request', href: maintenanceNew, icon: 'clipboard', variant: 'primary' },
-      { id: 'calibration-request', label: 'Create Calibration Request', href: calibrationNew, icon: 'beaker' },
-      { id: 'training-request', label: 'Request Training', href: trainingNew, icon: 'graduation' },
-      { id: 'track', label: 'Track Existing Requests', href: requestsTrack, icon: 'file' },
-      { id: 'evidence', label: 'View Evidence', href: assetProfile, icon: 'asset' },
-      { id: 'department-work', label: 'Open Department Work Status', href: '/maintenance?tab=work-orders&source=qr-scan', icon: 'wrench' },
+      { id: 'maintenance-request', label: 'Create Maintenance Request for This Asset', description: `Prefilled corrective request for ${assetLabel}.`, href: maintenanceNew, icon: 'clipboard', variant: 'primary' },
+      { id: 'calibration-request', label: 'Request Calibration for This Asset', description: `Submit a calibration request for ${assetLabel}.`, href: calibrationNew, icon: 'beaker' },
+      { id: 'training-request', label: 'Request Training for This Asset', description: `Submit a training request linked to ${assetLabel}.`, href: trainingNew, icon: 'graduation' },
+      ...(requestsHref ? [{ id: 'track', label: 'Track Department Requests for This Asset', description: openRequest ? `Open request ${shortLabel(openRequest.request_number, '')}.` : 'Department-scoped request hub.', href: requestsHref, icon: 'file' as const }] : []),
+      { id: 'evidence', label: 'View Asset Evidence', description: `Open ${assetLabel}.`, href: assetProfile, icon: 'asset' },
     ];
   }
 
   if (context.roleCategory === 'department_user') {
+    const requestsHref = resolveRequestsHref();
     return [
-      { id: 'report-problem', label: 'Report Equipment Problem', href: maintenanceNew, icon: 'clipboard', variant: 'primary' },
-      { id: 'calibration-request', label: 'Request Calibration', href: calibrationNew, icon: 'beaker' },
-      { id: 'training-request', label: 'Request Training', href: trainingNew, icon: 'graduation' },
-      { id: 'track', label: 'Track Existing Request', href: requestsTrack, icon: 'file' },
-      { id: 'asset', label: 'Open Basic Asset Profile', href: assetProfile, icon: 'asset' },
+      { id: 'report-problem', label: 'Report Problem for This Asset', description: `Prefilled corrective request for ${assetLabel}.`, href: maintenanceNew, icon: 'clipboard', variant: 'primary' },
+      { id: 'calibration-request', label: 'Request Calibration for This Asset', description: `Submit a calibration request for ${assetLabel}.`, href: calibrationNew, icon: 'beaker' },
+      { id: 'training-request', label: 'Request Training for This Asset', description: `Submit a training request linked to ${assetLabel}.`, href: trainingNew, icon: 'graduation' },
+      ...(requestsHref ? [{ id: 'track', label: 'Track My Requests for This Asset', description: 'Department-scoped request hub.', href: requestsHref, icon: 'file' as const }] : []),
+      { id: 'asset', label: 'Open Asset Profile', description: `Open ${assetLabel}.`, href: assetProfile, icon: 'asset' },
     ];
   }
 
   if (context.roleCategory === 'store_user') {
-    return [
-      { id: 'blockers', label: 'Open Maintenance Blockers', href: '/spare-parts?tab=blockers&source=qr-scan', icon: 'package', variant: 'primary' },
-      ...(firstStockIssue?.part_id ? [{ id: 'part', label: 'Open Linked Part', href: `/spare-parts?partId=${firstStockIssue.part_id}&source=qr-scan`, icon: 'package' as const }] : []),
-      ...(firstProcurement ? [{ id: 'procurement', label: 'Track Procurement', href: `/command/drilldown/procurement/${firstProcurement.id}`, icon: 'clipboard' as const }] : []),
-      { id: 'usage', label: 'Open Usage Linkage', href: '/logistics?workflow=usage-linkage&source=qr-scan', icon: 'truck' },
-      ...(openWorkOrder ? [{ id: 'work-evidence', label: 'Open Work Evidence', href: workOrderHref(openWorkOrder.id), icon: 'wrench' as const }] : []),
-    ];
+    const actions: QrAction[] = [];
+    if (onHoldWork) {
+      actions.push({ id: 'blockers', label: 'View Parts Blocking This Asset', description: `On-hold work order ${shortLabel(onHoldWork.work_order_number, '')} is awaiting parts.`, href: workOrderHref(onHoldWork.id), icon: 'package', variant: 'primary' });
+    } else if (context.parts.stockFlags.length > 0) {
+      actions.push({ id: 'blockers', label: 'View Stock Flags for This Asset', description: `${context.parts.stockFlags.length} unacknowledged stock flag(s).`, href: `/spare-parts?tab=blockers&${filterTag}`, icon: 'package', variant: 'primary' });
+    }
+    if (firstStockIssue?.part_id) {
+      actions.push({ id: 'part', label: 'Open Linked Part', description: `${firstStockIssue.part_code ?? 'Part'} · ${firstStockIssue.part_name ?? ''}`, href: `/spare-parts?partId=${firstStockIssue.part_id}&source=qr-scan`, icon: 'package' });
+    }
+    if (firstProcurement) {
+      actions.push({ id: 'procurement', label: 'Track Linked Procurement', description: `${shortLabel(firstProcurement.request_number, 'Procurement')} · ${formatLabel(firstProcurement.status)}.`, href: `/command/drilldown/procurement/${firstProcurement.id}?source=qr-scan`, icon: 'clipboard' });
+    }
+    if (firstStockIssue?.work_order_id) {
+      actions.push({ id: 'usage', label: 'Open Work Order Linked to Issued Part', description: `Stock issue ${formatDate(firstStockIssue.issue_date)} linked to a work order.`, href: workOrderHref(firstStockIssue.work_order_id), icon: 'truck' });
+    }
+    if (openWorkOrder && !onHoldWork) {
+      actions.push({ id: 'work-evidence', label: 'View Open Work Evidence for This Asset', description: `${shortLabel(openWorkOrder.work_order_number, '')} · ${formatLabel(openWorkOrder.status)}.`, href: workOrderHref(openWorkOrder.id), icon: 'wrench' });
+    }
+    if (actions.length === 0) {
+      actions.push({ id: 'asset', label: 'Open Asset Profile', description: `No directly linked stock or work evidence found for ${assetLabel}.`, href: assetProfile, icon: 'asset', variant: 'primary' });
+    }
+    return actions;
   }
 
   if (context.roleCategory === 'viewer') {
     return [
-      { id: 'summary', label: 'Open Asset Summary', href: assetProfile, icon: 'asset', variant: 'primary' },
-      { id: 'evidence', label: 'View Evidence', href: `${assetProfile}#evidence`, icon: 'file' },
-      { id: 'report', label: 'Open Report', href: '/reports/equipment', icon: 'file' },
+      { id: 'summary', label: 'Open Asset Summary', description: `Read-only summary for ${assetLabel}.`, href: assetProfile, icon: 'asset', variant: 'primary' },
+      { id: 'evidence', label: 'View Asset Evidence', description: 'Compliance and reliability evidence for this asset.', href: `${assetProfile}#evidence`, icon: 'file' },
+      { id: 'report', label: 'Open Equipment Report', description: 'Read-only equipment report.', href: '/reports/equipment', icon: 'file' },
     ];
   }
 
-  return [{ id: 'asset', label: 'Open Asset Profile', href: assetProfile, icon: 'asset', variant: 'primary' }];
+  return [{ id: 'asset', label: 'Open Asset Profile', description: `Open ${assetLabel}.`, href: assetProfile, icon: 'asset', variant: 'primary' }];
 }
 
 function MetricCard({ label, value, sub, tone }: { label: string; value: string; sub?: string; tone?: 'default' | 'warning' | 'error' | 'success' | 'info' }) {
@@ -671,18 +797,18 @@ export default function QrAssetLandingPage({ asset, profile, context }: Props) {
 
   return (
     <main className="min-h-screen bg-[var(--background)] text-[var(--foreground)]">
-      <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-10">
-        <header className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border-subtle)] pb-4">
-          <div className="flex items-center gap-2">
-            <LogoMark size={36} />
-            <div>
-              <p className="text-[0.6rem] font-semibold uppercase tracking-[0.22em] text-[var(--text-muted)]">
+      <div className="mx-auto w-full max-w-5xl px-3 py-4 sm:px-6 sm:py-10">
+        <header className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--border-subtle)] pb-3 sm:gap-3 sm:pb-4">
+          <div className="flex min-w-0 items-center gap-2">
+            <LogoMark size={32} />
+            <div className="min-w-0">
+              <p className="truncate text-[0.6rem] font-semibold uppercase tracking-[0.22em] text-[var(--text-muted)]">
                 {APP_NAME_SHORT} QR Scan
               </p>
-              <p className="text-[0.62rem] text-[var(--text-muted)]">{HOSPITAL_NAME}</p>
+              <p className="truncate text-[0.62rem] text-[var(--text-muted)]">{HOSPITAL_NAME}</p>
             </div>
           </div>
-          <div className="flex flex-wrap justify-end gap-2">
+          <div className="flex flex-wrap justify-end gap-1.5 sm:gap-2">
             <NetworkStatusPill />
             <Badge variant="info">{displayName}</Badge>
             <Badge variant="default">{profile.job_title ?? roleLabel(context.roleCategory)}</Badge>
@@ -706,12 +832,12 @@ export default function QrAssetLandingPage({ asset, profile, context }: Props) {
           </section>
         ) : (
           <>
-            <section className="mt-6 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-1)] p-5">
+            <section className="mt-5 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-1)] p-4 sm:mt-6 sm:p-5">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">
                   <p className="text-xs uppercase tracking-wide text-[var(--text-muted)]">Asset Code</p>
-                  <h1 className="break-words text-3xl font-semibold tracking-tight">{asset.asset_code}</h1>
-                  <p className="mt-1 text-base text-[var(--text-muted)]">{asset.name}</p>
+                  <h1 className="break-words text-2xl font-semibold tracking-tight sm:text-3xl">{asset.asset_code}</h1>
+                  <p className="mt-1 break-words text-sm text-[var(--text-muted)] sm:text-base">{asset.name}</p>
                 </div>
                 {conditionIsValid ? (
                   <ConditionBadge condition={asset.condition as Parameters<typeof ConditionBadge>[0]['condition']} />
@@ -789,7 +915,7 @@ export default function QrAssetLandingPage({ asset, profile, context }: Props) {
               </p>
             ) : null}
 
-            <section className="mt-7 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-1)] p-4 sm:p-5">
+            <section className="mt-6 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-1)] p-3 sm:mt-7 sm:p-5">
               <Tabs tabs={tabs} defaultTab="current-status" />
             </section>
           </>

@@ -10,7 +10,7 @@ function coerceChatDecision(value: unknown): ChatDecision {
 import { ensureUiSafeAssistant } from './providers/normalize-provider-output';
 
 const DEFAULT_SUMMARY =
-  "I couldn't generate a reliably structured response from the AI provider. Please try again or use the equipment manual/escalation path.";
+  "I could not load the full system context for that question. Try rephrasing, or open the related asset, work order, or report page and ask again.";
 
 export function normalizeAssistantPayload(raw: unknown, fallbackSummary?: string): AssistantContent {
   const normalized = normalizeAssistantResponse({

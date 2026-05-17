@@ -1,7 +1,8 @@
 import type { AssistantContent, CapabilityId, ChatDecision, ChatEvidence } from '@/types/chatbot';
 import { getCapabilityResponseDefaults } from './capability-response-defaults';
 
-const FORMAT_RECOVERY_COPY = 'I generated a response but it could not be displayed reliably. Please try again.';
+const FORMAT_RECOVERY_COPY =
+  "I could not load enough structured context to give a confident answer. Open the related asset, work order, or report and ask again, or rephrase your question.";
 
 function asRows(value: unknown): Record<string, unknown>[] {
   return Array.isArray(value) ? (value.filter((item) => item && typeof item === 'object') as Record<string, unknown>[]) : [];

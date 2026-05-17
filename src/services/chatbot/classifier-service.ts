@@ -67,6 +67,8 @@ const SAFE_GENERAL_TROUBLESHOOTING_PATTERNS = [
   /\bnot powering\b/i,
   /\bwon'?t power\b/i,
   /\bno power\b/i,
+  /\berror message\b/i,
+  /\balarm\b/i,
   /\bimage quality\b/i,
   /\b(fuzzy|artifact|artefact|noise|resolution|noisy|blurry|black screen|blank screen)\b/i,
   /\breduce repeat failures?\b/i,
@@ -152,6 +154,7 @@ const INTENT_PATTERNS: Array<{ intent: ChatIntent; patterns: RegExp[] }> = [
       /\btelemetry\b/i,
       /\busage\b/i,
       /\boffline sync\b/i,
+      /\bsync conflicts?\b/i,
       /\bqr\b/i,
       /\breport\b/i,
     ],
@@ -170,17 +173,39 @@ const CAPABILITY_KEYWORDS: Array<{ capability: CapabilityId; patterns: RegExp[];
   },
   {
     capability: 'prioritize_tasks',
-    patterns: [/\bprioriti[sz]e\b/i, /\bwhat should i do first\b/i, /\bmost urgent\b/i, /\btop priorities?\b/i],
+    patterns: [
+      /\bprioriti[sz]e\b/i,
+      /\bwhat should i (do|tackle|review|work on) first\b/i,
+      /\bwhat should i prioritize today\b/i,
+      /\bmost urgent\b/i,
+      /\btop priorities?\b/i,
+      /\bwhat is urgent\b/i,
+      /\bblocking service\b/i,
+      /\bwhere should (we|i) start\b/i,
+    ],
     baseScore: 0.74,
   },
   {
     capability: 'summarize_work_order',
-    patterns: [/\bsummari[sz]e\b.*\bwork order\b/i, /\bwo[-\s]?\d+\b/i, /\bclosure notes?\b/i],
+    patterns: [
+      /\bsummari[sz]e\b.*\bwork order\b/i,
+      /\bthis work order\b/i,
+      /\btrack my request\b/i,
+      /\bstatus of (my|this|the) request\b/i,
+      /\bwo[-\s]?\d+\b/i,
+      /\bclosure notes?\b/i,
+    ],
     baseScore: 0.75,
   },
   {
     capability: 'summarize_equipment',
-    patterns: [/\bsummari[sz]e\b.*\b(equipment|asset|device)\b/i, /\bstatus of this (asset|device|equipment)\b/i],
+    patterns: [
+      /\bsummari[sz]e\b.*\b(equipment|asset|device)\b/i,
+      /\bstatus of this (asset|device|equipment)\b/i,
+      /\bwhat is wrong with this (asset|device|equipment)\b/i,
+      /\bwhat should i know\b/i,
+      /\bbefore inspection\b/i,
+    ],
     baseScore: 0.74,
   },
   {
@@ -195,7 +220,15 @@ const CAPABILITY_KEYWORDS: Array<{ capability: CapabilityId; patterns: RegExp[];
   },
   {
     capability: 'safe_troubleshooting',
-    patterns: [/\btroubleshoot/i, /\bcheck first\b/i, /\bintermittent\b/i, /\bfailure\b/i],
+    patterns: [
+      /\btroubleshoot/i,
+      /\bcheck first\b/i,
+      /\bbefore escalation\b/i,
+      /\bsafe checks?\b/i,
+      /\bintermittent\b/i,
+      /\bfailure\b/i,
+      /\bnot powering|won'?t power|no power|blank screen|black screen\b/i,
+    ],
     baseScore: 0.7,
   },
   {
@@ -205,7 +238,16 @@ const CAPABILITY_KEYWORDS: Array<{ capability: CapabilityId; patterns: RegExp[];
   },
   {
     capability: 'logistics_status',
-    patterns: [/\blogistics\b/i, /\blow stock\b/i, /\bspare parts?\b/i, /\bprocurement\b/i, /\binventory\b/i],
+    patterns: [
+      /\blogistics\b/i,
+      /\blow stock\b/i,
+      /\bstockouts?\b/i,
+      /\bstock blockers?\b/i,
+      /\bwhich stockouts? are blocking work\b/i,
+      /\bspare parts?\b/i,
+      /\bprocurement\b/i,
+      /\binventory\b/i,
+    ],
     baseScore: 0.76,
   },
   {
@@ -245,17 +287,17 @@ const CAPABILITY_KEYWORDS: Array<{ capability: CapabilityId; patterns: RegExp[];
   },
   {
     capability: 'qr_asset_context',
-    patterns: [/\bqr\b/i, /\bscan evidence\b/i, /\bqr coverage\b/i, /\blabel status\b/i],
+    patterns: [/\bqr\b/i, /\bscan(ned)? asset\b/i, /\bscan evidence\b/i, /\bqr coverage\b/i, /\blabel status\b/i],
     baseScore: 0.8,
   },
   {
     capability: 'offline_sync_status',
-    patterns: [/\boffline sync\b/i, /\bsync conflicts?\b/i, /\bfailed sync\b/i, /\breplay queue\b/i],
+    patterns: [/\boffline sync\b/i, /\bsync conflicts?\b/i, /\bconflicts? need review\b/i, /\bfailed sync\b/i, /\breplay queue\b/i],
     baseScore: 0.8,
   },
   {
     capability: 'report_summary',
-    patterns: [/\breport summary\b/i, /\bsummarize.*report\b/i, /\bexplain.*report\b/i],
+    patterns: [/\breport summary\b/i, /\bsummari[sz]e.*report\b/i, /\bexplain.*report\b/i, /\bsummari[sz]e this report\b/i],
     baseScore: 0.76,
   },
   {
@@ -273,6 +315,11 @@ const CAPABILITY_KEYWORDS: Array<{ capability: CapabilityId; patterns: RegExp[];
     patterns: [/\bai usage\b/i, /\bgemini usage\b/i, /\btoken usage\b/i, /\busage limit\b/i],
     baseScore: 0.82,
   },
+  {
+    capability: 'general_system_fallback',
+    patterns: [/\bhow do i use (this page|this system|bmerms)\b/i, /\bwhat can (this|the) page do\b/i],
+    baseScore: 0.72,
+  },
 ];
 
 const ASSISTANT_INTRO_PATTERNS = [
@@ -288,6 +335,7 @@ const ASSISTANT_INTRO_PATTERNS = [
 ];
 
 const FOLLOW_UP_PRIORITIZE = /\bwhy\b.*\b(high priority|highest|urgent|top of|ranked|critical)\b/i;
+const FOLLOW_UP_FIRST_ITEM = /\bwhy\b.*\b(that|this|it|one)\b.*\bfirst\b/i;
 const FOLLOW_UP_NEXT = /\bwhat should i (do|tackle) next\b/i;
 const TASK_LIST = /\bturn (that|this|it) into a (task|to-?do|todo) list\b/i;
 const HOW_TASK_LIST = /\bhow (do i|to) (turn|make|build)\b.*\b(list|plan)\b/i;
@@ -415,6 +463,20 @@ export function classifyChatRequest(message: string, hint?: MemoryRoutingHint): 
     });
   }
 
+  if (
+    topCandidate &&
+    ['copilot_diagnostics', 'metric_debug', 'usage_status'].includes(topCandidate.capability)
+  ) {
+    reasons.push(`Matched high-confidence ${topCandidate.capability.replace(/_/g, ' ')} signal.`);
+    matchedSignals.push(topCandidate.capability);
+    return buildResult('analytics_explanation', {
+      capability: topCandidate.capability,
+      confidence: topCandidate.confidence,
+      confidenceLabel: toConfidenceLabel(topCandidate.confidence),
+      fallbackReason: undefined,
+    });
+  }
+
   for (const intentPattern of INTENT_PATTERNS) {
     if (intentPattern.patterns.some((pattern) => pattern.test(normalized))) {
       reasons.push(`Matched heuristic for ${intentPattern.intent}.`);
@@ -455,7 +517,7 @@ export function classifyChatRequest(message: string, hint?: MemoryRoutingHint): 
     }
   }
 
-  if (FOLLOW_UP_PRIORITIZE.test(normalized) && (hint?.activeCapability || isShortFollowUp(normalized))) {
+  if ((FOLLOW_UP_PRIORITIZE.test(normalized) || FOLLOW_UP_FIRST_ITEM.test(normalized)) && (hint?.activeCapability || isShortFollowUp(normalized))) {
     reasons.push('Follow-up: priority explanation; bias to prioritize_tasks.');
     matchedSignals.push('follow_up_priority');
     return buildResult('analytics_explanation', {

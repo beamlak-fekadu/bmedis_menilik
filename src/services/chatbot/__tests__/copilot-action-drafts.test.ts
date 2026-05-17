@@ -115,6 +115,28 @@ test('non-mutation intent yields no mutation drafts', () => {
   }
 });
 
+test('summary request does not show action drafts', () => {
+  const drafts = buildActionDraftsFromContext({
+    profile: BME_HEAD,
+    capability: 'summarize_equipment',
+    message: 'Summarize this asset and tell me what is happening',
+    evidenceSignals: ['equipment: MON-001'],
+    contextRefs: { equipmentId: 'asset-1' },
+  });
+  assert.deepEqual(drafts, []);
+});
+
+test('stock blocker question does not draft procurement unless explicitly requested', () => {
+  const drafts = buildActionDraftsFromContext({
+    profile: STORE,
+    capability: 'logistics_status',
+    message: 'Which stockouts are blocking work?',
+    evidenceSignals: ['2 low stock rows'],
+    contextRefs: {},
+  });
+  assert.deepEqual(drafts, []);
+});
+
 test('isOfflineCapableDraft maps the expected draft kinds', () => {
   assert.equal(isOfflineCapableDraft('maintenance_request_create'), true);
   assert.equal(isOfflineCapableDraft('calibration_request_create'), true);

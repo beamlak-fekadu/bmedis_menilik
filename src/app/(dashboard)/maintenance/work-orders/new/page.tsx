@@ -24,7 +24,7 @@ export default function NewWorkOrderPage() {
   const [technicians, setTechnicians] = useState<Profile[]>([]);
 
   const [form, setForm] = useState({
-    asset_id: searchParams.get('asset_id') || '',
+    asset_id: searchParams.get('asset_id') || searchParams.get('assetId') || '',
     request_id: searchParams.get('request_id') || '',
     assigned_to: '',
     priority: 'medium' as Urgency,

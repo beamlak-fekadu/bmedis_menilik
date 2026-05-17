@@ -84,7 +84,8 @@ export default function TrainingPage() {
   const searchParams = useSearchParams();
   const { user } = useAuth();
   const { profile } = useProfile(user?.id);
-  const { canManageMaintenance, primaryRole, roles } = useRole();
+  const { canManageMaintenance, can, primaryRole, roles } = useRole();
+  const canRequestTraining = can('training.request.create');
   const [sessions, setSessions] = useState<SessionRow[]>([]);
   const [requests, setRequests] = useState<RequestRow[]>([]);
   const [assets, setAssets] = useState<{ value: string; label: string }[]>([]);
@@ -154,6 +155,14 @@ export default function TrainingPage() {
   useEffect(() => {
     if (searchParams.get('source') === 'requests-hub' && searchParams.get('action') === 'new-request') {
       setRequestModalOpen(true);
+    }
+    if (searchParams.get('action') === 'new-request') {
+      setRequestModalOpen(true);
+    }
+    const assetIdParam = searchParams.get('assetId') ?? searchParams.get('asset_id');
+    if (assetIdParam) {
+      setReqAssetId(assetIdParam);
+      setSesAssetId(assetIdParam);
     }
   }, [searchParams]);
 
@@ -505,7 +514,7 @@ export default function TrainingPage() {
           data={filteredRequests}
           searchPlaceholder="Search requests..."
           emptyMessage="No training requests found"
-          actions={canManageMaintenance ? (
+          actions={canRequestTraining ? (
             <Button onClick={() => setRequestModalOpen(true)}>
               <ClipboardList className="h-4 w-4" />
               New Request
@@ -571,6 +580,10 @@ export default function TrainingPage() {
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" onClick={() => setRequestModalOpen(true)}><ClipboardList className="h-4 w-4" /> New Request</Button>
             <Button onClick={() => setSessionModalOpen(true)}><Plus className="h-4 w-4" /> New Session</Button>
+          </div>
+        ) : canRequestTraining ? (
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" onClick={() => setRequestModalOpen(true)}><ClipboardList className="h-4 w-4" /> Request Training</Button>
           </div>
         ) : <Badge variant="info">{primaryRole === 'viewer' ? 'Read-only' : 'View access'}</Badge>}
       />

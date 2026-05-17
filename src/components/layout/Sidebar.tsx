@@ -8,7 +8,7 @@ import { hasCapability, type Capability } from '@/lib/rbac';
 import {
   ChevronLeft, ChevronRight, Monitor, FileText, PackageCheck, Wrench, CalendarCheck, CalendarDays, Gauge,
   Package, Boxes, GraduationCap, Trash2, Activity, ShieldAlert, CheckCircle, BarChart3,
-  ArrowUpDown, FileBarChart, Users, Settings, ClipboardList, Headphones, BrainCircuit, Shield, MessageSquareText, Bell, LayoutDashboard, RefreshCw,
+  ArrowUpDown, FileBarChart, Users, Settings, ClipboardList, Headphones, BrainCircuit, Shield, MessageSquareText, Bell, LayoutDashboard, RefreshCw, X,
 } from 'lucide-react';
 import LogoMark from '@/components/brand/LogoMark';
 
@@ -20,6 +20,10 @@ const iconMap: Record<string, React.ElementType> = {
 
 interface SidebarProps {
   userRoles?: string[];
+  /** When provided, the sidebar runs in mobile drawer mode: no collapse button,
+      a close (X) button, and nav-item clicks call onNavigate to dismiss the drawer. */
+  onNavigate?: () => void;
+  drawerMode?: boolean;
 }
 
 // Viewer-specific label overrides — viewer pages are framed as read-only
@@ -56,7 +60,7 @@ const DEPARTMENT_LABEL_OVERRIDES: Record<string, string> = {
   [ROUTES.ALERTS]: 'Department Alerts',
 };
 
-export default function Sidebar({ userRoles = ['admin'] }: SidebarProps) {
+export default function Sidebar({ userRoles = ['admin'], onNavigate, drawerMode = false }: SidebarProps) {
   const isViewerOnly =
     userRoles.length > 0 &&
     userRoles.includes('viewer') &&
@@ -80,30 +84,51 @@ export default function Sidebar({ userRoles = ['admin'] }: SidebarProps) {
     return pathname.startsWith(href);
   };
 
+  // In drawer mode the sidebar always renders expanded (no collapse) and is
+  // sized to fit a mobile viewport with a max width.
+  const effectiveCollapsed = drawerMode ? false : collapsed;
+
   return (
     <aside
       className={`panel-surface-muted flex h-screen flex-col border-r border-[var(--border-subtle)] transition-all duration-200 ${
-        collapsed ? 'w-16' : 'w-72'
+        drawerMode
+          ? 'w-[85vw] max-w-xs'
+          : effectiveCollapsed
+            ? 'w-16'
+            : 'w-72'
       }`}
     >
       <div className="flex h-16 shrink-0 items-center justify-between border-b border-[var(--border-subtle)] px-4">
-        {!collapsed && (
-          <Link href="/" className="flex items-center gap-2.5">
+        {!effectiveCollapsed && (
+          <Link href="/" onClick={onNavigate} className="flex items-center gap-2.5">
             <LogoMark size={28} />
             <span className="text-base font-semibold text-[var(--foreground)] tracking-tight">{APP_NAME_SHORT}</span>
           </Link>
         )}
-        {collapsed && (
-          <Link href="/" className="mx-auto">
+        {effectiveCollapsed && (
+          <Link href="/" onClick={onNavigate} className="mx-auto">
             <LogoMark size={26} />
           </Link>
         )}
-        <button
-          onClick={() => setCollapsed(!collapsed)}
-          className="rounded-lg p-1 text-[var(--text-muted)] transition-colors hover:bg-[var(--surface-1)] hover:text-[var(--foreground)]"
-        >
-          {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
-        </button>
+        {drawerMode ? (
+          <button
+            type="button"
+            onClick={onNavigate}
+            aria-label="Close navigation"
+            className="rounded-lg p-1 text-[var(--text-muted)] transition-colors hover:bg-[var(--surface-1)] hover:text-[var(--foreground)]"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setCollapsed(!collapsed)}
+            aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            className="rounded-lg p-1 text-[var(--text-muted)] transition-colors hover:bg-[var(--surface-1)] hover:text-[var(--foreground)]"
+          >
+            {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+          </button>
+        )}
       </div>
 
       <nav className="flex-1 min-h-0 overflow-y-auto px-2 py-4">
@@ -117,7 +142,7 @@ export default function Sidebar({ userRoles = ['admin'] }: SidebarProps) {
 
           return (
             <div key={section.title} className="mb-5">
-              {!collapsed && (
+              {!effectiveCollapsed && (
                 <p className="mb-1.5 px-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--text-subtle)]">
                   {section.title}
                 </p>
@@ -135,6 +160,7 @@ export default function Sidebar({ userRoles = ['admin'] }: SidebarProps) {
                   <Link
                     key={item.href}
                     href={item.href}
+                    onClick={onNavigate}
                     className={`mb-0.5 flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors ${
                       !isChatbotItem && active
                         ? 'bg-[var(--brand-soft)] font-medium text-[var(--brand)] shadow-sm'
@@ -142,13 +168,13 @@ export default function Sidebar({ userRoles = ['admin'] }: SidebarProps) {
                           ? 'font-normal text-[var(--text-muted)] hover:bg-[var(--surface-1)] hover:text-[var(--foreground)]'
                           : chatbotClass
                     } ${isChatbotItem ? 'relative overflow-hidden font-medium' : ''}`}
-                    title={collapsed ? item.label : undefined}
+                    title={effectiveCollapsed ? item.label : undefined}
                   >
                     <Icon
                       className={`h-[18px] w-[18px] flex-shrink-0 ${isChatbotItem ? 'text-[var(--chatbot-nav-icon)]' : ''}`}
                       strokeWidth={active ? 2 : 1.75}
                     />
-                    {!collapsed && (
+                    {!effectiveCollapsed && (
                       <span>
                         {isStoreOnly && STORE_LABEL_OVERRIDES[item.href]
                           ? STORE_LABEL_OVERRIDES[item.href]

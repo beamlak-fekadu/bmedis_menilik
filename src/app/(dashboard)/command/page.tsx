@@ -7,8 +7,10 @@ import {
   Users,
   Zap,
 } from 'lucide-react';
+import { formatDistanceToNow } from 'date-fns';
 import { requireRole } from '@/lib/auth/helpers';
 import { createClient } from '@/lib/supabase/server';
+import { getLastSnapshotRefresh } from '@/services/cronStatus';
 import { Badge, Card, CardContent, CardHeader, CardTitle, PageHeader } from '@/components/ui';
 import AssistantPageContextBridge from '@/components/assistant/AssistantPageContextBridge';
 import ExpandableText from '@/components/ui/ExpandableText';
@@ -437,6 +439,10 @@ export default async function CommandCenterPage() {
 
   const supabase = await createClient();
   const now = new Date().toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  const lastSnapshotRefresh = await getLastSnapshotRefresh();
+  const snapshotStatusLabel = lastSnapshotRefresh
+    ? `Snapshots last refreshed: ${formatDistanceToNow(new Date(lastSnapshotRefresh.triggered_at), { addSuffix: true })}`
+    : 'Snapshots last refreshed: Never';
 
   // ── Department Head / Department User Department Dashboard ────────────
   const deptRoleType = detectDepartmentRoleType(profile.roleNames ?? []);
@@ -806,6 +812,8 @@ export default async function CommandCenterPage() {
               <AutoRefreshStatus />
               <span className="text-xs text-[var(--text-muted)]/50">·</span>
               <span className="text-xs text-[var(--text-muted)]">Updated from current operational records · {now}</span>
+              <span className="text-xs text-[var(--text-muted)]/50">·</span>
+              <span className="text-xs text-[var(--text-muted)]">{snapshotStatusLabel}</span>
               <Link href="/calendar" className="text-xs text-cyan-300/80 hover:text-cyan-200" title="Open hospital operations calendar">
                 <CalendarDays className="inline h-3 w-3" /> Calendar
               </Link>

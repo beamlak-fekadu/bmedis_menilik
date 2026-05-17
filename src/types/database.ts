@@ -615,6 +615,126 @@ export type Database = {
           },
         ]
       }
+      copilot_usage_events: {
+        Row: {
+          capability: string | null
+          completion_chars: number
+          completion_tokens: number | null
+          created_at: string
+          estimated_tokens: number | null
+          fallback_reason: string | null
+          id: string
+          latency_ms: number | null
+          metadata: Json | null
+          model: string
+          profile_id: string
+          prompt_chars: number
+          prompt_tokens: number | null
+          provider: string
+          provider_status: string
+          role_names: Json
+          route: string | null
+          session_id: string | null
+          total_tokens: number | null
+          usage_source: string
+          user_id: string | null
+        }
+        Insert: {
+          capability?: string | null
+          completion_chars?: number
+          completion_tokens?: number | null
+          created_at?: string
+          estimated_tokens?: number | null
+          fallback_reason?: string | null
+          id?: string
+          latency_ms?: number | null
+          metadata?: Json | null
+          model: string
+          profile_id: string
+          prompt_chars?: number
+          prompt_tokens?: number | null
+          provider: string
+          provider_status: string
+          role_names?: Json
+          route?: string | null
+          session_id?: string | null
+          total_tokens?: number | null
+          usage_source: string
+          user_id?: string | null
+        }
+        Update: {
+          capability?: string | null
+          completion_chars?: number
+          completion_tokens?: number | null
+          created_at?: string
+          estimated_tokens?: number | null
+          fallback_reason?: string | null
+          id?: string
+          latency_ms?: number | null
+          metadata?: Json | null
+          model?: string
+          profile_id?: string
+          prompt_chars?: number
+          prompt_tokens?: number | null
+          provider?: string
+          provider_status?: string
+          role_names?: Json
+          route?: string | null
+          session_id?: string | null
+          total_tokens?: number | null
+          usage_source?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "copilot_usage_events_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "copilot_usage_events_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "chat_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cron_job_log: {
+        Row: {
+          error_message: string | null
+          finished_at: string | null
+          id: string
+          job_name: string
+          request_id: number | null
+          response_status: number | null
+          status: string
+          triggered_at: string
+        }
+        Insert: {
+          error_message?: string | null
+          finished_at?: string | null
+          id?: string
+          job_name: string
+          request_id?: number | null
+          response_status?: number | null
+          status: string
+          triggered_at?: string
+        }
+        Update: {
+          error_message?: string | null
+          finished_at?: string | null
+          id?: string
+          job_name?: string
+          request_id?: number | null
+          response_status?: number | null
+          status?: string
+          triggered_at?: string
+        }
+        Relationships: []
+      }
       decision_support_refresh_log: {
         Row: {
           asset_id: string | null
@@ -930,6 +1050,8 @@ export type Database = {
           created_at: string
           deleted_at: string | null
           department_id: string
+          embedding: string | null
+          embedding_updated_at: string | null
           id: string
           installation_date: string | null
           manufacturer_id: string | null
@@ -962,6 +1084,8 @@ export type Database = {
           created_at?: string
           deleted_at?: string | null
           department_id: string
+          embedding?: string | null
+          embedding_updated_at?: string | null
           id?: string
           installation_date?: string | null
           manufacturer_id?: string | null
@@ -994,6 +1118,8 @@ export type Database = {
           created_at?: string
           deleted_at?: string | null
           department_id?: string
+          embedding?: string | null
+          embedding_updated_at?: string | null
           id?: string
           installation_date?: string | null
           manufacturer_id?: string | null
@@ -1093,6 +1219,44 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      equipment_document_chunks: {
+        Row: {
+          chunk_index: number
+          chunk_text: string
+          created_at: string
+          embedding: string | null
+          equipment_document_id: string
+          id: string
+          source_label: string | null
+        }
+        Insert: {
+          chunk_index?: number
+          chunk_text: string
+          created_at?: string
+          embedding?: string | null
+          equipment_document_id: string
+          id?: string
+          source_label?: string | null
+        }
+        Update: {
+          chunk_index?: number
+          chunk_text?: string
+          created_at?: string
+          embedding?: string | null
+          equipment_document_id?: string
+          id?: string
+          source_label?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "equipment_document_chunks_equipment_document_id_fkey"
+            columns: ["equipment_document_id"]
+            isOneToOne: false
+            referencedRelation: "equipment_documents"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       equipment_documents: {
         Row: {
@@ -4991,6 +5155,22 @@ export type Database = {
         }
         Returns: string
       }
+      match_equipment_documents: {
+        Args: {
+          match_count: number
+          match_threshold: number
+          query_embedding: string
+        }
+        Returns: {
+          asset_id: string
+          chunk_id: string
+          chunk_index: number
+          chunk_text: string
+          equipment_document_id: string
+          similarity: number
+          source_label: string
+        }[]
+      }
       recompute_all_equipment_analytics: { Args: never; Returns: undefined }
       recompute_equipment_analytics: {
         Args: { p_asset_id: string }
@@ -5000,6 +5180,7 @@ export type Database = {
         Args: { snapshot_dt?: string }
         Returns: undefined
       }
+      trigger_snapshot_refresh: { Args: never; Returns: string }
     }
     Enums: {
       [_ in never]: never

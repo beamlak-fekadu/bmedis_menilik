@@ -7,9 +7,10 @@ import {
   Wrench, ClipboardList, Clock, AlertTriangle, CheckCircle2,
   AlertCircle, TrendingUp, Play, ShieldAlert,
 } from 'lucide-react';
-import { PageHeader, DataTable, Button, Spinner } from '@/components/ui';
+import { PageHeader, DataTable, Button, Spinner, AssetFilterChip } from '@/components/ui';
 import AssistantPageContextBridge from '@/components/assistant/AssistantPageContextBridge';
 import ClearFiltersButton from '@/components/ui/ClearFiltersButton';
+import { useAssetFilter } from '@/hooks/useAssetFilter';
 import { UrgencyBadge, WorkOrderStatusBadge, RequestStatusBadge } from '@/components/ui/StatusBadge';
 import { getMaintenanceRequests, getWorkOrders } from '@/services/maintenance.service';
 import { getRecommendationFlags } from '@/services/analytics.service';
@@ -196,6 +197,7 @@ function OperationalMaintenancePage() {
   const router = useRouter();
   const { toast } = useToast();
   const { canCreateRequests, canManageMaintenance } = useRole();
+  const assetFilter = useAssetFilter();
 
   const [requests, setRequests] = useState<RequestRow[]>([]);
   const [workOrders, setWorkOrders] = useState<WorkOrderRow[]>([]);
@@ -278,31 +280,41 @@ function OperationalMaintenancePage() {
   }, [requests, workOrders, linkedWOByRequest, recurringFailures]);
 
   // ── Filtered datasets ─────────────────────────────────────────────────────
+  const assetScopedRequests = useMemo(() => {
+    if (!assetFilter.assetId) return requests;
+    return requests.filter((r) => r.asset_id === assetFilter.assetId);
+  }, [requests, assetFilter.assetId]);
+
+  const assetScopedWorkOrders = useMemo(() => {
+    if (!assetFilter.assetId) return workOrders;
+    return workOrders.filter((wo) => (wo as { asset_id?: string | null }).asset_id === assetFilter.assetId);
+  }, [workOrders, assetFilter.assetId]);
+
   const filteredRequests = useMemo(() => {
     switch (reqFilter) {
-      case 'pending':    return requests.filter((r) => r.status === 'pending');
-      case 'approved':   return requests.filter((r) => r.status === 'approved');
-      case 'needs_wo':   return requests.filter((r) => r.status === 'approved' && !(linkedWOByRequest.get(r.id)?.length));
-      case 'critical':   return requests.filter((r) => r.urgency === 'critical');
-      case 'in_progress': return requests.filter((r) => r.status === 'in_progress');
-      case 'completed':  return requests.filter((r) => r.status === 'completed');
-      case 'rejected':   return requests.filter((r) => r.status === 'rejected' || r.status === 'canceled');
-      default:           return requests;
+      case 'pending':    return assetScopedRequests.filter((r) => r.status === 'pending');
+      case 'approved':   return assetScopedRequests.filter((r) => r.status === 'approved');
+      case 'needs_wo':   return assetScopedRequests.filter((r) => r.status === 'approved' && !(linkedWOByRequest.get(r.id)?.length));
+      case 'critical':   return assetScopedRequests.filter((r) => r.urgency === 'critical');
+      case 'in_progress': return assetScopedRequests.filter((r) => r.status === 'in_progress');
+      case 'completed':  return assetScopedRequests.filter((r) => r.status === 'completed');
+      case 'rejected':   return assetScopedRequests.filter((r) => r.status === 'rejected' || r.status === 'canceled');
+      default:           return assetScopedRequests;
     }
-  }, [requests, reqFilter, linkedWOByRequest]);
+  }, [assetScopedRequests, reqFilter, linkedWOByRequest]);
 
   const filteredWorkOrders = useMemo(() => {
     switch (woFilter) {
-      case 'open':       return workOrders.filter((wo) => !['completed', 'canceled'].includes(wo.status));
-      case 'unassigned': return workOrders.filter((wo) => wo.status === 'open' && !wo.assigned_to);
-      case 'assigned':   return workOrders.filter((wo) => wo.status === 'assigned');
-      case 'in_progress': return workOrders.filter((wo) => wo.status === 'in_progress');
-      case 'on_hold':    return workOrders.filter((wo) => wo.status === 'on_hold');
-      case 'completed':  return workOrders.filter((wo) => wo.status === 'completed');
-      case 'critical':   return workOrders.filter((wo) => wo.priority === 'critical');
-      default:           return workOrders;
+      case 'open':       return assetScopedWorkOrders.filter((wo) => !['completed', 'canceled'].includes(wo.status));
+      case 'unassigned': return assetScopedWorkOrders.filter((wo) => wo.status === 'open' && !wo.assigned_to);
+      case 'assigned':   return assetScopedWorkOrders.filter((wo) => wo.status === 'assigned');
+      case 'in_progress': return assetScopedWorkOrders.filter((wo) => wo.status === 'in_progress');
+      case 'on_hold':    return assetScopedWorkOrders.filter((wo) => wo.status === 'on_hold');
+      case 'completed':  return assetScopedWorkOrders.filter((wo) => wo.status === 'completed');
+      case 'critical':   return assetScopedWorkOrders.filter((wo) => wo.priority === 'critical');
+      default:           return assetScopedWorkOrders;
     }
-  }, [workOrders, woFilter]);
+  }, [assetScopedWorkOrders, woFilter]);
 
   // Card click → switch tab and apply filter
   function activateFilter(tab: 'requests' | 'work-orders', filter: string) {
@@ -534,6 +546,14 @@ function OperationalMaintenancePage() {
         description="Requests, work orders, and workflow management"
         breadcrumbs={[{ label: 'Command Center', href: '/command' }, { label: 'Maintenance' }]}
       />
+
+      {assetFilter.assetId ? (
+        <AssetFilterChip
+          asset={assetFilter.asset}
+          clearHref={assetFilter.clearHref}
+          source={assetFilter.source}
+        />
+      ) : null}
 
       {/* ── Summary Cards ── */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 xl:grid-cols-8">

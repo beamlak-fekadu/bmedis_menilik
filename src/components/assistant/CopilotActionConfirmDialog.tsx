@@ -53,11 +53,11 @@ function CopilotActionConfirmDialogInner(props: Omit<CopilotActionConfirmDialogP
       title={draft.title}
       size="lg"
       footer={
-        <div className="flex w-full items-center justify-between">
+        <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-xs text-[var(--text-muted)]">
             Server re-validates fields before any record is created.
           </p>
-          <div className="flex items-center gap-2">
+          <div className="flex w-full flex-wrap items-center justify-end gap-2 sm:w-auto">
             <Button variant="ghost" onClick={onCancel} disabled={submitting}>
               Cancel
             </Button>
@@ -92,7 +92,7 @@ function CopilotActionConfirmDialogInner(props: Omit<CopilotActionConfirmDialogP
         {readonlyFields.length > 0 ? (
           <div className="rounded-md border border-[var(--border-subtle)] bg-[var(--surface-2)] p-2 text-xs">
             <p className="mb-1 font-semibold">Linked context</p>
-            <dl className="grid grid-cols-2 gap-1">
+            <dl className="grid grid-cols-1 gap-1 sm:grid-cols-2">
               {readonlyFields.map((field) => (
                 <div key={field.name}>
                   <dt className="text-[var(--text-muted)]">{field.label}</dt>

@@ -105,11 +105,18 @@ export type TroubleshootingSubtype =
   | 'none';
 export type RequestSpecificity = 'general' | 'specific' | 'unsafe';
 
+const ChatRecordIdSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(120)
+  .regex(/^[A-Za-z0-9][A-Za-z0-9_-]*$/);
+
 export const ChatContextRefsSchema = z.object({
-  equipmentId: z.string().uuid().optional(),
-  workOrderId: z.string().uuid().optional(),
-  departmentId: z.string().uuid().optional(),
-  organizationUnitId: z.string().uuid().optional(),
+  equipmentId: ChatRecordIdSchema.optional(),
+  workOrderId: ChatRecordIdSchema.optional(),
+  departmentId: ChatRecordIdSchema.optional(),
+  organizationUnitId: ChatRecordIdSchema.optional(),
 });
 
 export const ChatModuleContextSchema = z.object({

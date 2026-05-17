@@ -1,0 +1,24 @@
+# Supabase project config — committed to the repo.
+# Project: fgqyszbxzpmqzpqvdivx (BMERMS)
+#
+# verify_jwt:
+#   true  (default)  -> Functions gateway parses the inbound Authorization
+#                       header as a JWT. Rejects opaque sb_secret_/sb_publishable_
+#                       tokens with UNAUTHORIZED_INVALID_JWT_FORMAT.
+#   false            -> Gateway lets the request through unconditionally. The
+#                       function code is responsible for any caller auth.
+
+project_id = "fgqyszbxzpmqzpqvdivx"
+
+# Called by pg_cron via pg_net using the new-format sb_secret_* key. The
+# project has been migrated to JWT Signing Keys, so the gateway cannot
+# verify sb_secret_* as a JWT. We disable JWT verification here and
+# enforce a shared secret inside the function instead.
+[functions.refresh-analytics-snapshot]
+verify_jwt = false
+
+# Called by the Next.js API route forwarding the signed-in user's JWT.
+# User JWTs are still signed with valid signing keys, so JWT verification
+# stays on for this one (RLS depends on the forwarded token).
+[functions.calculate-equipment-scores]
+verify_jwt = true
