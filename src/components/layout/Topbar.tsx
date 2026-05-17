@@ -1,20 +1,19 @@
 'use client';
 
-import { Bell, LogOut, Menu, Search, User } from 'lucide-react';
+import { LogOut, Menu, Search, User } from 'lucide-react';
 import { APP_NAME_SHORT, HOSPITAL_NAME } from '@/constants';
-import Button from '@/components/ui/Button';
 import Dropdown from '@/components/ui/Dropdown';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
 import { AssistantLauncher } from '@/components/assistant/AssistantLauncher';
 import { formatRoleName } from '@/utils/roles';
 import SyncStatusIndicator from '@/components/offline/SyncStatusIndicator';
+import NotificationBell from '@/components/notifications/NotificationBell';
 
 interface TopbarProps {
   userName?: string;
   userRole?: string;
   userJobTitle?: string | null;
   userRoles?: string[];
-  alertCount?: number;
   onMenuToggle?: () => void;
   onLogout?: () => void;
 }
@@ -24,7 +23,6 @@ export default function Topbar({
   userRole = '',
   userJobTitle,
   userRoles = [],
-  alertCount = 0,
   onMenuToggle,
   onLogout,
 }: TopbarProps) {
@@ -69,14 +67,7 @@ export default function Topbar({
         <SyncStatusIndicator userRoles={userRoles} />
         <AssistantLauncher />
         <ThemeToggle />
-        <Button variant="ghost" size="icon" className="relative" aria-label={`Alerts${alertCount > 0 ? ` (${alertCount > 9 ? '9+' : alertCount})` : ''}`}>
-          <Bell className="h-5 w-5 text-[var(--text-muted)]" />
-          {alertCount > 0 && (
-            <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-[var(--danger)] text-[10px] font-bold text-white">
-              {alertCount > 9 ? '9+' : alertCount}
-            </span>
-          )}
-        </Button>
+        <NotificationBell />
 
         <Dropdown
           trigger={

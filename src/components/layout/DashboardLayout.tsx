@@ -12,11 +12,10 @@ interface DashboardLayoutProps {
   userRole?: string;
   userJobTitle?: string | null;
   userRoles?: string[];
-  alertCount?: number;
   onLogout?: () => void;
 }
 
-export default function DashboardLayout({ children, userName, userRole, userJobTitle, userRoles, alertCount, onLogout }: DashboardLayoutProps) {
+export default function DashboardLayout({ children, userName, userRole, userJobTitle, userRoles, onLogout }: DashboardLayoutProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Prevent background scroll while the mobile drawer is open. The desktop
@@ -61,7 +60,6 @@ export default function DashboardLayout({ children, userName, userRole, userJobT
             userRole={userRole}
             userJobTitle={userJobTitle}
             userRoles={userRoles}
-            alertCount={alertCount}
             onMenuToggle={() => setMobileMenuOpen(true)}
             onLogout={onLogout}
           />

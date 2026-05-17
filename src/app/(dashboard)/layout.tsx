@@ -43,6 +43,8 @@ const EXTRA_ROUTE_RULES: Array<{ prefix: string; roles: RoleName[] }> = [
   { prefix: '/requests', roles: ['developer', 'admin', 'bme_head', 'technician', 'department_head', 'department_user', 'store_user', 'viewer'] },
   { prefix: '/documents', roles: ['developer', 'admin', 'bme_head', 'technician'] },
   { prefix: '/installation', roles: ['developer', 'admin', 'bme_head', 'technician'] },
+  // Notification Center — all logged-in roles can read their own inbox.
+  { prefix: '/notifications', roles: ['developer', 'admin', 'bme_head', 'technician', 'department_head', 'department_user', 'store_user', 'viewer'] },
 ];
 
 const NAV_ROUTE_RULES = NAV_SECTIONS.flatMap((section) =>

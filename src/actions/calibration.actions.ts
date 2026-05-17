@@ -58,6 +58,35 @@ export async function createCalibrationRequestAction(payload: Record<string, unk
     if (result.error) return { success: false, error: result.error.message };
     await logServerAuditEvent({ supabase, profileId: profile.id, action: 'calibration_request.create', entityType: 'calibration_requests', entityId: (result.data as { id?: string }).id ?? null, newValues: result.data as Record<string, unknown> });
     await recomputeAssetAnalytics(parsed.asset_id).catch(() => undefined);
+
+    try {
+      const { data: asset } = await supabase
+        .from('equipment_assets')
+        .select('name, asset_code, department_id')
+        .eq('id', parsed.asset_id)
+        .maybeSingle();
+      const row = (asset ?? null) as { name?: string | null; asset_code?: string | null; department_id?: string | null } | null;
+      const inserted = result.data as { id?: string };
+      const { emitNotificationEvent } = await import('@/services/notifications/notification-engine');
+      await emitNotificationEvent({
+        event_type: 'calibration.request_created',
+        source_table: 'calibration_requests',
+        source_id: inserted.id ?? null,
+        asset_id: parsed.asset_id,
+        department_id: row?.department_id ?? null,
+        priority: parsed.urgency === 'critical' ? 'critical' : parsed.urgency === 'high' ? 'high' : 'medium',
+        payload: {
+          asset_name: row?.name ?? null,
+          asset_code: row?.asset_code ?? null,
+          request_id: inserted.id ?? null,
+          requested_by: data.requested_by ?? null,
+          urgency: parsed.urgency,
+        },
+      });
+    } catch (e) {
+      console.error('[notifications] calibration.request_created emit failed:', e);
+    }
+
     revalidateMany(calibrationPaths);
     return { success: true, data: result.data };
   } catch (err) {

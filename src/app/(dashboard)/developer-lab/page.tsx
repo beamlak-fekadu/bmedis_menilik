@@ -8,6 +8,7 @@ import DeveloperLabClient, { type LabReplacementRow } from './DeveloperLabClient
 import QrCoverageSection from './QrCoverageSection';
 import OfflineDiagnosticsPanel from './OfflineDiagnosticsPanel';
 import CopilotDiagnosticsSection from './CopilotDiagnosticsSection';
+import NotificationDiagnosticsSection from './NotificationDiagnosticsSection';
 import { getQrCoverageStats, getQrScanCoverageStats } from '@/services/qr.service';
 import { getOfflineSyncServerSummary } from '@/services/offline-sync.service';
 import {
@@ -498,6 +499,8 @@ export default async function DeveloperLabPage({ searchParams }: { searchParams:
       <OfflineDiagnosticsPanel serverSummary={offlineSyncSummary} />
 
       <CopilotDiagnosticsSection profileId={String(profile.id)} roleNames={(profile.roleNames ?? []) as string[]} />
+
+      <NotificationDiagnosticsSection />
 
       <section className="space-y-3">
         <div>

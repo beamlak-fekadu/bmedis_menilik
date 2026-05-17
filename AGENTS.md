@@ -1,7 +1,7 @@
 # AGENTS.md — BMERMS Codebase Reference for AI Agents
 
-Last updated: 2026-05-16 (AI Copilot — Phase 3: action drafts, confirmation UI, server executor, offline-capable drafts, audit, hardened usage)
-Branch: copilot
+Last updated: 2026-05-17 (Notifications: in-app bell + drawer + /notifications page + Telegram delivery + Developer Lab diagnostics, /alerts redirected)
+Branch: integration
 Supabase project ID: fgqyszbxzpmqzpqvdivx
 
 This file is the canonical technical reference for any AI agent working in this repo.
@@ -1468,3 +1468,46 @@ One active corrective maintenance request per asset is the rule.
 6. Normal users see natural paragraphs, compact evidence chips, and useful next steps. Provider/parser/classifier/tool traces stay hidden from normal roles; developer debug remains collapsed and can expose routing/tools/provider/parser details.
 7. Troubleshooting remains safe first-line only: external inspection, power/accessories, visible damage, battery, ventilation, cleaning, error observation, PM/calibration/history, and escalation criteria. Never provide bypass, service mode, firmware, internal board, hidden-menu, or manufacturer-specific calibration steps.
 8. Chatbot tests now include deterministic builder/usefulness-guard coverage; current count after this pass is 137/137.
+
+## Notifications subsystem (2026-05-17)
+
+1. In-app notifications are the single source of truth. Telegram is one external delivery channel; the developer monitor receives copies of every Telegram-eligible notification for testing across roles. No SMS, no email, no browser push.
+2. Migration `00055_notifications.sql` adds `notification_events`, `notifications`, `notification_rule_logs`, `notification_deliveries`, and `telegram_connections` with hot-path indexes and RLS (own-row read/update for `notifications`; developer/admin/bme_head read diagnostics; privileged insert via server actions). Next migration must be 00056.
+3. Types live in `src/types/notifications.ts`. Engine lives in `src/services/notifications/`:
+   - `notification-engine.ts` — `createNotificationEvent`, `processNotificationEvent`, `createNotificationForProfile`, `emitNotificationEvent` (fire-and-forget wrapper used by server actions).
+   - `notification-rules.ts` — role-aware fan-out per event type. Generates per-recipient `CreateNotificationInput` rows; never broadcasts raw payloads.
+   - `recipient-resolver.ts` — `getActiveProfilesByRole`, `getDevelopers`, `getBmeHeads`, `getAdmins`, `getDepartmentHeads(deptId)`, `getDepartmentUsers(deptId)`, `getStoreUsers`, `getViewers`, `getProfileById`, `getAssetDepartmentId`, `getLeadershipRecipients`, `dedupeRecipients`.
+   - `notification-dedupe.ts` — `computeDedupeKey`, `applyDedupe`. Default cooldown 10 min; same recipient + event + source within window updates the existing row instead of inserting; Telegram suppressed unless priority increased to critical.
+   - `notification-links.ts` — `buildNotificationLink(eventType, ctx)` returns the exact deep link (exact request/WO/PM schedule/procurement drilldown/replacement evidence/spare parts blocker/offline-sync/asset QR tab).
+   - `notification.service.ts` — `getMyNotifications`, `getMyNotificationSummary`, `markNotificationStatus`, `markAllMyNotificationsRead`, `getNotificationDiagnostics`, `listNotificationDeliveries`, `listNotificationRuleLogs`, `runNotificationRuleCheck`.
+   - `telegram-provider.ts` — `sendTelegramMessage`, `getTelegramBotUpdates`, `testTelegramBot`, `formatTelegramNotification`, `formatTelegramMonitorMessage`, `isTelegramConfigured`, `isTelegramMonitorConfigured`, `getTelegramMonitorChatId`, `maskTelegramChatId`, `getAppBaseUrl`. Hits Telegram Bot API directly via `fetch` with `AbortController` timeout; never throws.
+   - `notification-delivery.service.ts` — `deliverTelegramIfEligible`, `isTelegramEligible`. Records `notification_deliveries` for every attempt; developer monitor copy is sent in addition to the real recipient.
+4. Server actions live in `src/actions/notifications.actions.ts`:
+   - User-facing: `markNotificationStatusAction`, `markAllNotificationsReadAction`, `getMyNotificationSummaryAction`, `getMyNotificationsAction`.
+   - Developer-only (`developer.diagnostics` capability): `getNotificationDiagnosticsAction`, `listDeliveriesAction`, `listRuleLogsAction`, `runNotificationRuleCheckAction`, `createTestNotificationToSelfAction`, `sendTelegramTestMessageAction`, `sendSampleRoleNotificationAction`, `fetchTelegramBotUpdatesAction`, `testTelegramBotAction`, `saveTelegramConnectionAction`, `deliverNotificationAgainAction`, `emitNotificationEventAction`.
+5. Trigger integrations (all fire-and-forget, wrapped in try/catch — notification failures must never break primary workflows):
+   - `createMaintenanceRequestAction` → `maintenance_request.created` (priority follows urgency).
+   - `updateRequestStatusAction` → `maintenance_request.status_changed`.
+   - `assignWorkOrder` / `reassignWorkOrder` → `work_order.assigned`.
+   - `updateWorkOrderAction` → `work_order.status_changed` / `work_order.on_hold` / `work_order.completed`.
+   - `createPMCompletionAction` → `pm.completed`. `assignPMScheduleAction` → `pm.assigned`.
+   - `createCalibrationRequestAction` → `calibration.request_created`.
+   - `updateProcurementStatusAction` → `procurement.delivered` (the enum has no `delayed` value; delayed is detected by the rule check).
+   - `markQrLabelNeedsReplacementAction` → `qr.label_needs_replacement`.
+   - `recordOfflineSyncEventAction` → `offline_sync.conflict` / `offline_sync.failed` for new conflicts.
+6. UI components:
+   - `src/components/notifications/NotificationBell.tsx` — Topbar bell. 45 s polling for unread summary, opens a drawer with the latest 8 unread/read notifications, supports mark-read/mark-all-read/dismiss, links into deep routes, critical unread shows a red ring.
+   - `src/app/(dashboard)/notifications/page.tsx` — full Notification Center. Tabs: For Me, Critical, Tasks, Requests, Compliance, Stock & Procurement, System, Reviewed. Filters: priority, category, status, search. Mark-all-read + Send test buttons. Developer-only callout linking to Developer Lab diagnostics.
+   - `src/app/(dashboard)/developer-lab/NotificationDiagnosticsSection.tsx` — in-app stats, Telegram stats (token presence/monitor presence/masked chat id), test tools (test notification, Telegram test, verify bot, run rule check, fetch bot updates, save chat id for a profile), sample role notifications, recent delivery logs, recent rule activity. Rendered under `/developer-lab` after the Copilot Diagnostics section.
+7. Alerts page is removed from navigation. `Notifications` (icon `Bell`, href `/notifications`, capability `nav.alerts`) replaces the entry in `NAV_SECTIONS`. Middleware redirects `/alerts` → `/notifications`; the legacy page renders a client-side fallback redirect with a link in case middleware is bypassed. `recommendation_flags` is still useful internally as a notification trigger source, but it is not rendered as a user-facing page.
+8. Telegram environment variables:
+   - `TELEGRAM_NOTIFICATIONS_ENABLED` (`true`/`false`) — master switch.
+   - `TELEGRAM_BOT_TOKEN` — required for any Telegram send. Never exposed client-side.
+   - `TELEGRAM_DEV_MONITOR_ENABLED` (`true`/`false`) — controls developer monitor copy.
+   - `TELEGRAM_DEV_MONITOR_CHAT_ID` — chat id receiving monitor copies. Masked to `••<last4>` in the UI.
+   - `TELEGRAM_MIN_PRIORITY` (default `high`) — only `high`/`critical` are auto-eligible.
+   - `TELEGRAM_SEND_LOW_PRIORITY` (default `false`).
+   - `NEXT_PUBLIC_APP_URL` — used to build absolute links in Telegram bodies. Falls back to `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_VERCEL_URL` (with `https://`), then `http://localhost:3000`.
+9. Telegram eligibility (`isTelegramEligible`): always true for `priority='critical'|'high'`, `category='critical'`, or `source_type` in `{work_order.assigned, work_order.stock_blocked, offline_sync.conflict, spare_part.stockout, qr.label_needs_replacement, qr.revoked_scanned, system.test_notification, notification.rule_failed}`. Dismissed/reviewed rows are never sent regardless of priority.
+10. Tests: `src/services/notifications/__tests__/notifications.test.ts` — 14 tests covering deep-link routing, dedupe key stability, Telegram eligibility, chat-id masking, and Telegram body/monitor formatting. Run via `npx tsx --test src/services/notifications/__tests__/notifications.test.ts`. Chatbot test suite still passes 147/147.
+11. Security rules: bot token is server-only, chat ids are masked everywhere in UI, no service-role usage in the notification path, no patient data is sent over Telegram, Telegram never acts as authorization (links always open the app and re-authenticate), no client-side direct writes to `notifications` (server actions only).

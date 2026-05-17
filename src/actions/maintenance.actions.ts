@@ -5,6 +5,25 @@ import { recomputeAssetAnalytics } from './analytics.actions';
 import { updateEquipmentConditionAction } from './equipment.actions';
 import { getActionContextForCapability, getActionContextForAnyCapability, logServerAuditEvent, revalidateMany, actionError, nullIfEmpty, type ActionResult } from './_shared';
 import { OPEN_MAINTENANCE_REQUEST_STATUSES } from '@/utils/maintenance/request-status';
+import { emitNotificationEvent } from '@/services/notifications/notification-engine';
+
+async function loadAssetSummaryForNotification(
+  supabase: Awaited<ReturnType<typeof import('@/lib/supabase/server').createClient>>,
+  assetId: string | null | undefined,
+): Promise<{ asset_name: string | null; asset_code: string | null; department_id: string | null }> {
+  if (!assetId) return { asset_name: null, asset_code: null, department_id: null };
+  const { data } = await supabase
+    .from('equipment_assets')
+    .select('name, asset_code, department_id')
+    .eq('id', assetId)
+    .maybeSingle();
+  const row = (data ?? null) as { name?: string | null; asset_code?: string | null; department_id?: string | null } | null;
+  return {
+    asset_name: row?.name ?? null,
+    asset_code: row?.asset_code ?? null,
+    department_id: row?.department_id ?? null,
+  };
+}
 
 const requestSchema = z.object({
   asset_id: z.string().min(1),
@@ -165,6 +184,42 @@ export async function createMaintenanceRequestAction(payload: Record<string, unk
       await updateEquipmentConditionAction(parsed.asset_id, parsed.reported_condition).catch(() => undefined);
     }
 
+    // Fire-and-forget notification emission. Notification failures never block
+    // the primary workflow; engine logs internally.
+    try {
+      const assetSummary = await loadAssetSummaryForNotification(supabase, parsed.asset_id);
+      const inserted = result.data as { id?: string; request_number?: string };
+      const requestPriority: 'critical' | 'high' | 'medium' | 'low' =
+        parsed.urgency === 'critical'
+          ? 'critical'
+          : parsed.urgency === 'high'
+            ? 'high'
+            : parsed.urgency === 'medium'
+              ? 'medium'
+              : 'low';
+      const departmentId = (typeof data.department_id === 'string' && data.department_id.length > 0)
+        ? data.department_id
+        : assetSummary.department_id ?? null;
+      const requestedBy = typeof data.requested_by === 'string' ? data.requested_by : null;
+      await emitNotificationEvent({
+        event_type: 'maintenance_request.created',
+        source_table: 'maintenance_requests',
+        source_id: inserted.id ?? null,
+        asset_id: parsed.asset_id,
+        department_id: departmentId,
+        priority: requestPriority,
+        payload: {
+          asset_name: assetSummary.asset_name,
+          asset_code: assetSummary.asset_code,
+          request_number: inserted.request_number ?? null,
+          urgency: parsed.urgency,
+          requested_by: requestedBy,
+        },
+      });
+    } catch (e) {
+      console.error('[notifications] maintenance_request.created emit failed:', e);
+    }
+
     revalidateMany([...maintenancePaths, `/equipment/${parsed.asset_id}`]);
     return { success: true, data: result.data };
   } catch (err) {
@@ -189,6 +244,29 @@ export async function updateRequestStatusAction(id: string, status: string): Pro
     const result = await supabase.from('maintenance_requests').update(updateData as never).eq('id', id).select('*').single();
     if (result.error) return { success: false, error: result.error.message };
     await logServerAuditEvent({ supabase, profileId: profile.id, action: 'maintenance_request.status_update', entityType: 'maintenance_requests', entityId: id, oldValues: oldRow.data as Record<string, unknown> | null, newValues: result.data as Record<string, unknown> });
+
+    try {
+      const row = result.data as { id?: string; asset_id?: string; request_number?: string; requested_by?: string; department_id?: string | null };
+      const assetSummary = await loadAssetSummaryForNotification(supabase, row.asset_id ?? null);
+      await emitNotificationEvent({
+        event_type: 'maintenance_request.status_changed',
+        source_table: 'maintenance_requests',
+        source_id: row.id ?? null,
+        asset_id: row.asset_id ?? null,
+        department_id: row.department_id ?? assetSummary.department_id ?? null,
+        priority: parsedStatus === 'rejected' ? 'high' : 'medium',
+        payload: {
+          asset_name: assetSummary.asset_name,
+          asset_code: assetSummary.asset_code,
+          request_number: row.request_number ?? null,
+          status: parsedStatus,
+          requested_by: row.requested_by ?? null,
+        },
+      });
+    } catch (e) {
+      console.error('[notifications] maintenance_request.status_changed emit failed:', e);
+    }
+
     revalidateMany([...maintenancePaths, `/maintenance/requests/${id}`]);
     return { success: true, data: result.data };
   } catch (err) {
@@ -252,6 +330,40 @@ export async function updateWorkOrderAction(id: string, payload: Record<string, 
       // on_hold: do not change condition — equipment remains under_maintenance or needs_repair
     }
 
+    try {
+      const row = result.data as { id?: string; asset_id?: string; work_order_number?: string; status?: string; priority?: string; assigned_to?: string | null };
+      const assetSummary = await loadAssetSummaryForNotification(supabase, row.asset_id ?? null);
+      let eventType: 'work_order.status_changed' | 'work_order.on_hold' | 'work_order.completed' = 'work_order.status_changed';
+      let priority: 'critical' | 'high' | 'medium' | 'low' = 'medium';
+      if (row.status === 'on_hold') {
+        eventType = 'work_order.on_hold';
+        priority = 'high';
+      } else if (row.status === 'completed') {
+        eventType = 'work_order.completed';
+        priority = 'medium';
+      } else if (row.priority === 'critical') {
+        priority = 'high';
+      }
+      await emitNotificationEvent({
+        event_type: eventType,
+        source_table: 'work_orders',
+        source_id: row.id ?? null,
+        asset_id: row.asset_id ?? null,
+        department_id: assetSummary.department_id,
+        priority,
+        payload: {
+          asset_name: assetSummary.asset_name,
+          asset_code: assetSummary.asset_code,
+          work_order_number: row.work_order_number ?? null,
+          status: row.status ?? null,
+          priority: row.priority ?? null,
+          assigned_to: row.assigned_to ?? null,
+        },
+      });
+    } catch (e) {
+      console.error('[notifications] work_order update emit failed:', e);
+    }
+
     revalidateMany([...maintenancePaths, `/maintenance/work-orders/${id}`, ...(assetId ? [`/equipment/${assetId}`] : [])]);
     return { success: true, data: result.data };
   } catch (err) {
@@ -297,6 +409,30 @@ async function setWorkOrderAssignee(id: string, technicianProfileId: string, act
       newValues: result.data as Record<string, unknown>,
       details: { technician_profile_id: parsedId },
     });
+
+    try {
+      const row = result.data as { id?: string; asset_id?: string; work_order_number?: string; priority?: string };
+      const assetSummary = await loadAssetSummaryForNotification(supabase, row.asset_id ?? null);
+      const isCritical = row.priority === 'critical' || row.priority === 'high';
+      await emitNotificationEvent({
+        event_type: 'work_order.assigned',
+        source_table: 'work_orders',
+        source_id: row.id ?? null,
+        asset_id: row.asset_id ?? null,
+        department_id: assetSummary.department_id,
+        priority: isCritical ? 'critical' : 'high',
+        payload: {
+          asset_name: assetSummary.asset_name,
+          asset_code: assetSummary.asset_code,
+          work_order_number: row.work_order_number ?? null,
+          priority: row.priority ?? null,
+          technician_profile_id: parsedId,
+          assignment_kind: action,
+        },
+      });
+    } catch (e) {
+      console.error('[notifications] work_order.assigned emit failed:', e);
+    }
 
     revalidateMany([...maintenancePaths, `/maintenance/work-orders/${id}`]);
     return { success: true, data: result.data };

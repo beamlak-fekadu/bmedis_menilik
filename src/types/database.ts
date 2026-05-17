@@ -2597,6 +2597,72 @@ export type Database = {
         }
         Relationships: []
       }
+      notification_deliveries: {
+        Row: {
+          attempt_count: number
+          channel: string
+          created_at: string
+          delivery_target: string | null
+          error_message: string | null
+          id: string
+          metadata: Json
+          notification_id: string | null
+          provider_message_id: string | null
+          recipient_profile_id: string | null
+          recipient_role: string | null
+          sent_at: string | null
+          skip_reason: string | null
+          status: string
+        }
+        Insert: {
+          attempt_count?: number
+          channel: string
+          created_at?: string
+          delivery_target?: string | null
+          error_message?: string | null
+          id?: string
+          metadata?: Json
+          notification_id?: string | null
+          provider_message_id?: string | null
+          recipient_profile_id?: string | null
+          recipient_role?: string | null
+          sent_at?: string | null
+          skip_reason?: string | null
+          status: string
+        }
+        Update: {
+          attempt_count?: number
+          channel?: string
+          created_at?: string
+          delivery_target?: string | null
+          error_message?: string | null
+          id?: string
+          metadata?: Json
+          notification_id?: string | null
+          provider_message_id?: string | null
+          recipient_profile_id?: string | null
+          recipient_role?: string | null
+          sent_at?: string | null
+          skip_reason?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_deliveries_notification_id_fkey"
+            columns: ["notification_id"]
+            isOneToOne: false
+            referencedRelation: "notifications"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notification_deliveries_recipient_profile_id_fkey"
+            columns: ["recipient_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notification_delivery_logs: {
         Row: {
           attempt_number: number
@@ -2660,8 +2726,13 @@ export type Database = {
           id: string
           message: string
           payload: Json
+          priority: string | null
+          processed_at: string | null
+          processing_error: string | null
+          processing_status: string
           requires_acknowledgement: boolean
           severity: string
+          source_id: string | null
           source_record_id: string | null
           source_table: string | null
           summary: string | null
@@ -2683,8 +2754,13 @@ export type Database = {
           id?: string
           message: string
           payload?: Json
+          priority?: string | null
+          processed_at?: string | null
+          processing_error?: string | null
+          processing_status?: string
           requires_acknowledgement?: boolean
           severity?: string
+          source_id?: string | null
           source_record_id?: string | null
           source_table?: string | null
           summary?: string | null
@@ -2706,8 +2782,13 @@ export type Database = {
           id?: string
           message?: string
           payload?: Json
+          priority?: string | null
+          processed_at?: string | null
+          processing_error?: string | null
+          processing_status?: string
           requires_acknowledgement?: boolean
           severity?: string
+          source_id?: string | null
           source_record_id?: string | null
           source_table?: string | null
           summary?: string | null
@@ -2826,16 +2907,62 @@ export type Database = {
           },
         ]
       }
+      notification_rule_logs: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          event_id: string | null
+          id: string
+          metadata: Json
+          recipient_count: number
+          rule_name: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          event_id?: string | null
+          id?: string
+          metadata?: Json
+          recipient_count?: number
+          rule_name: string
+          status: string
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          event_id?: string | null
+          id?: string
+          metadata?: Json
+          recipient_count?: number
+          rule_name?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_rule_logs_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "notification_events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notifications: {
         Row: {
           acknowledged_at: string | null
           acknowledged_by: string | null
+          action_href: string | null
+          action_label: string | null
           action_url: string | null
+          asset_id: string | null
           category: string
           channel: string
           created_at: string
           dedupe_key: string | null
           delivered_at: string | null
+          department_id: string | null
+          dismissed_at: string | null
           escalation_step: number
           event_id: string
           failure_reason: string | null
@@ -2843,12 +2970,18 @@ export type Database = {
           is_digest: boolean
           is_pinned: boolean
           message: string
+          metadata: Json
+          priority: string | null
           read_at: string | null
           recipient_profile_id: string
+          recipient_role: string | null
           related_entity_id: string | null
           related_entity_type: string | null
           requires_acknowledgement: boolean
+          reviewed_at: string | null
           severity: string
+          source_id: string | null
+          source_type: string | null
           status: string
           summary: string | null
           title: string
@@ -2857,12 +2990,17 @@ export type Database = {
         Insert: {
           acknowledged_at?: string | null
           acknowledged_by?: string | null
+          action_href?: string | null
+          action_label?: string | null
           action_url?: string | null
+          asset_id?: string | null
           category: string
           channel?: string
           created_at?: string
           dedupe_key?: string | null
           delivered_at?: string | null
+          department_id?: string | null
+          dismissed_at?: string | null
           escalation_step?: number
           event_id: string
           failure_reason?: string | null
@@ -2870,12 +3008,18 @@ export type Database = {
           is_digest?: boolean
           is_pinned?: boolean
           message: string
+          metadata?: Json
+          priority?: string | null
           read_at?: string | null
           recipient_profile_id: string
+          recipient_role?: string | null
           related_entity_id?: string | null
           related_entity_type?: string | null
           requires_acknowledgement?: boolean
+          reviewed_at?: string | null
           severity?: string
+          source_id?: string | null
+          source_type?: string | null
           status?: string
           summary?: string | null
           title: string
@@ -2884,12 +3028,17 @@ export type Database = {
         Update: {
           acknowledged_at?: string | null
           acknowledged_by?: string | null
+          action_href?: string | null
+          action_label?: string | null
           action_url?: string | null
+          asset_id?: string | null
           category?: string
           channel?: string
           created_at?: string
           dedupe_key?: string | null
           delivered_at?: string | null
+          department_id?: string | null
+          dismissed_at?: string | null
           escalation_step?: number
           event_id?: string
           failure_reason?: string | null
@@ -2897,12 +3046,18 @@ export type Database = {
           is_digest?: boolean
           is_pinned?: boolean
           message?: string
+          metadata?: Json
+          priority?: string | null
           read_at?: string | null
           recipient_profile_id?: string
+          recipient_role?: string | null
           related_entity_id?: string | null
           related_entity_type?: string | null
           requires_acknowledgement?: boolean
+          reviewed_at?: string | null
           severity?: string
+          source_id?: string | null
+          source_type?: string | null
           status?: string
           summary?: string | null
           title?: string
@@ -4218,6 +4373,47 @@ export type Database = {
         }
         Relationships: []
       }
+      telegram_connections: {
+        Row: {
+          created_at: string
+          id: string
+          is_enabled: boolean
+          profile_id: string
+          telegram_chat_id: string
+          telegram_username: string | null
+          updated_at: string
+          verified_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_enabled?: boolean
+          profile_id: string
+          telegram_chat_id: string
+          telegram_username?: string | null
+          updated_at?: string
+          verified_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_enabled?: boolean
+          profile_id?: string
+          telegram_chat_id?: string
+          telegram_username?: string | null
+          updated_at?: string
+          verified_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "telegram_connections_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       training_requests: {
         Row: {
           asset_id: string | null
@@ -5100,6 +5296,8 @@ export type Database = {
         Returns: undefined
       }
       auth_user_has_role: { Args: { required_role: string }; Returns: boolean }
+      cleanup_cron_job_log: { Args: never; Returns: number }
+      cleanup_net_http_response: { Args: never; Returns: number }
       compute_replacement_priority_scores_all: {
         Args: { p_period_end?: string; p_period_start?: string }
         Returns: undefined
@@ -5171,6 +5369,7 @@ export type Database = {
           source_label: string
         }[]
       }
+      reap_snapshot_refresh_responses: { Args: never; Returns: number }
       recompute_all_equipment_analytics: { Args: never; Returns: undefined }
       recompute_equipment_analytics: {
         Args: { p_asset_id: string }

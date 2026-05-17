@@ -128,7 +128,7 @@ export default function DepartmentDashboard({
     { label: 'My Requests', value: myRequests.length, subtitle: 'Requests you submitted.', icon: <ClipboardCheck className="h-5 w-5" />, tone: 'info', href: '/requests?tab=my-requests', hrefLabel: 'View My Requests' },
     { label: 'Open Work Orders', value: metrics.openWorkOrders, subtitle: 'Work affecting department equipment.', icon: <Wrench className="h-5 w-5" />, tone: 'info', href: '/maintenance', hrefLabel: 'View Work Status' },
     { label: 'Unavailable Equipment', value: metrics.nonFunctionalAssets + metrics.underMaintenanceAssets, subtitle: 'Non-functional or under maintenance.', icon: <AlertTriangle className="h-5 w-5" />, tone: metrics.nonFunctionalAssets + metrics.underMaintenanceAssets > 0 ? 'warning' : 'success' },
-    { label: 'Critical Alerts', value: metrics.unacknowledgedAlerts, subtitle: 'Unacknowledged signals affecting your department.', icon: <ShieldAlert className="h-5 w-5" />, tone: metrics.unacknowledgedAlerts > 0 ? 'warning' : 'success', href: '/alerts', hrefLabel: 'Open Alerts' },
+    { label: 'Critical Alerts', value: metrics.unacknowledgedAlerts, subtitle: 'Unacknowledged signals affecting your department.', icon: <ShieldAlert className="h-5 w-5" />, tone: metrics.unacknowledgedAlerts > 0 ? 'warning' : 'success', href: '/notifications', hrefLabel: 'Open Notifications' },
     { label: 'Completed This Month', value: metrics.monthlyCompletedWork, subtitle: 'Work orders completed this month.', icon: <TrendingUp className="h-5 w-5" />, tone: 'info' },
   ];
 

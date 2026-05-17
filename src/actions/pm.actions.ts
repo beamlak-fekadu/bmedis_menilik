@@ -5,6 +5,7 @@ import { recomputeAssetAnalytics } from './analytics.actions';
 import { getActionContextForCapability, logServerAuditEvent, revalidateMany, actionError, nullIfEmpty, type ActionResult } from './_shared';
 import { OPEN_MAINTENANCE_REQUEST_STATUSES } from '@/utils/maintenance/request-status';
 import { datePlusDays } from '@/utils/pm/semantics';
+import { emitNotificationEvent } from '@/services/notifications/notification-engine';
 
 const pmPaths = ['/pm', '/calendar', '/command', '/reports/pm'];
 const ACTIVE_PM_SCHEDULE_STATUSES = ['scheduled', 'in_progress', 'overdue', 'deferred'] as const;
@@ -188,6 +189,26 @@ export async function createPMCompletionAction(payload: Record<string, unknown>)
 
     await logServerAuditEvent({ supabase, profileId: profile.id, action: 'pm_completion.create', entityType: 'pm_completions', entityId: (result.data as { id?: string }).id ?? null, newValues: result.data as Record<string, unknown> });
     if (assetId) await recomputeAssetAnalytics(assetId).catch(() => undefined);
+
+    try {
+      await emitNotificationEvent({
+        event_type: 'pm.completed',
+        source_table: 'pm_schedules',
+        source_id: parsed.schedule_id,
+        asset_id: assetId,
+        department_id: asset?.department_id ?? null,
+        priority: parsed.result === 'failed' ? 'high' : 'info',
+        payload: {
+          asset_name: asset?.name ?? null,
+          asset_code: asset?.asset_code ?? null,
+          plan_name: plan?.name ?? null,
+          result: parsed.result,
+        },
+      });
+    } catch (e) {
+      console.error('[notifications] pm.completed emit failed:', e);
+    }
+
     revalidateMany([...pmPaths, `/pm/schedules/${parsed.schedule_id}`, '/equipment', `/equipment/${assetId}`, '/maintenance']);
     return { success: true, data: { completion: result.data, schedule: scheduleUpdate.data, correctiveRequestId } };
   } catch (err) {
@@ -210,6 +231,31 @@ export async function assignPMScheduleAction(id: string, assignedTo: string | nu
     if (result.error) return { success: false, error: result.error.message };
     await logServerAuditEvent({ supabase, profileId: profile.id, action: 'pm_schedule.assign', entityType: 'pm_schedules', entityId: id, oldValues: oldRow.data as Record<string, unknown> | null, newValues: result.data as Record<string, unknown> });
     const assetId = (result.data as Record<string, unknown>).asset_id as string | undefined;
+    if (assignee && assetId) {
+      try {
+        const { data: asset } = await supabase
+          .from('equipment_assets')
+          .select('name, asset_code, department_id')
+          .eq('id', assetId)
+          .maybeSingle();
+        const assetRow = (asset ?? null) as { name?: string | null; asset_code?: string | null; department_id?: string | null } | null;
+        await emitNotificationEvent({
+          event_type: 'pm.assigned',
+          source_table: 'pm_schedules',
+          source_id: id,
+          asset_id: assetId,
+          department_id: assetRow?.department_id ?? null,
+          priority: 'medium',
+          payload: {
+            asset_name: assetRow?.name ?? null,
+            asset_code: assetRow?.asset_code ?? null,
+            assigned_to: assignee,
+          },
+        });
+      } catch (e) {
+        console.error('[notifications] pm.assigned emit failed:', e);
+      }
+    }
     revalidateMany([...pmPaths, `/pm/schedules/${id}`, assetId ? `/equipment/${assetId}` : '/equipment']);
     return { success: true, data: result.data };
   } catch (err) {

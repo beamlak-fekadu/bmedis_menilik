@@ -48,6 +48,7 @@ export const ROUTES = {
   REPLACEMENT: '/replacement',
   COMPLIANCE: '/compliance',
   ALERTS: '/alerts',
+  NOTIFICATIONS: '/notifications',
   HELPDESK: '/helpdesk',
   DEVELOPER_LAB: '/developer-lab',
   OFFLINE_SYNC: '/offline-sync',
@@ -130,7 +131,10 @@ export const NAV_SECTIONS = [
   {
     title: 'Support',
     items: [
-      { label: 'Alerts', href: ROUTES.ALERTS, icon: 'Bell', capability: 'nav.alerts', roles: ['developer', 'admin', 'bme_head', 'technician', 'department_head', 'department_user', 'viewer', 'store_user'] },
+      // Notifications replaces the legacy Alerts entry. /alerts is redirected
+      // to /notifications by middleware. The capability is reused so existing
+      // role membership doesn't need migration.
+      { label: 'Notifications', href: ROUTES.NOTIFICATIONS, icon: 'Bell', capability: 'nav.alerts', roles: ['developer', 'admin', 'bme_head', 'technician', 'department_head', 'department_user', 'viewer', 'store_user'] },
       // BMERMS AI Chatbot has no dedicated capability; keep roles-based.
       { label: CHATBOT_NAME, href: ROUTES.CHATBOT, icon: 'MessageSquareText', roles: ['developer', 'admin', 'bme_head', 'technician', 'department_head', 'department_user', 'store_user', 'viewer'] },
     ],

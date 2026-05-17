@@ -3,6 +3,9 @@ import { updateSession } from '@/lib/supabase/middleware';
 
 // Redirect deprecated routes to their new canonical destinations.
 const DEPRECATED_REDIRECTS: Array<{ from: string; to: string; exact?: boolean; search?: string }> = [
+  // Notifications replaces /alerts as the user-facing inbox. Internal alert
+  // flags still feed the notification engine, but the page is consolidated.
+  { from: '/alerts', to: '/notifications' },
   { from: '/decision-support', to: '/command' },
   { from: '/decision-support-health', to: '/developer-lab', exact: true },
   { from: '/command/health', to: '/developer-lab', exact: true },

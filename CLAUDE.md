@@ -1,7 +1,7 @@
 # CLAUDE.md — BMERMS Project Intelligence
 
-Last updated: 2026-05-16 (AI Copilot — Phase 3: action drafts, confirmation UI, server executor, offline-capable drafts, audit, hardened usage)
-Branch: copilot
+Last updated: 2026-05-17 (Notifications subsystem — bell + drawer, /notifications page, Telegram delivery + developer monitor, /alerts redirected)
+Branch: integration
 Deployment: https://project-git-bmermsv3-beamlak-fekadus-projects.vercel.app
 Supabase project ID: fgqyszbxzpmqzpqvdivx
 
@@ -539,7 +539,8 @@ NOT STARTED:
 
 ### Support
   /helpdesk                   Deprecated redirect alias → /requests
-  /alerts                     Command Center-style operational alert inbox with source actions and acknowledgement
+  /alerts                     Deprecated redirect alias → /notifications (legacy recommendation_flags still fuels notification triggers internally)
+  /notifications              Unified Notification Center — bell drawer + full inbox; role-aware tabs (For Me, Critical, Tasks, Requests, Compliance, Stock & Procurement, System, Reviewed); filters; mark read/reviewed/dismiss; deep link to exact record
   /chatbot                    BMERMS AI Copilot (all roles)
   /documents                  Equipment document library
   /requests                   All open requests (maintenance + training + disposal + calibration)
@@ -573,6 +574,7 @@ NOT STARTED:
   /analytics/pmc               → /pm
   /analytics/performance       → /command
   /analytics                   → /command
+  /alerts                      → /notifications
   /helpdesk                    → /requests
   /users                       → /settings?tab=staff-access
   /security                    → /settings?tab=security-access
@@ -824,6 +826,21 @@ recompute_equipment_analytics() and recompute_all_equipment_analytics() in migra
 9. Developer Lab Offline & Sync Diagnostics now shows local queue counts by type/role, failed/conflict actions, unsupported/future actions, payload inspection, retry failed, clear synced, export JSON, and recent server `offline_sync_events`.
 10. Still not implemented: conflict review center, cached read views, procurement/disposal approval offline, final assignment/final closure offline, browser notifications, Background Sync dependency, full report generation offline, and any fake production test actions.
 
+## Notifications Subsystem (2026-05-17)
+
+1. In-app notifications are the canonical source of truth; Telegram is an optional external delivery channel only. No SMS, no email, no browser push notifications are implemented. Telegram is never used as an authorization plane — links always open the app where role/department checks still apply.
+2. Migration 00055 adds `notification_events`, `notifications`, `notification_rule_logs`, `notification_deliveries`, and `telegram_connections` with hot-path indexes and RLS (own-row read/update for `notifications`; developer/admin/bme_head read diagnostics; privileged insert via server actions). Next migration must be 00056.
+3. Engine modules in `src/services/notifications/`: `notification-engine.ts` (event create/process, fan-out, fire-and-forget `emitNotificationEvent`), `notification-rules.ts` (role-aware message templates), `recipient-resolver.ts` (active profiles by role + department scope), `notification-dedupe.ts` (10-min cooldown by recipient+event+source; merge into existing, suppress Telegram unless priority increased to critical), `notification-links.ts` (exact-record routing — request/WO/PM schedule/procurement drilldown/replacement evidence/spare parts blocker/offline-sync/asset QR tab), `telegram-provider.ts` (Bot API calls, formatters, eligibility/config checks, chat-id masking), `notification-delivery.service.ts` (sends real Telegram + monitor copy, writes `notification_deliveries`).
+4. Server actions in `src/actions/notifications.actions.ts`: user-facing read/mark/dismiss/mark-all-read/summary, and developer-only diagnostics, rule check, test notification, Telegram test, sample role notifications, fetch bot updates, save chat id, re-deliver.
+5. Trigger integrations are all fire-and-forget after their primary mutation succeeds; notification failures are caught and logged. Wired actions: `createMaintenanceRequestAction`, `updateRequestStatusAction`, `assignWorkOrder`/`reassignWorkOrder`, `updateWorkOrderAction`, `createPMCompletionAction`, `assignPMScheduleAction`, `createCalibrationRequestAction`, `updateProcurementStatusAction` (delivered only — the enum has no `delayed` value; delayed is detected by the scheduled rule check), `markQrLabelNeedsReplacementAction`, `recordOfflineSyncEventAction` (offline conflicts/failures).
+6. UI: `src/components/notifications/NotificationBell.tsx` is mounted in the Topbar for every authenticated role with 45 s unread polling, critical-unread ring, mark-read/mark-all/dismiss/deep-link. `src/app/(dashboard)/notifications/page.tsx` is the full Notification Center with tabs (For Me, Critical, Tasks, Requests, Compliance, Stock & Procurement, System, Reviewed), filters (priority/category/status/search), and Send-test button. `src/app/(dashboard)/developer-lab/NotificationDiagnosticsSection.tsx` is the Developer Lab section with in-app + Telegram stats, test tools, sample role notifications, delivery logs, and rule activity.
+7. Alerts is removed as a user-facing navigation entry. `Notifications` (icon `Bell`, capability `nav.alerts`) replaces the entry in `NAV_SECTIONS`. Middleware redirects `/alerts` → `/notifications`; the legacy `/alerts` page renders a client-side fallback redirect for cached routes. Internal `recommendation_flags` is still useful as a notification trigger source but is not rendered as a page.
+8. Telegram env vars (none of which are exposed to client code): `TELEGRAM_NOTIFICATIONS_ENABLED`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_DEV_MONITOR_ENABLED`, `TELEGRAM_DEV_MONITOR_CHAT_ID`, `TELEGRAM_MIN_PRIORITY` (default `high`), `TELEGRAM_SEND_LOW_PRIORITY` (default `false`), `NEXT_PUBLIC_APP_URL`. Chat ids are masked to `••<last4>` in every UI surface; tokens never appear in the UI at all.
+9. Developer Monitor Mode is mandatory for testing. When enabled, every Telegram-eligible notification (any role) also sends a monitor copy to `TELEGRAM_DEV_MONITOR_CHAT_ID` with the original recipient, role, message, action link, and actual delivery status. The monitor fires even when the real recipient has no Telegram connection — that scenario is logged as `skipped: no_chat_id` for the real channel and `sent` for the monitor channel.
+10. Telegram eligibility (`isTelegramEligible`): always true for critical/high priority, category `critical`, or source types `work_order.assigned`, `work_order.stock_blocked`, `offline_sync.conflict`, `spare_part.stockout`, `qr.label_needs_replacement`, `qr.revoked_scanned`, `system.test_notification`, `notification.rule_failed`. Dismissed/reviewed rows are never sent regardless of priority. `TELEGRAM_MIN_PRIORITY` controls the medium/low boundary.
+11. Tests: 14 notification tests at `src/services/notifications/__tests__/notifications.test.ts` cover deep-link routing, dedupe-key stability, Telegram eligibility (including suppression for dismissed/reviewed), chat-id masking, and Telegram body + monitor formatting. The chatbot suite continues to pass 147/147 unchanged.
+12. Security/data-integrity rules: bot token is server-only, chat ids are masked everywhere, no service-role usage in the notification path, no patient data sent over Telegram, no client-side direct writes to `notifications` (server actions only), notification failures never break the primary workflow, viewer never receives technician/store/department-specific noise.
+
 ---
 
 ## Migration history
@@ -877,5 +894,13 @@ recompute_equipment_analytics() and recompute_all_equipment_analytics() in migra
 00045 — Equipment QR Identity Foundation (Phase 1): adds qr_token + label lifecycle metadata to equipment_assets (unique-when-not-null index, CHECK on qr_label_status); creates equipment_qr_scans audit table with RLS (admin/developer/bme_head + self can read; authenticated can insert)
 00046 — Offline Sync Events Phase 3: adds first-class columns to offline_sync_events (reported_status, resolution_status, conflict_type, conflict_reason, error_message, role_name, source_route, asset_id, retry_count, resolved_by, resolved_at); relaxes sync_status CHECK to accept queued/syncing/conflict/under_review/resolved_synced/resolved_discarded; new CHECK on resolution_status; hot-path indexes; one-shot payload backfill; RLS UPDATE policy reaffirms bme_head/admin/developer/technician
 00047 — Copilot usage tracking: updates chat_messages answer_basis CHECK, creates copilot_usage_events with app-tracked Gemini usage, provider/fallback status, estimated/provider token fields, and RLS for own usage plus developer/admin/bme_head aggregate reads
+00048 — pgvector embeddings (chatbot semantic context)
+00049 — pg_cron schedule
+00050 — pg_cron RLS
+00051 — pg_cron poll budget
+00052 — pg_cron shared secret
+00053 — pg_cron log retention
+00054 — pg_cron fire and reap
+00055 — Notifications subsystem: notification_events, notifications (status/category/priority CHECKs), notification_rule_logs, notification_deliveries (channel CHECK telegram/telegram_monitor), telegram_connections (unique per profile). RLS: own-row read/update for notifications; developer/admin/bme_head read diagnostics; privileged insert via server actions. Hot-path indexes on (recipient,status,created_at), (priority,created_at), (category,created_at), (source_type,source_id), (dedupe_key), (asset_id), (department_id), notification_events(event_type,created_at), notification_events(processing_status,created_at), notification_deliveries(notification_id), notification_deliveries(status,created_at), telegram_connections(profile_id)
 
-NEVER modify 00001–00047. Next migration must be 00048.
+NEVER modify 00001–00055. Next migration must be 00056.

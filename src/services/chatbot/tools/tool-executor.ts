@@ -558,7 +558,7 @@ export async function executeCopilotTool(
         data,
         evidenceSignals: ['Loaded active recommendation flags scoped by role.'],
         sourceTables: def.dataSources,
-        routeLinks: [{ label: 'Open alerts', href: '/alerts', type: 'alerts' }],
+        routeLinks: [{ label: 'Open notifications', href: '/notifications', type: 'alerts' }],
         warnings: data.length ? [] : ['No active alerts were found in the permitted scope.'],
       });
     }

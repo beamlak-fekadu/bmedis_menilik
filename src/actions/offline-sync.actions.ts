@@ -771,6 +771,27 @@ export async function recordOfflineSyncEventAction(input: unknown): Promise<Acti
       },
     });
 
+    if (isOpenConflict || reportedStatus === 'failed') {
+      try {
+        const { emitNotificationEvent } = await import('@/services/notifications/notification-engine');
+        await emitNotificationEvent({
+          event_type: isOpenConflict ? 'offline_sync.conflict' : 'offline_sync.failed',
+          source_table: 'offline_sync_events',
+          source_id: parsed.client_action_id,
+          asset_id: parsed.asset_id ?? null,
+          priority: 'high',
+          payload: {
+            actor_profile_id: profile.id,
+            description: parsed.action_type,
+            conflict_reason: parsed.conflict_reason ?? null,
+            error_message: parsed.error_message ?? null,
+          },
+        });
+      } catch (e) {
+        console.error('[notifications] offline conflict emit failed:', e);
+      }
+    }
+
     return { success: true, data: { status: dbStatus } };
   } catch (err) {
     return actionError(err, 'Failed to record offline sync event') as ActionResult<{ status: string }>;

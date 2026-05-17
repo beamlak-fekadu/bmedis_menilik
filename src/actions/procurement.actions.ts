@@ -39,6 +39,27 @@ export async function updateProcurementStatusAction(id: string, status: string):
     const result = await supabase.from('procurement_requests').update({ status: parsedStatus } as never).eq('id', id).select('*').single();
     if (result.error) return { success: false, error: result.error.message };
     await logServerAuditEvent({ supabase, profileId: profile.id, action: 'procurement_request.status_update', entityType: 'procurement_requests', entityId: id, oldValues: oldRow.data as Record<string, unknown> | null, newValues: result.data as Record<string, unknown> });
+
+    if (parsedStatus === 'delivered') {
+      try {
+        const row = result.data as Record<string, unknown>;
+        const description = (row.description as string) ?? (row.title as string) ?? 'Procurement request';
+        const { emitNotificationEvent } = await import('@/services/notifications/notification-engine');
+        await emitNotificationEvent({
+          event_type: 'procurement.delivered',
+          source_table: 'procurement_requests',
+          source_id: id,
+          priority: 'medium',
+          payload: {
+            description,
+            status: parsedStatus,
+          },
+        });
+      } catch (e) {
+        console.error('[notifications] procurement.delivered emit failed:', e);
+      }
+    }
+
     revalidateMany(procurementPaths);
     return { success: true, data: result.data };
   } catch (err) {

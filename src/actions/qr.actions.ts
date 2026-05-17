@@ -178,6 +178,30 @@ export async function markQrLabelNeedsReplacementAction(
       entityId: parsedId,
     });
 
+    try {
+      const { data: asset } = await supabase
+        .from('equipment_assets')
+        .select('name, asset_code, department_id')
+        .eq('id', parsedId)
+        .maybeSingle();
+      const row = (asset ?? null) as { name?: string | null; asset_code?: string | null; department_id?: string | null } | null;
+      const { emitNotificationEvent } = await import('@/services/notifications/notification-engine');
+      await emitNotificationEvent({
+        event_type: 'qr.label_needs_replacement',
+        source_table: 'equipment_assets',
+        source_id: parsedId,
+        asset_id: parsedId,
+        department_id: row?.department_id ?? null,
+        priority: 'medium',
+        payload: {
+          asset_name: row?.name ?? null,
+          asset_code: row?.asset_code ?? null,
+        },
+      });
+    } catch (e) {
+      console.error('[notifications] qr.label_needs_replacement emit failed:', e);
+    }
+
     revalidateMany(pathsForAsset(parsedId));
     return { success: true };
   } catch (err) {
