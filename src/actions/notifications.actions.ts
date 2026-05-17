@@ -165,10 +165,45 @@ export async function createTestNotificationToSelfAction(): Promise<ActionResult
 
     // Direct insert path. We intentionally do NOT go through the engine's
     // event → rule fan-out for this test: this guarantees a visible row in
-    // public.notifications immediately, even if the rule path or
-    // notification_events RLS misfires. recipient_profile_id must be the
+    // public.notifications immediately. recipient_profile_id must be the
     // current profile.id (NOT auth.uid()), so the bell drawer picks it up.
+    //
+    // Some deployments created `notifications` with `event_id NOT NULL` before
+    // migration 00056 relaxed it. To stay robust on either schema, we first
+    // create the `notification_events` row, then attach its id to the
+    // notification insert. If the event insert fails (RLS or otherwise), we
+    // still fall back to a notification insert with `event_id = null`; on a
+    // post-00056 database that succeeds, and on a legacy database the caller
+    // sees the actual constraint error rather than a silent failure.
     const timestamp = new Date().toLocaleString();
+    let eventId: string | null = null;
+
+    const eventInsert = await supabase
+      .from('notification_events')
+      .insert({
+        event_type: 'system.test_notification',
+        source_table: 'notifications',
+        source_id: null,
+        asset_id: null,
+        department_id: profile.department_id ?? null,
+        priority: 'info',
+        payload: {
+          target_profile_id: profile.id,
+          message: `Test notification at ${timestamp}.`,
+        },
+        processing_status: 'processed',
+        processed_at: new Date().toISOString(),
+        created_by: profile.id,
+      } as never)
+      .select('id')
+      .single();
+
+    if (eventInsert.error) {
+      console.error('[notifications] best-effort test event insert failed:', eventInsert.error.message);
+    } else {
+      eventId = (eventInsert.data as { id?: string } | null)?.id ?? null;
+    }
+
     const notificationPayload = {
       recipient_profile_id: profile.id,
       recipient_role: profile.roleNames?.[0] ?? null,
@@ -178,7 +213,7 @@ export async function createTestNotificationToSelfAction(): Promise<ActionResult
       category: 'system' as const,
       source_type: 'system.test_notification',
       source_id: null,
-      event_id: null,
+      event_id: eventId,
       asset_id: null,
       department_id: profile.department_id ?? null,
       action_href: '/notifications',
@@ -201,32 +236,8 @@ export async function createTestNotificationToSelfAction(): Promise<ActionResult
 
     const insertedId = (insert.data as { id?: string } | null)?.id ?? null;
 
-    // Best-effort: also create a notification_events row for diagnostics so the
-    // Developer Lab "events today" counter reflects this test. Failure here
-    // must not affect the success of the test notification itself.
-    try {
-      await supabase.from('notification_events').insert({
-        event_type: 'system.test_notification',
-        source_table: 'notifications',
-        source_id: insertedId,
-        asset_id: null,
-        department_id: profile.department_id ?? null,
-        priority: 'info',
-        payload: {
-          target_profile_id: profile.id,
-          notification_id: insertedId,
-          message: `Test notification at ${timestamp}.`,
-        },
-        processing_status: 'processed',
-        processed_at: new Date().toISOString(),
-        created_by: profile.id,
-      } as never);
-    } catch (eventErr) {
-      console.error('[notifications] best-effort test event insert failed:', eventErr);
-    }
-
     revalidateMany(notificationPaths);
-    return { success: true, data: { notification_id: insertedId } };
+    return { success: true, data: { notification_id: insertedId, event_id: eventId } };
   } catch (err) {
     return actionError(err, 'Failed to send test notification');
   }
