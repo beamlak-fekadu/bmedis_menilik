@@ -52,7 +52,7 @@ Scope: app hardening and demo readiness with seed data. Real Menelik II Hospital
 | Settings | `/settings` | developer/admin/BME Head | Client service reads | Server actions where allowed | Administration tabs with staff/security/reference data | Settings/audit revalidation | Typecheck verified |
 | Security | `/security` | deprecated | Redirect | None | Redirects to Settings → Security & Access | N/A | Typecheck verified |
 | Developer Lab | `/developer-lab` | developer/admin | Server/client reads | Explicit refresh actions only | Simulation-only sensitivity tabs, ranking stability, data health, demo tools | Developer/audit/command/report revalidation | Typecheck verified |
-| Chatbot | `/chatbot` | all roles | Client chat session reads | Existing chat service/API | Existing UI | Chatbot test suite | 111 tests passing |
+| Chatbot | `/chatbot` | all roles | Client chat session reads | Existing chat service/API | Existing UI | Chatbot test suite | 147 tests passing |
 | Installation | `/installation` | admin/technician | Client service reads | Server action create | Existing UI | Installation/equipment/command revalidation | Code verified |
 
 ## Seed Behavior Notes
@@ -131,6 +131,6 @@ Scope: app hardening and demo readiness with seed data. Real Menelik II Hospital
 ## Verification Results
 
 - `npm run lint`: pass, 0 warnings.
-- `npm run test:chatbot`: pass, 111 tests.
+- `npm run test:chatbot`: pass, 147 tests.
 - `npm run build`: pass when run with network access for Google-hosted Next fonts.
 - Remaining non-blocking warning: Next.js 16 reports the `middleware` file convention is deprecated in favor of `proxy`; migration is deferred to avoid changing Supabase session refresh behavior during this hardening pass.

@@ -2,7 +2,7 @@
   "mcpServers": {
     "supabase": {
       "type": "http",
-      "url": "https://mcp.supabase.com/mcp?project_ref=https://fgqyszbxzpmqzpqvdivx.supabase.co"
+      "url": "https://mcp.supabase.com/mcp?project_ref=fgqyszbxzpmqzpqvdivx"
     },
     "filesystem": {
       "type": "stdio",
@@ -10,7 +10,7 @@
       "args": [
         "-y",
         "@modelcontextprotocol/server-filesystem",
-        "/Users/beamlak/path/to/project_v2"
+        "/Users/beamlak/Desktop/project_v2"
       ],
       "env": {}
     }

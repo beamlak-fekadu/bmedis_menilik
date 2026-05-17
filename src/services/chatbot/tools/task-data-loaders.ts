@@ -67,6 +67,18 @@ export async function loadTaskBlocks(
     trainingRequestsQuery = trainingRequestsQuery.eq('department_id', profile.departmentId);
   }
 
+  let overduePmQuery = supabase
+    .from('v_overdue_pm')
+    .select('id, asset_id, plan_name, asset_code, asset_name, days_overdue, department_id, department_name, criticality_level, scheduled_date, status')
+    .order('days_overdue', { ascending: false })
+    .limit(12);
+
+  if (requiresDepartmentScope(profile)) {
+    overduePmQuery = profile.departmentId
+      ? overduePmQuery.eq('department_id', profile.departmentId)
+      : overduePmQuery.eq('department_id', '00000000-0000-0000-0000-000000000000');
+  }
+
   const [
     workOrdersRes,
     overduePmRes,
@@ -77,11 +89,7 @@ export async function loadTaskBlocks(
     disposalQueueRes,
   ] = await Promise.all([
     scopedWorkOrdersQuery,
-    supabase
-      .from('v_overdue_pm')
-      .select('id, plan_name, asset_code, asset_name, days_overdue, department_name')
-      .order('days_overdue', { ascending: false })
-      .limit(12),
+    overduePmQuery,
     maintenanceApprovalsQuery,
     supabase
       .from('disposal_requests')
@@ -139,48 +147,48 @@ export async function loadRiskAndAnalytics(supabase: SupabaseClient, contextRefs
     equipmentId
       ? supabase
           .from('equipment_risk_scores')
-          .select('asset_id, rpn, risk_level, assessed_at')
+          .select('asset_id, rpn, risk_level, assessed_at, equipment_assets(asset_code, name, department_id, departments(name))')
           .eq('asset_id', equipmentId)
           .order('assessed_at', { ascending: false })
           .limit(3)
       : applyAssetScope(supabase
           .from('equipment_risk_scores')
-          .select('asset_id, rpn, risk_level, assessed_at')
+          .select('asset_id, rpn, risk_level, assessed_at, equipment_assets(asset_code, name, department_id, departments(name))')
           .order('assessed_at', { ascending: false })
           .limit(8)),
     equipmentId
       ? supabase
           .from('equipment_reliability_metrics')
-          .select('asset_id, mttr_hours, mtbf_hours, availability_ratio, computed_at')
+          .select('asset_id, mttr_hours, mtbf_hours, availability_ratio, computed_at, equipment_assets(asset_code, name, department_id, departments(name))')
           .eq('asset_id', equipmentId)
           .order('computed_at', { ascending: false })
           .limit(3)
       : applyAssetScope(supabase
           .from('equipment_reliability_metrics')
-          .select('asset_id, mttr_hours, mtbf_hours, availability_ratio, computed_at')
+          .select('asset_id, mttr_hours, mtbf_hours, availability_ratio, computed_at, equipment_assets(asset_code, name, department_id, departments(name))')
           .order('computed_at', { ascending: false })
           .limit(8)),
     equipmentId
       ? supabase
           .from('replacement_priority_scores')
-          .select('asset_id, replacement_priority_index, rank, justification, computed_at')
+          .select('asset_id, replacement_priority_index, rank, justification, computed_at, equipment_assets(asset_code, name, department_id, departments(name))')
           .eq('asset_id', equipmentId)
           .order('computed_at', { ascending: false })
           .limit(3)
       : applyAssetScope(supabase
           .from('replacement_priority_scores')
-          .select('asset_id, replacement_priority_index, rank, justification, computed_at')
+          .select('asset_id, replacement_priority_index, rank, justification, computed_at, equipment_assets(asset_code, name, department_id, departments(name))')
           .order('rank', { ascending: true })
           .limit(8)),
     applyAssetScope(supabase
       .from('recommendation_flags')
-      .select('id, asset_id, severity, flag_type, message, generated_at')
+      .select('id, asset_id, severity, flag_type, message, generated_at, equipment_assets(asset_code, name, department_id, departments(name))')
       .eq('is_acknowledged', false)
       .order('generated_at', { ascending: false })
       .limit(12)),
     applyAssetScope(supabase
       .from('triage_action_queue')
-      .select('id, asset_id, priority_score, recommendation, rationale')
+      .select('id, asset_id, priority_score, recommendation, rationale, equipment_assets(asset_code, name, department_id, departments(name))')
       .eq('status', 'open')
       .order('priority_score', { ascending: false })
       .limit(10)),

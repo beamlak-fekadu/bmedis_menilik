@@ -188,8 +188,8 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
         fallbackReason: response.fallbackReason,
       };
       setMessages((prev) => [...prev, assistantMessage]);
-    } catch (error) {
-      toast('error', error instanceof Error ? error.message : 'Unable to process assistant request');
+    } catch {
+      toast('error', 'AI service is temporarily unavailable. The system data was not changed.');
       const fallbackAssistant = buildAiUnavailableAssistant('limited_answer');
       const assistantMessage: AssistantUiMessage = {
         id: `assistant-response-${Date.now()}`,

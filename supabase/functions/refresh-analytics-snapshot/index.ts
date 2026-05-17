@@ -12,10 +12,10 @@
 //
 // Auth model: service-role key from the function's environment. This is
 // an internal recompute that must touch every asset across all roles, so
-// it bypasses RLS by design. The endpoint itself is protected by Supabase
-// Functions' built-in JWT/API-key gate; callers from the dashboard must
-// pass a valid Authorization header which Supabase verifies before the
-// function ever runs.
+// it bypasses RLS by design. Supabase config sets verify_jwt=false for
+// this function because scheduled pg_cron calls use new-format Supabase
+// keys that the gateway cannot parse as JWTs. The function therefore
+// enforces X-Cron-Secret itself when CRON_SHARED_SECRET is configured.
 
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { buildCorsHeaders, handlePreflight, jsonResponse } from '../_shared/cors.ts';

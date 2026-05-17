@@ -1,5 +1,4 @@
 import type { Metadata } from 'next';
-import { Geist, Geist_Mono } from 'next/font/google';
 import { cookies } from 'next/headers';
 import './globals.css';
 import { APP_NAME_SHORT, APP_NAME_FULL, HOSPITAL_NAME } from '@/constants';
@@ -8,16 +7,6 @@ import ThemeScript from '@/components/theme/ThemeScript';
 import { getServerThemeFromPreference, isThemePreference, THEME_COOKIE_KEY } from '@/components/theme/theme-contract';
 import ServiceWorkerRegister from '@/components/offline/ServiceWorkerRegister';
 import QueryProvider from '@/providers/QueryProvider';
-
-const geistSans = Geist({
-  variable: '--font-geist-sans',
-  subsets: ['latin'],
-});
-
-const geistMono = Geist_Mono({
-  variable: '--font-geist-mono',
-  subsets: ['latin'],
-});
 
 export const metadata: Metadata = {
   title: `${APP_NAME_SHORT} - ${APP_NAME_FULL}`,
@@ -38,7 +27,7 @@ export default async function RootLayout({
   const cookieThemeValue = cookieStore.get(THEME_COOKIE_KEY)?.value;
   const preference = isThemePreference(cookieThemeValue) ? cookieThemeValue : undefined;
   const initialTheme = getServerThemeFromPreference(preference);
-  const htmlClassName = `${geistSans.variable} ${geistMono.variable} h-full antialiased${initialTheme === 'dark' ? ' dark' : ''}`;
+  const htmlClassName = `h-full antialiased${initialTheme === 'dark' ? ' dark' : ''}`;
 
   return (
     <html

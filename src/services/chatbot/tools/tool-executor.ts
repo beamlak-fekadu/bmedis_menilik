@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { ChatContextRefs, ChatModuleContext, UserChatProfile } from '@/types/chatbot';
-import { canReadAllOperationalCopilotContext, canReadCopilotDepartment, canUseDeveloperCopilotDiagnostics } from '../copilot-rbac';
+import { canReadAllOperationalCopilotContext, canReadCopilotDepartment, canUseDeveloperCopilotDiagnostics, requiresDepartmentScope } from '../copilot-rbac';
 import { copilotRoutes } from '../route-link-builder';
 import { getCopilotTelemetrySummary, getCopilotUsageSummary } from '../usage-service';
 import { getCopilotToolDefinition } from './tool-registry';
@@ -65,18 +65,78 @@ function canReadSelectedOperationalRecord(profile: UserChatProfile, departmentId
   return roles.has('technician') || roles.has('store_user') || roles.has('viewer');
 }
 
+function criticalityRank(value: unknown) {
+  const normalized = String(value ?? '').toLowerCase();
+  if (normalized === 'critical') return 5;
+  if (normalized === 'high') return 4;
+  if (normalized === 'medium') return 3;
+  if (normalized === 'low') return 2;
+  return 1;
+}
+
+function conditionRank(value: unknown) {
+  const normalized = String(value ?? '').toLowerCase();
+  if (normalized === 'non_functional') return 5;
+  if (normalized === 'needs_repair') return 4;
+  if (normalized === 'under_maintenance') return 3;
+  if (normalized === 'partially_functional') return 2;
+  return 1;
+}
+
 async function readEquipmentStatus(supabase: SupabaseClient, profile: UserChatProfile, refs?: ChatContextRefs) {
   const equipmentId = refs?.equipmentId;
-  if (!equipmentId) return null;
-  const { data } = await supabase
+  const selectColumns = `
+    id, asset_code, name, condition, status, department_id,
+    installation_date, warranty_expiry, service_contract_expiry,
+    qr_label_status,
+    departments(name),
+    equipment_models(name),
+    manufacturers(name),
+    equipment_categories(name, criticality_level)
+  `;
+
+  if (equipmentId) {
+    const { data } = await supabase
+      .from('equipment_assets')
+      .select(selectColumns)
+      .eq('id', equipmentId)
+      .is('deleted_at', null)
+      .maybeSingle();
+    if (!data) return null;
+    if (!canReadSelectedOperationalRecord(profile, data.department_id as string | null)) return 'denied';
+    return data as Record<string, unknown>;
+  }
+
+  let query = supabase
     .from('equipment_assets')
-    .select('id, asset_code, name, condition, status, department_id, qr_label_status, qr_revoked_at, departments(name), equipment_categories(name, criticality_level)')
-    .eq('id', equipmentId)
+    .select(selectColumns)
     .is('deleted_at', null)
-    .maybeSingle();
-  if (!data) return null;
-  if (!canReadSelectedOperationalRecord(profile, data.department_id as string | null)) return 'denied';
-  return data as Record<string, unknown>;
+    .limit(40);
+
+  if (requiresDepartmentScope(profile)) {
+    query = profile.departmentId ? query.eq('department_id', profile.departmentId) : query.eq('department_id', EMPTY_UUID);
+  }
+
+  const { data } = await query;
+  const visibleRows = ((data ?? []) as Record<string, unknown>[])
+    .filter((row) => canReadSelectedOperationalRecord(profile, row.department_id as string | null))
+    .sort((a, b) => {
+      const categoryA = a.equipment_categories as { criticality_level?: unknown } | null;
+      const categoryB = b.equipment_categories as { criticality_level?: unknown } | null;
+      return (
+        criticalityRank(categoryB?.criticality_level) - criticalityRank(categoryA?.criticality_level) ||
+        conditionRank(b.condition) - conditionRank(a.condition) ||
+        String(a.asset_code ?? '').localeCompare(String(b.asset_code ?? ''))
+      );
+    });
+
+  const selected = visibleRows[0];
+  if (!selected) return null;
+  return {
+    ...selected,
+    selection_reason: 'Selected as a visible high-criticality equipment example because no specific asset was attached.',
+    recentMaintenanceEvents: await readRecentMaintenanceEvents(supabase, String(selected.id)),
+  };
 }
 
 async function readWorkOrderStatus(supabase: SupabaseClient, profile: UserChatProfile, refs?: ChatContextRefs) {
@@ -93,12 +153,13 @@ async function readWorkOrderStatus(supabase: SupabaseClient, profile: UserChatPr
   return row;
 }
 
-async function readRecentMaintenanceEvents(supabase: SupabaseClient, refs?: ChatContextRefs) {
-  if (!refs?.equipmentId) return [];
+async function readRecentMaintenanceEvents(supabase: SupabaseClient, refsOrAssetId?: ChatContextRefs | string) {
+  const equipmentId = typeof refsOrAssetId === 'string' ? refsOrAssetId : refsOrAssetId?.equipmentId;
+  if (!equipmentId) return [];
   const { data } = await supabase
     .from('maintenance_events')
     .select('id, event_type, failure_date, completion_date, action_taken, notes')
-    .eq('asset_id', refs.equipmentId)
+    .eq('asset_id', equipmentId)
     .order('created_at', { ascending: false })
     .limit(8);
   return (data ?? []) as Record<string, unknown>[];
@@ -128,6 +189,174 @@ async function readQrScanEvidence(supabase: SupabaseClient, refs?: ChatContextRe
     .order('scanned_at', { ascending: false })
     .limit(10);
   if (refs?.equipmentId) query = query.eq('asset_id', refs.equipmentId);
+  const { data } = await query;
+  return (data ?? []) as Record<string, unknown>[];
+}
+
+const EMPTY_UUID = '00000000-0000-0000-0000-000000000000';
+
+function isPrivilegedOperationalProfile(profile: UserChatProfile) {
+  return profile.roleNames.some((role) => ['developer', 'admin', 'bme_head', 'viewer'].includes(role));
+}
+
+async function scopedAssetIdsForTool(supabase: SupabaseClient, profile: UserChatProfile) {
+  if (!requiresDepartmentScope(profile)) return null;
+  if (!profile.departmentId) return [];
+  const { data } = await supabase
+    .from('equipment_assets')
+    .select('id')
+    .eq('department_id', profile.departmentId)
+    .is('deleted_at', null)
+    .limit(1000);
+  return (data ?? []).map((row) => String(row.id)).filter(Boolean);
+}
+
+function applyAssetScope<T extends { in: (column: string, values: string[]) => T }>(
+  query: T,
+  assetIds: string[] | null
+) {
+  if (!assetIds) return query;
+  return query.in('asset_id', assetIds.length ? assetIds : [EMPTY_UUID]);
+}
+
+async function readPmCompliance(supabase: SupabaseClient, profile: UserChatProfile, refs?: ChatContextRefs) {
+  let overdueQuery = supabase
+    .from('v_overdue_pm')
+    .select('id, asset_id, asset_code, asset_name, plan_name, scheduled_date, status, days_overdue, department_id, department_name, criticality_level')
+    .order('days_overdue', { ascending: false })
+    .limit(12);
+
+  let complianceQuery = supabase
+    .from('pm_compliance_metrics')
+    .select('asset_id, department_id, pmc_percentage, scheduled_count, completed_count, computed_at')
+    .order('computed_at', { ascending: false })
+    .limit(8);
+
+  if (refs?.equipmentId) {
+    overdueQuery = overdueQuery.eq('asset_id', refs.equipmentId);
+    complianceQuery = complianceQuery.eq('asset_id', refs.equipmentId);
+  } else if (requiresDepartmentScope(profile)) {
+    overdueQuery = profile.departmentId ? overdueQuery.eq('department_id', profile.departmentId) : overdueQuery.eq('department_id', EMPTY_UUID);
+    complianceQuery = profile.departmentId ? complianceQuery.eq('department_id', profile.departmentId) : complianceQuery.eq('department_id', EMPTY_UUID);
+  }
+
+  const [overdueRes, complianceRes] = await Promise.all([overdueQuery, complianceQuery]);
+  return {
+    overdue: (overdueRes.data ?? []) as Record<string, unknown>[],
+    compliance: (complianceRes.data ?? []) as Record<string, unknown>[],
+  };
+}
+
+async function readCalibrationStatus(supabase: SupabaseClient, profile: UserChatProfile, refs?: ChatContextRefs) {
+  const scopedAssetIds = await scopedAssetIdsForTool(supabase, profile);
+  let dueQuery = supabase
+    .from('v_calibration_due')
+    .select('id, asset_id, asset_code, asset_name, calibration_date, next_due_date, days_until_due, result, calibration_type, department_name')
+    .order('next_due_date', { ascending: true })
+    .limit(12);
+  let latestQuery = supabase
+    .from('calibration_records')
+    .select('id, asset_id, calibration_date, next_due_date, result, certificate_number')
+    .order('calibration_date', { ascending: false })
+    .limit(8);
+
+  if (refs?.equipmentId) {
+    dueQuery = dueQuery.eq('asset_id', refs.equipmentId);
+    latestQuery = latestQuery.eq('asset_id', refs.equipmentId);
+  } else {
+    dueQuery = applyAssetScope(dueQuery, scopedAssetIds);
+    latestQuery = applyAssetScope(latestQuery, scopedAssetIds);
+  }
+
+  const [dueRes, latestRes] = await Promise.all([dueQuery, latestQuery]);
+  return {
+    dueSoonOrOverdue: (dueRes.data ?? []) as Record<string, unknown>[],
+    latestRecords: (latestRes.data ?? []) as Record<string, unknown>[],
+  };
+}
+
+async function readAlertsSummary(supabase: SupabaseClient, profile: UserChatProfile) {
+  const scopedAssetIds = await scopedAssetIdsForTool(supabase, profile);
+  let query = supabase
+    .from('recommendation_flags')
+    .select('id, asset_id, severity, flag_type, message, generated_at, equipment_assets(asset_code, name, department_id, departments(name))')
+    .eq('is_acknowledged', false)
+    .order('generated_at', { ascending: false })
+    .limit(12);
+  query = applyAssetScope(query, scopedAssetIds);
+  const { data } = await query;
+  return (data ?? []) as Record<string, unknown>[];
+}
+
+async function readReplacementRisk(supabase: SupabaseClient, profile: UserChatProfile, refs?: ChatContextRefs) {
+  const scopedAssetIds = await scopedAssetIdsForTool(supabase, profile);
+  let query = supabase
+    .from('replacement_priority_scores')
+    .select('asset_id, replacement_priority_index, rank, justification, computed_at, equipment_assets(asset_code, name, department_id, departments(name))')
+    .order('rank', { ascending: true })
+    .limit(10);
+  if (refs?.equipmentId) query = query.eq('asset_id', refs.equipmentId);
+  else query = applyAssetScope(query, scopedAssetIds);
+  const { data } = await query;
+  return (data ?? []) as Record<string, unknown>[];
+}
+
+async function readCommandCenterSnapshot(supabase: SupabaseClient, profile: UserChatProfile) {
+  const scopedAssetIds = await scopedAssetIdsForTool(supabase, profile);
+  let triageQuery = supabase
+    .from('triage_action_queue')
+    .select('id, asset_id, priority_score, recommendation, status, due_by, equipment_assets(asset_code, name, department_id, departments(name))')
+    .eq('status', 'open')
+    .order('priority_score', { ascending: false })
+    .limit(10);
+  triageQuery = applyAssetScope(triageQuery, scopedAssetIds);
+
+  let workQuery = supabase
+    .from('work_orders')
+    .select('id, work_order_number, status, priority, work_type, assigned_to, asset_id, created_at, equipment_assets(asset_code, name, department_id, departments(name))')
+    .in('status', ['open', 'assigned', 'in_progress', 'on_hold'])
+    .order('created_at', { ascending: false })
+    .limit(10);
+  if (!isPrivilegedOperationalProfile(profile)) {
+    if (profile.roleNames.includes('technician')) workQuery = workQuery.eq('assigned_to', profile.profileId);
+    else if (scopedAssetIds) workQuery = applyAssetScope(workQuery, scopedAssetIds);
+  }
+
+  const [triageRes, workRes, alerts] = await Promise.all([
+    triageQuery,
+    workQuery,
+    readAlertsSummary(supabase, profile),
+  ]);
+  return {
+    triage: (triageRes.data ?? []) as Record<string, unknown>[],
+    activeWorkOrders: (workRes.data ?? []) as Record<string, unknown>[],
+    alerts,
+  };
+}
+
+async function readTrainingStatus(supabase: SupabaseClient, profile: UserChatProfile) {
+  let query = supabase
+    .from('training_requests')
+    .select('id, request_number, status, training_type, department_id, asset_id, created_at')
+    .in('status', ['pending', 'approved', 'scheduled'])
+    .order('created_at', { ascending: false })
+    .limit(10);
+  if (!isPrivilegedOperationalProfile(profile) && profile.departmentId) {
+    query = query.eq('department_id', profile.departmentId);
+  }
+  const { data } = await query;
+  return (data ?? []) as Record<string, unknown>[];
+}
+
+async function readDisposalStatus(supabase: SupabaseClient, profile: UserChatProfile) {
+  const scopedAssetIds = await scopedAssetIdsForTool(supabase, profile);
+  let query = supabase
+    .from('disposal_requests')
+    .select('id, request_number, status, reason, disposal_method_proposed, asset_id, created_at')
+    .in('status', ['pending', 'approved'])
+    .order('created_at', { ascending: false })
+    .limit(10);
+  query = applyAssetScope(query, scopedAssetIds);
   const { data } = await query;
   return (data ?? []) as Record<string, unknown>[];
 }
@@ -234,6 +463,28 @@ export async function executeCopilotTool(
       });
     }
 
+    if (name === 'read_pm_compliance') {
+      const data = await readPmCompliance(supabase, profile, contextRefs);
+      return baseResult(name, {
+        data,
+        evidenceSignals: ['Loaded PM compliance and overdue PM rows scoped by role.'],
+        sourceTables: def.dataSources,
+        routeLinks: [{ label: 'Open PM', href: '/pm', type: 'pm' }],
+        warnings: data.overdue.length || data.compliance.length ? [] : ['No PM rows were found in the permitted scope.'],
+      });
+    }
+
+    if (name === 'read_calibration_status') {
+      const data = await readCalibrationStatus(supabase, profile, contextRefs);
+      return baseResult(name, {
+        data,
+        evidenceSignals: ['Loaded calibration due and latest calibration rows scoped by role.'],
+        sourceTables: def.dataSources,
+        routeLinks: [{ label: 'Open calibration', href: '/calibration', type: 'calibration' }],
+        warnings: data.dueSoonOrOverdue.length || data.latestRecords.length ? [] : ['No calibration rows were found in the permitted scope.'],
+      });
+    }
+
     if (name === 'read_stock_blockers') {
       const { data } = await supabase
         .from('v_low_stock_parts')
@@ -254,6 +505,61 @@ export async function executeCopilotTool(
         evidenceSignals: ['Loaded procurement pipeline rows.'],
         sourceTables: def.dataSources,
         routeLinks: (data ?? []).slice(0, 3).map((row) => copilotRoutes.procurement(String(row.id), String(row.request_number ?? 'Open procurement'))),
+      });
+    }
+
+    if (name === 'read_training_status') {
+      const data = await readTrainingStatus(supabase, profile);
+      return baseResult(name, {
+        data,
+        evidenceSignals: ['Loaded training request rows scoped by role.'],
+        sourceTables: def.dataSources,
+        routeLinks: [{ label: 'Open training', href: '/training', type: 'training' }],
+        warnings: data.length ? [] : ['No training requests were found in the permitted scope.'],
+      });
+    }
+
+    if (name === 'read_disposal_status') {
+      const data = await readDisposalStatus(supabase, profile);
+      return baseResult(name, {
+        data,
+        evidenceSignals: ['Loaded disposal request rows scoped by role.'],
+        sourceTables: def.dataSources,
+        routeLinks: [{ label: 'Open disposal', href: '/disposal', type: 'disposal' }],
+        warnings: data.length ? [] : ['No disposal requests were found in the permitted scope.'],
+      });
+    }
+
+    if (name === 'read_replacement_risk') {
+      const data = await readReplacementRisk(supabase, profile, contextRefs);
+      return baseResult(name, {
+        data,
+        evidenceSignals: ['Loaded replacement priority rows scoped by role.'],
+        sourceTables: def.dataSources,
+        routeLinks: [{ label: 'Open replacement priority', href: '/replacement', type: 'replacement' }],
+        warnings: data.length ? [] : ['No replacement priority rows were found in the permitted scope.'],
+      });
+    }
+
+    if (name === 'read_command_center_snapshot') {
+      const data = await readCommandCenterSnapshot(supabase, profile);
+      return baseResult(name, {
+        data,
+        evidenceSignals: ['Loaded Command Center snapshot rows scoped by role.'],
+        sourceTables: def.dataSources,
+        routeLinks: [{ label: 'Open Command Center', href: '/command', type: 'command' }],
+        warnings: data.triage.length || data.activeWorkOrders.length || data.alerts.length ? [] : ['No command-center rows were found in the permitted scope.'],
+      });
+    }
+
+    if (name === 'read_alerts_summary') {
+      const data = await readAlertsSummary(supabase, profile);
+      return baseResult(name, {
+        data,
+        evidenceSignals: ['Loaded active recommendation flags scoped by role.'],
+        sourceTables: def.dataSources,
+        routeLinks: [{ label: 'Open alerts', href: '/alerts', type: 'alerts' }],
+        warnings: data.length ? [] : ['No active alerts were found in the permitted scope.'],
       });
     }
 

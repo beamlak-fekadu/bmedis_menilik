@@ -5,15 +5,36 @@ export const CHAT_INTENTS = [
   'assistant_intro',
   'general_conversation',
   'off_topic_safe',
+  'general_help',
+  'workflow_help',
   'maintenance_tip',
   'troubleshooting',
+  'safe_troubleshooting',
   'work_order_help',
+  'work_order_status',
+  'maintenance_status',
   'equipment_lookup',
+  'equipment_history',
   'analytics_explanation',
+  'risk_analysis',
+  'reliability_metrics',
+  'replacement_priority',
+  'dashboard_summary',
+  'decision_support',
+  'preventive_maintenance',
+  'calibration_status',
+  'spare_parts_lookup',
+  'logistics_stock',
+  'procurement_status',
+  'training_status',
+  'disposal_status',
+  'report_help',
   'calibration_or_logistics',
   'too_detailed',
   'unsafe',
+  'unsafe_request',
   'out_of_scope',
+  'insufficient_context',
 ] as const;
 
 export const CHAT_CAPABILITIES = [
@@ -109,8 +130,8 @@ const ChatRecordIdSchema = z
   .string()
   .trim()
   .min(1)
-  .max(120)
-  .regex(/^[A-Za-z0-9][A-Za-z0-9_-]*$/);
+  .max(36)
+  .regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
 
 export const ChatContextRefsSchema = z.object({
   equipmentId: ChatRecordIdSchema.optional(),

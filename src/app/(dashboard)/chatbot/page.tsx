@@ -35,6 +35,7 @@ import { normalizeAssistantPayloadForUi } from '@/services/chatbot/chat-response
 import { buildAiUnavailableAssistant } from '@/services/chatbot/providers/normalize-provider-output';
 import { CHATBOT_NAME, ASSISTANT_NAME } from '@/constants';
 import { buildAssistantCopyText, displayableAssistantSummary } from '@/components/assistant/assistant-ui-display';
+import { useRole } from '@/hooks/useRole';
 
 type UIMessage = {
   id: string;
@@ -81,6 +82,7 @@ function mapPersistedMessage(row: PersistedChatMessage): UIMessage {
 
 export default function ChatbotPage() {
   const { toast } = useToast();
+  const { isDeveloper } = useRole();
   const pathname = usePathname();
   const [sessions, setSessions] = useState<ChatSessionListItem[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | undefined>();
@@ -218,8 +220,8 @@ export default function ChatbotPage() {
         setSessions((sessionsRes.data ?? []) as ChatSessionListItem[]);
         setSessionLoadError(null);
       }
-    } catch (error) {
-      toast('error', error instanceof Error ? error.message : 'Unable to process chatbot request');
+    } catch {
+      toast('error', 'AI service is temporarily unavailable. The system data was not changed.');
       const fallbackAssistant = buildAiUnavailableAssistant('limited_answer');
       const assistantMessage: UIMessage = {
         id: `local-assistant-${Date.now()}`,
@@ -417,7 +419,7 @@ export default function ChatbotPage() {
                             </div>
                           )}
 
-                          {(message.assistant.routing_explanation?.length ?? 0) > 0 && (
+                          {isDeveloper && (message.assistant.routing_explanation?.length ?? 0) > 0 && (
                             <div className="rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-1)] p-3 text-xs text-[var(--text-muted)]">
                               <p className="mb-1 font-semibold text-[var(--text-primary)]">Routing</p>
                               <ul className="list-disc space-y-1 pl-4">
@@ -507,14 +509,18 @@ export default function ChatbotPage() {
                           )}
 
                           <div className="flex flex-wrap items-center gap-2 pt-1">
-                            <Badge
-                              variant={BASIS_BADGE_VARIANT[message.assistant.answer_basis ?? 'insufficient_data'] ?? 'default'}
-                            >
-                              Basis: {(message.assistant.answer_basis ?? 'insufficient_data').replace(/_/g, ' ')}
-                            </Badge>
-                            <Badge variant={CONFIDENCE_BADGE_VARIANT[message.assistant.confidence ?? 'low'] ?? 'warning'}>
-                              Confidence: {message.assistant.confidence ?? 'low'}
-                            </Badge>
+                            {isDeveloper && (
+                              <>
+                                <Badge
+                                  variant={BASIS_BADGE_VARIANT[message.assistant.answer_basis ?? 'insufficient_data'] ?? 'default'}
+                                >
+                                  Basis: {(message.assistant.answer_basis ?? 'insufficient_data').replace(/_/g, ' ')}
+                                </Badge>
+                                <Badge variant={CONFIDENCE_BADGE_VARIANT[message.assistant.confidence ?? 'low'] ?? 'warning'}>
+                                  Confidence: {message.assistant.confidence ?? 'low'}
+                                </Badge>
+                              </>
+                            )}
                             <Button
                               variant="ghost"
                               size="sm"

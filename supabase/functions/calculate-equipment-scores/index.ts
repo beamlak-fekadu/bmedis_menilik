@@ -24,7 +24,7 @@
 //   }
 
 import { createClient } from 'jsr:@supabase/supabase-js@2';
-import { buildCorsHeaders, handlePreflight, jsonResponse } from '../_shared/cors.ts';
+import { handlePreflight, jsonResponse } from '../_shared/cors.ts';
 
 // ===========================================================================
 // Ported from src/utils/analytics/formulas.ts (pure functions, no I/O)

@@ -18,7 +18,7 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+This project uses local system font stacks so production builds do not depend on external font downloads.
 
 ## Learn More
 
@@ -35,7 +35,7 @@ The easiest way to deploy your Next.js app is to use the [Vercel Platform](https
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
 
-## System-Wide AI Copilot (Groq + Safety Gating)
+## System-Wide AI Copilot (Gemini + Safety Gating)
 
 The platform includes a **system-wide biomedical AI copilot**:
 
@@ -61,10 +61,16 @@ Optional Gemini controls:
 
 ```bash
 GEMINI_TEMPERATURE=0.1
-GEMINI_TIMEOUT_MS=30000
-GEMINI_RETRY_COUNT=1
+GEMINI_TIMEOUT_MS=12000
 GEMINI_MAX_COMPLETION_TOKENS=900
+GEMINI_EMBEDDING_MODEL=text-embedding-004
+CHAT_AI_SMOKE_ENABLED=false
+CHAT_DEBUG_PROVIDER_FLOW=false
+CHAT_DEBUG_RAW_PROVIDER=false
 ```
+
+`SUPABASE_SERVICE_ROLE_KEY` is server-only. Never expose it through `NEXT_PUBLIC_*` variables or client components.
+The `refresh-analytics-snapshot` Supabase Edge Function intentionally has `verify_jwt=false` because scheduled calls use new-format Supabase keys; protect it with `CRON_SHARED_SECRET` and the `X-Cron-Secret` header.
 
 ### 2) Safety decision flow
 
@@ -73,9 +79,10 @@ The backend enforces policy before any model call:
 1. Identify authenticated user and role scope.
 2. Classify request intent.
 3. Retrieve grounded context from Supabase (equipment/work orders/PM/calibration/logistics/analytics/manual snippets).
-4. Evaluate evidence sufficiency and safety policy.
-5. If blocked, return structured refusal/redirect without calling LLM.
-6. If allowed, call Gemini and validate structured JSON output contract.
+4. Optionally retrieve pgvector document chunks for equipment documentation when embeddings are configured.
+5. Evaluate evidence sufficiency and safety policy.
+6. If blocked, return structured refusal/redirect without calling LLM.
+7. If allowed, call Gemini and validate structured JSON output contract.
 
 Decisions:
 

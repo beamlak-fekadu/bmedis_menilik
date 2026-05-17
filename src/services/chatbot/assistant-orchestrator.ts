@@ -244,6 +244,7 @@ function enforceOffTopicRedirect(assistant: AssistantContent, capability: Capabi
 function buildBlockedAssistantContent(decision: ChatDecision, reason: string): AssistantContent {
   const unsafeEscalation = decision === 'escalate' && reason === STANDARD_RESPONSES.escalate;
   const specificTechnical = decision === 'check_manual';
+  const outOfScopeRefusal = decision === 'refuse';
   const safeChecks = [
     'Confirm power source, plug, cable, battery, and accessories externally.',
     'Inspect for visible damage, overheating, blocked ventilation, cleaning issues, and displayed messages.',
@@ -257,13 +258,17 @@ function buildBlockedAssistantContent(decision: ChatDecision, reason: string): A
       ? `I cannot guide internal repair, alarm bypass, service mode, or unsupported manufacturer-specific steps. ${reason} Here are safe first-line checks you can do without opening the equipment.`
       : reason,
     key_findings: [],
-    recommended_actions: unsafeEscalation || specificTechnical ? ['Use only safe external checks.', 'Escalate to a qualified biomedical engineer or vendor when the issue persists or affects safety.'] : [],
+    recommended_actions: unsafeEscalation || specificTechnical
+      ? ['Use only safe external checks.', 'Escalate to a qualified biomedical engineer or vendor when the issue persists or affects safety.']
+      : outOfScopeRefusal
+        ? ['Use this assistant for biomedical equipment inventory, maintenance, PM, calibration, logistics, reports, and decision-support questions.', 'For patient symptoms or treatment decisions, involve the appropriate licensed clinical staff.']
+        : [],
     priority_reasoning: [],
     likely_causes: [],
     troubleshooting_steps: unsafeEscalation || specificTechnical ? safeChecks : [],
     maintenance_tips: [],
     required_tools_or_parts: [],
-    actions: unsafeEscalation || specificTechnical ? ['Escalate safely'] : [],
+    actions: unsafeEscalation || specificTechnical ? ['Escalate safely'] : outOfScopeRefusal ? ['Ask a BMERMS equipment-management question'] : [],
     insights: [],
     recommendations: [],
     entities_referenced: [],
@@ -706,11 +711,14 @@ export async function orchestrateAssistantResponse(params: OrchestrateParams): P
       },
       evidenceSignals: taskContext.evidence.evidenceSignals,
     });
-    const safeAssistant: AssistantContent = {
-      ...guardedAssistant,
-      routing_explanation: [...(guardedAssistant.routing_explanation ?? []), ...developerDebugRouting].slice(0, 12),
-      action_drafts: actionDrafts,
-    };
+    const safeAssistant: AssistantContent = ensureUiSafeAssistant(
+      {
+        ...guardedAssistant,
+        routing_explanation: [...(guardedAssistant.routing_explanation ?? []), ...developerDebugRouting].slice(0, 12),
+        action_drafts: actionDrafts,
+      },
+      safety.decision
+    );
     const responseFallbackReason = providerFallback && !deterministicContextFallbackUsed ? 'provider_failure' : classified.fallbackReason;
 
     await logCopilotTelemetry(supabase, {

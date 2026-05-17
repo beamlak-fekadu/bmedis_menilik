@@ -174,6 +174,11 @@ function hasRecordData(params: DeterministicAnswerParams) {
       asRows(blocks.procurementPipeline).length ||
       asRows(toolData(blocks, 'read_stock_blockers')).length ||
       asRows(toolData(blocks, 'read_procurement_pipeline')).length ||
+      asRecord(toolData(blocks, 'read_pm_compliance')) ||
+      asRecord(toolData(blocks, 'read_calibration_status')) ||
+      asRows(toolData(blocks, 'read_replacement_risk')).length ||
+      asRows(toolData(blocks, 'read_training_status')).length ||
+      asRows(toolData(blocks, 'read_disposal_status')).length ||
       asRows(toolData(blocks, 'read_equipment_history')).length ||
       asRows(toolData(blocks, 'read_qr_scan_evidence')).length ||
       asRecord(toolData(blocks, 'read_offline_sync_summary')) ||
@@ -239,6 +244,11 @@ function getWorkOrder(blocks: Record<string, unknown>, evidence: ChatEvidence) {
 function assetName(asset: Record<string, unknown> | null) {
   if (!asset) return 'this asset';
   return [text(asset.asset_code), text(asset.name)].filter(Boolean).join(' - ') || text(asset.id, 'this asset');
+}
+
+function linkedAssetLabel(row: Record<string, unknown> | null) {
+  const asset = asRecord(row?.equipment_assets);
+  return assetName(asset) || text(row?.asset_id, 'asset');
 }
 
 function summarizeStatusFields(row: Record<string, unknown> | null, fields: string[]) {
@@ -308,9 +318,12 @@ function buildOperationalPriorityAnswer(params: DeterministicAnswerParams): Assi
 function buildAssetContextAnswer(params: DeterministicAnswerParams): AssistantContent | null {
   const { blocks, evidence, profile } = params;
   const asset = getEquipment(blocks, evidence);
+  const embeddedHistory = asRows(asset?.recentMaintenanceEvents);
   const history = asRows(toolData(blocks, 'read_equipment_history')).length
     ? asRows(toolData(blocks, 'read_equipment_history'))
-    : evidence.maintenanceHistory;
+    : embeddedHistory.length
+      ? embeddedHistory
+      : evidence.maintenanceHistory;
   const analytics = asRecord(blocks.focusedAssetAnalytics);
   const roleCategory = getCopilotRoleCategory(profile);
 
@@ -320,14 +333,19 @@ function buildAssetContextAnswer(params: DeterministicAnswerParams): AssistantCo
   const condition = text(asset?.condition, 'condition not recorded');
   const status = text(asset?.status, 'status not recorded');
   const category = asRecord(asset?.equipment_categories);
+  const department = asRecord(asset?.departments);
+  const model = asRecord(asset?.equipment_models);
+  const manufacturer = asRecord(asset?.manufacturers);
   const criticality = text(category?.criticality_level);
   const qrStatus = text(asset?.qr_label_status);
+  const selectionReason = text(asset?.selection_reason);
   const riskScores = asRows(analytics?.riskScores);
   const reliabilityMetrics = asRows(analytics?.reliabilityMetrics);
   const replacementPriority = asRows(analytics?.replacementPriority);
 
   const summaryParts = [`Based on current system records, ${name} is marked ${condition} with status ${status}.`];
   if (criticality) summaryParts.push(`Its category criticality is ${criticality}.`);
+  if (selectionReason) summaryParts.push(selectionReason);
   if (history.length) summaryParts.push(`I found ${history.length} recent maintenance event(s) linked to it.`);
   if (riskScores.length || reliabilityMetrics.length || replacementPriority.length) {
     summaryParts.push('Risk, reliability, or replacement evidence is available for review.');
@@ -354,7 +372,13 @@ function buildAssetContextAnswer(params: DeterministicAnswerParams): AssistantCo
     summary: summaryParts.join(' '),
     key_findings: [
       ...summarizeStatusFields(asset, ['asset_code', 'name', 'condition', 'status', 'qr_label_status']),
+      text(model?.name) ? `model: ${text(model?.name)}` : '',
+      text(manufacturer?.name) ? `manufacturer: ${text(manufacturer?.name)}` : '',
+      text(department?.name) ? `department: ${text(department?.name)}` : '',
       criticality ? `criticality: ${criticality}` : '',
+      text(asset?.installation_date) ? `installation date: ${text(asset?.installation_date)}` : '',
+      text(asset?.warranty_expiry) ? `warranty expiry: ${text(asset?.warranty_expiry)}` : '',
+      text(asset?.service_contract_expiry) ? `service contract expiry: ${text(asset?.service_contract_expiry)}` : '',
       history.length ? `${history.length} recent maintenance event(s) retrieved.` : '',
       riskScores.length ? `${riskScores.length} risk score row(s) available.` : '',
       reliabilityMetrics.length ? `${reliabilityMetrics.length} reliability metric row(s) available.` : '',
@@ -402,7 +426,10 @@ function buildDepartmentStatusAnswer(params: DeterministicAnswerParams): Assista
   if (!readiness.length && !flags.length && !overduePm.length) return null;
 
   const latest = readiness[0];
-  const readinessScore = latest?.readiness_score != null ? `${Math.round(count(latest.readiness_score) * 100)}%` : '';
+  const rawReadinessScore = latest?.readiness_score != null ? count(latest.readiness_score) : null;
+  const readinessScore = rawReadinessScore != null
+    ? `${Math.round(rawReadinessScore <= 1 ? rawReadinessScore * 100 : rawReadinessScore)}%`
+    : '';
   const summary = readinessScore
     ? `Based on current readiness records, the latest department readiness score is ${readinessScore}. The main follow-up is to address equipment issues, overdue PM, and high-severity flags that reduce clinical readiness.`
     : `Based on current scoped records, I found ${flags.length} recommendation flag(s) and ${overduePm.length} overdue PM item(s) affecting readiness.`;
@@ -417,6 +444,143 @@ function buildDepartmentStatusAnswer(params: DeterministicAnswerParams): Assista
     ].filter(Boolean),
     recommended_actions: ['Open the lowest-readiness evidence first.', 'Resolve active work and compliance blockers before treating the score as recovered.'],
     confidence: readiness.length ? 'high' : 'medium',
+  });
+}
+
+function buildPmStatusAnswer(params: DeterministicAnswerParams): AssistantContent | null {
+  const pm = asRecord(toolData(params.blocks, 'read_pm_compliance'));
+  const overdue = asRows(pm?.overdue).length ? asRows(pm?.overdue) : asRows(params.blocks.overduePm);
+  const compliance = asRows(pm?.compliance);
+  if (!overdue.length && !compliance.length) return null;
+
+  const first = overdue[0];
+  const firstLabel = first
+    ? `${text(first.plan_name, 'PM task')} for ${text(first.asset_code)} ${text(first.asset_name)}`.trim()
+    : '';
+  const summary = overdue.length
+    ? `Based on current PM records, ${overdue.length} overdue PM task(s) are visible in your permitted scope. Start with ${firstLabel || 'the oldest overdue critical task'} because it is ${text(first?.days_overdue, 'unknown')} day(s) overdue.`
+    : `Based on current PM compliance records, I found ${compliance.length} PM compliance row(s) and no overdue PM rows in the permitted scope.`;
+
+  return baseAssistant(params, {
+    summary,
+    key_findings: [
+      overdue.length ? `${overdue.length} overdue PM task(s) retrieved.` : 'No overdue PM rows were retrieved.',
+      first?.scheduled_date ? `Oldest visible scheduled date: ${text(first.scheduled_date)}.` : '',
+      compliance.length ? `${compliance.length} PM compliance metric row(s) retrieved.` : '',
+    ].filter(Boolean),
+    recommended_actions: [
+      overdue.length ? 'Open the overdue PM schedule and confirm assignment, clinical criticality, and availability window.' : 'Keep monitoring scheduled PM compliance.',
+      'Treat PM compliance as a support signal; BME staff should confirm operational priority before rescheduling clinical equipment.',
+    ],
+    confidence: overdue.length || compliance.length ? 'high' : 'medium',
+  });
+}
+
+function buildCalibrationStatusAnswer(params: DeterministicAnswerParams): AssistantContent | null {
+  const calibration = asRecord(toolData(params.blocks, 'read_calibration_status'));
+  const dueRows = asRows(calibration?.dueSoonOrOverdue);
+  const latestRecords = asRows(calibration?.latestRecords);
+  if (!dueRows.length && !latestRecords.length && !params.evidence.calibrationStatus) return null;
+
+  const first = dueRows[0];
+  const days = count(first?.days_until_due);
+  const duePhrase = first
+    ? days < 0
+      ? `${Math.abs(days)} day(s) overdue`
+      : `due in ${days} day(s)`
+    : '';
+  const summary = first
+    ? `Based on current calibration records, ${text(first.asset_code)} ${text(first.asset_name)} is the first visible calibration concern and is ${duePhrase}. I found ${dueRows.length} equipment item(s) due soon or overdue in the permitted scope.`
+    : `Based on current calibration records, I found ${latestRecords.length} recent calibration record(s), but no due-soon/overdue calibration rows in the permitted scope.`;
+
+  return baseAssistant(params, {
+    summary,
+    key_findings: [
+      dueRows.length ? `${dueRows.length} due-soon/overdue calibration row(s) retrieved.` : 'No due-soon/overdue calibration row was retrieved.',
+      first?.next_due_date ? `Next due date: ${text(first.next_due_date)}.` : '',
+      first?.result ? `Last result shown in due view: ${text(first.result)}.` : '',
+      latestRecords.length ? `${latestRecords.length} latest calibration record(s) available.` : '',
+    ].filter(Boolean),
+    recommended_actions: [
+      dueRows.length ? 'Open the calibration module and schedule/confirm the highest-urgency due item.' : 'Use calibration records as evidence and keep monitoring upcoming due dates.',
+      'Do not perform calibration steps without approved standards, tools, SOP, or manufacturer documentation.',
+    ],
+    confidence: dueRows.length || latestRecords.length ? 'high' : 'medium',
+  });
+}
+
+function buildRiskAndReplacementAnswer(params: DeterministicAnswerParams): AssistantContent | null {
+  const msg = params.message.toLowerCase();
+  const replacementTool = asRows(toolData(params.blocks, 'read_replacement_risk'));
+  const replacementRows = replacementTool.length ? replacementTool : asRows(params.blocks.replacementPriority);
+  const riskRows = asRows(params.blocks.riskScores);
+  const reliabilityRows = asRows(params.blocks.reliabilityMetrics);
+  const flagRows = asRows(params.blocks.recommendationFlags);
+  const wantsReplacement = /\breplacement|rpi|replace|end[-\s]?of[-\s]?life/.test(msg);
+  const rows = wantsReplacement ? replacementRows : riskRows;
+  if (!rows.length && !replacementRows.length && !reliabilityRows.length && !flagRows.length) return null;
+
+  const first = rows[0] ?? replacementRows[0] ?? reliabilityRows[0] ?? flagRows[0];
+  const firstLabel = linkedAssetLabel(first);
+  const metricText = wantsReplacement
+    ? first?.replacement_priority_index != null
+      ? `RPI ${text(first.replacement_priority_index)}${first.rank != null ? `, rank ${text(first.rank)}` : ''}`
+      : 'replacement score unavailable'
+    : first?.rpn != null
+      ? `RPN ${text(first.rpn)} (${text(first.risk_level, 'risk level unavailable')})`
+      : 'risk score unavailable';
+
+  const summary = wantsReplacement
+    ? `Based on current replacement-priority records, ${firstLabel} is the first visible replacement candidate (${metricText}). This is decision-support evidence, not an automatic replacement approval.`
+    : `Based on current risk records, ${firstLabel} is the first visible high-risk item (${metricText}). Risk ranking supports BME review; it does not replace staff judgement.`;
+
+  const topFindings = rows.slice(0, 4).map((row, index) => {
+    if (wantsReplacement) {
+      return `${index + 1}. ${linkedAssetLabel(row)} - RPI ${text(row.replacement_priority_index, 'n/a')}${row.rank != null ? `, rank ${text(row.rank)}` : ''}.`;
+    }
+    return `${index + 1}. ${linkedAssetLabel(row)} - RPN ${text(row.rpn, 'n/a')} (${text(row.risk_level, 'risk level unavailable')}).`;
+  });
+
+  return baseAssistant(params, {
+    summary,
+    key_findings: [
+      ...topFindings,
+      reliabilityRows.length ? `${reliabilityRows.length} reliability metric row(s) are also visible for MTBF/MTTR/availability review.` : '',
+      flagRows.length ? `${flagRows.length} active recommendation flag(s) may explain urgency or blockers.` : '',
+    ].filter(Boolean),
+    recommended_actions: [
+      wantsReplacement ? 'Open replacement priority evidence and confirm age, failures, availability, maintenance burden, parts, risk, and cost inputs.' : 'Open the risk/FMEA or asset evidence before changing priority.',
+      'Use the ranking as BME decision support; final action should be reviewed by authorized biomedical staff.',
+    ],
+    priority_reasoning: topFindings,
+    confidence: rows.length ? 'high' : 'medium',
+    intelligence_mode: 'prioritization',
+  });
+}
+
+function buildTrainingStatusAnswer(params: DeterministicAnswerParams): AssistantContent | null {
+  const rows = asRows(toolData(params.blocks, 'read_training_status')).length
+    ? asRows(toolData(params.blocks, 'read_training_status'))
+    : asRows(params.blocks.trainingRequests);
+  if (!rows.length) return null;
+  return baseAssistant(params, {
+    summary: `Based on current training records, I found ${rows.length} active training request(s) in the permitted scope. Start with pending or scheduled requests tied to critical equipment or departments with readiness concerns.`,
+    key_findings: rows.slice(0, 5).map((row) => `${text(row.request_number, text(row.id))}: ${text(row.training_type, 'training')} is ${text(row.status, 'status unavailable')}.`),
+    recommended_actions: ['Open the training module for the exact request evidence.', 'Use training status as workflow evidence; do not assume attendance or competency unless records show it.'],
+    confidence: 'high',
+  });
+}
+
+function buildDisposalStatusAnswer(params: DeterministicAnswerParams): AssistantContent | null {
+  const rows = asRows(toolData(params.blocks, 'read_disposal_status')).length
+    ? asRows(toolData(params.blocks, 'read_disposal_status'))
+    : asRows(params.blocks.disposalPipeline);
+  if (!rows.length) return null;
+  return baseAssistant(params, {
+    summary: `Based on current disposal records, I found ${rows.length} pending or approved disposal request(s) in the permitted scope. These are formal workflow records; replacement candidates alone are not counted as disposal requests.`,
+    key_findings: rows.slice(0, 5).map((row) => `${text(row.request_number, text(row.id))}: ${text(row.status, 'status unavailable')} - ${text(row.disposal_method_proposed, 'method not recorded')}.`),
+    recommended_actions: ['Open the disposal module and review the exact request before approval or follow-up.', 'Keep replacement evidence separate from formal disposal approval.'],
+    confidence: 'high',
   });
 }
 
@@ -512,7 +676,7 @@ function buildQrAssetAnswer(params: DeterministicAnswerParams): AssistantContent
 
   const name = assetName(asset);
   const labelStatus = text(asset?.qr_label_status, page.qrToken ? 'QR token available from page context' : 'QR status unavailable');
-  const revoked = Boolean(asset?.qr_revoked_at);
+  const revoked = labelStatus === 'revoked';
   const summary = asset
     ? `Based on the QR-linked asset context, ${name} has QR label status ${labelStatus}${revoked ? ' and the token is revoked' : ''}. I found ${scans.length} recent QR scan row(s) in the permitted evidence.`
     : `I can see this is a QR page, but the full linked asset record was not available in the current context. I can still use the page context and any scan evidence that loaded.`;
@@ -629,6 +793,36 @@ function buildConceptualAnswer(params: DeterministicAnswerParams): AssistantCont
       confidence: 'high',
     });
   }
+  if (/\bavailability\b/.test(msg)) {
+    return baseAssistant(params, {
+      summary:
+        'Availability describes the proportion of time equipment is practically ready for service. In reliability terms, BMERMS uses MTBF and MTTR together: higher MTBF and lower MTTR usually improve availability.',
+      key_findings: ['Formula meaning: Availability = MTBF / (MTBF + MTTR).', 'It is a readiness signal, not a guarantee that a device is clinically safe for use today.'],
+      recommended_actions: ['Review downtime, open work orders, PM, calibration, and current condition before treating availability as operational clearance.'],
+      answer_basis: 'general_safe_guidance',
+      confidence: 'high',
+    });
+  }
+  if (/\bhealth score\b|\bequipment health\b/.test(msg)) {
+    return baseAssistant(params, {
+      summary:
+        'Equipment health score is a decision-support snapshot that combines operational evidence such as condition, reliability, risk, PM/calibration posture, and active blockers where available. It helps identify assets that need BME review.',
+      key_findings: ['A low health score should trigger evidence review, not automatic removal or replacement.', 'Always confirm current condition and active workflow records.'],
+      recommended_actions: ['Open the asset profile, risk/FMEA evidence, PM/calibration rows, and open work orders before making an operational decision.'],
+      answer_basis: 'general_safe_guidance',
+      confidence: 'high',
+    });
+  }
+  if (/\brpi\b|\breplacement priority\b|\breplacement index\b/.test(msg)) {
+    return baseAssistant(params, {
+      summary:
+        'RPI means Replacement Priority Index. It ranks equipment for replacement review using evidence such as age, failure pattern, availability, maintenance burden, spare-part pressure, risk, and cost where those inputs are available.',
+      key_findings: ['Higher RPI means stronger replacement-review pressure.', 'RPI is decision support only; BME Head/admin review and hospital policy decide final replacement action.'],
+      recommended_actions: ['Use RPI alongside service history, current clinical need, procurement constraints, and management approval evidence.'],
+      answer_basis: 'general_safe_guidance',
+      confidence: 'high',
+    });
+  }
   if (/\bhow do i use (this page|this system|bmerms)\b|\bwhat can (this|the) page do\b/.test(msg)) {
     const page = pageContext(params.blocks, params.moduleContext);
     return baseAssistant(params, {
@@ -688,6 +882,16 @@ export function buildDeterministicAnswerCandidate(params: DeterministicAnswerPar
     if (answer) return answer;
   }
 
+  if (params.capability === 'training_status') {
+    const answer = buildTrainingStatusAnswer(params);
+    if (answer) return answer;
+  }
+
+  if (params.capability === 'disposal_status') {
+    const answer = buildDisposalStatusAnswer(params);
+    if (answer) return answer;
+  }
+
   if (params.capability === 'summarize_work_order') {
     const answer = buildWorkOrderAnswer(params);
     if (answer) return answer;
@@ -695,6 +899,21 @@ export function buildDeterministicAnswerCandidate(params: DeterministicAnswerPar
 
   if (params.capability === 'summarize_equipment' || params.capability === 'explain_equipment_risk') {
     const answer = buildAssetContextAnswer(params);
+    if (answer) return answer;
+  }
+
+  if (params.capability === 'explain_equipment_risk') {
+    const answer = buildRiskAndReplacementAnswer(params);
+    if (answer) return answer;
+  }
+
+  if (params.capability === 'explain_pm_status' && /\bcalibration\b/i.test(params.message)) {
+    const answer = buildCalibrationStatusAnswer(params);
+    if (answer) return answer;
+  }
+
+  if (params.capability === 'explain_pm_status') {
+    const answer = buildPmStatusAnswer(params);
     if (answer) return answer;
   }
 

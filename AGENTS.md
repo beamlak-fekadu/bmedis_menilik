@@ -1180,8 +1180,7 @@ GEMINI_API_KEY           Gemini API key
 GEMINI_BASE_URL          Default: https://generativelanguage.googleapis.com/v1beta/openai/
 GEMINI_MODEL             e.g. "gemini-2.5-flash"
 GEMINI_TEMPERATURE       Default: 0.1
-GEMINI_TIMEOUT_MS        Default: 30000
-GEMINI_RETRY_COUNT       Default: 1
+GEMINI_TIMEOUT_MS        Default: 12000
 GEMINI_MAX_COMPLETION_TOKENS  Default: 900
 CHAT_DEBUG_PROVIDER_FLOW "true" to enable debug logging in orchestrator
 ```

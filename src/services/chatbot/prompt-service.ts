@@ -88,6 +88,10 @@ function capabilityAddendum(capability: CapabilityId): string {
     case 'summarize_equipment':
     case 'summarize_work_order':
       return 'Anchor on evidence + toolTrace (getEquipmentSummary / getWorkOrderSummary) and focusedAssetAnalytics; cite concrete fields (dates, statuses, metrics).';
+    case 'explain_equipment_risk':
+      return 'Anchor on risk scores, reliability metrics, replacement priority, recommendation flags, and focused asset analytics. Explain RPN, MTBF, MTTR, availability, health score, or RPI in biomedical terms when asked. Scores support BME review and are not automatic decisions.';
+    case 'explain_pm_status':
+      return 'Use overdue PM, PM compliance, and calibration-status tools. Separate PM evidence from calibration evidence, cite due/overdue dates when available, and do not invent due dates.';
     case 'safe_troubleshooting':
       return 'Follow tier1Troubleshooting (checklist + message_hints) order. troubleshooting_steps must be safe verification checks, not internal repair. Map hypotheses only to evidence; otherwise state unknown.';
     case 'summarize_alerts':

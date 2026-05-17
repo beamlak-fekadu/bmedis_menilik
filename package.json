@@ -60,6 +60,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.2",
+    "eslint-plugin-storybook": "^10.4.0",
     "storybook": "^10.4.0",
     "supabase": "^2.98.2",
     "tailwindcss": "^4",

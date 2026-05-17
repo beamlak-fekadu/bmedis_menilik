@@ -20,8 +20,8 @@ export const STANDARD_RESPONSES = {
 } as const;
 
 const ROLE_INTENT_BLOCKS: Record<string, ChatIntent[]> = {
-  viewer: ['calibration_or_logistics'],
-  store_user: ['troubleshooting'],
+  viewer: ['calibration_or_logistics', 'spare_parts_lookup', 'logistics_stock', 'procurement_status', 'calibration_status'],
+  store_user: ['troubleshooting', 'safe_troubleshooting'],
 };
 
 const ROLE_CAPABILITY_BLOCKS: Record<string, CapabilityId[]> = {
@@ -35,6 +35,32 @@ const ROLE_CAPABILITY_BLOCKS: Record<string, CapabilityId[]> = {
 const EXACT_ERROR_CODE_PATTERN = /\b(error\s*code|code\s*[a-z]?\d{2,}|E\d{2,})\b/i;
 const CALIBRATION_EXACT_PATTERN = /\b(exact|step[-\s]?by[-\s]?step|service mode|calibrat(e|ion)\s+this model)\b/i;
 const DEEP_REPAIR_PATTERN = /\b(board|component|pcb|solder|firmware|internal repair|replace board)\b/i;
+const MUTATION_REQUEST_PATTERN =
+  /\b(create|draft|submit|assign|reassign|close|complete|approve|reject|delete|update|mark)\b.*\b(work orders?|maintenance requests?|requests?|procurement|calibration|training|disposal|assets?|equipment)\b/i;
+const SAFE_NO_RECORD_INTENTS = new Set<ChatIntent>([
+  'maintenance_tip',
+  'analytics_explanation',
+  'work_order_help',
+  'work_order_status',
+  'maintenance_status',
+  'equipment_lookup',
+  'equipment_history',
+  'risk_analysis',
+  'reliability_metrics',
+  'replacement_priority',
+  'dashboard_summary',
+  'decision_support',
+  'preventive_maintenance',
+  'calibration_status',
+  'spare_parts_lookup',
+  'logistics_stock',
+  'procurement_status',
+  'training_status',
+  'disposal_status',
+  'report_help',
+  'workflow_help',
+  'insufficient_context',
+]);
 
 function roleRestrictedIntent(intent: ChatIntent, roleNames: string[]): boolean {
   if (roleNames.some((role) => role === 'developer' || role === 'admin' || role === 'bme_head')) return false;
@@ -127,11 +153,11 @@ export function evaluateSafetyDecision(
 
   if (intent === 'out_of_scope') {
     return {
-      decision: 'limited_answer',
-      blocked: false,
+      decision: 'refuse',
+      blocked: true,
       answerBasis: 'insufficient_data',
       confidence: 'low',
-      reason: `${STANDARD_RESPONSES.outOfScope} I can still provide short general guidance if helpful.`,
+      reason: `${STANDARD_RESPONSES.outOfScope} I cannot provide patient diagnosis, treatment, prescription, or clinical decision advice.`,
       escalationRequired: false,
       evidenceTier: 'low',
       policyCategory: 'unsafe_or_out_of_scope',
@@ -208,6 +234,19 @@ export function evaluateSafetyDecision(
     };
   }
 
+  if (profile.roleNames.includes('viewer') && MUTATION_REQUEST_PATTERN.test(normalizedMessage)) {
+    return {
+      decision: 'refuse',
+      blocked: true,
+      answerBasis: 'insufficient_data',
+      confidence: 'low',
+      reason: 'Viewer access is read-only. I can explain the relevant evidence or workflow, but I cannot create, update, approve, or close records for this role.',
+      escalationRequired: false,
+      evidenceTier: 'low',
+      policyCategory: 'unsafe_or_out_of_scope',
+    };
+  }
+
   if (intent === 'too_detailed') {
     return {
       decision: 'check_manual',
@@ -266,10 +305,7 @@ export function evaluateSafetyDecision(
 
   if (!hasEvidence) {
     if (
-      intent === 'maintenance_tip' ||
-      intent === 'analytics_explanation' ||
-      intent === 'work_order_help' ||
-      intent === 'equipment_lookup' ||
+      SAFE_NO_RECORD_INTENTS.has(intent) ||
       (intent === 'troubleshooting' && classified.troubleshootingSubtype === 'safe_general_troubleshooting')
     ) {
       return {

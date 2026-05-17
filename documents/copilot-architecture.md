@@ -239,7 +239,7 @@ Phase 3 adds review-before-submit action drafts, role-scoped server execution, o
 - All actions go through existing server actions, so RLS, capability matrix, duplicate prevention, condition sync, audit logging, and revalidation all apply.
 
 ### Tests
-Added `src/services/chatbot/__tests__/copilot-action-drafts.test.ts` covering: viewer never gets mutation drafts, BME head gets maintenance request drafts with Zod-valid payload, department user is auto-scoped, technician gets maintenance-event-note draft, store user gets reorder draft, non-mutation intent yields no mutations, and offline capability mapping. The grounding pass adds deterministic-answer/usefulness-guard coverage for page-aware asset, QR, priority, troubleshooting, viewer, and generic-provider replacement behavior. Total chatbot tests: 137/137 pass.
+Added `src/services/chatbot/__tests__/copilot-action-drafts.test.ts` covering: viewer never gets mutation drafts, BME head gets maintenance request drafts with Zod-valid payload, department user is auto-scoped, technician gets maintenance-event-note draft, store user gets reorder draft, non-mutation intent yields no mutations, and offline capability mapping. The grounding pass adds deterministic-answer/usefulness-guard coverage for page-aware asset, QR, priority, troubleshooting, viewer, generic-provider replacement behavior, final intent coverage, role mutation refusal, and output clamping. Total chatbot tests: 147/147 pass.
 
 ### Honest limitations
 - Heuristic draft proposal is regex-based and may miss creative phrasings; users can also start the action from the module page directly.

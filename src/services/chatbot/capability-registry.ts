@@ -24,7 +24,7 @@ const ALL_SECTIONS: CapabilityDefinition['responseSections'] = [
 export const CAPABILITY_REGISTRY: Record<CapabilityId, CapabilityDefinition> = {
   assistant_intro: {
     id: 'assistant_intro',
-    intents: ['assistant_intro'],
+    intents: ['assistant_intro', 'general_help'],
     description: 'BMERMS copilot intro, capabilities, and safe scope.',
     requiredInputs: [],
     retrievalBlocks: ['currentUserContext', 'openWorkPreview', 'alertsTeaser'],
@@ -57,7 +57,7 @@ export const CAPABILITY_REGISTRY: Record<CapabilityId, CapabilityDefinition> = {
   },
   my_tasks: {
     id: 'my_tasks',
-    intents: ['maintenance_tip', 'work_order_help'],
+    intents: ['maintenance_tip', 'work_order_help', 'work_order_status', 'maintenance_status'],
     description: 'Shows active work and pending commitments for the requesting user.',
     requiredInputs: ['profileId'],
     retrievalBlocks: ['assignedWorkOrders', 'pendingApprovals', 'overduePm'],
@@ -68,7 +68,7 @@ export const CAPABILITY_REGISTRY: Record<CapabilityId, CapabilityDefinition> = {
   },
   prioritize_tasks: {
     id: 'prioritize_tasks',
-    intents: ['maintenance_tip', 'analytics_explanation'],
+    intents: ['maintenance_tip', 'analytics_explanation', 'work_order_status', 'maintenance_status', 'decision_support', 'dashboard_summary'],
     description: 'Ranks urgent work by risk, urgency, and operational impact.',
     requiredInputs: ['profileId'],
     retrievalBlocks: ['decisionSupport', 'recommendationFlags', 'openWorkOrders'],
@@ -79,7 +79,7 @@ export const CAPABILITY_REGISTRY: Record<CapabilityId, CapabilityDefinition> = {
   },
   summarize_work_order: {
     id: 'summarize_work_order',
-    intents: ['work_order_help'],
+    intents: ['work_order_help', 'work_order_status', 'maintenance_status'],
     description: 'Summarizes work-order status, actions, and next steps.',
     requiredInputs: ['workOrderId'],
     retrievalBlocks: ['workOrder', 'maintenanceHistory'],
@@ -90,7 +90,7 @@ export const CAPABILITY_REGISTRY: Record<CapabilityId, CapabilityDefinition> = {
   },
   summarize_equipment: {
     id: 'summarize_equipment',
-    intents: ['equipment_lookup', 'analytics_explanation'],
+    intents: ['equipment_lookup', 'equipment_history', 'analytics_explanation'],
     description: 'Summarizes current equipment status, reliability, and maintenance context.',
     requiredInputs: ['equipmentId'],
     retrievalBlocks: ['equipment', 'maintenanceHistory', 'riskScores', 'reliability'],
@@ -101,7 +101,7 @@ export const CAPABILITY_REGISTRY: Record<CapabilityId, CapabilityDefinition> = {
   },
   explain_equipment_risk: {
     id: 'explain_equipment_risk',
-    intents: ['analytics_explanation', 'equipment_lookup'],
+    intents: ['analytics_explanation', 'equipment_lookup', 'risk_analysis', 'reliability_metrics', 'replacement_priority'],
     description: 'Explains risk and reliability signals for a specific asset.',
     requiredInputs: ['equipmentId'],
     retrievalBlocks: ['riskScores', 'reliability', 'replacementPriority'],
@@ -112,7 +112,7 @@ export const CAPABILITY_REGISTRY: Record<CapabilityId, CapabilityDefinition> = {
   },
   explain_pm_status: {
     id: 'explain_pm_status',
-    intents: ['maintenance_tip', 'analytics_explanation'],
+    intents: ['maintenance_tip', 'analytics_explanation', 'preventive_maintenance', 'calibration_status'],
     description: 'Explains PM compliance and overdue preventive maintenance.',
     requiredInputs: ['departmentId?'],
     retrievalBlocks: ['overduePm', 'pmCompliance'],
@@ -123,7 +123,7 @@ export const CAPABILITY_REGISTRY: Record<CapabilityId, CapabilityDefinition> = {
   },
   safe_troubleshooting: {
     id: 'safe_troubleshooting',
-    intents: ['troubleshooting'],
+    intents: ['troubleshooting', 'safe_troubleshooting'],
     description: 'Provides safe first-line troubleshooting and escalation criteria.',
     requiredInputs: ['equipmentId?'],
     retrievalBlocks: ['equipment', 'manualOrSop', 'maintenanceHistory'],
@@ -145,7 +145,7 @@ export const CAPABILITY_REGISTRY: Record<CapabilityId, CapabilityDefinition> = {
   },
   logistics_status: {
     id: 'logistics_status',
-    intents: ['calibration_or_logistics'],
+    intents: ['calibration_or_logistics', 'spare_parts_lookup', 'logistics_stock'],
     description: 'Summarizes parts stock, procurement flow, and logistics blockers.',
     requiredInputs: ['departmentId?'],
     retrievalBlocks: ['lowStock', 'procurementPipeline'],
@@ -156,7 +156,7 @@ export const CAPABILITY_REGISTRY: Record<CapabilityId, CapabilityDefinition> = {
   },
   procurement_status: {
     id: 'procurement_status',
-    intents: ['calibration_or_logistics'],
+    intents: ['calibration_or_logistics', 'procurement_status'],
     description: 'Explains procurement pipeline risk and blockers impacting maintenance.',
     requiredInputs: ['departmentId?'],
     retrievalBlocks: ['procurementPipeline', 'lowStock', 'openWorkOrders'],
@@ -178,7 +178,7 @@ export const CAPABILITY_REGISTRY: Record<CapabilityId, CapabilityDefinition> = {
   },
   summarize_department_readiness: {
     id: 'summarize_department_readiness',
-    intents: ['analytics_explanation'],
+    intents: ['analytics_explanation', 'dashboard_summary', 'decision_support'],
     description: 'Summarizes department clinical readiness and essential equipment posture from snapshots.',
     requiredInputs: ['departmentId?'],
     retrievalBlocks: ['readinessSnapshot', 'workloadSnapshot', 'recommendationFlags'],
@@ -189,7 +189,7 @@ export const CAPABILITY_REGISTRY: Record<CapabilityId, CapabilityDefinition> = {
   },
   training_status: {
     id: 'training_status',
-    intents: ['maintenance_tip'],
+    intents: ['maintenance_tip', 'training_status'],
     description: 'Summarizes training requests, scheduling posture, and workload context.',
     requiredInputs: ['departmentId?'],
     retrievalBlocks: ['trainingRequests', 'workloadSnapshot'],
@@ -200,7 +200,7 @@ export const CAPABILITY_REGISTRY: Record<CapabilityId, CapabilityDefinition> = {
   },
   disposal_status: {
     id: 'disposal_status',
-    intents: ['maintenance_tip'],
+    intents: ['maintenance_tip', 'disposal_status'],
     description: 'Summarizes disposal pipeline status and pending approvals.',
     requiredInputs: ['departmentId?'],
     retrievalBlocks: ['disposalPipeline', 'disposalApprovals'],
@@ -233,7 +233,7 @@ export const CAPABILITY_REGISTRY: Record<CapabilityId, CapabilityDefinition> = {
   },
   report_summary: {
     id: 'report_summary',
-    intents: ['analytics_explanation'],
+    intents: ['analytics_explanation', 'report_help'],
     description: 'Explains report evidence and methodology from available context without inventing report data.',
     requiredInputs: ['route?'],
     retrievalBlocks: ['reportContext'],
@@ -277,7 +277,7 @@ export const CAPABILITY_REGISTRY: Record<CapabilityId, CapabilityDefinition> = {
   },
   unsafe_or_restricted: {
     id: 'unsafe_or_restricted',
-    intents: ['unsafe', 'too_detailed', 'out_of_scope'],
+    intents: ['unsafe', 'unsafe_request', 'too_detailed', 'out_of_scope'],
     description: 'Handles restricted unsafe requests with policy-safe responses.',
     requiredInputs: [],
     retrievalBlocks: [],
@@ -288,7 +288,7 @@ export const CAPABILITY_REGISTRY: Record<CapabilityId, CapabilityDefinition> = {
   },
   general_system_fallback: {
     id: 'general_system_fallback',
-    intents: ['maintenance_tip'],
+    intents: ['maintenance_tip', 'workflow_help', 'insufficient_context'],
     description: 'Safe, contextual fallback preserving system-operational tone.',
     requiredInputs: [],
     retrievalBlocks: ['lightweightContext'],

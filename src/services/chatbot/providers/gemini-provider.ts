@@ -248,7 +248,7 @@ export async function runGeminiConnectivitySmoke(): Promise<GeminiSmokeResult> {
   }
 
   const model = process.env.GEMINI_MODEL ?? 'gemini-2.5-flash';
-  const timeoutMs = readNumberEnv('GEMINI_TIMEOUT_MS', 30000);
+  const timeoutMs = readNumberEnv('GEMINI_TIMEOUT_MS', 12000);
 
   try {
     const { response } = await postGeminiChatCompletions({
@@ -344,7 +344,7 @@ export const geminiProvider: ChatLlmProvider = {
 
     const url = resolveGeminiChatCompletionsUrl();
     const model = process.env.GEMINI_MODEL ?? 'gemini-2.5-flash';
-    const timeoutMs = readNumberEnv('GEMINI_TIMEOUT_MS', 30000);
+    const timeoutMs = readNumberEnv('GEMINI_TIMEOUT_MS', 12000);
     const temperature = Number(process.env.GEMINI_TEMPERATURE ?? 0.1);
     const maxCompletionTokens = readNumberEnv('GEMINI_MAX_COMPLETION_TOKENS', 900);
     const shouldDebugRaw = debugRawProviderLogs();

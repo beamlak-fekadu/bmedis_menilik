@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { ChatContextRefs, ChatEvidence, ChatIntent, UserChatProfile } from '@/types/chatbot';
 import { canReadCopilotDepartment, requiresDepartmentScope } from './copilot-rbac';
+import { searchEquipmentDocuments, type EquipmentDocumentMatch } from '@/services/embeddings';
 
 function canSeeDepartment(profile: UserChatProfile, departmentId: string | null | undefined) {
   if (!departmentId) return true;
@@ -11,7 +12,8 @@ export async function buildChatEvidence(
   supabase: SupabaseClient,
   contextRefs: ChatContextRefs | undefined,
   profile: UserChatProfile,
-  intent: ChatIntent
+  intent: ChatIntent,
+  message = ''
 ): Promise<ChatEvidence> {
   const evidenceSignals: string[] = [];
   const deniedContextRefs: Array<'equipment' | 'work_order' | 'department'> = [];
@@ -238,12 +240,12 @@ export async function buildChatEvidence(
     if (manualOrSopTexts.length > 0) evidenceSignals.push('Loaded manual/SOP snippets.');
   }
 
-  const port = documentRetrievalNotImplemented;
-  const [searchRes, forEquipRes, forCatRes] = await Promise.all([
-    port.searchDocuments(''),
-    equipmentId ? port.getDocumentsForEquipment(equipmentId) : Promise.resolve([]),
-    port.getDocumentsForCategory(''),
-  ]);
+  const documentRetrieval = await loadDocumentRetrieval({
+    query: message,
+    equipmentId,
+    categoryId: ((equipment?.equipment_categories as { id?: string } | undefined)?.id),
+    evidenceSignals,
+  });
 
   return {
     equipment,
@@ -255,12 +257,7 @@ export async function buildChatEvidence(
     logisticsSnapshot,
     analyticsSnapshot,
     manualOrSopTexts,
-    documentRetrieval: {
-      notImplemented: true,
-      searchDocuments: searchRes,
-      forEquipment: forEquipRes,
-      forCategory: forCatRes,
-    },
+    documentRetrieval,
     evidenceSignals,
     deniedContextRefs,
     accessDenied: deniedContextRefs.length > 0,
@@ -288,3 +285,49 @@ export const documentRetrievalNotImplemented: DocumentRetrievalPort = {
     return [];
   },
 };
+
+function documentMatchToSnippet(match: EquipmentDocumentMatch) {
+  return {
+    id: match.chunk_id,
+    title: match.source_label ?? `Document chunk ${match.chunk_index + 1}`,
+    snippet: match.chunk_text.slice(0, 360),
+  };
+}
+
+async function loadDocumentRetrieval(params: {
+  query: string;
+  equipmentId?: string;
+  categoryId?: string;
+  evidenceSignals: string[];
+}): Promise<ChatEvidence['documentRetrieval']> {
+  const empty: ChatEvidence['documentRetrieval'] = {
+    notImplemented: false,
+    searchDocuments: [],
+    forEquipment: [],
+    forCategory: [],
+  };
+  const query = params.query.trim();
+  if (!query) return empty;
+  if (!process.env.GEMINI_API_KEY?.trim()) {
+    return empty;
+  }
+
+  try {
+    const matches = await searchEquipmentDocuments(query, 5, 0.5);
+    const scopedMatches = params.equipmentId
+      ? matches.filter((match) => !match.asset_id || match.asset_id === params.equipmentId)
+      : matches;
+    const snippets = scopedMatches.map(documentMatchToSnippet).slice(0, 5);
+    if (snippets.length > 0) {
+      params.evidenceSignals.push('Loaded semantic equipment document snippets.');
+    }
+    return {
+      notImplemented: false,
+      searchDocuments: snippets,
+      forEquipment: params.equipmentId ? snippets.filter((_, index) => index < 3) : [],
+      forCategory: [],
+    };
+  } catch {
+    return empty;
+  }
+}

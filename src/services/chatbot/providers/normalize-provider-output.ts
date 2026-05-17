@@ -1,11 +1,18 @@
-import { AssistantContentSchema, type AssistantContent, type ChatDecision } from '@/types/chatbot';
+import {
+  ANSWER_BASIS,
+  AssistantContentSchema,
+  CHAT_DECISIONS,
+  CONFIDENCE_LEVELS,
+  type AssistantContent,
+  type ChatDecision,
+} from '@/types/chatbot';
 
 export const FALLBACK_SUMMARY =
   "I could not load the structured details for that request right now. Try rephrasing, or open the asset, work order, or report page and ask again.";
 
 export const AI_UNAVAILABLE_SUMMARY =
-  "The AI service is busy at the moment. Try again in a few seconds, or open the related asset, work order, or report page to keep working.";
-export const AI_UNAVAILABLE_SUGGESTION = 'Try again in a few seconds';
+  'AI service is temporarily unavailable. The system data was not changed.';
+export const AI_UNAVAILABLE_SUGGESTION = 'Try again after a moment';
 
 function buildSafeFallback(requiredDecision: ChatDecision): AssistantContent {
   const fallbackDecision: ChatDecision = requiredDecision === 'answer' ? 'limited_answer' : requiredDecision;
@@ -43,6 +50,54 @@ function buildSafeFallback(requiredDecision: ChatDecision): AssistantContent {
         ? 'Escalate to a qualified biomedical engineer or vendor.'
         : undefined,
   };
+}
+
+function clampString(value: unknown, maxLength: number) {
+  if (typeof value === 'string') return value.trim().slice(0, maxLength);
+  if (value == null) return '';
+  return String(value).trim().slice(0, maxLength);
+}
+
+function clampStringArray(value: unknown, maxItems: number, maxLength: number) {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => clampString(item, maxLength))
+    .filter(Boolean)
+    .slice(0, maxItems);
+}
+
+function clampLinks(value: unknown) {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => {
+      if (!item || typeof item !== 'object') return null;
+      const row = item as Record<string, unknown>;
+      const label = clampString(row.label, 120);
+      const href = clampString(row.href, 250);
+      const type = clampString(row.type, 60);
+      if (!label || !href.startsWith('/')) return null;
+      return { label, href, type: type || undefined };
+    })
+    .filter(Boolean)
+    .slice(0, 10) as AssistantContent['links'];
+}
+
+function coerceDecision(value: unknown, requiredDecision: ChatDecision): ChatDecision {
+  return typeof value === 'string' && (CHAT_DECISIONS as readonly string[]).includes(value)
+    ? (value as ChatDecision)
+    : requiredDecision;
+}
+
+function coerceAnswerBasis(value: unknown): AssistantContent['answer_basis'] {
+  return typeof value === 'string' && (ANSWER_BASIS as readonly string[]).includes(value)
+    ? (value as AssistantContent['answer_basis'])
+    : 'insufficient_data';
+}
+
+function coerceConfidence(value: unknown): AssistantContent['confidence'] {
+  return typeof value === 'string' && (CONFIDENCE_LEVELS as readonly string[]).includes(value)
+    ? (value as AssistantContent['confidence'])
+    : 'low';
 }
 
 /** When the provider fails after retries or throws; always schema-safe for the UI. */
@@ -93,38 +148,38 @@ export function ensureUiSafeAssistant(
   }
 
   const merged: AssistantContent = {
-    decision: (assistant.decision as ChatDecision) ?? requiredDecision,
-    title: typeof assistant.title === 'string' ? assistant.title.slice(0, 180) : undefined,
+    decision: coerceDecision(assistant.decision, requiredDecision),
+    title: typeof assistant.title === 'string' ? clampString(assistant.title, 180) : undefined,
     summary:
       typeof assistant.summary === 'string' && assistant.summary.trim()
-        ? assistant.summary.slice(0, 2000)
+        ? clampString(assistant.summary, 2000)
         : FALLBACK_SUMMARY,
-    key_findings: Array.isArray(assistant.key_findings) ? assistant.key_findings : [],
-    recommended_actions: Array.isArray(assistant.recommended_actions) ? assistant.recommended_actions : [],
-    priority_reasoning: Array.isArray(assistant.priority_reasoning) ? assistant.priority_reasoning : [],
-    likely_causes: Array.isArray(assistant.likely_causes) ? assistant.likely_causes : [],
-    troubleshooting_steps: Array.isArray(assistant.troubleshooting_steps) ? assistant.troubleshooting_steps : [],
-    maintenance_tips: Array.isArray(assistant.maintenance_tips) ? assistant.maintenance_tips : [],
-    required_tools_or_parts: Array.isArray(assistant.required_tools_or_parts) ? assistant.required_tools_or_parts : [],
-    actions: Array.isArray(assistant.actions) ? assistant.actions : [],
-    insights: Array.isArray(assistant.insights) ? assistant.insights : [],
-    recommendations: Array.isArray(assistant.recommendations) ? assistant.recommendations : [],
-    entities_referenced: Array.isArray(assistant.entities_referenced) ? assistant.entities_referenced : [],
-    follow_up_suggestions: Array.isArray(assistant.follow_up_suggestions) ? assistant.follow_up_suggestions : [],
-    proactive_signals: Array.isArray(assistant.proactive_signals) ? assistant.proactive_signals : [],
-    routing_explanation: Array.isArray(assistant.routing_explanation) ? assistant.routing_explanation : [],
-    evidence_used: Array.isArray(assistant.evidence_used) ? assistant.evidence_used : [],
-    links: Array.isArray(assistant.links) ? assistant.links : [],
-    limitations: Array.isArray(assistant.limitations) ? assistant.limitations : [],
-    data_freshness: typeof assistant.data_freshness === 'string' ? assistant.data_freshness : undefined,
-    source_tables: Array.isArray(assistant.source_tables) ? assistant.source_tables : [],
+    key_findings: clampStringArray(assistant.key_findings, 10, 400),
+    recommended_actions: clampStringArray(assistant.recommended_actions, 10, 400),
+    priority_reasoning: clampStringArray(assistant.priority_reasoning, 10, 400),
+    likely_causes: clampStringArray(assistant.likely_causes, 8, 300),
+    troubleshooting_steps: clampStringArray(assistant.troubleshooting_steps, 10, 400),
+    maintenance_tips: clampStringArray(assistant.maintenance_tips, 10, 400),
+    required_tools_or_parts: clampStringArray(assistant.required_tools_or_parts, 10, 200),
+    actions: clampStringArray(assistant.actions, 10, 400),
+    insights: clampStringArray(assistant.insights, 10, 400),
+    recommendations: clampStringArray(assistant.recommendations, 10, 400),
+    entities_referenced: clampStringArray(assistant.entities_referenced, 12, 160),
+    follow_up_suggestions: clampStringArray(assistant.follow_up_suggestions, 8, 240),
+    proactive_signals: clampStringArray(assistant.proactive_signals, 8, 400),
+    routing_explanation: clampStringArray(assistant.routing_explanation, 8, 320),
+    evidence_used: clampStringArray(assistant.evidence_used, 12, 320),
+    links: clampLinks(assistant.links),
+    limitations: clampStringArray(assistant.limitations, 8, 320),
+    data_freshness: typeof assistant.data_freshness === 'string' ? clampString(assistant.data_freshness, 200) : undefined,
+    source_tables: clampStringArray(assistant.source_tables, 12, 120),
     action_drafts: Array.isArray(assistant.action_drafts) ? assistant.action_drafts : [],
     intelligence_mode: assistant.intelligence_mode,
-    escalation_recommendation: assistant.escalation_recommendation,
-    escalation_guidance: assistant.escalation_guidance,
-    reason_for_limit: assistant.reason_for_limit,
-    answer_basis: assistant.answer_basis ?? 'insufficient_data',
-    confidence: assistant.confidence ?? 'low',
+    escalation_recommendation: typeof assistant.escalation_recommendation === 'string' ? clampString(assistant.escalation_recommendation, 600) : undefined,
+    escalation_guidance: typeof assistant.escalation_guidance === 'string' ? clampString(assistant.escalation_guidance, 600) : undefined,
+    reason_for_limit: typeof assistant.reason_for_limit === 'string' ? clampString(assistant.reason_for_limit, 600) : undefined,
+    answer_basis: coerceAnswerBasis(assistant.answer_basis),
+    confidence: coerceConfidence(assistant.confidence),
     escalation_required: Boolean(assistant.escalation_required),
   };
 

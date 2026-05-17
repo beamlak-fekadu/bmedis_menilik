@@ -30,17 +30,20 @@ import {
 import { executeCopilotTool } from './tools/tool-executor';
 import type { CopilotToolName as FormalCopilotToolName, CopilotToolResult } from './tools/tool-types';
 
-function planFormalTools(capability: CapabilityId, moduleContext?: ChatModuleContext): FormalCopilotToolName[] {
+function planFormalTools(capability: CapabilityId, moduleContext?: ChatModuleContext, contextRefs?: ChatContextRefs): FormalCopilotToolName[] {
   const tools: FormalCopilotToolName[] = ['read_current_user_context', 'read_current_page_context'];
   if (capability === 'summarize_equipment' || capability === 'explain_equipment_risk' || moduleContext?.selectedRecordType === 'equipment') {
-    tools.push('read_equipment_status', 'read_equipment_history');
+    tools.push('read_equipment_status');
+    if (contextRefs?.equipmentId) tools.push('read_equipment_history');
   }
   if (capability === 'summarize_work_order' || moduleContext?.selectedRecordType === 'work_order') {
     tools.push('read_work_order_status');
   }
-  if (capability === 'prioritize_tasks') tools.push('read_command_center_snapshot', 'read_alerts_summary');
+  if (capability === 'prioritize_tasks') tools.push('read_command_center_snapshot', 'read_alerts_summary', 'read_pm_compliance', 'read_calibration_status');
   if (capability === 'summarize_department_readiness') tools.push('read_department_readiness');
-  if (capability === 'explain_pm_status') tools.push('read_pm_compliance');
+  if (capability === 'explain_equipment_risk') tools.push('read_replacement_risk', 'read_alerts_summary');
+  if (capability === 'explain_pm_status') tools.push('read_pm_compliance', 'read_calibration_status');
+  if (capability === 'summarize_alerts') tools.push('read_alerts_summary');
   if (moduleContext?.moduleLabel === 'Calibration' || capability === 'explain_pm_status') tools.push('read_calibration_status');
   if (capability === 'logistics_status') tools.push('read_stock_blockers');
   if (capability === 'procurement_status') tools.push('read_procurement_pipeline');
@@ -359,7 +362,7 @@ export async function buildTaskContext(params: TaskContextParams): Promise<TaskC
                       ? 'maintenance_tip'
                       : 'maintenance_tip';
 
-  const evidence: ChatEvidence = await buildChatEvidence(supabase, contextRefs, profile, intentForEvidence);
+  const evidence: ChatEvidence = await buildChatEvidence(supabase, contextRefs, profile, intentForEvidence, message);
   const [shared, riskAnalytics, logistics, decisionSupport] = await Promise.all([
     loadTaskBlocks(supabase, profile, capability),
     loadRiskAndAnalytics(supabase, contextRefs, profile),
@@ -390,7 +393,7 @@ export async function buildTaskContext(params: TaskContextParams): Promise<TaskC
   })) as Record<string, unknown>;
 
   const toolTrace = { selectedTools, toolResults };
-  const formalToolNames = planFormalTools(capability, moduleContext);
+  const formalToolNames = planFormalTools(capability, moduleContext, contextRefs);
   const formalToolResults = await Promise.all(
     formalToolNames.map((toolName) =>
       executeCopilotTool(supabase, toolName, {

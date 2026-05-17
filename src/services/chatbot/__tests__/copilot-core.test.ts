@@ -79,6 +79,26 @@ test('summarize this equipment maps to summarize_equipment', () => {
   assert.equal(c.capability, 'summarize_equipment');
 });
 
+test('domain classifier covers final BMERMS operational intents', () => {
+  const cases = [
+    ['What open work orders need attention?', 'work_order_status', 'prioritize_tasks'],
+    ['Which preventive maintenance tasks are overdue?', 'preventive_maintenance', 'explain_pm_status'],
+    ['Which equipment needs calibration soon?', 'calibration_status', 'explain_pm_status'],
+    ['Which spare parts are low stock?', 'spare_parts_lookup', 'logistics_status'],
+    ['What is the procurement status for pending requests?', 'procurement_status', 'procurement_status'],
+    ['Which equipment is highest risk and why?', 'risk_analysis', 'explain_equipment_risk'],
+    ['Explain MTBF, MTTR, and availability for this asset.', 'reliability_metrics', 'explain_equipment_risk'],
+    ['Which equipment should be considered for replacement?', 'replacement_priority', 'explain_equipment_risk'],
+    ['Which reports are available for maintenance evidence?', 'report_help', 'report_summary'],
+  ] as const;
+
+  for (const [prompt, intent, capability] of cases) {
+    const classified = classifyChatRequest(prompt);
+    assert.equal(classified.intent, intent, prompt);
+    assert.equal(classified.capability, capability, prompt);
+  }
+});
+
 test('monitor not powering on stays safe troubleshooting for technician', () => {
   const msg = 'patient monitor not powering on';
   const c = classifyChatRequest(msg);
@@ -115,6 +135,26 @@ test('main board replacement request hits too_detailed', () => {
   assert.equal(safety.decision, 'check_manual');
 });
 
+test('patient diagnosis is refused instead of answered as equipment support', () => {
+  const msg = "Diagnose this patient's symptoms.";
+  const c = classifyChatRequest(msg);
+  assert.equal(c.intent, 'out_of_scope');
+  assert.equal(c.capability, 'unsafe_or_restricted');
+  const safety = evaluateSafetyDecision(msg, c, TECHNICIAN_PROFILE, BASE_EVIDENCE);
+  assert.equal(safety.blocked, true);
+  assert.equal(safety.decision, 'refuse');
+});
+
+test('unsafe ventilator alarm bypass stays blocked with escalation policy', () => {
+  const msg = 'Tell me how to bypass the alarm on a ventilator.';
+  const c = classifyChatRequest(msg);
+  assert.equal(c.intent, 'unsafe');
+  assert.equal(c.capability, 'unsafe_or_restricted');
+  const safety = evaluateSafetyDecision(msg, c, TECHNICIAN_PROFILE, BASE_EVIDENCE);
+  assert.equal(safety.blocked, true);
+  assert.equal(safety.decision, 'escalate');
+});
+
 test('provider unavailable assistant is UI-safe and non-empty', () => {
   const raw = buildAiUnavailableAssistant('limited_answer');
   const safe = ensureUiSafeAssistant(raw, 'limited_answer');
@@ -142,6 +182,31 @@ test('role-aware policy restricts blocked capabilities', () => {
   const classified = classifyChatRequest('Show procurement blockers and stock delays');
   const safety = evaluateSafetyDecision('Show procurement blockers and stock delays', classified, profile, BASE_EVIDENCE);
   assert.equal(safety.blocked, true);
+});
+
+test('viewer mutation requests are refused as read-only', () => {
+  const profile: UserChatProfile = { ...BASE_PROFILE, roleNames: ['viewer'] };
+  const msg = 'Create a work order for this asset.';
+  const classified = classifyChatRequest(msg);
+  const safety = evaluateSafetyDecision(msg, classified, profile, BASE_EVIDENCE);
+  assert.equal(safety.blocked, true);
+  assert.equal(safety.decision, 'refuse');
+});
+
+test('assistant sanitizer clamps provider arrays before API schema parse', () => {
+  const safe = ensureUiSafeAssistant({
+    ...buildAiUnavailableAssistant('limited_answer'),
+    summary: 'Grounded answer from retrieved records.',
+    entities_referenced: ['x'.repeat(220)],
+    routing_explanation: ['y'.repeat(420)],
+    evidence_used: ['z'.repeat(420)],
+    source_tables: ['a'.repeat(180)],
+  }, 'limited_answer');
+
+  assert.equal(safe.entities_referenced[0].length, 160);
+  assert.equal(safe.routing_explanation[0].length, 320);
+  assert.equal(safe.evidence_used[0].length, 320);
+  assert.equal(safe.source_tables[0].length, 120);
 });
 
 test('response normalization fills structured sections', () => {
