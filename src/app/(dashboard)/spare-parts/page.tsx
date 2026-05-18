@@ -11,6 +11,8 @@ import Tabs from '@/components/ui/Tabs';
 import Button from '@/components/ui/Button';
 import Badge from '@/components/ui/Badge';
 import StatCard from '@/components/ui/StatCard';
+import { motion } from 'framer-motion';
+import { cardItem, cardStagger } from '@/lib/ui/motion-presets';
 import ClearFiltersButton from '@/components/ui/ClearFiltersButton';
 import Modal from '@/components/ui/Modal';
 import Input from '@/components/ui/Input';
@@ -669,16 +671,21 @@ function OperationalSparePartsPage() {
         ) : <Badge variant="info">{primaryRole === 'viewer' ? 'Read-only' : 'View access'}</Badge>}
       />
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Total Parts" value={parts.length} icon={<Boxes className="h-6 w-6" />} color="blue" active={selectedTab === 'catalog' && selectedFilter === 'all'} onClick={() => selectStockView('catalog')} />
-        <StatCard label="Low Stock" value={canonicalLowStockCount} icon={<AlertTriangle className="h-6 w-6" />} color="orange" active={selectedTab === 'lowstock' && selectedFilter === 'low-stock'} onClick={() => selectStockView('lowstock', 'low-stock')} />
-        <StatCard label="Stockout" value={canonicalStockoutCount} icon={<AlertTriangle className="h-6 w-6" />} color="red" active={selectedFilter === 'stockout'} onClick={() => selectStockView('blockers', 'stockout')} />
-        <StatCard label="Stockout Blockers" value={canonicalStockoutCount} icon={<Wrench className="h-6 w-6" />} color="purple" active={selectedFilter === 'blockers'} onClick={() => selectStockView('blockers', 'blockers')} />
-        <StatCard label="Recently Received" value={recentReceipts.length} icon={<PackagePlus className="h-6 w-6" />} color="green" active={selectedFilter === 'recent-received'} onClick={() => selectStockView('receipts', 'recent-received')} />
-        <StatCard label="Recently Issued" value={recentIssues.length} icon={<PackageMinus className="h-6 w-6" />} color="yellow" active={selectedFilter === 'recent-issued'} onClick={() => selectStockView('issues', 'recent-issued')} />
-        <StatCard label="Pending Procurement" value={canonicalOpenProcurementCount} icon={<ClipboardList className="h-6 w-6" />} color="purple" active={selectedFilter === 'with-procurement'} onClick={() => selectStockView('lowstock', 'with-procurement')} />
-        <StatCard label="High-Cost Stock" value={highCostStock.length} icon={<DollarSign className="h-6 w-6" />} color="gray" active={selectedFilter === 'high-cost'} onClick={() => selectStockView('catalog', 'high-cost')} />
-      </div>
+      <motion.div
+        variants={cardStagger}
+        initial="initial"
+        animate="animate"
+        className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4"
+      >
+        <motion.div variants={cardItem}><StatCard label="Total Parts" value={parts.length} icon={<Boxes className="h-6 w-6" />} color="blue" active={selectedTab === 'catalog' && selectedFilter === 'all'} onClick={() => selectStockView('catalog')} /></motion.div>
+        <motion.div variants={cardItem}><StatCard label="Low Stock" value={canonicalLowStockCount} icon={<AlertTriangle className="h-6 w-6" />} color="orange" active={selectedTab === 'lowstock' && selectedFilter === 'low-stock'} onClick={() => selectStockView('lowstock', 'low-stock')} /></motion.div>
+        <motion.div variants={cardItem}><StatCard label="Stockout" value={canonicalStockoutCount} icon={<AlertTriangle className="h-6 w-6" />} color="red" active={selectedFilter === 'stockout'} onClick={() => selectStockView('blockers', 'stockout')} /></motion.div>
+        <motion.div variants={cardItem}><StatCard label="Stockout Blockers" value={canonicalStockoutCount} icon={<Wrench className="h-6 w-6" />} color="purple" active={selectedFilter === 'blockers'} onClick={() => selectStockView('blockers', 'blockers')} /></motion.div>
+        <motion.div variants={cardItem}><StatCard label="Recently Received" value={recentReceipts.length} icon={<PackagePlus className="h-6 w-6" />} color="green" active={selectedFilter === 'recent-received'} onClick={() => selectStockView('receipts', 'recent-received')} /></motion.div>
+        <motion.div variants={cardItem}><StatCard label="Recently Issued" value={recentIssues.length} icon={<PackageMinus className="h-6 w-6" />} color="yellow" active={selectedFilter === 'recent-issued'} onClick={() => selectStockView('issues', 'recent-issued')} /></motion.div>
+        <motion.div variants={cardItem}><StatCard label="Pending Procurement" value={canonicalOpenProcurementCount} icon={<ClipboardList className="h-6 w-6" />} color="purple" active={selectedFilter === 'with-procurement'} onClick={() => selectStockView('lowstock', 'with-procurement')} /></motion.div>
+        <motion.div variants={cardItem}><StatCard label="High-Cost Stock" value={highCostStock.length} icon={<DollarSign className="h-6 w-6" />} color="gray" active={selectedFilter === 'high-cost'} onClick={() => selectStockView('catalog', 'high-cost')} /></motion.div>
+      </motion.div>
 
       {(activeTab !== '' || selectedFilter !== 'all') && (
         <div className="flex justify-end">

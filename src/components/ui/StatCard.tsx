@@ -1,4 +1,7 @@
+'use client';
+
 import { type ReactNode } from 'react';
+import AnimatedMetric from './AnimatedMetric';
 
 interface StatCardProps {
   label: string;
@@ -50,7 +53,7 @@ export default function StatCard({
             {label}
           </p>
           <p className="mt-1.5 text-[28px] font-semibold leading-none tracking-tight text-[var(--foreground)] tabular-nums">
-            {value}
+            {typeof value === 'number' ? <AnimatedMetric value={value} /> : value}
           </p>
           {sublabel && (
             <p className="mt-1 text-xs text-[var(--text-muted)]">{sublabel}</p>

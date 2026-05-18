@@ -3,7 +3,9 @@
 import Link from 'next/link';
 import { Download, ExternalLink, RefreshCw, RotateCcw, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
-import { Badge, Button, Card, CardContent, CardHeader, CardTitle } from '@/components/ui';
+import { Badge, Button, Card, CardContent, CardHeader, CardTitle, AnimatedMetric } from '@/components/ui';
+import { motion } from 'framer-motion';
+import { cardItem, cardStagger } from '@/lib/ui/motion-presets';
 import { useOfflineSync } from '@/components/offline/SyncEngineProvider';
 import { OFFLINE_CACHE_CHANGED_EVENT, OFFLINE_QUEUE_CHANGED_EVENT } from '@/lib/offline/db';
 import {
@@ -233,7 +235,12 @@ export default function OfflineDiagnosticsPanel({ serverSummary }: Props) {
         </Card>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-5">
+      <motion.div
+        variants={cardStagger}
+        initial="initial"
+        animate="animate"
+        className="grid gap-4 md:grid-cols-5"
+      >
         {([
           ['Queued', sync.summary.queued, 'info'],
           ['Syncing', sync.summary.syncing, 'purple'],
@@ -241,15 +248,19 @@ export default function OfflineDiagnosticsPanel({ serverSummary }: Props) {
           ['Failed', sync.summary.failed, 'warning'],
           ['Conflict', sync.summary.conflict, 'error'],
         ] as const).map(([label, count, variant]) => (
-          <Card key={label}>
-            <p className="text-sm text-[var(--text-muted)]">{label}</p>
-            <div className="mt-2 flex items-center justify-between">
-              <p className="text-2xl font-semibold text-[var(--foreground)]">{count}</p>
-              <Badge variant={variant}>{label}</Badge>
-            </div>
-          </Card>
+          <motion.div key={label} variants={cardItem}>
+            <Card>
+              <p className="text-sm text-[var(--text-muted)]">{label}</p>
+              <div className="mt-2 flex items-center justify-between">
+                <p className="text-2xl font-semibold text-[var(--foreground)]">
+                  <AnimatedMetric value={count} />
+                </p>
+                <Badge variant={variant}>{label}</Badge>
+              </div>
+            </Card>
+          </motion.div>
         ))}
-      </div>
+      </motion.div>
 
       <Card>
         <CardHeader>

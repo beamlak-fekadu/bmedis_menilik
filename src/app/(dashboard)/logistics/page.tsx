@@ -5,6 +5,8 @@ import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowRightLeft, Boxes, ClipboardCheck, HandHelping, PackageCheck, Warehouse } from 'lucide-react';
 import { PageHeader, Badge, StatCard } from '@/components/ui';
+import { motion } from 'framer-motion';
+import { cardItem, cardStagger } from '@/lib/ui/motion-presets';
 import AssistantPageContextBridge from '@/components/assistant/AssistantPageContextBridge';
 import ClearFiltersButton from '@/components/ui/ClearFiltersButton';
 import Table from '@/components/ui/Table';
@@ -431,16 +433,21 @@ function OperationalLogisticsPage() {
         }
       />
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-8">
-        <StatCard label="Low Stock" value={summary.lowStock} icon={<Boxes className="h-5 w-5" />} color="red" onClick={() => go('/spare-parts?filter=low-stock&source=logistics')} />
-        <StatCard label="Active Parts" value={summary.totalParts} icon={<Warehouse className="h-5 w-5" />} color="blue" onClick={() => go('/spare-parts?tab=catalog&source=logistics')} />
-        <StatCard label="Recent Receipts" value={summary.receipts} icon={<ClipboardCheck className="h-5 w-5" />} color="green" onClick={() => go('/logistics?workflow=bin-card')} />
-        <StatCard label="Recent Issues" value={summary.issues} icon={<ArrowRightLeft className="h-5 w-5" />} color="orange" onClick={() => go('/logistics?workflow=usage-linkage')} />
-        <StatCard label="Open Procurement" value={summary.procurementOpen} icon={<HandHelping className="h-5 w-5" />} color="purple" onClick={() => go('/procurement?filter=open&source=logistics')} />
-        <StatCard label="Pending Receiving" value={summary.pendingReceiving} icon={<PackageCheck className="h-5 w-5" />} color="yellow" active={activeWorkflow === 'receiving'} onClick={() => go('/logistics?workflow=receiving')} />
-        <StatCard label="Low/Stockout Parts" value={summary.pendingIssue} icon={<ClipboardCheck className="h-5 w-5" />} color="orange" active={activeWorkflow === 'issue'} onClick={() => go('/logistics?workflow=issue')} />
-        <StatCard label="WO-Linked Issues" value={summary.workOrderIssues} icon={<ArrowRightLeft className="h-5 w-5" />} color="blue" active={activeWorkflow === 'usage-linkage'} onClick={() => go('/logistics?workflow=usage-linkage')} />
-      </div>
+      <motion.div
+        variants={cardStagger}
+        initial="initial"
+        animate="animate"
+        className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-8"
+      >
+        <motion.div variants={cardItem}><StatCard label="Low Stock" value={summary.lowStock} icon={<Boxes className="h-5 w-5" />} color="red" onClick={() => go('/spare-parts?filter=low-stock&source=logistics')} /></motion.div>
+        <motion.div variants={cardItem}><StatCard label="Active Parts" value={summary.totalParts} icon={<Warehouse className="h-5 w-5" />} color="blue" onClick={() => go('/spare-parts?tab=catalog&source=logistics')} /></motion.div>
+        <motion.div variants={cardItem}><StatCard label="Recent Receipts" value={summary.receipts} icon={<ClipboardCheck className="h-5 w-5" />} color="green" onClick={() => go('/logistics?workflow=bin-card')} /></motion.div>
+        <motion.div variants={cardItem}><StatCard label="Recent Issues" value={summary.issues} icon={<ArrowRightLeft className="h-5 w-5" />} color="orange" onClick={() => go('/logistics?workflow=usage-linkage')} /></motion.div>
+        <motion.div variants={cardItem}><StatCard label="Open Procurement" value={summary.procurementOpen} icon={<HandHelping className="h-5 w-5" />} color="purple" onClick={() => go('/procurement?filter=open&source=logistics')} /></motion.div>
+        <motion.div variants={cardItem}><StatCard label="Pending Receiving" value={summary.pendingReceiving} icon={<PackageCheck className="h-5 w-5" />} color="yellow" active={activeWorkflow === 'receiving'} onClick={() => go('/logistics?workflow=receiving')} /></motion.div>
+        <motion.div variants={cardItem}><StatCard label="Low/Stockout Parts" value={summary.pendingIssue} icon={<ClipboardCheck className="h-5 w-5" />} color="orange" active={activeWorkflow === 'issue'} onClick={() => go('/logistics?workflow=issue')} /></motion.div>
+        <motion.div variants={cardItem}><StatCard label="WO-Linked Issues" value={summary.workOrderIssues} icon={<ArrowRightLeft className="h-5 w-5" />} color="blue" active={activeWorkflow === 'usage-linkage'} onClick={() => go('/logistics?workflow=usage-linkage')} /></motion.div>
+      </motion.div>
 
       {(searchParams.get('workflow') || searchParams.get('panel')) && (
         <div className="flex justify-end">

@@ -9,6 +9,8 @@ import {
   PageHeader, Card, CardHeader, CardTitle, CardContent, CardFooter,
   Button, Modal, Table, Input, Select, Textarea, Spinner, Badge,
 } from '@/components/ui';
+import { motion } from 'framer-motion';
+import { slideUp } from '@/lib/ui/motion-presets';
 import { UrgencyBadge, WorkOrderStatusBadge } from '@/components/ui/StatusBadge';
 import AssistantPageContextBridge from '@/components/assistant/AssistantPageContextBridge';
 import {
@@ -550,7 +552,12 @@ export default function WorkOrderDetailPage() {
         }
       />
 
-      <div className="space-y-6">
+      <motion.div
+        variants={slideUp}
+        initial="initial"
+        animate="animate"
+        className="space-y-6"
+      >
         <Card>
           <CardHeader>
             <CardTitle>Work Order Details</CardTitle>
@@ -913,7 +920,7 @@ export default function WorkOrderDetailPage() {
             />
           </CardContent>
         </Card>
-      </div>
+      </motion.div>
 
       {/* Completion Modal */}
       <Modal

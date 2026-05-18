@@ -1,9 +1,11 @@
 'use client';
 
 import Link from 'next/link';
+import { motion } from 'framer-motion';
 import { ArrowRight, CheckCircle2, Wrench } from 'lucide-react';
 import { ScoreExplanation } from './ScoreExplanation';
 import type { CriticalActionItem } from '../_lib/command-center-data';
+import { cardItem, cardStagger } from '@/lib/ui/motion-presets';
 
 const CATEGORY_META: Record<
   CriticalActionItem['category'],
@@ -47,13 +49,20 @@ export function CriticalActionStrip({ items, canMutate }: Props) {
   }
 
   return (
-    <div className="space-y-2" id="critical-actions">
+    <motion.div
+      variants={cardStagger}
+      initial="initial"
+      animate="animate"
+      className="space-y-2"
+      id="critical-actions"
+    >
       {items.map((item) => {
         const meta = CATEGORY_META[item.category];
         const urgencyMeta = URGENCY_META[item.urgency];
         return (
-          <div
+          <motion.div
             key={item.id}
+            variants={cardItem}
             className={`flex flex-col gap-3 rounded-lg border bg-[var(--surface-1)] p-4 transition sm:flex-row sm:items-center ${meta.colorClass}`}
           >
             {/* Left: category + title + reason */}
@@ -113,9 +122,9 @@ export function CriticalActionStrip({ items, canMutate }: Props) {
                 </Link>
               )}
             </div>
-          </div>
+          </motion.div>
         );
       })}
-    </div>
+    </motion.div>
   );
 }

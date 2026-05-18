@@ -3,11 +3,14 @@
 import { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { AnimatePresence, motion } from 'framer-motion';
 import { signIn } from '@/services/auth.service';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import LogoMark from '@/components/brand/LogoMark';
+import LoginPulseLayer from '@/components/auth/LoginPulseLayer';
 import { APP_NAME_FULL, APP_NAME_SHORT, HOSPITAL_NAME } from '@/constants';
+import { slideUp, transitions } from '@/lib/ui/motion-presets';
 
 const SIGN_IN_TAGLINE = 'Secure access to biomedical equipment analytics and operations.';
 
@@ -48,7 +51,14 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex flex-col">
+    <motion.div
+      variants={slideUp}
+      initial="initial"
+      animate="animate"
+      transition={transitions.slow}
+      className="flex flex-col"
+    >
+      <LoginPulseLayer />
       <header className="mb-10 flex flex-col items-center text-center sm:mb-12">
         <div className="mb-6 flex items-center justify-center">
           <LogoMark size={72} />
@@ -106,14 +116,20 @@ export default function LoginPage() {
           </Link>
         </div>
 
-        {error && (
-          <p
-            role="alert"
-            className="rounded-xl border border-red-500/35 bg-red-500/10 px-3 py-2.5 text-sm text-red-200 dark:text-red-100"
-          >
-            {error}
-          </p>
-        )}
+        <AnimatePresence>
+          {error && (
+            <motion.p
+              role="alert"
+              initial={{ opacity: 0, y: -4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -4 }}
+              transition={transitions.fast}
+              className="rounded-xl border border-red-500/35 bg-red-500/10 px-3 py-2.5 text-sm text-red-200 dark:text-red-100"
+            >
+              {error}
+            </motion.p>
+          )}
+        </AnimatePresence>
         <div className="pt-2">
           <Button
             type="submit"
@@ -125,6 +141,6 @@ export default function LoginPage() {
           </Button>
         </div>
       </form>
-    </div>
+    </motion.div>
   );
 }

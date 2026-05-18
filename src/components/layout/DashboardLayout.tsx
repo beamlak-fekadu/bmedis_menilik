@@ -1,10 +1,13 @@
 'use client';
 
 import { useEffect, useState, type ReactNode } from 'react';
+import { usePathname } from 'next/navigation';
+import { AnimatePresence, motion } from 'framer-motion';
 import Sidebar from './Sidebar';
 import Topbar from './Topbar';
 import { AssistantPanel } from '@/components/assistant/AssistantPanel';
 import OfflineStatusBanner from '@/components/offline/OfflineStatusBanner';
+import { pageFade, drawerSlideLeft, transitions } from '@/lib/ui/motion-presets';
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -17,6 +20,7 @@ interface DashboardLayoutProps {
 
 export default function DashboardLayout({ children, userName, userRole, userJobTitle, userRoles, onLogout }: DashboardLayoutProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const pathname = usePathname();
 
   // Prevent background scroll while the mobile drawer is open. The desktop
   // shell already manages its own scroll; this only kicks in on small screens.
@@ -27,27 +31,39 @@ export default function DashboardLayout({ children, userName, userRole, userJobT
     return () => { document.body.style.overflow = previous; };
   }, [mobileMenuOpen]);
 
+  // Nav links inside the mobile drawer call `onNavigate={closeMobileMenu}` to
+  // dismiss it on tap; we don't need a separate route-change effect for that.
+
   const closeMobileMenu = () => setMobileMenuOpen(false);
 
   return (
     <div className="app-shell flex h-screen overflow-hidden">
-      <div
-        className={`no-print fixed inset-0 z-40 lg:hidden ${mobileMenuOpen ? '' : 'pointer-events-none'}`}
-        aria-hidden={!mobileMenuOpen}
-      >
-        <div
-          className={`absolute inset-0 bg-black/50 transition-opacity ${mobileMenuOpen ? 'opacity-100' : 'opacity-0'}`}
-          onClick={closeMobileMenu}
-        />
-        <div
-          role="dialog"
-          aria-label="Navigation menu"
-          aria-modal="true"
-          className={`absolute inset-y-0 left-0 z-50 transition-transform ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}
-        >
-          <Sidebar userRoles={userRoles} drawerMode onNavigate={closeMobileMenu} />
-        </div>
-      </div>
+      <AnimatePresence>
+        {mobileMenuOpen && (
+          <div className="no-print fixed inset-0 z-40 lg:hidden">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={transitions.default}
+              className="absolute inset-0 bg-black/50"
+              onClick={closeMobileMenu}
+            />
+            <motion.div
+              role="dialog"
+              aria-label="Navigation menu"
+              aria-modal="true"
+              variants={drawerSlideLeft}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              className="absolute inset-y-0 left-0 z-50"
+            >
+              <Sidebar userRoles={userRoles} drawerMode onNavigate={closeMobileMenu} />
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       <div className="no-print hidden lg:flex">
         <Sidebar userRoles={userRoles} />
@@ -65,7 +81,19 @@ export default function DashboardLayout({ children, userName, userRole, userJobT
           />
           <OfflineStatusBanner />
         </div>
-        <main className="flex-1 overflow-y-auto overflow-x-hidden px-3 py-4 pb-6 sm:px-4 lg:p-6 lg:pb-8">{children}</main>
+        <main className="flex-1 overflow-y-auto overflow-x-hidden px-3 py-4 pb-6 sm:px-4 lg:p-6 lg:pb-8">
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.div
+              key={pathname}
+              variants={pageFade}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+            >
+              {children}
+            </motion.div>
+          </AnimatePresence>
+        </main>
       </div>
       <AssistantPanel />
     </div>

@@ -5,6 +5,8 @@ import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { AlertTriangle, ClipboardCheck, PackageCheck, Truck, Timer, CircleDollarSign } from 'lucide-react';
 import { PageHeader, StatCard, Card, CardHeader, CardTitle, DataTable, Badge, Button, Modal, Input, Select, Textarea } from '@/components/ui';
+import { motion } from 'framer-motion';
+import { cardItem, cardStagger } from '@/lib/ui/motion-presets';
 import AssistantPageContextBridge from '@/components/assistant/AssistantPageContextBridge';
 import ClearFiltersButton from '@/components/ui/ClearFiltersButton';
 import { getProcurementPipeline } from '@/services/procurement.service';
@@ -312,17 +314,22 @@ function OperationalProcurementPage() {
           </div>
         }
       />
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Requested" value={summary.requested} icon={<ClipboardCheck className="h-6 w-6" />} color="yellow" active={activeFilter === 'requested'} onClick={() => setActiveFilter('requested')} />
-        <StatCard label="Approved" value={summary.approved} icon={<ClipboardCheck className="h-6 w-6" />} color="blue" active={activeFilter === 'approved'} onClick={() => setActiveFilter('approved')} />
-        <StatCard label="Ordered" value={summary.ordered} icon={<PackageCheck className="h-6 w-6" />} color="purple" active={activeFilter === 'ordered'} onClick={() => setActiveFilter('ordered')} />
-        <StatCard label="In Transit" value={summary.inTransit} icon={<Timer className="h-6 w-6" />} color="orange" active={activeFilter === 'in_transit'} onClick={() => setActiveFilter('in_transit')} />
-        <StatCard label="Delivered" value={summary.delivered} icon={<Truck className="h-6 w-6" />} color="green" active={activeFilter === 'delivered'} onClick={() => setActiveFilter('delivered')} />
-        <StatCard label="Delayed" value={summary.delayed} icon={<AlertTriangle className="h-6 w-6" />} color="red" active={activeFilter === 'delayed'} onClick={() => setActiveFilter('delayed')} />
-        <StatCard label="Critical Linked" value={summary.criticalLinked} icon={<AlertTriangle className="h-6 w-6" />} color="red" active={activeFilter === 'critical-linked'} onClick={() => setActiveFilter('critical-linked')} />
-        <StatCard label="Stock Blockers" value={summary.stockBlockers} icon={<CircleDollarSign className="h-6 w-6" />} color="yellow" active={activeFilter === 'stock-blockers'} onClick={() => setActiveFilter('stock-blockers')} />
-        <StatCard label="Replacement Linked" value={summary.replacementLinked} icon={<PackageCheck className="h-6 w-6" />} color="gray" active={activeFilter === 'replacement-linked'} onClick={() => setActiveFilter('replacement-linked')} />
-      </div>
+      <motion.div
+        variants={cardStagger}
+        initial="initial"
+        animate="animate"
+        className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4"
+      >
+        <motion.div variants={cardItem}><StatCard label="Requested" value={summary.requested} icon={<ClipboardCheck className="h-6 w-6" />} color="yellow" active={activeFilter === 'requested'} onClick={() => setActiveFilter('requested')} /></motion.div>
+        <motion.div variants={cardItem}><StatCard label="Approved" value={summary.approved} icon={<ClipboardCheck className="h-6 w-6" />} color="blue" active={activeFilter === 'approved'} onClick={() => setActiveFilter('approved')} /></motion.div>
+        <motion.div variants={cardItem}><StatCard label="Ordered" value={summary.ordered} icon={<PackageCheck className="h-6 w-6" />} color="purple" active={activeFilter === 'ordered'} onClick={() => setActiveFilter('ordered')} /></motion.div>
+        <motion.div variants={cardItem}><StatCard label="In Transit" value={summary.inTransit} icon={<Timer className="h-6 w-6" />} color="orange" active={activeFilter === 'in_transit'} onClick={() => setActiveFilter('in_transit')} /></motion.div>
+        <motion.div variants={cardItem}><StatCard label="Delivered" value={summary.delivered} icon={<Truck className="h-6 w-6" />} color="green" active={activeFilter === 'delivered'} onClick={() => setActiveFilter('delivered')} /></motion.div>
+        <motion.div variants={cardItem}><StatCard label="Delayed" value={summary.delayed} icon={<AlertTriangle className="h-6 w-6" />} color="red" active={activeFilter === 'delayed'} onClick={() => setActiveFilter('delayed')} /></motion.div>
+        <motion.div variants={cardItem}><StatCard label="Critical Linked" value={summary.criticalLinked} icon={<AlertTriangle className="h-6 w-6" />} color="red" active={activeFilter === 'critical-linked'} onClick={() => setActiveFilter('critical-linked')} /></motion.div>
+        <motion.div variants={cardItem}><StatCard label="Stock Blockers" value={summary.stockBlockers} icon={<CircleDollarSign className="h-6 w-6" />} color="yellow" active={activeFilter === 'stock-blockers'} onClick={() => setActiveFilter('stock-blockers')} /></motion.div>
+        <motion.div variants={cardItem}><StatCard label="Replacement Linked" value={summary.replacementLinked} icon={<PackageCheck className="h-6 w-6" />} color="gray" active={activeFilter === 'replacement-linked'} onClick={() => setActiveFilter('replacement-linked')} /></motion.div>
+      </motion.div>
       {activeFilter !== 'open' && activeFilter !== 'all' && (
         <div className="flex justify-end">
           <ClearFiltersButton onClick={() => setActiveFilter('open')} />

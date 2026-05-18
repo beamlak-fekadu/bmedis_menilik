@@ -1,5 +1,6 @@
 'use client';
 
+import { motion } from 'framer-motion';
 import { LogOut, Menu, Search, User } from 'lucide-react';
 import { APP_NAME_SHORT, HOSPITAL_NAME } from '@/constants';
 import Dropdown from '@/components/ui/Dropdown';
@@ -8,6 +9,7 @@ import { AssistantLauncher } from '@/components/assistant/AssistantLauncher';
 import { formatRoleName } from '@/utils/roles';
 import SyncStatusIndicator from '@/components/offline/SyncStatusIndicator';
 import NotificationBell from '@/components/notifications/NotificationBell';
+import { transitions } from '@/lib/ui/motion-presets';
 
 interface TopbarProps {
   userName?: string;
@@ -34,7 +36,11 @@ export default function Topbar({
   // like "bme_head" never appear in the Topbar.
   const subtitle = userJobTitle?.trim() ? userJobTitle : formatRoleName(userRole);
   return (
-    <header className="panel-surface-muted flex h-16 min-w-0 items-center justify-between gap-2 border-b border-[var(--border-subtle)] px-3 sm:px-4 lg:px-6">
+    <motion.header
+      initial={{ opacity: 0, y: -8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={transitions.default}
+      className="panel-surface-muted flex h-16 min-w-0 items-center justify-between gap-2 border-b border-[var(--border-subtle)] px-3 sm:px-4 lg:px-6">
       <div className="flex min-w-0 items-center gap-2 sm:gap-3">
         {onMenuToggle && (
           <button
@@ -89,6 +95,6 @@ export default function Topbar({
           ]}
         />
       </div>
-    </header>
+    </motion.header>
   );
 }

@@ -4,7 +4,9 @@ import { useState, useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { QrCode, RefreshCw, Printer, Sheet, ListChecks, History, FileDown } from 'lucide-react';
-import { Badge, Button, Card } from '@/components/ui';
+import { Badge, Button, Card, AnimatedMetric } from '@/components/ui';
+import { motion } from 'framer-motion';
+import { cardItem, cardStagger } from '@/lib/ui/motion-presets';
 import { bulkGenerateMissingQrTokensAction } from '@/actions/qr.actions';
 import QrScanHistoryTable from '@/components/qr/QrScanHistoryTable';
 import type { QrCoverageStats, QrScanCoverageStats } from '@/types/qr';
@@ -128,21 +130,30 @@ export default function QrCoverageSection({ stats, scanStats }: Props) {
         </div>
       )}
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <motion.div
+        variants={cardStagger}
+        initial="initial"
+        animate="animate"
+        className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4"
+      >
         {cards.map((card) => (
-          <Card key={card.label}>
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-sm text-[var(--text-muted)]">{card.label}</p>
-                <p className="mt-1 text-2xl font-semibold text-[var(--foreground)]">{card.value}</p>
+          <motion.div key={card.label} variants={cardItem}>
+            <Card>
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-sm text-[var(--text-muted)]">{card.label}</p>
+                  <p className="mt-1 text-2xl font-semibold text-[var(--foreground)]">
+                    <AnimatedMetric value={card.value} />
+                  </p>
+                </div>
+                <Badge variant={badgeVariant(card.tone)}>
+                  <QrCode className="h-3.5 w-3.5" />
+                </Badge>
               </div>
-              <Badge variant={badgeVariant(card.tone)}>
-                <QrCode className="h-3.5 w-3.5" />
-              </Badge>
-            </div>
-          </Card>
+            </Card>
+          </motion.div>
         ))}
-      </div>
+      </motion.div>
 
       <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-3 text-xs text-amber-200">
         Phase state: identity complete (Phase 1), labels complete (Phase 2), online landing complete
@@ -159,7 +170,12 @@ export default function QrCoverageSection({ stats, scanStats }: Props) {
             Online scan records from authenticated QR page renders. Refresh duplicates are deduped within the configured window.
           </p>
         </div>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <motion.div
+        variants={cardStagger}
+        initial="initial"
+        animate="animate"
+        className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4"
+      >
           {[
             { label: 'Total QR Scans', value: scanStats.totalScans, tone: 'info' },
             { label: 'Scans Last 7 Days', value: scanStats.scansLast7Days, tone: 'info' },
@@ -173,20 +189,24 @@ export default function QrCoverageSection({ stats, scanStats }: Props) {
                 : 'No scans recorded',
             },
           ].map((card) => (
-            <Card key={card.label}>
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-sm text-[var(--text-muted)]">{card.label}</p>
-                  <p className="mt-1 text-2xl font-semibold text-[var(--foreground)]">{card.value}</p>
-                  {'sub' in card && card.sub ? <p className="mt-1 text-xs text-[var(--text-muted)]">{card.sub}</p> : null}
+            <motion.div key={card.label} variants={cardItem}>
+              <Card>
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-sm text-[var(--text-muted)]">{card.label}</p>
+                    <p className="mt-1 text-2xl font-semibold text-[var(--foreground)]">
+                      <AnimatedMetric value={card.value} />
+                    </p>
+                    {'sub' in card && card.sub ? <p className="mt-1 text-xs text-[var(--text-muted)]">{card.sub}</p> : null}
+                  </div>
+                  <Badge variant={badgeVariant(card.tone)}>
+                    <History className="h-3.5 w-3.5" />
+                  </Badge>
                 </div>
-                <Badge variant={badgeVariant(card.tone)}>
-                  <History className="h-3.5 w-3.5" />
-                </Badge>
-              </div>
-            </Card>
+              </Card>
+            </motion.div>
           ))}
-        </div>
+        </motion.div>
 
         <div className="grid gap-4 lg:grid-cols-2">
           <Card>

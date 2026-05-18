@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Bell, CheckCheck, Filter, RefreshCw, ShieldAlert } from 'lucide-react';
 import { useRole } from '@/hooks/useRole';
-import { PageHeader, Badge, Button, Tabs } from '@/components/ui';
+import { PageHeader, Badge, Button, Tabs, EmptyState } from '@/components/ui';
 import Card, { CardContent } from '@/components/ui/Card';
 import { PageLoader } from '@/components/ui/Spinner';
 import { useToast } from '@/components/ui/Toast';
@@ -310,9 +310,14 @@ export default function NotificationsPage() {
     if (rows.length === 0) {
       return (
         <Card>
-          <CardContent className="flex flex-col items-center gap-2 py-10 text-center">
-            <Bell className="h-6 w-6 text-[var(--text-muted)]" />
-            <p className="text-sm text-[var(--text-muted)]">No notifications in this view.</p>
+          <CardContent className="py-6">
+            <EmptyState
+              lottie="notification"
+              icon={<Bell className="h-10 w-10" />}
+              title="You're all caught up"
+              description="Nothing in this view right now. New notifications will show up here automatically."
+              compact
+            />
           </CardContent>
         </Card>
       );

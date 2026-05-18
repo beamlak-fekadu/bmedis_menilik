@@ -4,7 +4,9 @@ import Link from 'next/link';
 import { Fragment, useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { AlertTriangle, CalendarCheck, CheckCircle2, ClipboardList, Wrench, X } from 'lucide-react';
-import { Badge, Button, Input, Modal, Textarea } from '@/components/ui';
+import { Badge, Button, Input, Modal, Textarea, AnimatedMetric } from '@/components/ui';
+import { motion } from 'framer-motion';
+import { cardItem, cardStagger } from '@/lib/ui/motion-presets';
 import { useToast } from '@/components/ui/Toast';
 import { AcknowledgeButton } from './AcknowledgeButton';
 import { ScoreExplanation } from './ScoreExplanation';
@@ -710,12 +712,17 @@ export default function CommandCenterInteractive({
 
       {showWip && <section aria-label="Work in progress">
         <h2 className="mb-3 text-sm font-semibold uppercase tracking-widest text-[var(--text-muted)]">Work in progress</h2>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <button type="button" onClick={() => void openWipPanel('work_orders')} className="panel-surface rounded-lg p-5 text-left transition hover:border-[var(--brand)]/50">
+        <motion.div
+          variants={cardStagger}
+          initial="initial"
+          animate="animate"
+          className="grid grid-cols-1 gap-4 sm:grid-cols-3"
+        >
+          <motion.button variants={cardItem} type="button" onClick={() => void openWipPanel('work_orders')} className="panel-surface rounded-lg p-5 text-left transition hover:border-[var(--brand)]/50">
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-sm font-medium text-[var(--text-muted)]">Open Work Orders</p>
-                <p className="mt-1 text-3xl font-bold text-[var(--foreground)]">{wip.open_work_orders}</p>
+                <p className="mt-1 text-3xl font-bold text-[var(--foreground)]"><AnimatedMetric value={wip.open_work_orders} /></p>
                 <div className="mt-2 flex flex-wrap gap-2">
                   {wip.in_progress > 0 && <span className="text-xs text-[var(--text-muted)]">{wip.in_progress} in progress</span>}
                   {wip.assigned > 0 && <span className="text-xs text-[var(--text-muted)]">{wip.assigned} assigned</span>}
@@ -724,27 +731,27 @@ export default function CommandCenterInteractive({
               </div>
               <div className="rounded-lg bg-blue-500/15 p-3 text-blue-300"><ClipboardList className="h-6 w-6" /></div>
             </div>
-          </button>
-          <button type="button" onClick={() => void openWipPanel('overdue_pm')} className="panel-surface rounded-lg p-5 text-left transition hover:border-[var(--brand)]/50">
+          </motion.button>
+          <motion.button variants={cardItem} type="button" onClick={() => void openWipPanel('overdue_pm')} className="panel-surface rounded-lg p-5 text-left transition hover:border-[var(--brand)]/50">
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-sm font-medium text-[var(--text-muted)]">Overdue PM</p>
-                <p className="mt-1 text-3xl font-bold text-[var(--foreground)]">{wip.overdue_pm}</p>
+                <p className="mt-1 text-3xl font-bold text-[var(--foreground)]"><AnimatedMetric value={wip.overdue_pm} /></p>
                 {wip.overdue_pm_gt30 > 0 && <p className="mt-2 text-xs text-rose-400">{wip.overdue_pm_gt30} overdue &gt;30 days</p>}
               </div>
               <div className="rounded-lg bg-amber-500/15 p-3 text-amber-300"><CalendarCheck className="h-6 w-6" /></div>
             </div>
-          </button>
-          <button type="button" onClick={() => void openWipPanel('calibration_due')} className="panel-surface rounded-lg p-5 text-left transition hover:border-[var(--brand)]/50">
+          </motion.button>
+          <motion.button variants={cardItem} type="button" onClick={() => void openWipPanel('calibration_due')} className="panel-surface rounded-lg p-5 text-left transition hover:border-[var(--brand)]/50">
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-sm font-medium text-[var(--text-muted)]">Calibration Due (30d)</p>
-                <p className="mt-1 text-3xl font-bold text-[var(--foreground)]">{wip.calibration_due_30d}</p>
+                <p className="mt-1 text-3xl font-bold text-[var(--foreground)]"><AnimatedMetric value={wip.calibration_due_30d} /></p>
               </div>
               <div className="rounded-lg bg-violet-500/15 p-3 text-violet-300"><Wrench className="h-6 w-6" /></div>
             </div>
-          </button>
-        </div>
+          </motion.button>
+        </motion.div>
       </section>}
 
       <Modal

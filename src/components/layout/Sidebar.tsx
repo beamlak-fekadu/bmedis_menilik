@@ -3,8 +3,10 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { motion } from 'framer-motion';
 import { NAV_SECTIONS, APP_NAME_SHORT, ROUTES } from '@/constants';
 import { hasCapability, type Capability } from '@/lib/rbac';
+import { cardItem, cardStagger } from '@/lib/ui/motion-presets';
 import {
   ChevronLeft, ChevronRight, Monitor, FileText, PackageCheck, Wrench, CalendarCheck, CalendarDays, Gauge,
   Package, Boxes, GraduationCap, Trash2, Activity, ShieldAlert, CheckCircle, BarChart3,
@@ -131,7 +133,12 @@ export default function Sidebar({ userRoles = ['admin'], onNavigate, drawerMode 
         )}
       </div>
 
-      <nav className="flex-1 min-h-0 overflow-y-auto px-2 py-4">
+      <motion.nav
+        variants={cardStagger}
+        initial="initial"
+        animate="animate"
+        className="flex-1 min-h-0 overflow-y-auto px-2 py-4"
+      >
         {NAV_SECTIONS.map((section) => {
           const visibleItems = section.items.filter((item) => {
             const cap = (item as { capability?: string }).capability as Capability | undefined;
@@ -141,7 +148,7 @@ export default function Sidebar({ userRoles = ['admin'], onNavigate, drawerMode 
           if (visibleItems.length === 0) return null;
 
           return (
-            <div key={section.title} className="mb-5">
+            <motion.div key={section.title} variants={cardItem} className="mb-5">
               {!effectiveCollapsed && (
                 <p className="mb-1.5 px-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--text-subtle)]">
                   {section.title}
@@ -188,10 +195,10 @@ export default function Sidebar({ userRoles = ['admin'], onNavigate, drawerMode 
                   </Link>
                 );
               })}
-            </div>
+            </motion.div>
           );
         })}
-      </nav>
+      </motion.nav>
     </aside>
   );
 }

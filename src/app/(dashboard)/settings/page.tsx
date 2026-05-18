@@ -42,7 +42,10 @@ import {
   PageHeader,
   Select,
   useToast,
+  AnimatedMetric,
 } from '@/components/ui';
+import { motion } from 'framer-motion';
+import { cardItem, cardStagger } from '@/lib/ui/motion-presets';
 
 type SettingsSection =
   | 'profile-password'
@@ -585,12 +588,12 @@ export default function SettingsPage() {
   function renderStaffAccess() {
     return (
       <div className="space-y-4">
-        <div className="grid gap-4 md:grid-cols-4">
-          <Card><p className="text-sm text-[var(--text-muted)]">Profiles</p><p className="text-2xl font-semibold">{profiles.length}</p></Card>
-          <Card><p className="text-sm text-[var(--text-muted)]">Auth-linked</p><p className="text-2xl font-semibold">{profiles.length - profileOnly}</p></Card>
-          <Card><p className="text-sm text-[var(--text-muted)]">Profile-only</p><p className="text-2xl font-semibold">{profileOnly}</p></Card>
-          <Card><p className="text-sm text-[var(--text-muted)]">Without role</p><p className="text-2xl font-semibold">{profilesWithoutRoles}</p></Card>
-        </div>
+        <motion.div variants={cardStagger} initial="initial" animate="animate" className="grid gap-4 md:grid-cols-4">
+          <motion.div variants={cardItem}><Card><p className="text-sm text-[var(--text-muted)]">Profiles</p><p className="text-2xl font-semibold"><AnimatedMetric value={profiles.length} /></p></Card></motion.div>
+          <motion.div variants={cardItem}><Card><p className="text-sm text-[var(--text-muted)]">Auth-linked</p><p className="text-2xl font-semibold"><AnimatedMetric value={profiles.length - profileOnly} /></p></Card></motion.div>
+          <motion.div variants={cardItem}><Card><p className="text-sm text-[var(--text-muted)]">Profile-only</p><p className="text-2xl font-semibold"><AnimatedMetric value={profileOnly} /></p></Card></motion.div>
+          <motion.div variants={cardItem}><Card><p className="text-sm text-[var(--text-muted)]">Without role</p><p className="text-2xl font-semibold"><AnimatedMetric value={profilesWithoutRoles} /></p></Card></motion.div>
+        </motion.div>
         {ROLE_GROUPS.filter((group) => isDeveloper || isAdmin || !group.system).map((group) => {
           const grouped = staffRows.filter((profile) => group.match(roleNames(profile as ProfileRow)));
           return (
@@ -624,12 +627,12 @@ export default function SettingsPage() {
   function renderSecurityAccess() {
     return (
       <div className="space-y-4">
-        <div className="grid gap-4 md:grid-cols-4">
-          <Card><p className="text-sm text-[var(--text-muted)]">Roles</p><p className="text-2xl font-semibold">{roles.length}</p></Card>
-          <Card><p className="text-sm text-[var(--text-muted)]">Profiles without roles</p><p className="text-2xl font-semibold">{profilesWithoutRoles}</p></Card>
-          <Card><p className="text-sm text-[var(--text-muted)]">Inactive accounts</p><p className="text-2xl font-semibold">{inactiveAccounts}</p></Card>
-          <Card><p className="text-sm text-[var(--text-muted)]">Recent governance events</p><p className="text-2xl font-semibold">{auditRows.length}</p></Card>
-        </div>
+        <motion.div variants={cardStagger} initial="initial" animate="animate" className="grid gap-4 md:grid-cols-4">
+          <motion.div variants={cardItem}><Card><p className="text-sm text-[var(--text-muted)]">Roles</p><p className="text-2xl font-semibold"><AnimatedMetric value={roles.length} /></p></Card></motion.div>
+          <motion.div variants={cardItem}><Card><p className="text-sm text-[var(--text-muted)]">Profiles without roles</p><p className="text-2xl font-semibold"><AnimatedMetric value={profilesWithoutRoles} /></p></Card></motion.div>
+          <motion.div variants={cardItem}><Card><p className="text-sm text-[var(--text-muted)]">Inactive accounts</p><p className="text-2xl font-semibold"><AnimatedMetric value={inactiveAccounts} /></p></Card></motion.div>
+          <motion.div variants={cardItem}><Card><p className="text-sm text-[var(--text-muted)]">Recent governance events</p><p className="text-2xl font-semibold"><AnimatedMetric value={auditRows.length} /></p></Card></motion.div>
+        </motion.div>
         <Card>
           <CardHeader><CardTitle>Role Permission Matrix</CardTitle></CardHeader>
           <CardContent>

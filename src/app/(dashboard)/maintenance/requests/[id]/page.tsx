@@ -10,6 +10,8 @@ import {
   PageHeader, Card, CardHeader, CardTitle, CardContent, CardFooter,
   Button, Spinner,
 } from '@/components/ui';
+import { motion } from 'framer-motion';
+import { slideUp } from '@/lib/ui/motion-presets';
 import { UrgencyBadge, RequestStatusBadge, WorkOrderStatusBadge } from '@/components/ui/StatusBadge';
 import AssistantPageContextBridge from '@/components/assistant/AssistantPageContextBridge';
 import { getRequestById, getWorkOrdersByRequestId } from '@/services/maintenance.service';
@@ -146,7 +148,12 @@ export default function RequestDetailPage() {
         : 'No condition change was reported on the request.';
 
   return (
-    <div className="space-y-6">
+    <motion.div
+      variants={slideUp}
+      initial="initial"
+      animate="animate"
+      className="space-y-6"
+    >
       <AssistantPageContextBridge
         moduleLabel="Maintenance"
         pageLabel={request.request_number}
@@ -506,6 +513,6 @@ export default function RequestDetailPage() {
           </Card>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }

@@ -12,6 +12,8 @@ import Button from '@/components/ui/Button';
 import Badge from '@/components/ui/Badge';
 import { useToast } from '@/components/ui/Toast';
 import { BarChart, DoughnutChart, HorizontalBarChart, ChartCard, LineChart } from '@/components/charts';
+import { motion } from 'framer-motion';
+import { cardItem, cardStagger } from '@/lib/ui/motion-presets';
 import * as reportsService from '@/services/reports.service';
 import * as settingsService from '@/services/settings.service';
 import type { ReportFilters } from '@/services/reports.service';
@@ -1813,15 +1815,24 @@ export default function ReportTypePage() {
 
       {/* KPI cards */}
       {!loading && reportKPIs.length > 0 && (
-        <section className="report-kpi-grid grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <motion.section
+          variants={cardStagger}
+          initial="initial"
+          animate="animate"
+          className="report-kpi-grid grid gap-3 sm:grid-cols-2 lg:grid-cols-4"
+        >
           {reportKPIs.map((kpi) => (
-            <div key={kpi.label} className={`rounded-xl border p-4 ${kpiColorMap[kpi.color] ?? kpiColorMap.blue}`}>
+            <motion.div
+              key={kpi.label}
+              variants={cardItem}
+              className={`rounded-xl border p-4 ${kpiColorMap[kpi.color] ?? kpiColorMap.blue}`}
+            >
               <p className="text-xs font-medium opacity-80">{kpi.label}</p>
               <p className="mt-1 text-2xl font-bold">{kpi.value}</p>
               {kpi.sub && <p className="mt-0.5 text-xs opacity-70">{kpi.sub}</p>}
-            </div>
+            </motion.div>
           ))}
-        </section>
+        </motion.section>
       )}
       {loading && (
         <section className="report-kpi-grid grid gap-3 sm:grid-cols-2 lg:grid-cols-4">

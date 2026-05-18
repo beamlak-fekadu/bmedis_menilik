@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { motion } from 'framer-motion';
 import {
   Activity,
   AlertTriangle,
@@ -14,6 +15,8 @@ import {
   XCircle,
 } from 'lucide-react';
 import type { EquipmentSummary } from '../_lib/command-center-data';
+import { cardItem, cardStagger, subtleHover } from '@/lib/ui/motion-presets';
+import { AnimatedMetric } from '@/components/ui';
 
 interface WorkInProgress {
   open_work_orders: number;
@@ -50,6 +53,7 @@ function SummaryCard({ card, canMutate }: { card: CardData; canMutate: boolean }
         : 'hover:border-[var(--brand)]/50';
 
   return (
+    <motion.div variants={cardItem} {...subtleHover} className="contents">
     <Link
       href={card.href}
       aria-label={`${card.label}: ${card.value}. ${card.action}`}
@@ -67,7 +71,7 @@ function SummaryCard({ card, canMutate }: { card: CardData; canMutate: boolean }
                   : 'text-[var(--foreground)]'
             }`}
           >
-            {card.value}
+            <AnimatedMetric value={card.value} />
           </p>
           <p className="mt-1 text-xs text-[var(--text-muted)]">{card.sublabel}</p>
         </div>
@@ -79,6 +83,7 @@ function SummaryCard({ card, canMutate }: { card: CardData; canMutate: boolean }
         </p>
       )}
     </Link>
+    </motion.div>
   );
 }
 
@@ -186,11 +191,17 @@ export function SummaryActionCards({ summary, wip, criticalActionCount, replacem
   ];
 
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+    <motion.div
+      variants={cardStagger}
+      initial="initial"
+      animate="animate"
+      className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
+    >
       {cards.map((card) => (
         <SummaryCard key={card.label} card={card} canMutate={canMutate} />
       ))}
       {/* Reports shortcut card */}
+      <motion.div variants={cardItem} {...subtleHover} className="contents">
       <Link
         href="/reports"
         aria-label="Open Reports"
@@ -204,6 +215,7 @@ export function SummaryActionCards({ summary, wip, criticalActionCount, replacem
           Open Snapshot Reports →
         </p>
       </Link>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }

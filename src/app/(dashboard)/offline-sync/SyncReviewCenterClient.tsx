@@ -3,7 +3,9 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, CheckCircle2, Download, ExternalLink, RefreshCw, Search, Trash2, Wrench } from 'lucide-react';
-import { Badge, Button, Card, CardContent, CardHeader, CardTitle } from '@/components/ui';
+import { Badge, Button, Card, CardContent, CardHeader, CardTitle, AnimatedMetric } from '@/components/ui';
+import { motion } from 'framer-motion';
+import { cardItem, cardStagger } from '@/lib/ui/motion-presets';
 import { useOfflineSync } from '@/components/offline/SyncEngineProvider';
 import { OFFLINE_QUEUE_CHANGED_EVENT } from '@/lib/offline/db';
 import {
@@ -365,7 +367,12 @@ export default function SyncReviewCenterClient({ serverSummary, serverEvents, is
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-6">
+      <motion.div
+        variants={cardStagger}
+        initial="initial"
+        animate="animate"
+        className="grid gap-3 md:grid-cols-3 xl:grid-cols-6"
+      >
         {[
           { label: 'Queued', value: localCounts.queued, variant: 'info' as const },
           { label: 'Syncing', value: localCounts.syncing, variant: 'purple' as const },
@@ -374,15 +381,19 @@ export default function SyncReviewCenterClient({ serverSummary, serverEvents, is
           { label: 'Conflicts', value: localCounts.conflict, variant: 'error' as const },
           { label: 'Needs Review', value: localCounts.needsReview, variant: 'error' as const },
         ].map((item) => (
-          <Card key={item.label}>
-            <p className="text-xs text-[var(--text-muted)]">{item.label}</p>
-            <div className="mt-2 flex items-center justify-between">
-              <span className="text-2xl font-semibold text-[var(--foreground)]">{item.value}</span>
-              <Badge variant={item.variant}>{item.label}</Badge>
-            </div>
-          </Card>
+          <motion.div key={item.label} variants={cardItem}>
+            <Card>
+              <p className="text-xs text-[var(--text-muted)]">{item.label}</p>
+              <div className="mt-2 flex items-center justify-between">
+                <span className="text-2xl font-semibold text-[var(--foreground)]">
+                  <AnimatedMetric value={item.value} />
+                </span>
+                <Badge variant={item.variant}>{item.label}</Badge>
+              </div>
+            </Card>
+          </motion.div>
         ))}
-      </div>
+      </motion.div>
 
       <Card>
         <CardHeader>

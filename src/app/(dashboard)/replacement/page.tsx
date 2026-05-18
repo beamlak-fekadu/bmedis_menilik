@@ -14,6 +14,8 @@ import {
 } from 'lucide-react';
 import { getReplacementPriorities } from '@/services/analytics.service';
 import { PageHeader, StatCard, DataTable, Badge, Button } from '@/components/ui';
+import { motion } from 'framer-motion';
+import { cardItem, cardStagger } from '@/lib/ui/motion-presets';
 import AssistantPageContextBridge from '@/components/assistant/AssistantPageContextBridge';
 import ClearFiltersButton from '@/components/ui/ClearFiltersButton';
 import { PageLoader } from '@/components/ui/Spinner';
@@ -344,18 +346,23 @@ function OperationalReplacementPage() {
         ) : undefined}
       />
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Replacement Candidates" value={replacementCandidates.length} icon={<Replace className="h-6 w-6" />} color="blue" active={activeFilter === 'candidates'} onClick={() => setActiveFilter('candidates')} />
-        <StatCard label="Strong Candidates" value={highPriority.length} icon={<AlertTriangle className="h-6 w-6" />} color="red" active={activeFilter === 'strong'} onClick={() => setActiveFilter('strong')} />
-        <StatCard label="Review Candidates" value={reviewCandidates.length} icon={<ClipboardList className="h-6 w-6" />} color="orange" active={activeFilter === 'review'} onClick={() => setActiveFilter('review')} />
-        <StatCard label="Monitor Candidates" value={monitorCandidates.length} icon={<Clock className="h-6 w-6" />} color="green" active={activeFilter === 'monitor'} onClick={() => setActiveFilter('monitor')} />
-        <StatCard label="High Maintenance Burden" value={highMaintenanceBurden.length} icon={<Activity className="h-6 w-6" />} color="purple" active={activeFilter === 'maintenance'} onClick={() => setActiveFilter('maintenance')} />
-        <StatCard label="Low Availability / High Downtime" value={lowAvailability.length} icon={<Clock className="h-6 w-6" />} color="orange" active={activeFilter === 'availability'} onClick={() => setActiveFilter('availability')} />
-        <StatCard label="Frequent Failure" value={frequentFailure.length} icon={<AlertTriangle className="h-6 w-6" />} color="red" active={activeFilter === 'failure'} onClick={() => setActiveFilter('failure')} />
-        <StatCard label="Age / Obsolescence Risk" value={ageObsolescenceRisk.length} icon={<Clock className="h-6 w-6" />} color="yellow" active={activeFilter === 'age'} onClick={() => setActiveFilter('age')} />
-        <StatCard label="Spare Parts Unsupported" value={poorSpareSupport.length} icon={<PackageCheck className="h-6 w-6" />} color="yellow" active={activeFilter === 'spare'} onClick={() => setActiveFilter('spare')} />
-        <StatCard label="High FMEA Risk" value={criticalClinicalImpact.length} icon={<ClipboardList className="h-6 w-6" />} color="orange" active={activeFilter === 'critical'} onClick={() => setActiveFilter('critical')} />
-      </div>
+      <motion.div
+        variants={cardStagger}
+        initial="initial"
+        animate="animate"
+        className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4"
+      >
+        <motion.div variants={cardItem}><StatCard label="Replacement Candidates" value={replacementCandidates.length} icon={<Replace className="h-6 w-6" />} color="blue" active={activeFilter === 'candidates'} onClick={() => setActiveFilter('candidates')} /></motion.div>
+        <motion.div variants={cardItem}><StatCard label="Strong Candidates" value={highPriority.length} icon={<AlertTriangle className="h-6 w-6" />} color="red" active={activeFilter === 'strong'} onClick={() => setActiveFilter('strong')} /></motion.div>
+        <motion.div variants={cardItem}><StatCard label="Review Candidates" value={reviewCandidates.length} icon={<ClipboardList className="h-6 w-6" />} color="orange" active={activeFilter === 'review'} onClick={() => setActiveFilter('review')} /></motion.div>
+        <motion.div variants={cardItem}><StatCard label="Monitor Candidates" value={monitorCandidates.length} icon={<Clock className="h-6 w-6" />} color="green" active={activeFilter === 'monitor'} onClick={() => setActiveFilter('monitor')} /></motion.div>
+        <motion.div variants={cardItem}><StatCard label="High Maintenance Burden" value={highMaintenanceBurden.length} icon={<Activity className="h-6 w-6" />} color="purple" active={activeFilter === 'maintenance'} onClick={() => setActiveFilter('maintenance')} /></motion.div>
+        <motion.div variants={cardItem}><StatCard label="Low Availability / High Downtime" value={lowAvailability.length} icon={<Clock className="h-6 w-6" />} color="orange" active={activeFilter === 'availability'} onClick={() => setActiveFilter('availability')} /></motion.div>
+        <motion.div variants={cardItem}><StatCard label="Frequent Failure" value={frequentFailure.length} icon={<AlertTriangle className="h-6 w-6" />} color="red" active={activeFilter === 'failure'} onClick={() => setActiveFilter('failure')} /></motion.div>
+        <motion.div variants={cardItem}><StatCard label="Age / Obsolescence Risk" value={ageObsolescenceRisk.length} icon={<Clock className="h-6 w-6" />} color="yellow" active={activeFilter === 'age'} onClick={() => setActiveFilter('age')} /></motion.div>
+        <motion.div variants={cardItem}><StatCard label="Spare Parts Unsupported" value={poorSpareSupport.length} icon={<PackageCheck className="h-6 w-6" />} color="yellow" active={activeFilter === 'spare'} onClick={() => setActiveFilter('spare')} /></motion.div>
+        <motion.div variants={cardItem}><StatCard label="High FMEA Risk" value={criticalClinicalImpact.length} icon={<ClipboardList className="h-6 w-6" />} color="orange" active={activeFilter === 'critical'} onClick={() => setActiveFilter('critical')} /></motion.div>
+      </motion.div>
 
       {activeFilter !== 'candidates' && (
         <div className="flex justify-end">

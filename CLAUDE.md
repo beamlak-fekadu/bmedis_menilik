@@ -1,6 +1,6 @@
 # CLAUDE.md — BMEDIS Project Intelligence
 
-Last updated: 2026-05-18 (Semifinal UI foundation — motion presets, Nivo chart shells, animated metric + spring gauge, role-aware workspace shell, Lottie wrapper with icon fallback. No page rewrites in this pass.)
+Last updated: 2026-05-18 (Final deferred sweep + Tier 3 — Topbar/Sidebar mount motion, WO/MR/Reports detail entry motion, QR landing client conversion + pageFade, Reports list motion, Developer Lab QrCoverage/Offline summary strips, Settings staff/security strips. Mobile audit + role-decluttering reviewed and skipped with documented reasoning.)
 Branch: ui_semifinal
 Deployment: configured in Vercel project settings
 Supabase project ID: fgqyszbxzpmqzpqvdivx
@@ -966,3 +966,255 @@ sync, Reports) will adopt in a later pass.
 8. Maintenance / Work Order detail
 9. Offline sync (`LoadingState`, conflict cards)
 10. Reports (Nivo charts where Chart.js doesn't clarify)
+
+---
+
+## Semifinal UI Tier 1 Pass (2026-05-18, branch `ui_semifinal`)
+
+Page-level adoption of the foundation across the Tier 1 surfaces. Targeted
+enhancements only — no page rewrites, no analytics/business-logic changes, no
+chart-library migrations on existing reports.
+
+### Wave 1 — Always-visible chrome
+- `src/components/layout/DashboardLayout.tsx`:
+  - Mobile drawer now uses framer-motion `AnimatePresence` with `drawerSlideLeft` (drawer) + fade (scrim). Overlay only mounts when open, avoiding the dead `pointer-events: none` layer.
+  - Main `<main>` content wrapped in `AnimatePresence mode="wait"` keyed by `usePathname()` with `pageFade` — every route transition fades cleanly.
+  - Dropped the redundant route-change effect on `mobileMenuOpen`; the existing `onNavigate={closeMobileMenu}` callback on Sidebar nav items already closes the drawer on tap.
+- `src/components/assistant/AssistantPanel.tsx`:
+  - "Generating response…" indicator now uses `LottiePlayer` with `LOTTIE_PATHS.aiThinking` and a `Loader2` animate-spin fallback. Surface stays opaque via `--assistant-surface` (no transparency regression).
+- `src/components/notifications/NotificationBell.tsx`:
+  - Critical ring now uses motion `attentionPulse` (loop, calm). Drawer wrapped in `AnimatePresence` + `slideUp`.
+
+### Wave 2 — Login page
+- `src/app/(auth)/login/page.tsx`: form root wrapped in `motion.div` with `slideUp` + `transitions.slow`; error message wrapped in `AnimatePresence` so it slides in/out cleanly instead of flashing.
+- New `src/components/auth/LoginPulseLayer.tsx`: lazy-imports GSAP and renders a single ECG-shaped SVG polyline with a yoyo `strokeDashoffset` animation behind the existing `AuthDashboardBackdrop`. Honours `prefers-reduced-motion`; GSAP failure is silent (path stays static). This is the ONLY place GSAP is used in the app.
+
+### Wave 3 — Command Center
+- `src/app/(dashboard)/command/_components/SummaryActionCards.tsx`:
+  - Grid wrapped in `motion.div` with `cardStagger`; each card carries `cardItem` + `subtleHover` lift.
+  - Static `<p>{card.value}</p>` replaced with `<AnimatedMetric value={card.value} />` so KPI numbers count up on mount.
+- `src/app/(dashboard)/command/_components/CriticalActionStrip.tsx`:
+  - Items list wrapped in `cardStagger` + `cardItem` motion for ordered reveal.
+- The rest of Command Center (TriageCenterTabs, DepartmentDashboard, StoreOperationsCommandCenter, ViewerExecutiveCommandCenter, WorkloadAssignment, RiskBandDrilldown, etc.) is intentionally unchanged — motion patterns are now established and adoption can ripple through future passes.
+
+### Wave 4 — Notifications + Offline sync + QR
+- `src/app/(dashboard)/notifications/page.tsx`:
+  - Empty list renders via shared `EmptyState` with `lottie='notification'` (icon fallback when asset is missing).
+- `src/app/(dashboard)/offline-sync/SyncReviewCenterClient.tsx`:
+  - 6-card summary strip wrapped in `cardStagger` + `cardItem`. Each count uses `<AnimatedMetric />`.
+- QR landing (`src/app/qr/a/[token]/QrAssetLandingPage.tsx`) — **deliberately skipped**. It's a server component with a strict auth/scan flow; adding framer-motion would force a client conversion that risks regression. Mobile-first layout was already in place.
+
+### Wave 5 — Equipment detail + Reports
+- `src/app/(dashboard)/equipment/[id]/page.tsx`:
+  - Reliability `HealthCard` now renders a centered `SpringGauge` (`autoTone`) for availability when `reliability.availability_ratio` is computable. Existing MetricLine/MetricExplain still render below as the textual/audit-evidence form.
+- Reports (`/reports` and `/reports/[type]`): Chart.js stays authoritative. The Nivo foundation is ready for opt-in but no live charts were migrated this pass — risk of breaking export/PDF flows is not worth a cosmetic swap.
+- Maintenance / Work Order detail — no enhancements this pass (Wave 5 scope tightened to keep the pass small and verifiable).
+
+### Verification
+- `npx tsc --noEmit` ✅
+- `npm run lint` ✅ (one rule fix: removed `setMobileMenuOpen(false)` effect on pathname in DashboardLayout — `react-hooks/set-state-in-effect`; the existing nav `onNavigate` callback already handles this case)
+- `npm run test:chatbot` ✅ 147/147
+- `npm run build` ✅ 54/54 routes built
+
+### Deliberately deferred
+- Topbar/Sidebar motion entry (current chrome is already polished; mount animations would conflict with route fade).
+- Command Center Nivo charts — Chart.js components remain. The foundation is ready for opt-in.
+- TriageCenterTabs / DepartmentDashboard / StoreOps / ViewerExec motion — large files, no compositional refactor attempted here.
+- Maintenance overview, Work Order detail, Reports detail polish.
+- Mobile audit of every Tier 1 page (existing `panel-surface` + Tailwind responsive utilities cover most cases).
+- Role-specific decluttering. Foundation provides `RoleWorkspaceShell`; pages can opt in.
+- Manual browser validation. **Not performed** in this pass.
+
+### What still needs manual browser validation
+- Page route fade behaviour at standard navigation speed (does it feel snappy or laggy on a slow device?).
+- Mobile drawer slide open/close — confirm no scroll-lock bug.
+- AssistantPanel "thinking" state under both Lottie-present and Lottie-missing conditions.
+- NotificationBell critical pulse readability in light mode.
+- Login GSAP pulse with `prefers-reduced-motion` enabled (should be static).
+- Command Center on a real account with non-zero KPI values (the count-up should be smooth, not jarring).
+- Equipment detail SpringGauge in dark mode for an asset whose availability is computable.
+
+---
+
+## Tier 1 deferred + Tier 2 sweep (2026-05-18, branch `ui_semifinal`)
+
+Same surgical pattern as Tier 1 — grid `cardStagger` + child `cardItem`,
+`AnimatedMetric` on numeric KPIs, `EmptyState` Lottie keys where applicable.
+No analytics/business-logic touched; no Chart.js→Nivo migration.
+
+### Foundation upgrade
+- `src/components/ui/StatCard.tsx` now wraps the numeric `value` in
+  `<AnimatedMetric />` automatically (string values pass through unchanged).
+  Every page using `StatCard` (calibration, spare-parts, logistics,
+  procurement, replacement, audit, settings) inherits the spring count-up
+  without per-page edits. The file now carries `'use client'` because
+  `AnimatedMetric` is client-only.
+
+### Wave A — Command Center subcomponents (Tier 1 deferral)
+- `DepartmentDashboard.tsx`: added `'use client'`; metric grid wrapped in
+  `cardStagger`/`cardItem`; numeric values via `AnimatedMetric`. Static
+  strings (e.g. "On track") pass through.
+- `StoreOperationsCommandCenter.tsx`: same pattern.
+- `ViewerExecutiveCommandCenter.tsx`: same pattern.
+- `CommandCenterInteractive.tsx`: 3-card "Work in progress" section wrapped
+  in `cardStagger`; the three buttons converted to `motion.button` with
+  `cardItem`; headline numbers via `AnimatedMetric`.
+- `WorkloadAssignment.tsx`: technician card grid wrapped in
+  `cardStagger`/`cardItem`.
+- `TriageCenterTabs.tsx` and `RiskBandDrilldown.tsx`: deliberately
+  unchanged — TriageCenterTabs is table-driven (motion would be noise),
+  RiskBandDrilldown is an interactive expand/collapse list (motion would
+  fight the open/close interaction).
+
+### Wave B — Maintenance overview (Tier 1 deferral)
+- `src/app/(dashboard)/maintenance/page.tsx`: 8-card summary strip wrapped
+  in `cardStagger`; local `SummaryCard` now uses `motion.button` + `cardItem`
+  and renders the value via `AnimatedMetric`.
+- Work Order detail / Maintenance request detail: not touched. Detail pages
+  already inherit the route `pageFade` from `DashboardLayout`; adding more
+  motion to dense detail forms would be visual noise. Leaving for a
+  later pass if the design wants further polish.
+
+### Wave C — Topbar/Sidebar (re-evaluated, kept deferred)
+- Considered adding mount motion. Reverted: Topbar/Sidebar re-render on every
+  route change (pathname-driven active state). Adding `initial="initial"
+  animate="animate"` would re-trigger the stagger on every nav click. Not
+  worth the cost.
+
+### Wave D — Tier 2
+- `src/app/(dashboard)/pm/page.tsx`: 4-card summary strip wrapped in
+  `cardStagger`/`cardItem`; counts via `AnimatedMetric`. Buttons remain
+  workflow-controlled.
+- `src/app/(dashboard)/calibration/page.tsx`: 8-card `StatCard` grid wrapped
+  in `cardStagger`; each card in a `cardItem` `motion.div`. The shared
+  `StatCard` already supplies the count-up.
+- `src/app/(dashboard)/spare-parts/page.tsx`: 8-card `StatCard` grid wrapped
+  in `cardStagger`.
+- `src/app/(dashboard)/logistics/page.tsx`: 8-card `StatCard` strip wrapped
+  in `cardStagger`.
+- `src/app/(dashboard)/procurement/page.tsx`: 9-card `StatCard` grid wrapped
+  in `cardStagger`.
+- `src/app/(dashboard)/replacement/page.tsx`: 10-card `StatCard` grid wrapped
+  in `cardStagger`.
+
+### Verification
+- `npx tsc --noEmit` ✅
+- `npm run lint` ✅
+- `npm run test:chatbot` ✅ 147/147
+- `npm run build` ✅ 54/54 routes
+
+### Still deferred (and why)
+- **QR landing** — server component, auth/scan flow risk.
+- **Reports Chart.js→Nivo bulk migration** — PDF/export flows depend on
+  Chart.js refs.
+- **Work Order detail / Maintenance request detail / Reports detail polish**
+  — detail forms; motion would be noise.
+- **Tier 3** (Developer Lab, Settings, Audit) — not started this pass.
+- **Mobile audit + browser validation** — no browser available.
+- **Role-decluttering** — pattern is established via `RoleWorkspaceShell`;
+  per-page opt-in.
+
+---
+
+## Final deferred sweep + Tier 3 (2026-05-18, branch `ui_semifinal`)
+
+The deferred items from earlier passes were re-evaluated and most were
+completed. Honest call-outs included below for the things genuinely skipped.
+
+### Wave 1 — Topbar + Sidebar mount motion
+- `src/components/layout/Sidebar.tsx`: nav wrapped in `motion.nav` with
+  `cardStagger`; each section group in `motion.div` with `cardItem`. Plays
+  once on dashboard mount; pathname changes don't replay because the parent
+  motion containers don't unmount (they sit OUTSIDE the route AnimatePresence).
+- `src/components/layout/Topbar.tsx`: header wrapped in `motion.header` with a
+  one-time `opacity + y:-8 → 0` slide-down at `transitions.default`.
+
+### Wave 2 — Detail page polish
+- `src/app/(dashboard)/maintenance/work-orders/[id]/page.tsx`: main content
+  container (`<div className="space-y-6">`) wrapped in `motion.div` with
+  `slideUp`. Layers cleanly with the route-level `pageFade` — the page first
+  fades in, then the inner card stack slides up.
+- `src/app/(dashboard)/maintenance/requests/[id]/page.tsx`: same pattern.
+- `src/app/(dashboard)/reports/[type]/page.tsx`: KPI card section wrapped in
+  `motion.section` with `cardStagger`; each KPI tile in `motion.div` with
+  `cardItem`.
+
+### Wave 3 — QR landing motion
+- `src/app/qr/a/[token]/QrAssetLandingPage.tsx`: converted to client component
+  (no server-only imports — verified). Outer `<div>` replaced with a
+  `motion.div` using `pageFade`. The parent server `page.tsx` continues to do
+  resolution / auth / scan logging unchanged.
+
+### Wave 4 — Reports list motion
+- `src/app/(dashboard)/reports/page.tsx`: `ReportCard` wrapped in a `motion.div`
+  with `cardItem` (via `className="contents"` so layout is unaffected). All 4
+  occurrences of the `grid gap-3 sm:grid-cols-2 xl:grid-cols-4` report grid
+  wrapped in `motion.div` with `cardStagger`. Section ordering / layout
+  unchanged.
+
+### Wave 5 — Developer Lab
+- `src/app/(dashboard)/developer-lab/QrCoverageSection.tsx`: both coverage
+  card grids (8-card top + 4-card scan-evidence) wrapped in `cardStagger`;
+  numeric values via `AnimatedMetric`.
+- `src/app/(dashboard)/developer-lab/OfflineDiagnosticsPanel.tsx`: 5-card sync
+  summary strip wrapped in `cardStagger` + per-card `cardItem` + `AnimatedMetric`.
+- `src/app/(dashboard)/developer-lab/page.tsx` (server): 4-card top strip
+  unchanged — server component, and `Card` inside doesn't accept motion props
+  without a client wrapper. Not worth a refactor for 4 cards; route `pageFade`
+  handles the entrance.
+
+### Wave 6 — Settings
+- `src/app/(dashboard)/settings/page.tsx`: Staff & Access summary (4 cards)
+  and Security & Access summary (4 cards) wrapped in `cardStagger`/`cardItem`
+  with `AnimatedMetric` for numeric counts.
+
+### Wave 7 — Audit
+- `src/app/(dashboard)/audit/page.tsx`: server-rendered. Uses shared
+  `StatCard` which now animates numbers via the foundation upgrade. Route
+  `pageFade` already handles the entrance. No client wrapper added — not
+  worth the refactor for a small page.
+
+### Wave 8 — Mobile audit (code-level)
+Without a browser I verified what's verifiable from code:
+- Shared `DataTable` → renders inside `Table`, which has
+  `panel-surface-muted table-scroll-shell w-full max-w-full overflow-x-auto`
+  and `min-w-full`. Mobile horizontal scroll is built in.
+- Grid breakpoints across pages consistently use `sm:`/`md:`/`lg:`/`xl:`
+  prefixes. No fixed-width regression spotted.
+- `AssistantLauncher` is now an inline Topbar button (not a floating overlay),
+  so no mobile bottom-right overlap with content.
+- Pixel-perfect mobile validation (z-index, touch targets at 360px, virtual
+  keyboard behaviour) still requires a real browser/device.
+
+### Wave 9 — Role-decluttering
+Re-evaluated. The role-specific component files
+(`ViewerExecutiveCommandCenter`, `StoreOperationsCommandCenter`,
+`DepartmentDashboard`, `ViewerMaintenanceOverview`, etc.) already render
+their own role-tagged `PageHeader` and badges. Wrapping them in
+`RoleWorkspaceShell` would duplicate the role identifier. The shell remains
+available for any future page that uses a generic title across roles; for
+the current dedicated-per-role architecture, it adds no value. Honest skip.
+
+### Verification
+- `npx tsc --noEmit` ✅
+- `npm run lint` ✅
+- `npm run test:chatbot` ✅ 147/147
+- `npm run build` ✅ 54/54 routes
+
+### What's GENUINELY not done (honest)
+- **Reports Chart.js → Nivo migration**: NOT performed. Chart.js refs power
+  the PDF/snapshot export. A bulk swap risks breaking those flows. Per-chart
+  opt-in remains the path forward.
+- **Manual browser validation**: cannot perform without a real browser. All
+  changes verified at build/tsc/lint/test level only.
+- **Pixel-perfect mobile audit**: code-level patterns are good but I can't
+  see actual rendering at 320/360/375/414px viewports.
+- **Role-decluttering inside shared pages**: where a page renders the same
+  shell for all roles (Equipment list, Maintenance, etc.), I did not split
+  it into role-specific shells. The existing per-role component files
+  (ViewerEquipmentOverview, DepartmentEquipmentOverview, StoreOps*) handle
+  the most important role-specific surfaces.
+- **Audit + Developer Lab server-rendered card strips**: 4-card top strips
+  in `developer-lab/page.tsx` and `audit/page.tsx` remain static
+  (server-rendered). They inherit count-up via `StatCard`'s foundation
+  upgrade and the route `pageFade`, but don't stagger.

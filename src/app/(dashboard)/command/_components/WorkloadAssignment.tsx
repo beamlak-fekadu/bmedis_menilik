@@ -1,9 +1,11 @@
 'use client';
 
 import Link from 'next/link';
+import { motion } from 'framer-motion';
 import { AlertCircle, CheckCircle2, Clock, ClipboardList, Users } from 'lucide-react';
 import { ScoreExplanation } from './ScoreExplanation';
 import type { TechnicianWorkloadItem, WorkOrderSummary, WorkQueueItem } from '../_lib/command-center-data';
+import { cardItem, cardStagger } from '@/lib/ui/motion-presets';
 
 interface Props {
   summary: WorkOrderSummary;
@@ -179,11 +181,16 @@ export function WorkloadAssignment({ summary, queue, technicians, canMutate }: P
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          <motion.div
+            variants={cardStagger}
+            initial="initial"
+            animate="animate"
+            className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3"
+          >
             {technicians.map((tech) => {
               const meta = STATUS_META[tech.status];
               return (
-                <div key={tech.profileId} className={`panel-surface rounded-lg p-4 ring-1 ${meta.ring}`}>
+                <motion.div key={tech.profileId} variants={cardItem} className={`panel-surface rounded-lg p-4 ring-1 ${meta.ring}`}>
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0 flex-1">
                       <p className="truncate font-medium text-[var(--foreground)]">{tech.name}</p>
@@ -229,10 +236,10 @@ export function WorkloadAssignment({ summary, queue, technicians, canMutate }: P
                       </Link>
                     </div>
                   )}
-                </div>
+                </motion.div>
               );
             })}
-          </div>
+          </motion.div>
         </div>
       )}
 

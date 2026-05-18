@@ -26,6 +26,8 @@ import {
 import PageHeader from '@/components/ui/PageHeader';
 import Badge from '@/components/ui/Badge';
 import AssistantPageContextBridge from '@/components/assistant/AssistantPageContextBridge';
+import { motion } from 'framer-motion';
+import { cardItem, cardStagger } from '@/lib/ui/motion-presets';
 
 interface ReportDef {
   type: string;
@@ -252,6 +254,7 @@ const sections: ReportSection[] = [
 
 function ReportCard({ report }: { report: ReportDef }) {
   return (
+    <motion.div variants={cardItem} className="contents">
     <Link
       href={`/reports/${report.type}`}
       className="group flex flex-col gap-3 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-1)] p-4 transition-all hover:border-[var(--brand)]/50 hover:shadow-md"
@@ -292,6 +295,7 @@ function ReportCard({ report }: { report: ReportDef }) {
         </span>
       </div>
     </Link>
+    </motion.div>
   );
 }
 
@@ -367,9 +371,14 @@ export default function ReportsPage() {
               </div>
               <span className="shrink-0 text-xs text-[var(--text-muted)]">{section.reports.length} reports</span>
             </div>
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <motion.div
+              variants={cardStagger}
+              initial="initial"
+              animate="animate"
+              className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4"
+            >
               {section.reports.map((report) => (<ReportCard key={report.type} report={report} />))}
-            </div>
+            </motion.div>
           </section>
         ))}
       </div>
@@ -401,9 +410,14 @@ export default function ReportsPage() {
               </div>
               <span className="shrink-0 text-xs text-[var(--text-muted)]">{section.reports.length} reports</span>
             </div>
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <motion.div
+              variants={cardStagger}
+              initial="initial"
+              animate="animate"
+              className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4"
+            >
               {section.reports.map((report) => (<ReportCard key={report.type} report={report} />))}
-            </div>
+            </motion.div>
           </section>
         ))}
       </div>
@@ -439,11 +453,16 @@ export default function ReportsPage() {
               </div>
               <span className="shrink-0 text-xs text-[var(--text-muted)]">{section.reports.length} reports</span>
             </div>
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <motion.div
+              variants={cardStagger}
+              initial="initial"
+              animate="animate"
+              className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4"
+            >
               {section.reports.map((report) => (
                 <ReportCard key={report.type} report={report} />
               ))}
-            </div>
+            </motion.div>
           </section>
         ))}
       </div>
@@ -497,11 +516,16 @@ export default function ReportsPage() {
             </span>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <motion.div
+            variants={cardStagger}
+            initial="initial"
+            animate="animate"
+            className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4"
+          >
             {section.reports.map((report) => (
               <ReportCard key={report.type} report={report} />
             ))}
-          </div>
+          </motion.div>
         </section>
       ))}
     </div>

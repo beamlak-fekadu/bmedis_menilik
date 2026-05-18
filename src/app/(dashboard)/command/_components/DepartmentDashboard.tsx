@@ -1,4 +1,7 @@
+'use client';
+
 import Link from 'next/link';
+import { motion } from 'framer-motion';
 import {
   Activity,
   AlertCircle,
@@ -13,7 +16,8 @@ import {
   TrendingUp,
   Wrench,
 } from 'lucide-react';
-import { Badge, Card, CardContent, CardHeader, CardTitle, PageHeader } from '@/components/ui';
+import { Badge, Card, CardContent, CardHeader, CardTitle, PageHeader, AnimatedMetric } from '@/components/ui';
+import { cardItem, cardStagger } from '@/lib/ui/motion-presets';
 import {
   type DepartmentMetrics,
   type DepartmentAttentionRow,
@@ -150,15 +154,26 @@ export default function DepartmentDashboard({
       </div>
 
       <section aria-label="Department metric cards">
-        <div className={`grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 ${isHead ? 'xl:grid-cols-5' : 'xl:grid-cols-4'}`}>
+        <motion.div
+          variants={cardStagger}
+          initial="initial"
+          animate="animate"
+          className={`grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 ${isHead ? 'xl:grid-cols-5' : 'xl:grid-cols-4'}`}
+        >
           {cards.map((c) => (
-            <div key={c.label} className={`flex flex-col gap-2 rounded-xl border p-4 ${toneClass(c.tone)}`}>
+            <motion.div
+              key={c.label}
+              variants={cardItem}
+              className={`flex flex-col gap-2 rounded-xl border p-4 ${toneClass(c.tone)}`}
+            >
               <div className="flex items-start justify-between gap-2">
                 <div className={`rounded-md p-2 ${iconBg(c.tone)}`}>{c.icon}</div>
               </div>
               <div>
                 <p className="text-xs uppercase tracking-wide text-[var(--text-muted)]">{c.label}</p>
-                <p className="mt-1 text-2xl font-semibold text-[var(--foreground)]">{c.value}</p>
+                <p className="mt-1 text-2xl font-semibold text-[var(--foreground)]">
+                  {typeof c.value === 'number' ? <AnimatedMetric value={c.value} /> : c.value}
+                </p>
                 <p className="mt-1 text-xs leading-snug text-[var(--text-muted)]">{c.subtitle}</p>
               </div>
               {c.href && (
@@ -166,9 +181,9 @@ export default function DepartmentDashboard({
                   {c.hrefLabel} →
                 </Link>
               )}
-            </div>
+            </motion.div>
           ))}
-        </div>
+        </motion.div>
       </section>
 
       {/* Department readiness summary */}

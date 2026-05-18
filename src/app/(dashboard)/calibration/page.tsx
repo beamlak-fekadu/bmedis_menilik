@@ -15,6 +15,8 @@ import Button from '@/components/ui/Button';
 import Badge from '@/components/ui/Badge';
 import ClearFiltersButton from '@/components/ui/ClearFiltersButton';
 import StatCard from '@/components/ui/StatCard';
+import { motion } from 'framer-motion';
+import { cardItem, cardStagger } from '@/lib/ui/motion-presets';
 import Modal from '@/components/ui/Modal';
 import Input from '@/components/ui/Input';
 import Select from '@/components/ui/Select';
@@ -784,16 +786,21 @@ export default function CalibrationPage() {
         />
       ) : null}
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Calibration Records" value={recordsScoped.length} icon={<Gauge className="h-6 w-6" />} color="blue" active={selectedTab === 'records' && selectedFilter === 'all'} onClick={() => selectCalibrationView('records')} />
-        <StatCard label="Open Requests" value={countOpenCalibrationRequests(requestsScoped as Array<{ status?: string | null }>)} icon={<ClipboardList className="h-6 w-6" />} color="purple" active={selectedTab === 'requests' && selectedFilter === 'all'} onClick={() => selectCalibrationView('requests')} />
-        <StatCard label="Due Soon" value={dueSoonRows.length} icon={<CalendarClock className="h-6 w-6" />} color="yellow" active={selectedTab === 'upcoming' && selectedFilter === 'due-soon'} onClick={() => selectCalibrationView('upcoming', 'due-soon')} />
-        <StatCard label="Overdue" value={countOverdueCalibration(upcomingScoped as Array<{ next_due_date?: string | null }>)} icon={<AlertTriangle className="h-6 w-6" />} color="red" active={selectedTab === 'overdue' && selectedFilter === 'overdue'} onClick={() => selectCalibrationView('overdue', 'overdue')} />
-        <StatCard label="Failed / Adjusted" value={countFailedOrAdjustedCalibration(recordsScoped as Array<{ result?: string | null }>)} icon={<ShieldAlert className="h-6 w-6" />} color="orange" active={selectedFilter === 'failed-adjusted'} onClick={() => selectCalibrationView('records', 'failed-adjusted')} />
-        <StatCard label="Critical Overdue" value={criticalOverdueRows.length} icon={<AlertTriangle className="h-6 w-6" />} color="red" active={selectedFilter === 'critical-overdue'} onClick={() => selectCalibrationView('overdue', 'critical-overdue')} />
-        <StatCard label="External Calibration" value={externalCalibration.length + externalRequests.length} icon={<Wrench className="h-6 w-6" />} color="gray" active={selectedFilter === 'external'} onClick={() => selectCalibrationView(externalRequests.length > 0 ? 'requests' : 'records', 'external')} />
-        <StatCard label="Completed This Month" value={completedThisMonth.length} icon={<CheckCircle className="h-6 w-6" />} color="green" active={selectedFilter === 'completed-month'} onClick={() => selectCalibrationView('records', 'completed-month')} />
-      </div>
+      <motion.div
+        variants={cardStagger}
+        initial="initial"
+        animate="animate"
+        className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4"
+      >
+        <motion.div variants={cardItem}><StatCard label="Calibration Records" value={recordsScoped.length} icon={<Gauge className="h-6 w-6" />} color="blue" active={selectedTab === 'records' && selectedFilter === 'all'} onClick={() => selectCalibrationView('records')} /></motion.div>
+        <motion.div variants={cardItem}><StatCard label="Open Requests" value={countOpenCalibrationRequests(requestsScoped as Array<{ status?: string | null }>)} icon={<ClipboardList className="h-6 w-6" />} color="purple" active={selectedTab === 'requests' && selectedFilter === 'all'} onClick={() => selectCalibrationView('requests')} /></motion.div>
+        <motion.div variants={cardItem}><StatCard label="Due Soon" value={dueSoonRows.length} icon={<CalendarClock className="h-6 w-6" />} color="yellow" active={selectedTab === 'upcoming' && selectedFilter === 'due-soon'} onClick={() => selectCalibrationView('upcoming', 'due-soon')} /></motion.div>
+        <motion.div variants={cardItem}><StatCard label="Overdue" value={countOverdueCalibration(upcomingScoped as Array<{ next_due_date?: string | null }>)} icon={<AlertTriangle className="h-6 w-6" />} color="red" active={selectedTab === 'overdue' && selectedFilter === 'overdue'} onClick={() => selectCalibrationView('overdue', 'overdue')} /></motion.div>
+        <motion.div variants={cardItem}><StatCard label="Failed / Adjusted" value={countFailedOrAdjustedCalibration(recordsScoped as Array<{ result?: string | null }>)} icon={<ShieldAlert className="h-6 w-6" />} color="orange" active={selectedFilter === 'failed-adjusted'} onClick={() => selectCalibrationView('records', 'failed-adjusted')} /></motion.div>
+        <motion.div variants={cardItem}><StatCard label="Critical Overdue" value={criticalOverdueRows.length} icon={<AlertTriangle className="h-6 w-6" />} color="red" active={selectedFilter === 'critical-overdue'} onClick={() => selectCalibrationView('overdue', 'critical-overdue')} /></motion.div>
+        <motion.div variants={cardItem}><StatCard label="External Calibration" value={externalCalibration.length + externalRequests.length} icon={<Wrench className="h-6 w-6" />} color="gray" active={selectedFilter === 'external'} onClick={() => selectCalibrationView(externalRequests.length > 0 ? 'requests' : 'records', 'external')} /></motion.div>
+        <motion.div variants={cardItem}><StatCard label="Completed This Month" value={completedThisMonth.length} icon={<CheckCircle className="h-6 w-6" />} color="green" active={selectedFilter === 'completed-month'} onClick={() => selectCalibrationView('records', 'completed-month')} /></motion.div>
+      </motion.div>
 
       {(activeTab !== '' || selectedFilter !== 'all') && (
         <div className="flex justify-end">

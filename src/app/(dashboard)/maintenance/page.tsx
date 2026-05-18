@@ -7,7 +7,9 @@ import {
   Wrench, ClipboardList, Clock, AlertTriangle, CheckCircle2,
   AlertCircle, TrendingUp, Play, ShieldAlert,
 } from 'lucide-react';
-import { PageHeader, DataTable, Button, Spinner, AssetFilterChip } from '@/components/ui';
+import { PageHeader, DataTable, Button, Spinner, AssetFilterChip, AnimatedMetric } from '@/components/ui';
+import { motion } from 'framer-motion';
+import { cardItem, cardStagger } from '@/lib/ui/motion-presets';
 import AssistantPageContextBridge from '@/components/assistant/AssistantPageContextBridge';
 import ClearFiltersButton from '@/components/ui/ClearFiltersButton';
 import { useAssetFilter } from '@/hooks/useAssetFilter';
@@ -81,7 +83,8 @@ function SummaryCard({ label, value, icon, color = 'blue', active, onClick }: {
   label: string; value: number; icon: React.ReactNode; color?: string; active?: boolean; onClick?: () => void;
 }) {
   return (
-    <button
+    <motion.button
+      variants={cardItem}
       type="button"
       onClick={onClick}
       className={`panel-surface flex flex-col gap-1 rounded-xl p-4 text-left transition-colors
@@ -89,11 +92,13 @@ function SummaryCard({ label, value, icon, color = 'blue', active, onClick }: {
         ${active ? 'ring-2 ring-[var(--brand)]' : ''}`}
     >
       <div className="flex items-start justify-between gap-2">
-        <span className="text-2xl font-bold leading-none text-[var(--foreground)]">{value}</span>
+        <span className="text-2xl font-bold leading-none text-[var(--foreground)]">
+          <AnimatedMetric value={value} />
+        </span>
         <span className={`rounded-lg p-1.5 ${CARD_COLORS[color] ?? CARD_COLORS.blue}`}>{icon}</span>
       </div>
       <span className="text-xs font-medium leading-tight text-[var(--text-muted)]">{label}</span>
-    </button>
+    </motion.button>
   );
 }
 
@@ -556,7 +561,12 @@ function OperationalMaintenancePage() {
       ) : null}
 
       {/* ── Summary Cards ── */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 xl:grid-cols-8">
+      <motion.div
+        variants={cardStagger}
+        initial="initial"
+        animate="animate"
+        className="grid grid-cols-2 gap-3 sm:grid-cols-4 xl:grid-cols-8"
+      >
         {summaryCards.map(({ label, value, icon, color, tab, filter }) => (
           <SummaryCard
             key={label}
@@ -568,7 +578,7 @@ function OperationalMaintenancePage() {
             onClick={() => activateFilter(tab, filter)}
           />
         ))}
-      </div>
+      </motion.div>
 
       {/* ── Recurring Failure Banner ── */}
       {recurringFailures.length > 0 && (

@@ -2,7 +2,9 @@
 
 import { useEffect, useMemo, useRef } from 'react';
 import { Bot, MessageSquareText, Plus, Send, X } from 'lucide-react';
-import { Button, EmptyState, Spinner, Textarea } from '@/components/ui';
+import { Button, EmptyState, Textarea } from '@/components/ui';
+import LottiePlayer, { LOTTIE_PATHS } from '@/components/ui/LottiePlayer';
+import { Loader2 } from 'lucide-react';
 import { AssistantContextChips } from './AssistantContextChips';
 import { AssistantMessageCard } from './AssistantMessageCard';
 import { useAssistantContext } from './AssistantProvider';
@@ -195,9 +197,14 @@ export function AssistantPanel() {
 
             {sending && (
               <div className="assistant-panel-surface rounded-2xl border border-[var(--assistant-accent-soft)] p-4">
-                <div className="inline-flex items-center gap-2 text-sm text-[var(--text-muted)]">
-                  <Spinner size="sm" />
-                  Generating response...
+                <div className="inline-flex items-center gap-3 text-sm text-[var(--text-muted)]">
+                  <LottiePlayer
+                    src={LOTTIE_PATHS.aiThinking}
+                    style={{ width: 28, height: 28 }}
+                    fallback={<Loader2 className="h-4 w-4 animate-spin" />}
+                    ariaLabel="Assistant thinking"
+                  />
+                  Generating response…
                 </div>
               </div>
             )}

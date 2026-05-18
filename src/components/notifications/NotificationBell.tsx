@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { Bell, Check, CheckCheck, Inbox, X } from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { attentionPulse, slideUp, transitions } from '@/lib/ui/motion-presets';
 import {
   getMyNotificationsAction,
   getMyNotificationSummaryAction,
@@ -154,12 +156,24 @@ export default function NotificationBell() {
           </span>
         )}
         {hasCritical && (
-          <span className="absolute inset-0 rounded-lg ring-2 ring-red-500/30 ring-offset-0" aria-hidden="true" />
+          <motion.span
+            variants={attentionPulse}
+            initial="initial"
+            animate="animate"
+            className="absolute inset-0 rounded-lg ring-2 ring-red-500/40 ring-offset-0"
+            aria-hidden="true"
+          />
         )}
       </button>
 
-      {open && (
-        <div
+      <AnimatePresence>
+        {open && (
+        <motion.div
+          variants={slideUp}
+          initial="initial"
+          animate="animate"
+          exit="exit"
+          transition={transitions.fast}
           role="dialog"
           aria-label="Notifications drawer"
           className="panel-surface-solid absolute right-0 top-11 z-50 w-[min(92vw,380px)] rounded-xl border border-[var(--border-subtle)] shadow-xl"
@@ -278,8 +292,9 @@ export default function NotificationBell() {
               View all notifications →
             </Link>
           </div>
-        </div>
-      )}
+        </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

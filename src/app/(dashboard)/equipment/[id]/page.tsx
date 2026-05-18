@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import {
   PageHeader, Button, Card, CardHeader, CardTitle, CardContent,
-  Tabs, Table, Spinner,
+  Tabs, Table, Spinner, SpringGauge,
 } from '@/components/ui';
 import { ConditionBadge, PMStatusBadge, RiskBadge } from '@/components/ui/StatusBadge';
 import AssistantPageContextBridge from '@/components/assistant/AssistantPageContextBridge';
@@ -754,6 +754,17 @@ export default function EquipmentDetailPage({ params }: { params: Promise<{ id: 
 
         {/* 2. Reliability */}
         <HealthCard title="Reliability" icon={<Activity className="h-4 w-4" />}>
+          {reliability?.availability_ratio != null && (
+            <div className="mb-3 flex justify-center">
+              <SpringGauge
+                value={Number(reliability.availability_ratio) * 100}
+                size={88}
+                thickness={8}
+                autoTone
+                label="Availability"
+              />
+            </div>
+          )}
           {renderMTBF()}
           {renderMTTR()}
           {renderAvailability()}

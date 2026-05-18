@@ -1,5 +1,9 @@
+'use client';
+
 import Link from 'next/link';
 import type { ReactNode } from 'react';
+import { motion } from 'framer-motion';
+import { pageFade } from '@/lib/ui/motion-presets';
 import {
   AlertTriangle,
   Beaker,
@@ -797,7 +801,12 @@ export default function QrAssetLandingPage({ asset, profile, context }: Props) {
 
   return (
     <main className="min-h-screen bg-[var(--background)] text-[var(--foreground)]">
-      <div className="mx-auto w-full max-w-5xl px-3 py-4 sm:px-6 sm:py-10">
+      <motion.div
+        variants={pageFade}
+        initial="initial"
+        animate="animate"
+        className="mx-auto w-full max-w-5xl px-3 py-4 sm:px-6 sm:py-10"
+      >
         <header className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--border-subtle)] pb-3 sm:gap-3 sm:pb-4">
           <div className="flex min-w-0 items-center gap-2">
             <LogoMark size={32} />
@@ -926,7 +935,7 @@ export default function QrAssetLandingPage({ asset, profile, context }: Props) {
             QR asset context is live when online. Phase 2 offline capture queues selected notes and request drafts only; QR scan logging remains online-only.
           </p>
         </footer>
-      </div>
+      </motion.div>
     </main>
   );
 }

@@ -17,7 +17,9 @@ import {
   RefreshCw,
   UserRound,
 } from 'lucide-react';
-import { PageHeader, DataTable, Table, Button, Badge, Spinner, AssetFilterChip } from '@/components/ui';
+import { PageHeader, DataTable, Table, Button, Badge, Spinner, AssetFilterChip, AnimatedMetric } from '@/components/ui';
+import { motion } from 'framer-motion';
+import { cardItem, cardStagger } from '@/lib/ui/motion-presets';
 import AssistantPageContextBridge from '@/components/assistant/AssistantPageContextBridge';
 import { useAssetFilter } from '@/hooks/useAssetFilter';
 import { PMStatusBadge } from '@/components/ui/StatusBadge';
@@ -739,13 +741,19 @@ export default function PMPage() {
         />
       ) : null}
 
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <motion.div
+        variants={cardStagger}
+        initial="initial"
+        animate="animate"
+        className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4"
+      >
         {summaryCards.map((card) => {
           const Icon = card.icon;
           const active = activeCardId === card.id && !departmentFilter;
           return (
-            <button
+            <motion.button
               key={card.id}
+              variants={cardItem}
               type="button"
               onClick={() => activateCard(card)}
               className={`rounded-lg border p-4 text-left transition-colors ${
@@ -757,15 +765,17 @@ export default function PMPage() {
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="text-xs font-medium uppercase text-[var(--text-muted)]">{card.label}</p>
-                  <p className="mt-2 text-2xl font-semibold text-[var(--foreground)]">{card.count}</p>
+                  <p className="mt-2 text-2xl font-semibold text-[var(--foreground)]">
+                    <AnimatedMetric value={card.count} />
+                  </p>
                   <p className="mt-1 text-xs text-[var(--text-muted)]">{card.sublabel}</p>
                 </div>
                 <Icon className={active ? 'h-5 w-5 text-[var(--brand)]' : 'h-5 w-5 text-[var(--text-muted)]'} />
               </div>
-            </button>
+            </motion.button>
           );
         })}
-      </div>
+      </motion.div>
       <p className="text-xs text-[var(--text-muted)]">
         {getPMCountExplanation('records')} {getPMCountExplanation('active')}
       </p>
