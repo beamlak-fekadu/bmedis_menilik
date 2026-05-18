@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title">
-  <title id="title">BMERMS app icon</title>
+  <title id="title">BMEDIS app icon</title>
   <rect width="512" height="512" rx="96" fill="#2563eb"/>
   <path d="M146 165c0-22.091 17.909-40 40-40h140c22.091 0 40 17.909 40 40v182c0 22.091-17.909 40-40 40H186c-22.091 0-40-17.909-40-40V165Z" fill="#ffffff"/>
   <path d="M194 183h124v36H194v-36Zm0 118h124v34H194v-34Z" fill="#2563eb"/>

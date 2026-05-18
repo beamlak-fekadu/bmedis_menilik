@@ -307,7 +307,7 @@ export function formatTelegramMonitorMessage(
   actualDelivery: { status: 'sent' | 'skipped' | 'failed'; skipReason?: string | null; error?: string | null },
 ): string {
   const lines: string[] = [];
-  lines.push('🧪 BMERMS Notification Monitor');
+  lines.push('🧪 BMEDIS Notification Monitor');
   lines.push('');
   lines.push(`Original recipient: ${originalRecipient?.full_name ?? 'unknown'}`);
   lines.push(`Role: ${originalRecipient?.primaryRole ?? 'unknown'}`);

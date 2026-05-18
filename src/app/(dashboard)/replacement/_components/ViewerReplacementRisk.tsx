@@ -136,7 +136,7 @@ export default function ViewerReplacementRisk() {
     <div className="space-y-6">
       <PageHeader
         title="Replacement & Risk"
-        description="Read-only capital planning and risk justification view computed from the BMERMS Replacement Priority Index."
+        description="Read-only capital planning and risk justification view computed from the BMEDIS Replacement Priority Index."
         breadcrumbs={[{ label: 'Command Center', href: '/command' }, { label: 'Replacement & Risk' }]}
         actions={<Badge variant="default">Read-only view</Badge>}
       />

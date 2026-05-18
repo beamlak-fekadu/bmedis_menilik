@@ -1,6 +1,6 @@
 // Server-side aggregator for department-scoped data.
 //
-// Every value returned here is computed from real loaded rows in BMERMS,
+// Every value returned here is computed from real loaded rows in BMEDIS,
 // filtered by a single `departmentId` argument. There is NO all-hospital
 // fallback if `departmentId` is null/undefined — the caller must render the
 // missing-department state instead.

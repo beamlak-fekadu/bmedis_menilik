@@ -13,8 +13,8 @@ export const metadata: Metadata = {
   description: `${APP_NAME_FULL} for ${HOSPITAL_NAME}`,
   manifest: '/manifest.webmanifest',
   icons: {
-    icon: '/icons/bmerms-icon.svg',
-    apple: '/icons/bmerms-icon.svg',
+    icon: '/icons/bmedis-icon.svg',
+    apple: '/icons/bmedis-icon.svg',
   },
 };
 

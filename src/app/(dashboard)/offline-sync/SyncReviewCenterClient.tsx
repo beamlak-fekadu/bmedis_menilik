@@ -307,7 +307,7 @@ export default function SyncReviewCenterClient({ serverSummary, serverEvents, is
   }, [refreshQueue]);
 
   function exportLocalCsv() {
-    exportCsv(`bmerms-offline-queue-${new Date().toISOString().slice(0, 10)}.csv`, queue.map((record) => ({
+    exportCsv(`bmedis-offline-queue-${new Date().toISOString().slice(0, 10)}.csv`, queue.map((record) => ({
       client_action_id: record.client_action_id,
       created_at: record.created_at,
       action_type: record.action_type,
@@ -328,7 +328,7 @@ export default function SyncReviewCenterClient({ serverSummary, serverEvents, is
   }
 
   function exportServerCsv() {
-    exportCsv(`bmerms-sync-server-events-${new Date().toISOString().slice(0, 10)}.csv`, filteredServerEvents.map((event) => ({
+    exportCsv(`bmedis-sync-server-events-${new Date().toISOString().slice(0, 10)}.csv`, filteredServerEvents.map((event) => ({
       client_action_id: event.client_action_id,
       created_at: event.created_at,
       action_type: event.action_type,
@@ -408,7 +408,7 @@ export default function SyncReviewCenterClient({ serverSummary, serverEvents, is
               <Download className="h-4 w-4" />
               Export Server Events CSV
             </Button>
-            <Button size="sm" variant="outline" onClick={() => downloadJson(`bmerms-offline-queue-${new Date().toISOString().slice(0, 10)}.json`, queue)} disabled={queue.length === 0}>
+            <Button size="sm" variant="outline" onClick={() => downloadJson(`bmedis-offline-queue-${new Date().toISOString().slice(0, 10)}.json`, queue)} disabled={queue.length === 0}>
               <Download className="h-4 w-4" />
               Export Queue JSON
             </Button>

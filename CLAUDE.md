@@ -1,8 +1,8 @@
-# CLAUDE.md — BMERMS Project Intelligence
+# CLAUDE.md — BMEDIS Project Intelligence
 
-Last updated: 2026-05-17 (Notifications subsystem — bell + drawer, /notifications page, Telegram delivery + developer monitor, /alerts redirected)
-Branch: integration
-Deployment: https://project-git-bmermsv3-beamlak-fekadus-projects.vercel.app
+Last updated: 2026-05-18 (Semifinal UI foundation — motion presets, Nivo chart shells, animated metric + spring gauge, role-aware workspace shell, Lottie wrapper with icon fallback. No page rewrites in this pass.)
+Branch: ui_semifinal
+Deployment: configured in Vercel project settings
 Supabase project ID: fgqyszbxzpmqzpqvdivx
 
 ---
@@ -22,8 +22,8 @@ Do this automatically without being asked. Keep entries accurate — remove stal
 
 ## What this project is
 
-BMERMS (Biomedical Engineering Resource Management System) is a hospital-level medical
-equipment asset management and decision-support system built for Menelik II Hospital,
+BMEDIS (Biomedical Equipment Management and Decision Intelligence System) is a hospital-level biomedical
+equipment management and decision intelligence system built for Menelik II Hospital,
 Addis Ababa, Ethiopia. BSc thesis project for the School of Biomedical Engineering at
 Addis Ababa University.
 
@@ -93,8 +93,8 @@ DONE:
   - DB migrations added: `00040_installation_requests.sql` and `00041_specification_requests.sql`.
 
 - Hospital Operations Calendar (2026-05-10):
-  - `/calendar` is a fully internal BMERMS calendar, not Google Calendar integration. No Google OAuth, external sync, or external event creation is implemented.
-  - Calendar events are normalized from BMERMS operational source tables: PM schedules, calibration records/requests, work orders, maintenance requests, training sessions/requests, installation requests/records, procurement requests, disposal requests/disposed assets, and dated specification requests where rows expose real dates.
+  - `/calendar` is a fully internal BMEDIS calendar, not Google Calendar integration. No Google OAuth, external sync, or external event creation is implemented.
+  - Calendar events are normalized from BMEDIS operational source tables: PM schedules, calibration records/requests, work orders, maintenance requests, training sessions/requests, installation requests/records, procurement requests, disposal requests/disposed assets, and dated specification requests where rows expose real dates.
   - Source tables remain the source of truth. Calendar "sync" means internal revalidation/refresh after module actions update source records.
   - Every event uses a real date field and routes to the exact source record when available: PM schedules, work orders, maintenance requests, installation requests, procurement drilldown, and specification request detail. Calibration, training, disposal, and installation records use contextual module routes where dedicated detail pages do not exist.
   - Viewer is read-only. Operational mutation happens on the source module pages, not directly inside the calendar.
@@ -130,8 +130,8 @@ DONE:
   - `/reports/[type]/page.tsx` upgraded with: per-report KPI cards (buildReportKPIs), Priority Findings section (buildPriorityFindings), extended charts with 3 chart types per key report (buildReportCharts now handles biomedical-operations, evaluation-demo, department-readiness, maintenance-performance (monthly trend bar added), pm-compliance (dept bar added), calibration-compliance (dept bar added), work-orders/technician-workload (technician hbar added), replacement-planning/decision-support-methodology (dept bar added), risk-fmea (dept bar added)).
   - Executive summary function (buildExecutiveSummary) uses actual loaded counts for each report type.
   - Methodology section shows report-specific explanation; replacement/decision-support reports show the prototype threshold amber notice.
-  - Export CSV now includes 4 metadata header rows (Report, Institution, Snapshot Generated, Source) before data headers. Filename pattern: bmerms-[slug]-snapshot-YYYY-MM-DD-HH-mm.csv.
-  - Export PDF (jsPDF — real PDF download) includes snapshot timestamp in header. Filename: bmerms-[slug]-snapshot-YYYY-MM-DD-HH-mm.pdf.
+  - Export CSV now includes 4 metadata header rows (Report, Institution, Snapshot Generated, Source) before data headers. Filename pattern: bmedis-[slug]-snapshot-YYYY-MM-DD-HH-mm.csv.
+  - Export PDF (jsPDF — real PDF download) includes snapshot timestamp in header. Filename: bmedis-[slug]-snapshot-YYYY-MM-DD-HH-mm.pdf.
   - "Print / Save as PDF" button uses window.print(). DashboardLayout sidebar/topbar/AssistantLauncher wrapped in `no-print` class. Print CSS added to globals.css: white bg, black text, hides nav/controls, preserves charts and tables. @page { size: A4; margin: 1.5cm }.
   - Report detail page has `no-print` export action row and filter row; a print-only header div (hidden on screen) shows title, institution, and timestamp.
   - Snapshot notice banner shows generation time and freshness state; amber variant when analytics refresh was unavailable.
@@ -541,7 +541,7 @@ NOT STARTED:
   /helpdesk                   Deprecated redirect alias → /requests
   /alerts                     Deprecated redirect alias → /notifications (legacy recommendation_flags still fuels notification triggers internally)
   /notifications              Unified Notification Center — bell drawer + full inbox; role-aware tabs (For Me, Critical, Tasks, Requests, Compliance, Stock & Procurement, System, Reviewed); filters; mark read/reviewed/dismiss; deep link to exact record
-  /chatbot                    BMERMS AI Copilot (all roles)
+  /chatbot                    BMEDIS Copilot (all roles)
   /documents                  Equipment document library
   /requests                   All open requests (maintenance + training + disposal + calibration)
   /installation               Installation records + commissioning
@@ -587,7 +587,7 @@ NOT STARTED:
 
 0.  Final system-page architecture after 2026-05-10 polish:
     - Sidebar groups: Command, Equipment, Work, Inventory, People, Lifecycle, Support, Reports, Administration.
-    - Helpdesk is removed from navigation; support flows now use Requests Hub, Alerts, Maintenance Requests, and BMERMS AI Chatbot.
+    - Helpdesk is removed from navigation; support flows now use Requests Hub, Alerts, Maintenance Requests, and BMEDIS Copilot.
     - Users & Roles lives inside Settings → Staff & Access. `/users` redirects there.
     - Security lives inside Settings → Security & Access. `/security` redirects there.
     - Decision Support Health is renamed Developer Lab. `/command/health` and `/decision-support-health` redirect to `/developer-lab`.
@@ -655,7 +655,8 @@ NOT STARTED:
 
 12. RESOLVED (2026-05-13) — Institution rename: every UI surface, seed SQL comment, and
     seed profile email now reads "Menelik II Hospital" / `@menelikii.gov.et`. Demo logins
-    map to `@bmerms-demo.local` per role. `St. Peter's Specialized Hospital` no longer
+    map to the legacy `@bmerms-demo.local` demo email domain per role. The legacy domain is retained
+    to avoid breaking seeded Supabase Auth users. `St. Peter's Specialized Hospital` no longer
     appears.
 
 13. RESOLVED (2026-05-04, migration 00023) — compute_replacement_priority_scores_all() implemented.
@@ -758,7 +759,7 @@ recompute_equipment_analytics() and recompute_all_equipment_analytics() in migra
 1. Offline/PWA is a separate feature from QR. QR remains complete through Phase 6; do not redesign QR, alter QR token strategy, or claim offline QR scan logging.
 2. Phase 1 implements the foundation only: manifest (`public/manifest.webmanifest`), custom service worker (`public/sw.js`), service-worker registration (`ServiceWorkerRegister`), offline fallback route (`/offline`), connectivity hook, dashboard banner/status pill, IndexedDB queue, sync-engine skeleton, server sync-event logging adaptation, role permission helper, Developer Lab diagnostics, and `documents/offline-capability-design.md`.
 3. The service worker caches only safe app-shell/static resources. It does not blindly cache authenticated dashboard pages, Supabase auth/API responses, sensitive reports, service-role data, or user-specific operational datasets.
-4. A device must open BMERMS once online before offline loading can work. Desktop/mobile PWA installation is optional; caching depends on service-worker registration during that first online visit.
+4. A device must open BMEDIS once online before offline loading can work. Desktop/mobile PWA installation is optional; caching depends on service-worker registration during that first online visit.
 5. Queue storage is IndexedDB (`src/lib/offline/db.ts`, `src/lib/offline/queue.ts`). New serious offline actions must use IndexedDB, not localStorage. Offline IDs use Web Crypto (`crypto.randomUUID` / `crypto.getRandomValues`), never `Math.random`.
 6. `src/types/offline.ts` defines action types and statuses. Online-only actions include procurement/disposal approval, QR token regeneration, user/settings/security changes, analytics refresh, final assignment/final closure, and replacement decisions.
 7. `runOfflineCapableAction()` queues only when offline or after likely network failure. Validation/server errors must not be queued blindly.
@@ -772,7 +773,7 @@ recompute_equipment_analytics() and recompute_all_equipment_analytics() in migra
 1. Central copilot RBAC added at `src/services/chatbot/copilot-rbac.ts`; chat loaders now understand developer/admin/bme_head/technician/store_user/department_head/department_user/viewer instead of shallow admin-only checks.
 2. Gemini output handling hardened in `assistant-response-pipeline.ts` and `gemini-provider.ts`: fenced JSON, embedded JSON, safe repairs, plain text, empty/error content, and schema mismatches normalize to valid `AssistantContent` with parser metadata.
 3. Deterministic structured fallback now uses retrieved system context when Gemini/provider/parser output fails, instead of dropping to generic unavailable copy when useful data exists.
-4. Migration `00047_copilot_usage_tracking.sql` adds `copilot_usage_events` and broadens `chat_messages.answer_basis` CHECK. Usage is app-tracked BMERMS Gemini usage, not Google AI Studio billing usage.
+4. Migration `00047_copilot_usage_tracking.sql` adds `copilot_usage_events` and broadens `chat_messages.answer_basis` CHECK. Usage is app-tracked BMEDIS Gemini usage, not Google AI Studio billing usage.
 5. Usage limit config lives in `src/services/chatbot/usage-limits.ts`; hard blocking is opt-in with `COPILOT_HARD_LIMIT_ENABLED=true`.
 6. AssistantPanel shows personal daily app-tracked usage. Developer Lab includes AI Copilot Diagnostics with smoke test, provider/usage/fallback/parser/telemetry summaries.
 7. Added planned/fallback capabilities: `qr_asset_context`, `offline_sync_status`, `report_summary`, `metric_debug`, `copilot_diagnostics`, and `usage_status`.
@@ -804,7 +805,7 @@ recompute_equipment_analytics() and recompute_all_equipment_analytics() in migra
 
 ## AI Copilot Quality/Grounding Pass (2026-05-16)
 
-1. The copilot answer pipeline is now tool/data-first: role + page/entity context → scoped BMERMS tool retrieval → deterministic answer candidate → Gemini naturalization → normalization → usefulness guard. BMERMS records and page/tool context are the source of truth; Gemini must not invent operational facts.
+1. The copilot answer pipeline is now tool/data-first: role + page/entity context → scoped BMEDIS tool retrieval → deterministic answer candidate → Gemini naturalization → normalization → usefulness guard. BMEDIS records and page/tool context are the source of truth; Gemini must not invent operational facts.
 2. Deterministic builders live in `src/services/chatbot/deterministic-answer-builders.ts` and cover operational priority, asset context, work orders, department readiness, stock blockers, viewer summaries, developer diagnostics, safe troubleshooting, reports, offline sync, QR asset context, and common concepts (RPN/MTTR/MTBF/PM compliance).
 3. `src/services/chatbot/response-usefulness-guard.ts` replaces/augments generic, failure-style, or low-evidence provider output when system evidence exists. Provider failure/hard-limit paths now prefer deterministic system-data answers before user-facing AI-unavailable copy.
 4. Classifier/page-aware routing was expanded for normal chat, page summaries, QR asset pages, reports, offline sync conflicts, stock blockers, prioritization, troubleshooting, and developer diagnostic phrasing.
@@ -904,3 +905,64 @@ recompute_equipment_analytics() and recompute_all_equipment_analytics() in migra
 00055 — Notifications subsystem: notification_events, notifications (status/category/priority CHECKs), notification_rule_logs, notification_deliveries (channel CHECK telegram/telegram_monitor), telegram_connections (unique per profile). RLS: own-row read/update for notifications; developer/admin/bme_head read diagnostics; privileged insert via server actions. Hot-path indexes on (recipient,status,created_at), (priority,created_at), (category,created_at), (source_type,source_id), (dedupe_key), (asset_id), (department_id), notification_events(event_type,created_at), notification_events(processing_status,created_at), notification_deliveries(notification_id), notification_deliveries(status,created_at), telegram_connections(profile_id)
 
 NEVER modify 00001–00055. Next migration must be 00056.
+
+---
+
+## Semifinal UI Foundation (2026-05-18, branch `ui_semifinal`)
+
+Foundation-only pass — no page rewrites. Establishes the shared design-system
+layer that Tier 1 page refreshes (Login, DashboardLayout, Command Center,
+Notifications, AI Copilot, QR landing, Equipment detail, Maintenance/WO, Offline
+sync, Reports) will adopt in a later pass.
+
+### New shared tokens — `src/lib/ui/`
+- `motion-presets.ts` — framer-motion `Variants`: `pageFade`, `slideUp`, `cardStagger`, `cardItem`, `drawerSlideLeft`, `drawerSlideRight`, `modalScale`, `tabCrossfade`, `subtleHover`, `attentionPulse`, `noMotion`; `transitions.{fast,default,slow,spring}`; `useMotionVariants(variants)` swaps in `noMotion` under `prefers-reduced-motion`.
+- `chart-theme.ts` — `useNivoTheme()` returns a `PartialTheme` (from `@nivo/theming`), the chart palette (`--chart-1..6`), and the semantic color map (`brand`, `success`, `warning`, `danger`, `info`, `muted`). Listens to the existing `bmedis-theme-change` event so Nivo retints in lock-step with `useChartTheme` (Chart.js). Includes `STATUS_COLOR_MAP`.
+- `role-theme.ts` — per-`RoleName` accent token set (`ROLE_ACCENTS`): `workspaceLabel`, `workspaceSubtitle`, `accent`, `accentSoft`, `accentText`, `allowDense`. Brand stays dominant; accent is visible only in role chips / workspace headers. Helper `getRoleAccent(role)` with viewer fallback.
+- `status-styles.ts` — `toneBadgeClass`, `toneRingClass`, `toneDotClass` keyed by `SemanticTone` (`neutral|info|success|warning|danger|brand|developer`). `statusTone(status)` maps common status strings (critical, overdue, blocked, low_stock, in_progress, completed, synced, etc.) to a tone. Complements existing `action-styles.ts` (button styling) — this file is for badge/chip/border styling.
+
+### New shared components — `src/components/ui/`
+- `LottiePlayer.tsx` — dynamic-import wrapper around `@lottiefiles/dotlottie-react` with HEAD-check fallback. Exports `LOTTIE_PATHS` (`empty`, `offline`, `success`, `notification`, `aiThinking`, `scan`). Falls back to caller-supplied fallback when asset is missing or reduced motion. No external CDN fetches.
+- `EmptyState.tsx` — enhanced in place. New `lottie?: LottieKey` prop (icon-fallback when asset is absent) and `compact?: boolean` variant. Existing call sites unchanged.
+- `AnimatedMetric.tsx` — react-spring-driven number counter. Honours `prefers-reduced-motion` (snaps to target). Use only for headline KPIs.
+- `SpringGauge.tsx` — react-spring circular gauge. `autoTone` picks tone from value (≥85 success, ≥60 brand, ≥40 warning, else danger). NaN/null → muted "no data" arc with `—` label.
+- `MotionCard.tsx` — framer-motion enhanced glass card. Drops into `cardStagger` containers; `subtleHover` lift (interactive default true). Does NOT replace `Card`.
+- `SectionHeader.tsx` — title + description + optional eyebrow + right-side action. Use above each block inside a page; `PageHeader` stays at the top.
+- `ResponsiveTableShell.tsx` — horizontal-scroll wrapper for wide tables on mobile. Optional caption and `bare` variant for tables already inside a `Card`.
+- `LoadingState.tsx` — region-level loading state with Lottie + spinner fallback. `Spinner`/`PageLoader` still cover button/page-level cases.
+- `RoleWorkspaceShell.tsx` — page-section shell that tags content with a role chip + subtitle from `ROLE_ACCENTS`, applies `pageFade` mount transition. Mount inside a page *after* `PageHeader`.
+
+### New chart shells — `src/components/charts/nivo/`
+- `NivoChartShell.tsx` — title/description/footer/action chrome with explicit `height`. Renders `EmptyState` (compact) when `isEmpty`, instead of a blank chart.
+- `BmedisBarChart.tsx` — Nivo `ResponsiveBar` with BMEDIS theme: 0.28 padding, 4px corners, grouped/stacked, horizontal/vertical, auto tick rotation when >6 categories.
+- `BmedisLineChart.tsx` — Nivo `ResponsiveLine`, default `monotoneX` curve, theme points (auto-hidden when total points >24), optional area fill. Data shape: `BmedisLineSeries`. Curve type is `LineCurveFactoryId` from `@nivo/core`.
+- `BmedisPieChart.tsx` — Nivo `ResponsivePie` donut (default `innerRadius=0.6`), padded arcs, optional arc/link labels, slim bottom legend. Pie does not accept `ariaLabel`, only `role="img"`.
+
+### Lottie assets
+- `public/lottie/README.md` documents the six expected filenames (`empty-state`, `offline`, `success`, `notification`, `ai-thinking`, `scan`) and the `.lottie` format requirement.
+- No binary assets ship in this pass — all consumers gracefully fall back to lucide icons via `LottiePlayer`'s missing-asset detection. Assets to be added before page-refresh pass.
+
+### Verification
+- `npx tsc --noEmit` ✅ clean
+- `npm run lint` ✅ clean (fixed `react-hooks/set-state-in-effect` by lifting reduced-motion detection into `useState` initialisers)
+- `npm run test:chatbot` ✅ 147/147
+- `npm run build` ✅ 54/54 routes built, no warnings
+
+### Out of scope this pass (deliberate)
+- No page rewrites. Login, Dashboard layout/topbar/sidebar, Command Center, Notifications, AI Copilot panel, QR landing, Equipment detail, Maintenance/WO, Offline sync, Reports — all unchanged.
+- No edits to existing pages' chart usage. Chart.js components in `src/components/charts/*.tsx` remain authoritative until pages opt into Nivo.
+- No GSAP integration yet. Reserved for login hero + command-center hero in the page-refresh pass.
+- No theme-provider migration. The custom `src/components/theme/ThemeProvider.tsx` stays in use; `next-themes` remains installed but unused. `src/providers/ThemeProvider.tsx` is unused dead code (untouched to avoid churn).
+- No mobile audit or role-decluttering of existing pages — both rely on the new shells (`RoleWorkspaceShell`, `ResponsiveTableShell`, `SectionHeader`) being adopted page by page.
+
+### Next-pass adoption order (Tier 1)
+1. Login (with GSAP biomedical-grid hero) + theme audit
+2. DashboardLayout / Topbar / Sidebar (`MotionCard` reveal, mobile drawer, AssistantPanel surface fix)
+3. Command Center (`RoleWorkspaceShell`, `AnimatedMetric`, `SpringGauge`, Nivo charts where data warrants)
+4. Notifications (drawer with `drawerSlideRight`, `EmptyState lottie='notification'`)
+5. AI Copilot panel (opaque surface, `LoadingState lottie='aiThinking'`)
+6. QR landing page (mobile-first, `MotionCard` entrance)
+7. Equipment detail (`SectionHeader`, gauge for reliability)
+8. Maintenance / Work Order detail
+9. Offline sync (`LoadingState`, conflict cards)
+10. Reports (Nivo charts where Chart.js doesn't clarify)

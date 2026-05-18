@@ -79,16 +79,16 @@ export function renderQrLabelToDataUrl(options: QrLabelCanvasOptions): string {
   ctx.lineWidth = 2;
   ctx.strokeRect(1, 1, width - 2, height - 2);
 
-  // BMERMS header bar.
+  // BMEDIS header bar.
   ctx.fillStyle = '#111111';
   ctx.fillRect(0, 0, width, 28);
   ctx.fillStyle = '#ffffff';
   ctx.font = '700 14px Inter, system-ui, sans-serif';
   ctx.textBaseline = 'middle';
-  ctx.fillText('BMERMS', 12, 14);
+  ctx.fillText('BMEDIS', 12, 14);
   ctx.textAlign = 'right';
   ctx.font = '500 11px Inter, system-ui, sans-serif';
-  ctx.fillText('Equipment QR', width - 12, 14);
+  ctx.fillText('Asset QR', width - 12, 14);
   ctx.textAlign = 'left';
 
   // Asset code (large).
@@ -149,7 +149,7 @@ export function sanitizeFileName(input: string): string {
 export function createQrLabelFileName(assetCode: string, assetName?: string | null): string {
   const base = assetCode ? sanitizeFileName(assetCode) : 'asset';
   const suffix = assetName ? `-${sanitizeFileName(assetName).slice(0, 24)}` : '';
-  return `bmerms-qr-${base}${suffix}.png`.replace(/-+\./, '.');
+  return `bmedis-qr-${base}${suffix}.png`.replace(/-+\./, '.');
 }
 
 export function triggerDataUrlDownload(dataUrl: string, filename: string): void {

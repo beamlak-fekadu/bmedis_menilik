@@ -36,10 +36,10 @@ export function useChartTheme() {
   useEffect(() => {
     const refresh = () => setTheme(readChartTheme());
     refresh();
-    window.addEventListener('bmerms-theme-change', refresh as EventListener);
+    window.addEventListener('bmedis-theme-change', refresh as EventListener);
     window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', refresh);
     return () => {
-      window.removeEventListener('bmerms-theme-change', refresh as EventListener);
+      window.removeEventListener('bmedis-theme-change', refresh as EventListener);
       window.matchMedia('(prefers-color-scheme: dark)').removeEventListener('change', refresh);
     };
   }, []);

@@ -327,7 +327,7 @@ function buildIcs(events: CalendarEvent[]) {
   const lines = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
-    'PRODID:-//BMERMS//Hospital Operations Calendar//EN',
+    'PRODID:-//BMEDIS//Hospital Operations Calendar//EN',
     'CALSCALE:GREGORIAN',
     ...events.flatMap((event) => {
       const start = event.startDate.replace(/-/g, '');
@@ -335,7 +335,7 @@ function buildIcs(events: CalendarEvent[]) {
       const end = format(endDate, 'yyyyMMdd');
       return [
         'BEGIN:VEVENT',
-        `UID:${event.id}@bmerms.internal`,
+        `UID:${event.id}@bmedis.internal`,
         `DTSTAMP:${format(new Date(), "yyyyMMdd'T'HHmmss'Z'")}`,
         `DTSTART;VALUE=DATE:${start}`,
         `DTEND;VALUE=DATE:${end}`,
@@ -491,7 +491,7 @@ export default function HospitalCalendarClient({ data }: { data: HospitalCalenda
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement('a');
     anchor.href = url;
-    anchor.download = `bmerms-calendar-${format(new Date(), 'yyyy-MM-dd')}.ics`;
+    anchor.download = `bmedis-calendar-${format(new Date(), 'yyyy-MM-dd')}.ics`;
     anchor.click();
     URL.revokeObjectURL(url);
   };

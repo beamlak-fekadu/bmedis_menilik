@@ -142,7 +142,7 @@ rank, score, and explain, but final operational decisions remain with the BME He
 
 ## Final Navigation and Administration Architecture
 
-- Helpdesk has been removed from primary navigation. `/helpdesk` redirects to `/requests`; support is handled by Requests Hub, Alerts, Maintenance Requests, and BMERMS AI Chatbot.
+- Helpdesk has been removed from primary navigation. `/helpdesk` redirects to `/requests`; support is handled by Requests Hub, Alerts, Maintenance Requests, and BMEDIS Copilot.
 - Users & Roles is embedded in `/settings?tab=staff-access` as Staff & Access. `/users` redirects there.
 - Security is embedded in `/settings?tab=security-access` as Security & Access. `/security` redirects there.
 - Decision Support Health is renamed Developer Lab at `/developer-lab`. `/command/health` and `/decision-support-health` redirect there.
@@ -191,7 +191,7 @@ The `/requests` page is the central intake and tracking layer for hospital reque
 
 The `/calendar` page is a fully internal hospital operations calendar. It is not Google Calendar integration and must not add Google OAuth, external sync, or external event creation.
 
-- Calendar events are normalized from BMERMS operational source tables with real date fields only.
+- Calendar events are normalized from BMEDIS operational source tables with real date fields only.
 - Sources include PM schedules, calibration records/requests, work orders, maintenance requests, training sessions/requests, installation requests/records, procurement requests, disposal workflow rows, and dated specification requests where available.
 - Source tables remain the source of truth. Calendar sync means internal revalidation after module actions update records.
 - Events route to exact records when routes exist, including PM schedules, work orders, maintenance requests, installation requests, procurement drilldown, and specification requests. Contextual module routes are used only where no exact detail page exists.

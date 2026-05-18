@@ -289,7 +289,7 @@ function formatRecoveryAssistant(capability: CapabilityId, requiredDecision: Cha
   return ensureUiSafeAssistant(
     {
       decision: 'limited_answer',
-      title: defaults.title === 'BMERMS Assistant' ? 'Response formatting issue' : defaults.title,
+      title: defaults.title === 'BMEDIS Copilot' ? 'Response formatting issue' : defaults.title,
       intelligence_mode: defaults.intelligence_mode,
       summary: DISPLAY_REPAIR_SUMMARY,
       key_findings: [],

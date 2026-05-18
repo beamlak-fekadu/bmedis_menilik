@@ -1,6 +1,6 @@
-# AGENTS.md — BMERMS Codebase Reference for AI Agents
+# AGENTS.md — BMEDIS Codebase Reference for AI Agents
 
-Last updated: 2026-05-17 (Notifications: in-app bell + drawer + /notifications page + Telegram delivery + Developer Lab diagnostics, /alerts redirected)
+Last updated: 2026-05-18 (System rebrand: BMEDIS — Biomedical Equipment Management and Decision Intelligence System)
 Branch: integration
 Supabase project ID: fgqyszbxzpmqzpqvdivx
 
@@ -200,7 +200,7 @@ supabase.rpc('refresh_decision_support_snapshots')
   VERCEL_URL (with https://) → http://localhost:3000. `buildAssetQrUrl(token)` returns the
   fully-qualified `/qr/a/<token>` URL or `null` for invalid tokens.
 - Render helper `src/utils/qr/render.ts`: `renderQrLabelToDataUrl({ qrSource, info })` composes the
-  full sticker (BMERMS header, code, name, dept, QR, scan instruction, login-required footer) on an
+  full sticker (BMEDIS header, code, name, dept, QR, scan instruction, login-required footer) on an
   offscreen canvas and returns a PNG data URL. `createQrLabelFileName(assetCode, name)`,
   `sanitizeFileName(input)`, and `triggerDataUrlDownload(dataUrl, filename)` are the supporting helpers.
 - Components: `src/components/qr/QrCodeImage.tsx`, `src/components/qr/QrLabelPreview.tsx`,
@@ -400,7 +400,7 @@ supabase.rpc('refresh_decision_support_snapshots')
 
 ### Final Navigation and Admin Architecture (session 17)
 1. Final sidebar groups are Command, Equipment, Work, Inventory, People, Lifecycle, Support, Reports, and Administration.
-2. Helpdesk is removed from navigation. `/helpdesk` redirects to `/requests`; support is covered by Requests Hub, Alerts, Maintenance Requests, and BMERMS AI Chatbot.
+2. Helpdesk is removed from navigation. `/helpdesk` redirects to `/requests`; support is covered by Requests Hub, Alerts, Maintenance Requests, and BMEDIS Copilot.
 3. Users & Roles is no longer a standalone nav item. `/users` redirects to `/settings?tab=staff-access`.
 4. Security is no longer a standalone nav item. `/security` redirects to `/settings?tab=security-access`.
 5. Decision Support Health is renamed Developer Lab. `/command/health` and `/decision-support-health` redirect to `/developer-lab`.
@@ -476,8 +476,8 @@ supabase.rpc('refresh_decision_support_snapshots')
 5. `buildPriorityFindings(type, rows): Finding[]` — up to 3-4 critical/warning/info findings per report type. Uses AlertTriangle for critical/warning, CheckCircle for info.
 6. `buildExecutiveSummary(type, rows): string` — uses real loaded counts per report type; never generic.
 7. New report type configs added: `evaluation-demo` (Equipment data, demo-focused title/columns), `decision-support-methodology` (replacement-planning data, methodology title/columns with formula labels like S₁..S₅).
-8. Export CSV (`src/utils/export.ts`): includes 4 metadata header rows (Report, Institution, Snapshot Generated, Source) before column headers. Filename: `bmerms-[slug]-snapshot-YYYY-MM-DD-HH-mm.csv`. `exportToCSV(data, columns, slug, { reportTitle, generatedAt })`.
-9. Export PDF (jsPDF real PDF): includes snapshot timestamp in header. Filename: `bmerms-[slug]-snapshot-YYYY-MM-DD-HH-mm.pdf`. `exportToPDF({ data, columns, filename, title, filters, generatedAt })`.
+8. Export CSV (`src/utils/export.ts`): includes 4 metadata header rows (Report, Institution, Snapshot Generated, Source) before column headers. Filename: `bmedis-[slug]-snapshot-YYYY-MM-DD-HH-mm.csv`. `exportToCSV(data, columns, slug, { reportTitle, generatedAt })`.
+9. Export PDF (jsPDF real PDF): includes snapshot timestamp in header. Filename: `bmedis-[slug]-snapshot-YYYY-MM-DD-HH-mm.pdf`. `exportToPDF({ data, columns, filename, title, filters, generatedAt })`.
 10. Print CSS: added to `src/app/globals.css` `@media print` block. Hides `.no-print`, `.assistant-launcher`, `.assistant-panel`. Sets white bg, black text. DashboardLayout sidebar and topbar wrapped in `no-print` class. Report export row and filter row have `no-print` class. Print-only header div has class `report-print-header hidden` (shown in print). Chart grids get class `report-chart-grid` (break-inside: avoid). KPI grids get `report-kpi-grid`.
 11. Settings consolidates profile/password, reference data, user management, role permissions, and security posture. BME Head can view governance sections; mutation controls remain developer/admin-gated.
 12. Developer Lab is under Command for developer/admin roles. Sensitivity tabs are simulation only unless a deliberate refresh/recompute action is run.
@@ -510,7 +510,7 @@ supabase.rpc('refresh_decision_support_snapshots')
 ### Hospital Operations Calendar Semantics
 1. `/calendar` is fully internal and must not be treated as Google Calendar integration.
 2. Do not add Google OAuth, external sync, external event creation, or Google token storage for the current internal calendar.
-3. Calendar events are normalized from BMERMS operational tables with real date fields only.
+3. Calendar events are normalized from BMEDIS operational tables with real date fields only.
 4. Current sources include PM schedules, calibration records/requests, work orders, maintenance requests, training sessions/requests, installation requests/records, procurement requests, disposal requests/disposed assets, and dated specification requests where the row has `required_by`.
 5. Source tables remain the source of truth; calendar sync means internal revalidation/refresh after module actions mutate source records.
 6. Every event should route to the exact source record when available: `/pm/schedules/[id]`, `/maintenance/work-orders/[id]`, `/maintenance/requests/[id]`, `/installation/requests/[id]`, `/command/drilldown/procurement/[id]`, `/documents/specification-requests/[id]`. Use contextual module routes only where no exact detail route exists.
@@ -1249,7 +1249,7 @@ One active corrective maintenance request per asset is the rule.
    - Diagnostics: Developer Lab `OfflineDiagnosticsPanel`
    - Design doc: `documents/offline-capability-design.md`
 3. Service worker strategy is intentionally conservative: cache `/offline`, manifest, icons, health probe, and static assets. Do not cache authenticated server-rendered pages, Supabase auth/API responses, service-role data, sensitive reports, or broad operational datasets in Phase 1.
-4. Offline works only after the device opens BMERMS once online. PC/phone installation is optional; the service worker registration is what enables the cached shell.
+4. Offline works only after the device opens BMEDIS once online. PC/phone installation is optional; the service worker registration is what enables the cached shell.
 5. New serious offline actions must use IndexedDB, not localStorage. Existing legacy `technician-queue.ts` remains only for the older work-order page and now uses Web Crypto IDs. Do not use `Math.random` for offline IDs.
 6. Queue actions are not marked synced without server confirmation. Failed/conflict actions must remain visible and retryable/reviewable; do not silently delete them.
 7. Phase 1 defines action categories but does not wire production workflows. Online-only actions include procurement/disposal approvals, QR token regeneration, user/settings/security changes, analytics refresh, final work-order closure/assignment, and replacement decisions.
@@ -1332,7 +1332,7 @@ One active corrective maintenance request per asset is the rule.
 1. Central copilot RBAC lives in `src/services/chatbot/copilot-rbac.ts`. Use it for chat/context decisions; do not reintroduce `roleNames[0]` or `admin`-only checks.
 2. Final copilot roles are developer, admin, bme_head, technician, department_head, department_user, store_user, and viewer. Developer gets raw diagnostics; admin/bme_head get operational breadth; department roles stay department-scoped; store_user stays logistics-scoped; viewer is read-only.
 3. Provider output normalization is in `src/services/chatbot/assistant-response-pipeline.ts`. It must always return schema-safe `AssistantContent` and parser metadata; malformed Gemini output must never reach the UI raw.
-4. App-tracked Gemini usage is stored in `copilot_usage_events` (migration `00047_copilot_usage_tracking.sql`). This is BMERMS request/token tracking, not the Google AI Studio billing dashboard. If provider tokens are absent, estimate tokens by character count and mark usage as estimated.
+4. App-tracked Gemini usage is stored in `copilot_usage_events` (migration `00047_copilot_usage_tracking.sql`). This is BMEDIS request/token tracking, not the Google AI Studio billing dashboard. If provider tokens are absent, estimate tokens by character count and mark usage as estimated.
 5. Usage limits live in `src/services/chatbot/usage-limits.ts`. Hard blocking is off unless `COPILOT_HARD_LIMIT_ENABLED=true`; otherwise show warnings only.
 6. Developer Lab has AI Copilot Diagnostics via `CopilotDiagnosticsSection`, `CopilotDiagnosticsClient`, and `src/actions/copilot-diagnostics.actions.ts`.
 7. AssistantPanel shows the signed-in user's own app-tracked usage status from `/api/chat` GET/POST responses.
@@ -1460,7 +1460,7 @@ One active corrective maintenance request per asset is the rule.
 
 ## AI Copilot Quality/Grounding Pass (2026-05-16)
 
-1. Copilot answers must follow the tool/data-first path: role + page/entity context → scoped BMERMS tools/services → deterministic answer candidate → Gemini naturalization → response normalization → usefulness guard. BMERMS data and current page context are the source of truth.
+1. Copilot answers must follow the tool/data-first path: role + page/entity context → scoped BMEDIS tools/services → deterministic answer candidate → Gemini naturalization → response normalization → usefulness guard. BMEDIS data and current page context are the source of truth.
 2. Deterministic builders live in `src/services/chatbot/deterministic-answer-builders.ts`; they cover operational priority, asset context, work orders, department readiness, stock blockers, viewer summaries, developer diagnostics, safe troubleshooting, reports, offline sync, QR asset context, and RPN/MTTR/MTBF/PM compliance concepts.
 3. `src/services/chatbot/response-usefulness-guard.ts` replaces generic/failure-style provider output with deterministic system-data answers when evidence exists. Gemini failure and hard-limit paths should prefer retrieved system context before showing unavailable copy.
 4. Classifier/page-aware routing now handles normal chat, "how do I use this page", page summaries, QR asset questions, reports, offline conflicts, stock blockers, priority questions, safe troubleshooting, and developer diagnostic phrasing.
@@ -1511,3 +1511,28 @@ One active corrective maintenance request per asset is the rule.
 9. Telegram eligibility (`isTelegramEligible`): always true for `priority='critical'|'high'`, `category='critical'`, or `source_type` in `{work_order.assigned, work_order.stock_blocked, offline_sync.conflict, spare_part.stockout, qr.label_needs_replacement, qr.revoked_scanned, system.test_notification, notification.rule_failed}`. Dismissed/reviewed rows are never sent regardless of priority.
 10. Tests: `src/services/notifications/__tests__/notifications.test.ts` — 14 tests covering deep-link routing, dedupe key stability, Telegram eligibility, chat-id masking, and Telegram body/monitor formatting. Run via `npx tsx --test src/services/notifications/__tests__/notifications.test.ts`. Chatbot test suite still passes 147/147.
 11. Security rules: bot token is server-only, chat ids are masked everywhere in UI, no service-role usage in the notification path, no patient data is sent over Telegram, Telegram never acts as authorization (links always open the app and re-authenticate), no client-side direct writes to `notifications` (server actions only).
+
+## Semifinal UI foundation (2026-05-18)
+
+1. This pass adds shared design-system primitives only. **No page rewrites.** Tier 1 pages (Login, DashboardLayout, Command Center, Notifications, AI Copilot, QR landing, Equipment detail, Maintenance/WO, Offline sync, Reports) are unchanged. Adoption is a separate later pass.
+2. New tokens (`src/lib/ui/`):
+   - `motion-presets.ts` — framer-motion `Variants` (`pageFade`, `slideUp`, `cardStagger`, `cardItem`, `drawerSlideLeft`/`Right`, `modalScale`, `tabCrossfade`, `subtleHover`, `attentionPulse`, `noMotion`), `transitions` (`fast`/`default`/`slow`/`spring`), `useMotionVariants` (reduced-motion swap to no-op variants).
+   - `chart-theme.ts` — `useNivoTheme()` reads BMEDIS CSS variables, returns a Nivo `PartialTheme` from `@nivo/theming` plus the chart palette and a semantic color map. Listens to the existing `bmedis-theme-change` window event for retint.
+   - `role-theme.ts` — `ROLE_ACCENTS` keyed by `RoleName`: workspace label + subtitle + accent triple + `allowDense`. `getRoleAccent(role)` with viewer fallback. Accents stay visible only in role chips / workspace headers; brand blue stays dominant.
+   - `status-styles.ts` — `toneBadgeClass`, `toneRingClass`, `toneDotClass` keyed by `SemanticTone`. `statusTone(status)` maps common status keywords. Complements existing `action-styles.ts` (button styling).
+3. New components (`src/components/ui/`): `AnimatedMetric` (react-spring number), `SpringGauge` (circular gauge with `autoTone`), `MotionCard` (framer-motion glass card), `SectionHeader`, `ResponsiveTableShell`, `LoadingState` (with Lottie + spinner fallback), `RoleWorkspaceShell`, `LottiePlayer` (dynamic-import + HEAD-check fallback, exports `LOTTIE_PATHS`). `EmptyState` extended with `lottie?: LottieKey` + `compact?: boolean`; existing callers unchanged.
+4. New chart shells (`src/components/charts/nivo/`): `NivoChartShell` (title/footer/action/empty-state chrome with explicit `height`), `BmedisBarChart`, `BmedisLineChart` (curve type `LineCurveFactoryId` from `@nivo/core`; data shape `BmedisLineSeries`), `BmedisPieChart` (donut, `role="img"` only — Nivo Pie does not accept `ariaLabel`). All wrapper components are theme-aware via `useNivoTheme`.
+5. Lottie assets are NOT yet provided. `LottiePlayer` HEAD-checks the asset path and renders the supplied fallback when missing or under `prefers-reduced-motion`. Expected filenames are documented in `public/lottie/README.md`. No external CDN fetches.
+6. Reduced motion: lift `prefers-reduced-motion` detection into `useState` initialisers (lint rule `react-hooks/set-state-in-effect`). `useMotionVariants(variants)` returns `noMotion` when reduced motion is requested.
+7. Verification: `npx tsc --noEmit` ✅, `npm run lint` ✅, `npm run test:chatbot` ✅ 147/147, `npm run build` ✅ 54/54 routes.
+8. Out of scope this pass — do not assume any of these are done:
+   - No edits to Topbar/Sidebar/DashboardLayout/AssistantPanel/NotificationBell/QR landing/Command Center.
+   - No Chart.js → Nivo migration on existing pages.
+   - No GSAP integration (reserved for login + command-center hero next pass).
+   - No theme-provider migration. Custom `src/components/theme/ThemeProvider.tsx` stays canonical; `src/providers/ThemeProvider.tsx` is unused dead code (do not delete in this pass).
+   - No mobile audit or role-decluttering of existing pages.
+9. Adoption rules:
+   - Inside a page: keep `PageHeader` at the top; mount `RoleWorkspaceShell` inside the page body for role-tailored sections; use `SectionHeader` above each block.
+   - For headline KPIs: `AnimatedMetric` + `SpringGauge` (compliance/readiness/risk). Don't animate every cell of a table.
+   - For charts: prefer Nivo wrappers via `NivoChartShell isEmpty={!data.length}` so empty states are consistent. Keep existing Chart.js charts in place until a page is explicitly migrated.
+   - For motion: wrap card grids with `motion.div variants={cardStagger}` and use `MotionCard` (which carries `cardItem` + `subtleHover`). Drawer/modal use `drawerSlideRight` / `modalScale`. Never animate critical-action buttons.

@@ -1,11 +1,11 @@
-const APP_SHELL_CACHE = 'bmerms-app-shell-v1';
-const STATIC_CACHE = 'bmerms-static-v1';
+const APP_SHELL_CACHE = 'bmedis-app-shell-v1';
+const STATIC_CACHE = 'bmedis-static-v1';
 const CURRENT_CACHES = [APP_SHELL_CACHE, STATIC_CACHE];
 
 const APP_SHELL_URLS = [
   '/offline',
   '/manifest.webmanifest',
-  '/icons/bmerms-icon.svg',
+  '/icons/bmedis-icon.svg',
   '/offline-health.txt',
 ];
 
@@ -15,7 +15,7 @@ function offlineHtml() {
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>BMERMS is offline</title>
+    <title>BMEDIS is offline</title>
     <style>
       body { margin: 0; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #eef2f8; color: #0b1220; }
       main { min-height: 100vh; display: grid; place-items: center; padding: 24px; text-align: center; }
@@ -28,7 +28,7 @@ function offlineHtml() {
   <body>
     <main>
       <section>
-        <h1>BMERMS is offline</h1>
+        <h1>BMEDIS is offline</h1>
         <p>Cached pages and queued actions may still be available.</p>
         <p>Reconnect to sync changes.</p>
         <a href="/offline">Open offline shell</a>

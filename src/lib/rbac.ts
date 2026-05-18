@@ -1,4 +1,4 @@
-// Central role-based access-control (RBAC) capability matrix for BMERMS.
+// Central role-based access-control (RBAC) capability matrix for BMEDIS.
 //
 // This module is the **single source of truth** for what each role can do.
 // Sidebar visibility, page-level guards, server-action checks, and Developer

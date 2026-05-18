@@ -1,4 +1,4 @@
-# BMERMS Copilot Architecture
+# BMEDIS Copilot Architecture
 
 Last updated: 2026-05-16
 
@@ -11,7 +11,7 @@ The orchestrator performs classification, entity resolution, role-scoped context
 The production answer path is:
 
 1. understand role and page/entity context
-2. retrieve scoped BMERMS data through services/tools
+2. retrieve scoped BMEDIS data through services/tools
 3. build a deterministic system-data answer candidate
 4. send Gemini the retrieved facts plus that deterministic skeleton
 5. normalize and validate provider output
@@ -66,17 +66,17 @@ If provider output fails but retrieved system context exists, the orchestrator u
 
 ## Answer Quality And Grounding
 
-`src/services/chatbot/deterministic-answer-builders.ts` builds natural, role-aware answer candidates from real BMERMS context. Builders cover operational priority, asset context, work orders, department readiness, stock blockers, viewer summaries, developer diagnostics, safe troubleshooting, reports, offline sync, QR asset context, and common conceptual explanations such as RPN/MTTR/MTBF/PM compliance.
+`src/services/chatbot/deterministic-answer-builders.ts` builds natural, role-aware answer candidates from real BMEDIS context. Builders cover operational priority, asset context, work orders, department readiness, stock blockers, viewer summaries, developer diagnostics, safe troubleshooting, reports, offline sync, QR asset context, and common conceptual explanations such as RPN/MTTR/MTBF/PM compliance.
 
-`src/services/chatbot/response-usefulness-guard.ts` checks provider output for generic filler, provider-failure copy, missing evidence, and uncertain language. When Gemini is weak but system evidence exists, the guard replaces or augments the response with the deterministic system-data candidate. This keeps BMERMS data as the source of truth while still letting Gemini improve tone and readability.
+`src/services/chatbot/response-usefulness-guard.ts` checks provider output for generic filler, provider-failure copy, missing evidence, and uncertain language. When Gemini is weak but system evidence exists, the guard replaces or augments the response with the deterministic system-data candidate. This keeps BMEDIS data as the source of truth while still letting Gemini improve tone and readability.
 
-The Gemini prompt now explicitly states that BMERMS records/tool context are authoritative, that Gemini must not invent operational facts, and that normal users should not see provider/parser/classifier/tool trace clutter. Developer diagnostic detail remains available through collapsed debug UI and Developer Lab telemetry.
+The Gemini prompt now explicitly states that BMEDIS records/tool context are authoritative, that Gemini must not invent operational facts, and that normal users should not see provider/parser/classifier/tool trace clutter. Developer diagnostic detail remains available through collapsed debug UI and Developer Lab telemetry.
 
 ## App-Tracked Gemini Usage
 
 Usage is tracked in `copilot_usage_events` from migration `00047_copilot_usage_tracking.sql`.
 
-This is app-tracked Gemini usage: requests made by BMERMS to Gemini. It is not the Google AI Studio billing dashboard. If Gemini returns token usage metadata, the app stores provider-reported token fields. If not, it estimates tokens with a documented approximation of one token per four characters and marks the row as `estimated`.
+This is app-tracked Gemini usage: requests made by BMEDIS to Gemini. It is not the Google AI Studio billing dashboard. If Gemini returns token usage metadata, the app stores provider-reported token fields. If not, it estimates tokens with a documented approximation of one token per four characters and marks the row as `estimated`.
 
 Limits are configured in `src/services/chatbot/usage-limits.ts`:
 

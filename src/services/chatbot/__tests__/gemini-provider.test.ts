@@ -309,7 +309,7 @@ test('text-mode raw JSON output is parsed into structured assistant fields', asy
 
   const jsonContent = JSON.stringify({
     decision: 'answer',
-    title: 'BMERMS Assistant',
+    title: 'BMEDIS Copilot',
     summary: 'I can help with tasks and work orders.',
     actions: ['Check your assigned queue.'],
     insights: ['Your department has pending PM.'],
@@ -357,7 +357,7 @@ test('text-mode fenced JSON output is parsed and fences are not shown in summary
   process.env.GEMINI_API_KEY = 'test-api-key';
 
   const fenced = `\`\`\`json
-{"decision":"answer","title":"BMERMS Assistant","summary":"Structured intro from fenced JSON.","recommendations":["Review PM status."],"follow_up_suggestions":["what's on my to-do?"],"answer_basis":"general_safe_guidance","confidence":"medium"}
+{"decision":"answer","title":"BMEDIS Copilot","summary":"Structured intro from fenced JSON.","recommendations":["Review PM status."],"follow_up_suggestions":["what's on my to-do?"],"answer_basis":"general_safe_guidance","confidence":"medium"}
 \`\`\``;
 
   globalThis.fetch = async () =>

@@ -33,7 +33,7 @@ test('phase 2 module context schema accepts bounded page-aware fields', () => {
   assert.equal(parsed.success, true);
 });
 
-test('route link builder emits exact BMERMS evidence routes', () => {
+test('route link builder emits exact BMEDIS evidence routes', () => {
   assert.deepEqual(copilotRoutes.equipment('asset-1'), { label: 'Open equipment', href: '/equipment/asset-1', type: 'equipment' });
   assert.deepEqual(copilotRoutes.workOrder('wo-1'), { label: 'Open work order', href: '/maintenance/work-orders/wo-1', type: 'work_order' });
   assert.deepEqual(copilotRoutes.maintenanceRequest('req-1'), { label: 'Open maintenance request', href: '/maintenance/requests/req-1', type: 'maintenance_request' });

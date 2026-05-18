@@ -1,6 +1,7 @@
 -- documents/validate-demo-role-mapping.sql
 --
--- Read-only validation for the seven BMERMS demo login accounts.
+-- Read-only validation for the seven BMEDIS demo login accounts.
+-- Legacy demo email domain retained to avoid breaking seeded Supabase Auth users.
 -- Paste into the Supabase SQL Editor. No INSERT / UPDATE / DELETE.
 --
 -- Use this to confirm the mapping after running
@@ -19,7 +20,7 @@
 --
 --   email                              | full_name           | job_title                       | role            | department
 --   -----------------------------------+---------------------+---------------------------------+-----------------+-----------------------
---   developer@bmerms-demo.local        | BMERMS Developer    | Thesis Developer                | developer       | (none)
+--   developer@bmerms-demo.local        | BMEDIS Developer    | Thesis Developer                | developer       | (none)
 --   bme.head@bmerms-demo.local         | Ermias Tadesse      | Biomedical Engineering Head     | bme_head        | (none)
 --   technician@bmerms-demo.local       | Hanna Gebremedhin   | Clinical Engineer               | technician      | (none)
 --   department.head@bmerms-demo.local  | Tigist Worku        | ICU Head                        | department_head | Intensive Care Unit
@@ -49,7 +50,7 @@ WITH demo_accounts AS (
   SELECT *
   FROM (
     VALUES
-      ('developer@bmerms-demo.local',       'BMERMS Developer',    'Thesis Developer',                  'developer',       NULL::text),
+      ('developer@bmerms-demo.local',       'BMEDIS Developer',    'Thesis Developer',                  'developer',       NULL::text),
       ('bme.head@bmerms-demo.local',        'Ermias Tadesse',      'Biomedical Engineering Head',       'bme_head',        NULL::text),
       ('technician@bmerms-demo.local',      'Hanna Gebremedhin',   'Clinical Engineer',                 'technician',      NULL::text),
       ('department.head@bmerms-demo.local', 'Tigist Worku',        'ICU Head',                          'department_head', 'Intensive Care Unit'),

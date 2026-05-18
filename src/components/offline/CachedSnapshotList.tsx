@@ -59,7 +59,7 @@ export default function CachedSnapshotList() {
       <div className="mt-6 rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-1)] p-4 text-left text-sm text-[var(--text-muted)]">
         <p className="font-medium text-[var(--foreground)]">No cached views on this device yet.</p>
         <p className="mt-1 text-xs">
-          When this device is online, open BMERMS pages relevant to your role so they can be cached for offline use.
+          When this device is online, open BMEDIS pages relevant to your role so they can be cached for offline use.
         </p>
       </div>
     );

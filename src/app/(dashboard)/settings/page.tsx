@@ -614,7 +614,7 @@ export default function SettingsPage() {
         <Card>
           <CardHeader><CardTitle>User Creation</CardTitle></CardHeader>
           <CardContent className="text-sm text-[var(--text-muted)]">
-            Auth account creation is not implemented inside BMERMS. New login users must be created through Supabase Auth, then linked to a profile. Profile-only staff remain visible for assignment, departments, training, and audit context.
+            Auth account creation is not implemented inside BMEDIS. New login users must be created through Supabase Auth, then linked to a profile. Profile-only staff remain visible for assignment, departments, training, and audit context.
           </CardContent>
         </Card>
       </div>
@@ -785,7 +785,7 @@ export default function SettingsPage() {
           <Card>
             <CardHeader><CardTitle>Hospital Profile</CardTitle></CardHeader>
             <CardContent className="space-y-3 text-sm">
-              <div className="flex justify-between gap-4"><span className="text-[var(--text-muted)]">System name</span><span>BMERMS</span></div>
+              <div className="flex justify-between gap-4"><span className="text-[var(--text-muted)]">System name</span><span>BMEDIS</span></div>
               <div className="flex justify-between gap-4"><span className="text-[var(--text-muted)]">Implementation site</span><span>Menelik II Hospital</span></div>
               <div className="flex justify-between gap-4"><span className="text-[var(--text-muted)]">Implementation mode</span><Badge variant="info">Thesis/demo validation</Badge></div>
               <div className="flex justify-between gap-4"><span className="text-[var(--text-muted)]">Current role</span><span>{formatRoleName(primaryRole)}</span></div>

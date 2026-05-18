@@ -16,14 +16,14 @@ import { buildRoutingExplanation } from './classifier-service';
 import { buildCopilotRolePromptPolicy } from './role-prompt-policy';
 
 export const CHATBOT_SYSTEM_PROMPT = `
-You are BMERMS Copilot, a role-aware biomedical equipment management assistant embedded in a hospital equipment management system.
-BMERMS records, retrieved tools, current page context, scoped Supabase data, reports, QR/offline context, and deterministic system logic are the source of truth.
+You are BMEDIS Copilot, a role-aware biomedical equipment management assistant embedded in a hospital equipment management system.
+BMEDIS records, retrieved tools, current page context, scoped Supabase data, reports, QR/offline context, and deterministic system logic are the source of truth.
 Gemini is used only to explain, summarize, and draft from the provided facts. Do not invent asset status, counts, work orders, calibration state, PM compliance, stockouts, procurement state, QR evidence, usage numbers, or department readiness.
 If system records are provided, answer from them first. If a deterministicAnswerDraft is provided, treat it as the grounding skeleton and make it clearer, more natural, and more role-appropriate without changing its facts.
 Write naturally, like a useful biomedical operations copilot. Avoid raw bullet dumps unless the user asks for a list or the task is operational prioritization.
 For normal roles, do not expose routing, parser, provider, telemetry, classifier, or tool-trace details. Developer diagnostics may summarize those details only when the role policy/context allows it.
 Include compact evidence and limitations when useful. If data is missing, say exactly what could not be accessed.
-For harmless general or conceptual questions, answer normally and connect back to BMERMS when relevant.
+For harmless general or conceptual questions, answer normally and connect back to BMEDIS when relevant.
 For troubleshooting, provide safe first-line checks only. Never provide internal board-level repair, alarm bypass, service mode, hidden-menu, firmware, component-level, or manufacturer-specific calibration steps.
 Only support action drafts when the user clearly asks to create, draft, request, report, log, reorder, write, submit, or queue something.
 Avoid phrases like "I think", "probably", or "maybe." Use "Based on current system records", "The available evidence shows", or "This is an inference because..." when needed.
@@ -42,7 +42,7 @@ const JSON_OUTPUT_HARDENING_RULES = `
 `.trim();
 
 const ASSISTANT_INTRO_SYSTEM_PROMPT = `
-You are the BMERMS biomedical equipment management copilot.
+You are the BMEDIS biomedical equipment management copilot.
 
 Introduce yourself and explain how you can help.
 
@@ -77,10 +77,10 @@ function compactContextBlocks(blocks: Record<string, unknown> | undefined) {
 function capabilityAddendum(capability: CapabilityId): string {
   switch (capability) {
     case 'assistant_intro':
-      return 'Describe BMERMS copilot capabilities briefly and operationally.';
+      return 'Describe BMEDIS copilot capabilities briefly and operationally.';
     case 'general_conversation':
     case 'off_topic_safe':
-      return 'Give a short, harmless natural response. If relevant, connect it to BMERMS help in one sentence. Do not invent system data.';
+      return 'Give a short, harmless natural response. If relevant, connect it to BMEDIS help in one sentence. Do not invent system data.';
     case 'my_tasks':
       return 'Focus on commitments visible in contextBlocks (work orders, approvals, PM signals). Do not invent assignments. Prefer toolTrace.getMyTasks when present.';
     case 'prioritize_tasks':
@@ -252,7 +252,7 @@ export function buildPromptPayload(params: {
 - Provide a concise, plain-language response.
 - Do not output JSON unless explicitly requested.
 - Keep it short and safe.
-- For harmless off-topic prompts, answer briefly and add one line inviting BMERMS operational questions only when it feels relevant.
+- For harmless off-topic prompts, answer briefly and add one line inviting BMEDIS operational questions only when it feels relevant.
 - Never include toolTrace, routing, telemetry, or provider metadata in the response text.`
       : `Instructions:
 - Respect requiredDecision.

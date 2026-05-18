@@ -254,7 +254,7 @@ export async function sendTelegramTestMessageAction(): Promise<ActionResult> {
     if (!monitorChatId) {
       return { success: false, error: 'TELEGRAM_DEV_MONITOR_CHAT_ID is not configured.' };
     }
-    const text = `BMERMS Telegram test — ${new Date().toLocaleString()}\nThis confirms the bot can reach the monitor chat.`;
+    const text = `BMEDIS Telegram test — ${new Date().toLocaleString()}\nThis confirms the bot can reach the monitor chat.`;
     const result = await sendTelegramMessage(monitorChatId, text);
     if (!result.ok) {
       return {

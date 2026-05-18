@@ -10,7 +10,7 @@ const BASE_SUGGESTIONS = ['What should I do first?', 'Show only urgent items', '
 
 const DEFAULTS: Record<CapabilityId, CapabilityResponseDefaults> = {
   assistant_intro: {
-    title: 'BMERMS Assistant',
+    title: 'BMEDIS Copilot',
     intelligence_mode: 'standard',
     follow_up_suggestions: [
       'What is on my to-do list?',
@@ -135,7 +135,7 @@ const DEFAULTS: Record<CapabilityId, CapabilityResponseDefaults> = {
     follow_up_suggestions: ['Show safe first-line troubleshooting', 'Summarize this equipment', 'What should I escalate?'],
   },
   general_system_fallback: {
-    title: 'BMERMS Assistant',
+    title: 'BMEDIS Copilot',
     intelligence_mode: 'standard',
     follow_up_suggestions: ['What is on my to-do list?', 'Summarize this work order', 'What alerts need attention?'],
   },

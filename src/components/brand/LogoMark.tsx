@@ -16,7 +16,7 @@ interface LogoMarkProps {
 }
 
 /**
- * BMERMS Stacked logomark.
+ * BMEDIS Stacked logomark.
  *
  * Three concentric-offset rounded squares — bottom, middle, top — with a soft
  * gradient on the top layer and a glass highlight that gives the mark depth
@@ -32,7 +32,7 @@ export default function LogoMark({
   mono,
   c1 = '#2563eb',
   c2 = '#7c3aed',
-  title = 'BMERMS',
+  title = 'BMEDIS',
   className,
 }: LogoMarkProps) {
   const rawId = useId();
@@ -123,7 +123,7 @@ export default function LogoMark({
 export function LogoLockup({
   size = 28,
   mono,
-  name = 'BMERMS',
+  name = 'BMEDIS',
   color,
   gap = 10,
   className,

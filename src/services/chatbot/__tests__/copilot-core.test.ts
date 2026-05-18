@@ -79,7 +79,7 @@ test('summarize this equipment maps to summarize_equipment', () => {
   assert.equal(c.capability, 'summarize_equipment');
 });
 
-test('domain classifier covers final BMERMS operational intents', () => {
+test('domain classifier covers final BMEDIS operational intents', () => {
   const cases = [
     ['What open work orders need attention?', 'work_order_status', 'prioritize_tasks'],
     ['Which preventive maintenance tasks are overdue?', 'preventive_maintenance', 'explain_pm_status'],

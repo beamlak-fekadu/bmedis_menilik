@@ -1,6 +1,6 @@
 // Server-side store/logistics metric aggregator for the Store User role.
 //
-// Every value returned here is computed from real loaded rows in the BMERMS
+// Every value returned here is computed from real loaded rows in the BMEDIS
 // database. No generated narrative, no AI-derived prose, no fake counts.
 // Returns null where a metric truly cannot be computed.
 //
@@ -259,7 +259,7 @@ export async function fetchStoreReceivingQueue(supabase: Supabase): Promise<Stor
 
 // Issue queue: approved maintenance requests that may need parts issued
 // downstream. We deliberately surface this as a "handoff" queue, not as a
-// strict approved-issue-request queue, because the BMERMS schema does not
+// strict approved-issue-request queue, because the BMEDIS schema does not
 // currently model item issue approvals as a distinct workflow.
 export interface StoreIssueRow {
   id: string;

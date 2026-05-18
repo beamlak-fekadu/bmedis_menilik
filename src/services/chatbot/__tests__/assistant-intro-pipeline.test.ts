@@ -13,7 +13,7 @@ test('assistant_intro classifier hits expected capability for greetings/help', (
 
 test('assistant_intro deterministic payload is clean and local', () => {
   const assistant = buildDeterministicAssistantIntro();
-  assert.equal(assistant.title, 'BMERMS Assistant');
+  assert.equal(assistant.title, 'BMEDIS Copilot');
   assert.equal(assistant.decision, 'answer');
   assert.equal(assistant.answer_basis, 'system_capabilities');
   assert.equal((assistant.proactive_signals ?? []).length, 0);

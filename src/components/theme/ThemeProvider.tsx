@@ -56,7 +56,7 @@ function applyThemeToDocument(resolvedTheme: ResolvedTheme) {
   const root = document.documentElement;
   root.dataset.theme = resolvedTheme;
   root.classList.toggle('dark', resolvedTheme === 'dark');
-  window.dispatchEvent(new CustomEvent('bmerms-theme-change', { detail: { resolvedTheme } }));
+  window.dispatchEvent(new CustomEvent('bmedis-theme-change', { detail: { resolvedTheme } }));
   return resolvedTheme;
 }
 

@@ -1,4 +1,4 @@
-// Analytics Truth Map — BMERMS decision-support metrics
+// Analytics Truth Map — BMEDIS decision-support metrics
 //
 // This file documents each metric's formula, source, refresh mechanism,
 // live/snapshot/sandbox status, pages where it appears, and known limitations.

@@ -15,7 +15,7 @@ export default async function OfflineSyncEvidenceReportPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Offline Sync Evidence Report"
+        title="BMEDIS Offline Sync Evidence Report"
         description="Server-side snapshot of offline activity, conflicts, and resolutions. Generated from the offline_sync_events table; no synthetic data."
         breadcrumbs={[{ label: 'Reports', href: '/reports' }, { label: 'Offline Sync Evidence' }]}
         actions={<Badge variant="purple">Phase 3 Evidence</Badge>}

@@ -1,8 +1,8 @@
 -- ============================================================================
--- BMERMS RLS / RBAC Audit SQL
+-- BMEDIS RLS / RBAC Audit SQL
 -- ----------------------------------------------------------------------------
 -- Run these queries in the Supabase SQL Editor (or psql) against the linked
--- BMERMS project. They are read-only and safe to run any number of times.
+-- BMEDIS project. They are read-only and safe to run any number of times.
 --
 -- Each section prints what it found and a short note on what to look at if
 -- the result is non-empty. None of these queries make assumptions about the

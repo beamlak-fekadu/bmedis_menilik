@@ -222,7 +222,7 @@ function baseAssistant(
     evidence_used: uniqueStrings(patch.evidence_used ?? evidenceLabels(params), 10),
     links: patch.links ?? routeLinks(params.blocks, params.moduleContext),
     limitations: uniqueStrings([...(patch.limitations ?? []), ...limitations(params.blocks)], 6),
-    data_freshness: patch.data_freshness ?? (recordBacked ? 'Current scoped BMERMS records and page context.' : undefined),
+    data_freshness: patch.data_freshness ?? (recordBacked ? 'Current scoped BMEDIS records and page context.' : undefined),
     source_tables: uniqueStrings(patch.source_tables ?? sourceTables(params.blocks), 12),
     action_drafts: [],
   };
@@ -778,7 +778,7 @@ function buildConceptualAnswer(params: DeterministicAnswerParams): AssistantCont
   if (/\bmtbf\b/.test(msg)) {
     return baseAssistant(params, {
       summary:
-        'MTBF means Mean Time Between Failures. In BMERMS it helps show reliability: lower MTBF means the equipment is failing more often and may need closer PM, user training review, or replacement evidence review.',
+        'MTBF means Mean Time Between Failures. In BMEDIS it helps show reliability: lower MTBF means the equipment is failing more often and may need closer PM, user training review, or replacement evidence review.',
       recommended_actions: ['Use MTBF with failure history, PM compliance, criticality, and replacement score evidence.'],
       answer_basis: 'general_safe_guidance',
       confidence: 'high',
@@ -796,7 +796,7 @@ function buildConceptualAnswer(params: DeterministicAnswerParams): AssistantCont
   if (/\bavailability\b/.test(msg)) {
     return baseAssistant(params, {
       summary:
-        'Availability describes the proportion of time equipment is practically ready for service. In reliability terms, BMERMS uses MTBF and MTTR together: higher MTBF and lower MTTR usually improve availability.',
+        'Availability describes the proportion of time equipment is practically ready for service. In reliability terms, BMEDIS uses MTBF and MTTR together: higher MTBF and lower MTTR usually improve availability.',
       key_findings: ['Formula meaning: Availability = MTBF / (MTBF + MTTR).', 'It is a readiness signal, not a guarantee that a device is clinically safe for use today.'],
       recommended_actions: ['Review downtime, open work orders, PM, calibration, and current condition before treating availability as operational clearance.'],
       answer_basis: 'general_safe_guidance',
@@ -823,10 +823,10 @@ function buildConceptualAnswer(params: DeterministicAnswerParams): AssistantCont
       confidence: 'high',
     });
   }
-  if (/\bhow do i use (this page|this system|bmerms)\b|\bwhat can (this|the) page do\b/.test(msg)) {
+  if (/\bhow do i use (this page|this system|bmedis)\b|\bwhat can (this|the) page do\b/.test(msg)) {
     const page = pageContext(params.blocks, params.moduleContext);
     return baseAssistant(params, {
-      summary: `Use this page to review ${text(page.pageLabel || page.moduleLabel, 'the current BMERMS workflow')}, check the visible evidence, and open the exact linked records before taking action. I can summarize what is visible here or explain which record to open next.`,
+      summary: `Use this page to review ${text(page.pageLabel || page.moduleLabel, 'the current BMEDIS workflow')}, check the visible evidence, and open the exact linked records before taking action. I can summarize what is visible here or explain which record to open next.`,
       recommended_actions: ['Ask “summarize this page” for a quick readout.', 'Ask “what should I prioritize?” when you need an operational order.', 'Ask “help me report this problem” only when you want a draft action.'],
       answer_basis: hasRecordData(params) ? 'system_data' : 'system_capabilities',
       confidence: 'medium',
@@ -934,7 +934,7 @@ export function buildDeterministicAnswerCandidate(params: DeterministicAnswerPar
     return baseAssistant(params, {
       summary: page.pageSummary
         ? `Based on the current page context, ${page.pageSummary}`
-        : `Based on the current page context, this is ${text(page.selectedRecordLabel || page.pageLabel || page.moduleLabel, 'the active BMERMS page')}. I can summarize the visible records, explain the evidence, or help draft an action when you explicitly ask for one.`,
+        : `Based on the current page context, this is ${text(page.selectedRecordLabel || page.pageLabel || page.moduleLabel, 'the active BMEDIS page')}. I can summarize the visible records, explain the evidence, or help draft an action when you explicitly ask for one.`,
       key_findings: [
         page.selectedRecordLabel ? `Selected record: ${page.selectedRecordLabel}.` : '',
         ...(page.pageDataHints ?? []).slice(0, 4),

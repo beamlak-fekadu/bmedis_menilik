@@ -1,6 +1,6 @@
 // Edge Function: refresh-analytics-snapshot
 //
-// Trigger BMERMS analytics snapshot refresh via a single HTTP POST.
+// Trigger BMEDIS analytics snapshot refresh via a single HTTP POST.
 // Intended callers: developer/admin dashboard buttons, scheduled jobs
 // (pg_cron / scheduled triggers), or one-shot ops calls.
 //

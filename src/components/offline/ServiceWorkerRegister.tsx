@@ -19,7 +19,7 @@ export default function ServiceWorkerRegister() {
       .register('/sw.js', { scope: '/' })
       .then((registration) => {
         if (cancelled) return;
-        window.dispatchEvent(new CustomEvent('bmerms:service-worker-ready', {
+        window.dispatchEvent(new CustomEvent('bmedis:service-worker-ready', {
           detail: {
             scope: registration.scope,
             active: !!registration.active,

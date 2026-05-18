@@ -1,11 +1,11 @@
 import type { OfflineQueueRecord } from '@/types/offline';
 
-export const OFFLINE_DB_NAME = 'bmerms-offline';
+export const OFFLINE_DB_NAME = 'bmedis-offline';
 export const OFFLINE_DB_VERSION = 2;
 export const OFFLINE_ACTION_STORE = 'offline_actions';
 export const OFFLINE_READ_CACHE_STORE = 'offline_read_cache';
-export const OFFLINE_QUEUE_CHANGED_EVENT = 'bmerms:offline-queue-changed';
-export const OFFLINE_CACHE_CHANGED_EVENT = 'bmerms:offline-cache-changed';
+export const OFFLINE_QUEUE_CHANGED_EVENT = 'bmedis:offline-queue-changed';
+export const OFFLINE_CACHE_CHANGED_EVENT = 'bmedis:offline-cache-changed';
 
 let dbPromise: Promise<IDBDatabase> | null = null;
 

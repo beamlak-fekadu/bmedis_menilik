@@ -2,7 +2,7 @@
 -- Migration 00055 — Notifications subsystem
 -- =============================================================================
 --
--- Adds a first-class notification engine for BMERMS:
+-- Adds a first-class notification engine for BMEDIS:
 --   - notification_events:        normalized raw event records (one row per
 --                                 source event, before fan-out)
 --   - notifications:              user-facing in-app notifications

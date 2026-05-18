@@ -45,7 +45,7 @@ export default async function SyncReviewCenterPage() {
       />
       <PageHeader
         title="Sync Review Center"
-        description="Review, retry, and resolve offline actions that need attention across this hospital's BMERMS devices."
+        description="Review, retry, and resolve offline actions that need attention across this hospital's BMEDIS devices."
         actions={<Badge variant="purple">{isDeveloper ? 'Developer' : 'BME Head / Admin'}</Badge>}
       />
       <p className="rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-800 dark:text-amber-200">

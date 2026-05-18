@@ -1,4 +1,4 @@
-# BMERMS Demo Workflow QA
+# BMEDIS Demo Workflow QA
 
 Last updated: 2026-05-11
 
@@ -103,7 +103,7 @@ Scope: app hardening and demo readiness with seed data. Real Menelik II Hospital
 ## Hospital Operations Calendar Semantics
 
 1. `/calendar` is fully internal and is not Google Calendar integration.
-2. Events are normalized from real BMERMS date fields across PM, calibration, maintenance, training, installation, procurement, disposal, and dated specification requests.
+2. Events are normalized from real BMEDIS date fields across PM, calibration, maintenance, training, installation, procurement, disposal, and dated specification requests.
 3. Source workflow tables remain the source of truth; internal sync means route revalidation/refresh after source actions.
 4. Exact records open exact routes where available. Contextual module routes are reserved for sources without detail pages.
 5. Viewer is read-only. External Google Calendar sync is intentionally deferred because it requires OAuth, token storage, duplicate prevention, and conflict handling.

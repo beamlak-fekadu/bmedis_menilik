@@ -6,7 +6,7 @@ Branch: QR
 
 ## Purpose
 
-Establish a stable, secure, database-backed QR identity for every BMERMS
+Establish a stable, secure, database-backed QR identity for every BMEDIS
 equipment asset, and provide BME Head / Admin / Developer the tools to
 generate, preview, download, print, and track per-asset QR labels.
 
@@ -25,7 +25,7 @@ exportable. The planned six-phase QR implementation is now complete.
 > QR code identifies the asset. It does NOT grant permission.
 
 The token is a *lookup key* attached to a physical asset. Whoever scans it is
-still subject to BMERMS authentication and the RBAC capability matrix. A
+still subject to BMEDIS authentication and the RBAC capability matrix. A
 revoked token or an unauthenticated session must not be able to view
 sensitive operational data just because the URL was scanned.
 
@@ -183,7 +183,7 @@ per-asset detail paths. Each writes an `audit_logs` row via
 ### Phase 2 (this update)
 
 - **Equipment detail `QrIdentityPanel`** now embeds:
-  - A `QrLabelPreview` rendering the actual printable sticker (BMERMS
+  - A `QrLabelPreview` rendering the actual printable sticker (BMEDIS
     header, asset code, name, department, QR image, scan instruction,
     "Login required" footer) once a token exists.
   - The QR URL path (`/qr/a/<qr_token>`) displayed with the honest hint
@@ -191,7 +191,7 @@ per-asset detail paths. Each writes an `audit_logs` row via
     the unimplemented route.
   - **Download PNG** — composes the sticker on an offscreen canvas via
     `renderQrLabelToDataUrl` (using a hidden `QRCodeCanvas` ref as the QR
-    image source) and triggers a `bmerms-qr-<asset_code>-<name>.png`
+    image source) and triggers a `bmedis-qr-<asset_code>-<name>.png`
     download. No automatic *Mark Printed*.
   - **Print Label** — opens `/equipment/qr-labels?assets=<id>&print=1` in a
     new tab; the bulk client recognises `print=1` and calls
@@ -295,7 +295,7 @@ malformed." Revoked rows return no asset payload, only the
 
 Common top section (all authenticated, non-restricted callers):
 
-- BMERMS QR Scan header with logo + signed-in user + primary role badge.
+- BMEDIS QR Scan header with logo + signed-in user + primary role badge.
 - Asset code (large), asset name, condition badge, department, category +
   criticality, QR label status, QR generated date.
 - Mandatory note: *"QR identifies the asset. Access and actions depend on
@@ -432,7 +432,7 @@ role, what can I safely see or do right now?"*
 
 The common authenticated, non-restricted page includes:
 
-- Header: BMERMS QR Scan, signed-in user, job title/role, online QR note,
+- Header: BMEDIS QR Scan, signed-in user, job title/role, online QR note,
   and the mandatory security note that QR identifies the asset while role
   controls access/actions.
 - Asset identity card: asset code, name, department, category, condition,

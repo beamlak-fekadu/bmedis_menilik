@@ -220,7 +220,7 @@ export default function DepartmentEquipmentOverview() {
           <CloudOff className="mt-0.5 h-4 w-4 shrink-0" />
           <div>
             <p className="font-medium">Offline cached data — may be stale</p>
-            <p className="mt-0.5">Last synced {formatCacheAge(cacheState.cachedAt).toLowerCase()}. Reconnect to refresh from BMERMS.</p>
+            <p className="mt-0.5">Last synced {formatCacheAge(cacheState.cachedAt).toLowerCase()}. Reconnect to refresh from BMEDIS.</p>
             {cacheState.isStale && <p className="mt-0.5">Cache exceeds the 12-hour freshness window; verify before acting on critical workflows.</p>}
           </div>
         </div>

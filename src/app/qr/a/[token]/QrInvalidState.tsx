@@ -16,7 +16,7 @@ const COPY: Record<Variant, { title: string; body: string; icon: typeof AlertOct
   invalid: {
     title: 'Invalid QR code',
     body:
-      'This QR label does not look like a valid BMERMS equipment tag. The code may be damaged or copied from another system.',
+      'This QR label does not look like a valid BMEDIS equipment tag. The code may be damaged or copied from another system.',
     icon: AlertOctagon,
   },
   not_found: {
@@ -59,7 +59,7 @@ export default function QrInvalidState({ variant, authenticated }: Props) {
             </Link>
           ) : (
             <Link href="/login">
-              <Button variant="outline" className="w-full">Log in to BMERMS</Button>
+              <Button variant="outline" className="w-full">Log in to BMEDIS</Button>
             </Link>
           )}
         </div>

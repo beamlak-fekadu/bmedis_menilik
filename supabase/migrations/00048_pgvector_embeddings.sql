@@ -53,7 +53,7 @@ CREATE INDEX IF NOT EXISTS idx_equipment_document_chunks_document
     ON equipment_document_chunks(equipment_document_id);
 
 COMMENT ON TABLE equipment_document_chunks IS
-    'Embeddable text chunks extracted from rows in equipment_documents. One uploaded document fans out to N chunks. Used by the BMERMS copilot semantic search; never the source of truth for the underlying document.';
+    'Embeddable text chunks extracted from rows in equipment_documents. One uploaded document fans out to N chunks. Used by the BMEDIS copilot semantic search; never the source of truth for the underlying document.';
 
 -- =============================================================================
 -- 4. IVFFlat cosine indexes

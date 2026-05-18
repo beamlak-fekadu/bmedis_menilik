@@ -45,8 +45,8 @@ export default function QrLabelPreview({
       data-qr-label
     >
       <div className="-mx-3 -mt-3 mb-2 flex items-center justify-between bg-black px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-white sm:-mx-4 sm:-mt-4 sm:px-4">
-        <span>BMERMS</span>
-        <span className="opacity-80">Equipment QR</span>
+        <span>BMEDIS</span>
+        <span className="opacity-80">Asset QR</span>
       </div>
       <div className="mb-2">
         <p className={`font-bold leading-tight ${tokens.code}`}>{assetCode}</p>

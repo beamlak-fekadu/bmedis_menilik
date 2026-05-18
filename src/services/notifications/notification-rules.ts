@@ -841,7 +841,7 @@ async function rule_system(
             category: 'system',
             title: 'Test notification',
             message:
-              pickPayloadString(event.payload ?? {}, 'message') ?? 'This is a test notification from BMERMS.',
+              pickPayloadString(event.payload ?? {}, 'message') ?? 'This is a test notification from BMEDIS.',
             priority: event.priority,
           }),
         );
@@ -853,7 +853,7 @@ async function rule_system(
             category: 'system',
             title: 'Test notification',
             message:
-              pickPayloadString(event.payload ?? {}, 'message') ?? 'This is a test notification from BMERMS.',
+              pickPayloadString(event.payload ?? {}, 'message') ?? 'This is a test notification from BMEDIS.',
             priority: event.priority,
           }),
         );

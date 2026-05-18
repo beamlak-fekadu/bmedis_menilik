@@ -1,4 +1,4 @@
-# BMERMS Offline Capability Design
+# BMEDIS Offline Capability Design
 
 Last updated: 2026-05-16  
 Status: Offline Capability Phase 2 implemented
@@ -16,16 +16,16 @@ Status: Offline Capability Phase 2 implemented
 
 ## Core Principle
 
-Offline mode helps internet-constrained hospitals keep working, but it must not weaken data integrity. BMERMS must never show fake live data, mark a queued action as synced before server confirmation, silently overwrite a server record, bypass RBAC/RLS, or approve major decisions offline.
+Offline mode helps internet-constrained hospitals keep working, but it must not weaken data integrity. BMEDIS must never show fake live data, mark a queued action as synced before server confirmation, silently overwrite a server record, bypass RBAC/RLS, or approve major decisions offline.
 
-The device must open BMERMS once while online before offline loading can work. That first visit registers `/sw.js` and caches the app shell/offline fallback. A device that has never opened BMERMS online cannot load the app offline.
+The device must open BMEDIS once while online before offline loading can work. That first visit registers `/sw.js` and caches the app shell/offline fallback. A device that has never opened BMEDIS online cannot load the app offline.
 
 ## Phase 1 Implementation
 
 ### PWA and Service Worker
 
 - Manifest: `public/manifest.webmanifest`
-- App icon: `public/icons/bmerms-icon.svg`
+- App icon: `public/icons/bmedis-icon.svg`
 - Service worker: `public/sw.js`
 - Registration: `src/components/offline/ServiceWorkerRegister.tsx`
 - Health probe: `public/offline-health.txt`
@@ -38,13 +38,13 @@ The service worker does **not** blindly cache authenticated dashboard pages, Sup
 ### PC and Phone Behavior
 
 PC:
-- Chrome/Edge opens BMERMS online once.
+- Chrome/Edge opens BMEDIS online once.
 - The service worker installs and caches the offline shell.
 - During a later outage, a navigation reload falls back to the cached offline shell.
 - Desktop PWA install is optional; caching does not depend on install.
 
 Phone:
-- Mobile browser opens BMERMS online once.
+- Mobile browser opens BMEDIS online once.
 - The service worker installs and caches the offline shell.
 - Add to Home Screen is optional.
 - A later offline navigation can show the cached offline shell. QR scan routes still require online server resolution for real asset data in Phase 1.
@@ -295,8 +295,8 @@ Offline QR scan logging is not implemented in Phase 2.
 
 ## Manual Validation Checklist
 
-1. Load BMERMS online and confirm `/sw.js` registers in browser DevTools.
-2. Confirm `bmerms-app-shell-v1` exists in Cache Storage.
+1. Load BMEDIS online and confirm `/sw.js` registers in browser DevTools.
+2. Confirm `bmedis-app-shell-v1` exists in Cache Storage.
 3. Turn off the network and reload a route; confirm the offline shell loads.
 4. Confirm the topbar indicator and banner switch to Offline.
 5. Confirm Developer Lab diagnostics show service worker/cache/queue status.
@@ -639,8 +639,8 @@ The store-existence guard (`if (!db.objectStoreNames.contains(...))`)
 makes the upgrade idempotent — if the user has a fresh install at v2,
 both stores are created in a single upgrade pass.
 
-Manual verification (deferred to QA): open BMERMS on a device that ran
+Manual verification (deferred to QA): open BMEDIS on a device that ran
 Phase 1 or Phase 2, queue an action, upgrade to Phase 3, and confirm the
 queued action survives. Web Inspector → Storage → IndexedDB
-→ `bmerms-offline` should show both `offline_actions` and `offline_read_cache`
+→ `bmedis-offline` should show both `offline_actions` and `offline_read_cache`
 stores after upgrade.

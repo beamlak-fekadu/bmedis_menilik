@@ -1,7 +1,7 @@
 // Server-side executive metric aggregator for the Viewer role.
 //
 // Every value returned by this file is computed from real loaded rows in the
-// BMERMS database. No generated narrative, no AI-derived text, no fake values.
+// BMEDIS database. No generated narrative, no AI-derived text, no fake values.
 // If a metric cannot be computed (e.g. view missing) the helper returns
 // `null` and the UI must render an explicit "Not available" state.
 //

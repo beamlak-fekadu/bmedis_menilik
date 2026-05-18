@@ -1,5 +1,5 @@
 /**
- * Server-side BMERMS copilot retrieval tools (Supabase-backed, no vectors for structured data).
+ * Server-side BMEDIS copilot retrieval tools (Supabase-backed, no vectors for structured data).
  */
 export { getCurrentUserContext } from './get-current-user-context';
 export { getMyTasks } from './get-my-tasks';

@@ -52,14 +52,14 @@ interface ReportSection {
 const sections: ReportSection[] = [
   {
     id: 'lifecycle',
-    title: 'Asset Lifecycle',
+    title: 'BMEDIS Asset Lifecycle',
     description:
       'Evidence for asset inventory, FMEA risk analysis, replacement planning, and end-of-life management.',
     sectionColor: 'border-amber-500/30 bg-amber-500/5',
     reports: [
       {
         type: 'equipment',
-        title: 'Inventory and Asset Condition Report',
+        title: 'BMEDIS Inventory and Asset Condition Report',
         purpose:
           'Complete asset inventory with department, category, condition, cost, warranty status, and age distribution.',
         evidenceTag: 'Inventory',
@@ -70,7 +70,7 @@ const sections: ReportSection[] = [
       },
       {
         type: 'qr-coverage',
-        title: 'QR Coverage Evidence Report',
+        title: 'BMEDIS QR Coverage Evidence Report',
         purpose:
           'QR readiness by asset: missing tokens, generated, printed, attached, needs-replacement, and revoked label states.',
         evidenceTag: 'QR readiness',
@@ -82,7 +82,7 @@ const sections: ReportSection[] = [
       },
       {
         type: 'qr-scan-evidence',
-        title: 'QR Scan Evidence Report',
+        title: 'BMEDIS QR Scan Evidence Report',
         purpose:
           'Authenticated QR scan activity by asset, scanner role, department, online status, and action evidence.',
         evidenceTag: 'Scan activity',
@@ -94,7 +94,7 @@ const sections: ReportSection[] = [
       },
       {
         type: 'risk-fmea',
-        title: 'Risk and FMEA Report',
+        title: 'BMEDIS Risk and FMEA Report',
         purpose:
           'RPN scores, severity, occurrence, detectability, risk bands, assignment methods, and risk driver explanations.',
         evidenceTag: 'Risk evidence',
@@ -105,7 +105,7 @@ const sections: ReportSection[] = [
       },
       {
         type: 'replacement-planning',
-        title: 'Replacement Planning Report',
+        title: 'BMEDIS Replacement Planning Report',
         purpose:
           'RPI rankings, component scores, lifecycle drivers, and prototype decision thresholds (≥0.70 strong, 0.55–0.69 review).',
         evidenceTag: 'Lifecycle',
@@ -116,7 +116,7 @@ const sections: ReportSection[] = [
       },
       {
         type: 'disposal-lifecycle',
-        title: 'Disposal / Lifecycle Report',
+        title: 'BMEDIS Disposal / Lifecycle Report',
         purpose:
           'Disposal requests, approvals, disposal methods, completed disposals, and end-of-life evidence.',
         evidenceTag: 'End of life',
@@ -129,14 +129,14 @@ const sections: ReportSection[] = [
   },
   {
     id: 'compliance',
-    title: 'Maintenance & Compliance',
+    title: 'BMEDIS Maintenance & Compliance',
     description:
       'Corrective maintenance, work order execution, preventive maintenance compliance, and calibration accuracy evidence.',
     sectionColor: 'border-emerald-500/30 bg-emerald-500/5',
     reports: [
       {
         type: 'maintenance-performance',
-        title: 'Maintenance Performance Report',
+        title: 'BMEDIS Maintenance Performance Report',
         purpose:
           'Maintenance events, MTTR, repair costs, recurring failures, and corrective maintenance reliability evidence.',
         evidenceTag: 'Reliability',
@@ -148,7 +148,7 @@ const sections: ReportSection[] = [
       },
       {
         type: 'work-orders',
-        title: 'Work Order Execution Report',
+        title: 'BMEDIS Work Order Execution Report',
         purpose:
           'Open, assigned, in-progress, on-hold, and completed work orders with outcome, technician, and evidence trace.',
         evidenceTag: 'Execution trace',
@@ -159,7 +159,7 @@ const sections: ReportSection[] = [
       },
       {
         type: 'pm-compliance',
-        title: 'PM Compliance Report',
+        title: 'BMEDIS PM Compliance Report',
         purpose:
           'PM schedules, completion status, overdue tasks, skipped/deferred evidence, and department-level compliance.',
         evidenceTag: 'Compliance',
@@ -171,7 +171,7 @@ const sections: ReportSection[] = [
       },
       {
         type: 'calibration-compliance',
-        title: 'Calibration Compliance Report',
+        title: 'BMEDIS Calibration Compliance Report',
         purpose:
           'Calibration records, pass/fail/adjusted results, next due dates, overdue assets, and safety follow-up evidence.',
         evidenceTag: 'Accuracy control',
@@ -185,14 +185,14 @@ const sections: ReportSection[] = [
   },
   {
     id: 'resources',
-    title: 'Resource, Procurement & People',
+    title: 'BMEDIS Resource, Procurement & People',
     description:
       'Stock control, procurement pipeline, training competency, technician workload, and governance audit evidence.',
     sectionColor: 'border-violet-500/30 bg-violet-500/5',
     reports: [
       {
         type: 'spare-parts-stock',
-        title: 'Spare Parts and Stock Control Report',
+        title: 'BMEDIS Spare Parts and Stock Control Report',
         purpose:
           'Part inventory, stockout alerts, low-stock items, procurement recovery status, and work-order blockers.',
         evidenceTag: 'Stock control',
@@ -203,7 +203,7 @@ const sections: ReportSection[] = [
       },
       {
         type: 'procurement-pipeline',
-        title: 'Procurement Pipeline Report',
+        title: 'BMEDIS Procurement Pipeline Report',
         purpose:
           'Procurement requests across all pipeline stages, delays, priority, expected delivery, and delivery evidence.',
         evidenceTag: 'Pipeline',
@@ -214,7 +214,7 @@ const sections: ReportSection[] = [
       },
       {
         type: 'training-competency',
-        title: 'Training and Equipment Safety Report',
+        title: 'BMEDIS Training and Equipment Safety Report',
         purpose:
           'Training sessions, pending requests, attendees, equipment category linkage, and competency evidence.',
         evidenceTag: 'Competency',
@@ -225,7 +225,7 @@ const sections: ReportSection[] = [
       },
       {
         type: 'technician-workload',
-        title: 'Technician Workload Report',
+        title: 'BMEDIS Technician Workload Report',
         purpose:
           'Assignment load by technician, completion evidence, critical task distribution, and workload balance.',
         evidenceTag: 'Assignment',
@@ -236,7 +236,7 @@ const sections: ReportSection[] = [
       },
       {
         type: 'offline-sync-evidence',
-        title: 'Offline Sync Evidence Report',
+        title: 'BMEDIS Offline Sync Evidence Report',
         purpose:
           'Server-side offline activity, conflicts, retries, resolutions, and role/user breakdown from offline_sync_events.',
         evidenceTag: 'Offline activity',
@@ -349,7 +349,7 @@ export default function ReportsPage() {
     return (
       <div className="space-y-8">
         <PageHeader
-          title="Department Reports"
+          title="BMEDIS Department Reports"
           description="Department-scoped reports. Open a report to download a PDF snapshot."
         />
         <div className="flex items-start gap-3 rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-2)] px-4 py-3">
@@ -383,7 +383,7 @@ export default function ReportsPage() {
     return (
       <div className="space-y-8">
         <PageHeader
-          title="Reports"
+          title="BMEDIS Reports"
           description="Stock, procurement, and store-relevant reports. Open a report to download a PDF snapshot of the current data."
         />
         <div className="flex items-start gap-3 rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-2)] px-4 py-3">
@@ -419,7 +419,7 @@ export default function ReportsPage() {
     return (
       <div className="space-y-8">
         <PageHeader
-          title="Reports"
+          title="BMEDIS Reports"
           description="Read-only management report center. Open a report to download a PDF snapshot of the current operational data."
         />
         <div className="flex items-start gap-3 rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-2)] px-4 py-3">
@@ -472,7 +472,7 @@ export default function ReportsPage() {
         quickPrompts={['Summarize hospital readiness.', 'Prepare management report notes.', 'Which report should I use for this evidence?']}
       />
       <PageHeader
-        title="Reports"
+        title="BMEDIS Reports"
         description="Evidence and export center for biomedical engineering operations, decision support, compliance, lifecycle, inventory, training, audit, and thesis demonstration reporting."
       />
 

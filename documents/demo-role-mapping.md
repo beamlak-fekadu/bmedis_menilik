@@ -1,10 +1,12 @@
-# BMERMS Demo Role Mapping
+# BMEDIS Demo Role Mapping
 
-This document is the canonical reference for the seven BMERMS demo login accounts: which Supabase Auth email maps to which profile name, job title, department, and **database role**.
+This document is the canonical reference for the seven BMEDIS demo login accounts: which Supabase Auth email maps to which profile name, job title, department, and **database role**.
+
+Legacy demo email domain retained to avoid breaking seeded Supabase Auth users.
 
 ## Job titles vs database roles
 
-BMERMS keeps two distinct concepts separate:
+BMEDIS keeps two distinct concepts separate:
 
 - **Job title** — free-text label stored in `profiles.job_title`. **This is what the top-right of the app shows under the user's name.** It does not control authorization. Examples: `Clinical Engineer`, `Radiologist`, `ICU Head`, `Biomedical Engineering Head`, `Medical Director`, `Thesis Developer`, `Medical Equipment Store Officer`.
 - **Database role** — one of exactly eight lowercase role names stored in `roles.name` and assigned via `user_roles`. **This controls authorization** (RLS policies, `useRole()` hook, settings/admin UI):
@@ -26,7 +28,7 @@ BMERMS keeps two distinct concepts separate:
 
 | Email | Profile `full_name` | Profile `job_title` (UI display) | Database role (authorization) | Department |
 |---|---|---|---|---|
-| `developer@bmerms-demo.local` | BMERMS Developer | Thesis Developer | `developer` | — |
+| `developer@bmerms-demo.local` | BMEDIS Developer | Thesis Developer | `developer` | — |
 | `bme.head@bmerms-demo.local` | Ermias Tadesse | Biomedical Engineering Head | `bme_head` | — |
 | `technician@bmerms-demo.local` | Hanna Gebremedhin | Clinical Engineer | `technician` | — |
 | `department.head@bmerms-demo.local` | Tigist Worku | ICU Head | `department_head` | Intensive Care Unit |
@@ -52,7 +54,7 @@ Raw lowercase role names (`bme_head`, `department_head`, `store_user`) must not 
 
 | Line 1 | Line 2 |
 |---|---|
-| BMERMS Developer | Thesis Developer |
+| BMEDIS Developer | Thesis Developer |
 | Ermias Tadesse | Biomedical Engineering Head |
 | Hanna Gebremedhin | Clinical Engineer |
 | Tigist Worku | ICU Head |

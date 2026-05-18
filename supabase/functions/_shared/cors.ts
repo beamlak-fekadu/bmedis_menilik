@@ -1,4 +1,4 @@
-// Shared CORS helpers for BMERMS Supabase Edge Functions.
+// Shared CORS helpers for BMEDIS Supabase Edge Functions.
 //
 // The dashboard origin is read from ALLOWED_ORIGIN at deploy time (falls
 // back to '*' for local development). Browsers calling from the Next.js

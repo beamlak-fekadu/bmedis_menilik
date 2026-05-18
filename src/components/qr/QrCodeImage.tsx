@@ -1,6 +1,6 @@
 'use client';
 
-// Shared QR code renderer for the BMERMS app.
+// Shared QR code renderer for the BMEDIS app.
 // Wraps qrcode.react with consistent error-correction level (M is enough for
 // printed labels and keeps the QR small) and a quiet zone margin.
 

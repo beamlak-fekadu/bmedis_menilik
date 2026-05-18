@@ -1,4 +1,4 @@
-// Canonical action button style classes for row-level actions across BMERMS
+// Canonical action button style classes for row-level actions across BMEDIS
 // operational pages. Use these instead of one-off color choices so every page
 // agrees on what red/amber/emerald/brand "means".
 //

@@ -1,6 +1,7 @@
 -- documents/apply-demo-role-mapping.sql
 --
--- Apply the BMERMS demo login mapping to a LIVE Supabase database
+-- Apply the BMEDIS demo login mapping to a LIVE Supabase database
+-- Legacy demo email domain retained to avoid breaking seeded Supabase Auth users.
 -- (Supabase SQL Editor, paste-and-run).
 --
 -- This script is transactional and idempotent — safe to re-run.
@@ -36,7 +37,7 @@
 --
 --   email                              | full_name           | job_title                       | role            | department
 --   -----------------------------------+---------------------+---------------------------------+-----------------+-----------------------
---   developer@bmerms-demo.local        | BMERMS Developer    | Thesis Developer                | developer       | (none)
+--   developer@bmerms-demo.local        | BMEDIS Developer    | Thesis Developer                | developer       | (none)
 --   bme.head@bmerms-demo.local         | Ermias Tadesse      | Biomedical Engineering Head     | bme_head        | (none)
 --   technician@bmerms-demo.local       | Hanna Gebremedhin   | Clinical Engineer               | technician      | (none)
 --   department.head@bmerms-demo.local  | Tigist Worku        | ICU Head                        | department_head | Intensive Care Unit
@@ -79,7 +80,7 @@ WITH demo_accounts AS (
   SELECT *
   FROM (
     VALUES
-      ('developer@bmerms-demo.local',       'BMERMS Developer',    'Thesis Developer',                  'developer',       NULL::text),
+      ('developer@bmerms-demo.local',       'BMEDIS Developer',    'Thesis Developer',                  'developer',       NULL::text),
       ('bme.head@bmerms-demo.local',        'Ermias Tadesse',      'Biomedical Engineering Head',       'bme_head',        NULL::text),
       ('technician@bmerms-demo.local',      'Hanna Gebremedhin',   'Clinical Engineer',                 'technician',      NULL::text),
       ('department.head@bmerms-demo.local', 'Tigist Worku',        'ICU Head',                          'department_head', 'icu'),
@@ -201,7 +202,7 @@ WITH demo_accounts AS (
   SELECT *
   FROM (
     VALUES
-      ('developer@bmerms-demo.local',       'BMERMS Developer',    'Thesis Developer',                  'developer',       NULL::text),
+      ('developer@bmerms-demo.local',       'BMEDIS Developer',    'Thesis Developer',                  'developer',       NULL::text),
       ('bme.head@bmerms-demo.local',        'Ermias Tadesse',      'Biomedical Engineering Head',       'bme_head',        NULL::text),
       ('technician@bmerms-demo.local',      'Hanna Gebremedhin',   'Clinical Engineer',                 'technician',      NULL::text),
       ('department.head@bmerms-demo.local', 'Tigist Worku',        'ICU Head',                          'department_head', 'Intensive Care Unit'),

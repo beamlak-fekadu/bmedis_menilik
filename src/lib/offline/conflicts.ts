@@ -17,7 +17,7 @@ export type ConflictInput = {
 };
 
 const RECOMMENDED_RESOLUTION_BY_TYPE: Record<OfflineConflictType, string> = {
-  asset_missing: 'Confirm the asset still exists in BMERMS, then discard or recreate the action against the current asset.',
+  asset_missing: 'Confirm the asset still exists in BMEDIS, then discard or recreate the action against the current asset.',
   asset_deleted: 'Asset was removed before sync. Discard the local action; create a new record against an active asset if still needed.',
   department_scope_mismatch: 'Asset is outside your department scope. Discard the action or ask BME Head to act on it instead.',
   duplicate_open_request: 'An open request already exists for this asset. Open the existing record and discard the duplicate draft.',

@@ -471,7 +471,7 @@ function buildReportCharts(type: string, rows: Row[]): ChartSpec[] {
       const statusCounts = countBy(rows, (r) => formatLabel(String(r.status ?? 'unknown')));
       return [
         {
-          title: 'Condition Distribution',
+          title: 'BMEDIS Condition Distribution',
           description: 'Asset count by operational condition',
           type: 'doughnut',
           labels: conditionCounts.map(([l]) => l),
@@ -479,7 +479,7 @@ function buildReportCharts(type: string, rows: Row[]): ChartSpec[] {
           colors: conditionCounts.map(([l]) => statusColor(l.toLowerCase())),
         },
         {
-          title: 'Assets per Department',
+          title: 'BMEDIS Assets per Department',
           description: 'Equipment count by hospital department',
           type: 'bar',
           labels: deptCounts.map(([l]) => l),
@@ -487,7 +487,7 @@ function buildReportCharts(type: string, rows: Row[]): ChartSpec[] {
           colors: deptCounts.map(() => 'rgb(37,99,235)'),
         },
         {
-          title: 'Assets by Category',
+          title: 'BMEDIS Assets by Category',
           description: 'Equipment count by equipment category',
           type: 'bar',
           labels: catCounts.map(([l]) => l),
@@ -495,7 +495,7 @@ function buildReportCharts(type: string, rows: Row[]): ChartSpec[] {
           colors: catCounts.map((_, i) => PALETTE[i % PALETTE.length]),
         },
         {
-          title: 'Lifecycle Status',
+          title: 'BMEDIS Lifecycle Status',
           description: 'Assets grouped by lifecycle/registration status',
           type: 'doughnut',
           labels: statusCounts.map(([l]) => l),
@@ -522,7 +522,7 @@ function buildReportCharts(type: string, rows: Row[]): ChartSpec[] {
       ).slice(0, 10);
       return [
         {
-          title: 'QR Readiness Distribution',
+          title: 'BMEDIS QR Readiness Distribution',
           description: 'Label readiness state computed from equipment QR fields',
           type: 'doughnut',
           labels: readinessCounts.map(([l]) => l),
@@ -532,7 +532,7 @@ function buildReportCharts(type: string, rows: Row[]): ChartSpec[] {
         ...(deptNeeds.length > 0
           ? [
               {
-                title: 'QR Follow-Up by Department',
+                title: 'BMEDIS QR Follow-Up by Department',
                 description: 'Assets that are not yet ready to scan by department',
                 type: 'bar' as const,
                 labels: deptNeeds.map(([l]) => l),
@@ -555,7 +555,7 @@ function buildReportCharts(type: string, rows: Row[]): ChartSpec[] {
       }).slice(0, 10);
       return [
         {
-          title: 'Scans by Role',
+          title: 'BMEDIS Scans by Role',
           description: 'Authenticated QR scan records by role snapshot',
           type: 'doughnut',
           labels: roleCounts.map(([l]) => l),
@@ -563,7 +563,7 @@ function buildReportCharts(type: string, rows: Row[]): ChartSpec[] {
           colors: roleCounts.map((_, i) => PALETTE[i % PALETTE.length]),
         },
         {
-          title: 'Scans by Online Status',
+          title: 'BMEDIS Scans by Online Status',
           description: 'Recorded online status values on QR scan rows',
           type: 'doughnut',
           labels: statusCounts.map(([l]) => l),
@@ -573,7 +573,7 @@ function buildReportCharts(type: string, rows: Row[]): ChartSpec[] {
         ...(deptCounts.length > 0
           ? [
               {
-                title: 'Scans by Department',
+                title: 'BMEDIS Scans by Department',
                 description: 'QR scan records grouped by asset department',
                 type: 'bar' as const,
                 labels: deptCounts.map(([l]) => l),
@@ -610,7 +610,7 @@ function buildReportCharts(type: string, rows: Row[]): ChartSpec[] {
       const monthEntries = Object.entries(monthCounts).slice(-8);
       return [
         {
-          title: 'Events by Type',
+          title: 'BMEDIS Events by Type',
           description: 'Maintenance event count by type',
           type: 'doughnut',
           labels: typeCounts.map(([l]) => l),
@@ -618,7 +618,7 @@ function buildReportCharts(type: string, rows: Row[]): ChartSpec[] {
           colors: typeCounts.map((_, i) => PALETTE[i % PALETTE.length]),
         },
         {
-          title: 'Service Cost by Event Type (ETB)',
+          title: 'BMEDIS Service Cost by Event Type (ETB)',
           description: 'Cumulative service cost per event type',
           type: 'bar',
           labels: Object.keys(costByType),
@@ -628,7 +628,7 @@ function buildReportCharts(type: string, rows: Row[]): ChartSpec[] {
         ...(monthEntries.length > 1
           ? [
               {
-                title: 'Monthly Maintenance Events',
+                title: 'BMEDIS Monthly Maintenance Events',
                 description: 'Event count trend over time',
                 type: 'bar' as const,
                 labels: monthEntries.map(([l]) => l),
@@ -653,7 +653,7 @@ function buildReportCharts(type: string, rows: Row[]): ChartSpec[] {
       }).slice(0, 8);
       return [
         {
-          title: 'PM Status Distribution',
+          title: 'BMEDIS PM Status Distribution',
           description: 'PM schedule rows by status',
           type: 'doughnut',
           labels: statusCounts.map(([l]) => l),
@@ -661,7 +661,7 @@ function buildReportCharts(type: string, rows: Row[]): ChartSpec[] {
           colors: statusCounts.map(([l]) => statusColor(l.toLowerCase())),
         },
         {
-          title: 'Assignment Coverage',
+          title: 'BMEDIS Assignment Coverage',
           description: 'Assigned vs unassigned PM tasks',
           type: 'doughnut',
           labels: ['Assigned', 'Unassigned'],
@@ -671,7 +671,7 @@ function buildReportCharts(type: string, rows: Row[]): ChartSpec[] {
         ...(deptCounts.length > 1
           ? [
               {
-                title: 'PM Tasks by Department',
+                title: 'BMEDIS PM Tasks by Department',
                 description: 'Scheduled PM tasks per department',
                 type: 'bar' as const,
                 labels: deptCounts.map(([l]) => l),
@@ -696,7 +696,7 @@ function buildReportCharts(type: string, rows: Row[]): ChartSpec[] {
       }).slice(0, 8);
       return [
         {
-          title: 'Result Distribution',
+          title: 'BMEDIS Result Distribution',
           description: 'Calibration records by result (pass/fail/adjusted)',
           type: 'doughnut',
           labels: resultCounts.map(([l]) => l),
@@ -704,7 +704,7 @@ function buildReportCharts(type: string, rows: Row[]): ChartSpec[] {
           colors: resultCounts.map(([l]) => statusColor(l.toLowerCase())),
         },
         {
-          title: 'Records by Calibration Type',
+          title: 'BMEDIS Records by Calibration Type',
           description: 'Count of records per calibration type',
           type: 'bar',
           labels: typeCounts.map(([l]) => l),
@@ -714,7 +714,7 @@ function buildReportCharts(type: string, rows: Row[]): ChartSpec[] {
         ...(deptCounts.length > 1
           ? [
               {
-                title: 'Calibrations by Department',
+                title: 'BMEDIS Calibrations by Department',
                 description: 'Records grouped by equipment department',
                 type: 'bar' as const,
                 labels: deptCounts.map(([l]) => l),
@@ -736,7 +736,7 @@ function buildReportCharts(type: string, rows: Row[]): ChartSpec[] {
       }).slice(0, 10);
       return [
         {
-          title: 'Work Order Status',
+          title: 'BMEDIS Work Order Status',
           description: 'Work orders by execution status',
           type: 'doughnut',
           labels: statusCounts.map(([l]) => l),
@@ -744,7 +744,7 @@ function buildReportCharts(type: string, rows: Row[]): ChartSpec[] {
           colors: statusCounts.map(([l]) => statusColor(l.toLowerCase())),
         },
         {
-          title: 'Priority Distribution',
+          title: 'BMEDIS Priority Distribution',
           description: 'Work orders by priority level',
           type: 'doughnut',
           labels: priorityCounts.map(([l]) => l),
@@ -754,7 +754,7 @@ function buildReportCharts(type: string, rows: Row[]): ChartSpec[] {
         ...(techCounts.length > 1
           ? [
               {
-                title: 'Work Orders by Technician',
+                title: 'BMEDIS Work Orders by Technician',
                 description: 'Assignment load per technician',
                 type: 'hbar' as const,
                 labels: techCounts.map(([l]) => l),
@@ -783,7 +783,7 @@ function buildReportCharts(type: string, rows: Row[]): ChartSpec[] {
       }).slice(0, 8);
       return [
         {
-          title: 'Top 10 Assets by RPI Score',
+          title: 'BMEDIS Top 10 Assets by RPI Score',
           description: 'Replacement priority index (%) for top 10 ranked assets',
           type: 'hbar',
           labels: top10.map((r) => {
@@ -797,7 +797,7 @@ function buildReportCharts(type: string, rows: Row[]): ChartSpec[] {
           }),
         },
         {
-          title: 'Candidate Band Distribution',
+          title: 'BMEDIS Candidate Band Distribution',
           description: 'Assets by prototype replacement decision threshold',
           type: 'doughnut',
           labels: bandCounts.map(([l]) => l),
@@ -809,7 +809,7 @@ function buildReportCharts(type: string, rows: Row[]): ChartSpec[] {
         ...(deptCounts.length > 1
           ? [
               {
-                title: 'Replacement Candidates by Department',
+                title: 'BMEDIS Replacement Candidates by Department',
                 description: 'Distribution of assessed assets by department',
                 type: 'bar' as const,
                 labels: deptCounts.map(([l]) => l),
@@ -826,7 +826,7 @@ function buildReportCharts(type: string, rows: Row[]): ChartSpec[] {
       const priorityCounts = countBy(rows, (r) => formatLabel(String(r.priority ?? 'unknown')));
       return [
         {
-          title: 'Pipeline by Status',
+          title: 'BMEDIS Pipeline by Status',
           description: 'Procurement requests by pipeline stage',
           type: 'doughnut',
           labels: statusCounts.map(([l]) => l),
@@ -834,7 +834,7 @@ function buildReportCharts(type: string, rows: Row[]): ChartSpec[] {
           colors: statusCounts.map(([l]) => statusColor(l.toLowerCase())),
         },
         {
-          title: 'Requests by Priority',
+          title: 'BMEDIS Requests by Priority',
           description: 'Count of procurement requests per priority level',
           type: 'bar',
           labels: priorityCounts.map(([l]) => l),
@@ -856,7 +856,7 @@ function buildReportCharts(type: string, rows: Row[]): ChartSpec[] {
       });
       return [
         {
-          title: 'Stock Health',
+          title: 'BMEDIS Stock Health',
           description: 'Parts by stock status (stockout / low / adequate)',
           type: 'doughnut',
           labels: stockStatusCounts.map(([l]) => l),
@@ -868,7 +868,7 @@ function buildReportCharts(type: string, rows: Row[]): ChartSpec[] {
         ...(lowStockTop.length > 0
           ? [
               {
-                title: 'Top Low-Stock Parts',
+                title: 'BMEDIS Top Low-Stock Parts',
                 description: 'Current stock level for parts at or below reorder level',
                 type: 'hbar' as const,
                 labels: lowStockTop.map((r) => String(r.name ?? r.part_code ?? '').slice(0, 24)),
@@ -889,7 +889,7 @@ function buildReportCharts(type: string, rows: Row[]): ChartSpec[] {
       );
       return [
         {
-          title: 'Disposal Status',
+          title: 'BMEDIS Disposal Status',
           description: 'Disposal requests by current approval status',
           type: 'doughnut',
           labels: statusCounts.map(([l]) => l),
@@ -897,7 +897,7 @@ function buildReportCharts(type: string, rows: Row[]): ChartSpec[] {
           colors: statusCounts.map(([l]) => statusColor(l.toLowerCase())),
         },
         {
-          title: 'Proposed Disposal Method',
+          title: 'BMEDIS Proposed Disposal Method',
           description: 'Breakdown of disposal approach by method type',
           type: 'doughnut',
           labels: methodCounts.map(([l]) => l),
@@ -923,7 +923,7 @@ function buildReportCharts(type: string, rows: Row[]): ChartSpec[] {
       const monthEntries = Object.entries(monthCounts).slice(-8);
       return [
         {
-          title: 'Sessions by Equipment Category',
+          title: 'BMEDIS Sessions by Equipment Category',
           description: 'Training sessions linked to equipment category',
           type: 'doughnut',
           labels: typeCounts.slice(0, 6).map(([l]) => l),
@@ -933,7 +933,7 @@ function buildReportCharts(type: string, rows: Row[]): ChartSpec[] {
         ...(monthEntries.length > 1
           ? [
               {
-                title: 'Sessions per Month',
+                title: 'BMEDIS Sessions per Month',
                 description: 'Training session count by calendar month',
                 type: 'bar' as const,
                 labels: monthEntries.map(([l]) => l),
@@ -958,7 +958,7 @@ function buildReportCharts(type: string, rows: Row[]): ChartSpec[] {
       }).slice(0, 8);
       return [
         {
-          title: 'Risk Band Distribution',
+          title: 'BMEDIS Risk Band Distribution',
           description: 'Assets by FMEA risk classification',
           type: 'doughnut',
           labels: bandCounts.map(([l]) => l),
@@ -968,7 +968,7 @@ function buildReportCharts(type: string, rows: Row[]): ChartSpec[] {
         ...(top10.length > 0
           ? [
               {
-                title: 'Top 10 Assets by RPN',
+                title: 'BMEDIS Top 10 Assets by RPN',
                 description: 'Highest Risk Priority Number assets',
                 type: 'hbar' as const,
                 labels: top10.map((r) => {
@@ -985,7 +985,7 @@ function buildReportCharts(type: string, rows: Row[]): ChartSpec[] {
         ...(deptCounts.length > 1
           ? [
               {
-                title: 'Risk Distribution by Department',
+                title: 'BMEDIS Risk Distribution by Department',
                 description: 'Number of risk-scored assets per department',
                 type: 'bar' as const,
                 labels: deptCounts.map(([l]) => l),
@@ -1002,7 +1002,7 @@ function buildReportCharts(type: string, rows: Row[]): ChartSpec[] {
       const entityCounts = countBy(rows, (r) => formatLabel(String(r.entity_type ?? 'unknown'))).slice(0, 8);
       return [
         {
-          title: 'Events by Module',
+          title: 'BMEDIS Events by Module',
           description: 'Audit events grouped by top-level action category',
           type: 'bar',
           labels: actionCounts.map(([l]) => formatLabel(l)),
@@ -1010,7 +1010,7 @@ function buildReportCharts(type: string, rows: Row[]): ChartSpec[] {
           colors: actionCounts.map(() => 'rgb(168,85,247)'),
         },
         {
-          title: 'Events by Entity Type',
+          title: 'BMEDIS Events by Entity Type',
           description: 'Audit trail distribution across entity types',
           type: 'doughnut',
           labels: entityCounts.map(([l]) => l),
@@ -1043,7 +1043,7 @@ function buildExecutiveSummary(type: string, rows: Row[]): string {
   }
 
   if (type === 'evaluation-demo') {
-    return `This evaluation snapshot covers ${rows.length} active equipment assets demonstrating the BMERMS inventory management capability. The system supports condition tracking, risk analysis, PM compliance, calibration, procurement, and training modules across all hospital departments.`;
+    return `This evaluation snapshot covers ${rows.length} active equipment assets demonstrating the BMEDIS inventory management capability. The system supports condition tracking, risk analysis, PM compliance, calibration, procurement, and training modules across all hospital departments.`;
   }
 
   if (type === 'qr-coverage') {
@@ -1110,7 +1110,7 @@ function buildExecutiveSummary(type: string, rows: Row[]): string {
     return `This audit snapshot contains ${rows.length} audit events covering role changes, settings, equipment, and workflow actions for governance and traceability evidence.`;
   }
 
-  return `This report contains ${rows.length} operational evidence rows from the source tables used by BMERMS workflows.`;
+  return `This report contains ${rows.length} operational evidence rows from the source tables used by BMEDIS workflows.`;
 }
 
 /* ── methodology ──────────────────────────────────────────────────────────── */
@@ -1135,7 +1135,7 @@ function getReportConfig(type: string): ReportConfig | null {
   switch (type) {
     case 'biomedical-operations':
       return {
-        title: 'Biomedical Engineering Operations Report',
+        title: 'BMEDIS Biomedical Engineering Operations Report',
         description: 'Unified executive snapshot: equipment condition, department readiness, compliance, risk, and critical actions.',
         methodologyNote: methodologyFor('biomedical-operations'),
         filterDefs: ['department', 'category'],
@@ -1154,7 +1154,7 @@ function getReportConfig(type: string): ReportConfig | null {
 
     case 'evaluation-demo':
       return {
-        title: 'Evaluation / Demo Evidence Report',
+        title: 'BMEDIS Evaluation / Demo Evidence Report',
         description: 'System capability evidence: implemented modules, workflow coverage, decision-support scores, and data health.',
         methodologyNote: methodologyFor('evaluation-demo'),
         filterDefs: ['department', 'category'],
@@ -1172,7 +1172,7 @@ function getReportConfig(type: string): ReportConfig | null {
 
     case 'department-readiness':
       return {
-        title: 'Department Readiness Report',
+        title: 'BMEDIS Department Readiness Report',
         description: 'Equipment readiness by hospital department: essential asset availability, condition, and risk exposure.',
         methodologyNote: methodologyFor('department-readiness'),
         filterDefs: ['department', 'category'],
@@ -1188,7 +1188,7 @@ function getReportConfig(type: string): ReportConfig | null {
 
     case 'decision-support-methodology':
       return {
-        title: 'Decision-Support Methodology Report',
+        title: 'BMEDIS Decision-Support Methodology Report',
         description: 'Formulas, scoring criteria, component weights, source tables, and explainability evidence for thesis review.',
         methodologyNote: methodologyFor('decision-support-methodology'),
         filterDefs: [],
@@ -1208,7 +1208,7 @@ function getReportConfig(type: string): ReportConfig | null {
 
     case 'equipment':
       return {
-        title: 'Inventory and Asset Condition Report',
+        title: 'BMEDIS Inventory and Asset Condition Report',
         description: 'Complete asset inventory with department, category, condition, cost, warranty status, and installation date.',
         methodologyNote: methodologyFor('equipment'),
         filterDefs: ['department', 'category', 'status'],
@@ -1228,7 +1228,7 @@ function getReportConfig(type: string): ReportConfig | null {
 
     case 'qr-coverage':
       return {
-        title: 'QR Coverage Evidence Report',
+        title: 'BMEDIS QR Coverage Evidence Report',
         description: 'QR label-readiness evidence for active equipment assets: token, generated, printed, attached, replacement, and revoked states.',
         methodologyNote: methodologyFor('qr-coverage'),
         filterDefs: ['department', 'category', 'qr_status'],
@@ -1265,7 +1265,7 @@ function getReportConfig(type: string): ReportConfig | null {
 
     case 'qr-scan-evidence':
       return {
-        title: 'QR Scan Evidence Report',
+        title: 'BMEDIS QR Scan Evidence Report',
         description: 'Authenticated online QR scan records by asset, scanner, role, department, source, status, and action.',
         methodologyNote: methodologyFor('qr-scan-evidence'),
         filterDefs: ['department', 'status', 'date_range'],
@@ -1284,7 +1284,7 @@ function getReportConfig(type: string): ReportConfig | null {
 
     case 'maintenance-performance':
       return {
-        title: 'Maintenance Performance Report',
+        title: 'BMEDIS Maintenance Performance Report',
         description: 'Maintenance events, MTTR, repair costs, recurring failures, and corrective maintenance reliability evidence.',
         methodologyNote: methodologyFor('maintenance-performance'),
         filterDefs: ['date_range'],
@@ -1302,7 +1302,7 @@ function getReportConfig(type: string): ReportConfig | null {
 
     case 'pm-compliance':
       return {
-        title: 'PM Compliance Report',
+        title: 'BMEDIS PM Compliance Report',
         description: 'PM schedules, completion status, overdue tasks, skipped/deferred evidence, and department-level compliance.',
         methodologyNote: methodologyFor('pm-compliance'),
         filterDefs: ['status', 'date_range'],
@@ -1318,7 +1318,7 @@ function getReportConfig(type: string): ReportConfig | null {
 
     case 'calibration-compliance':
       return {
-        title: 'Calibration Compliance Report',
+        title: 'BMEDIS Calibration Compliance Report',
         description: 'Calibration records, pass/fail/adjusted results, next due dates, overdue assets, and safety follow-up evidence.',
         methodologyNote: methodologyFor('calibration-compliance'),
         filterDefs: ['date_range'],
@@ -1335,7 +1335,7 @@ function getReportConfig(type: string): ReportConfig | null {
 
     case 'training-competency':
       return {
-        title: 'Training and Equipment Safety Report',
+        title: 'BMEDIS Training and Equipment Safety Report',
         description: 'Training sessions, pending requests, attendees, equipment category linkage, and competency evidence.',
         methodologyNote: 'Training data comes from training_sessions joined to equipment_categories and staff_training_records for attendance. Attendance count reflects linked staff_training_record rows.',
         filterDefs: ['category', 'date_range'],
@@ -1352,7 +1352,7 @@ function getReportConfig(type: string): ReportConfig | null {
 
     case 'spare-parts-stock':
       return {
-        title: 'Spare Parts and Stock Control Report',
+        title: 'BMEDIS Spare Parts and Stock Control Report',
         description: 'Part inventory, stockout alerts, low-stock items, procurement recovery status, and work-order blockers.',
         methodologyNote: 'Spare parts data comes from spare_parts. Stock status is derived by comparing current_stock to reorder_level. Stockout = current_stock = 0; low stock = current_stock > 0 and ≤ reorder_level.',
         filterDefs: ['category'],
@@ -1370,7 +1370,7 @@ function getReportConfig(type: string): ReportConfig | null {
 
     case 'disposal-lifecycle':
       return {
-        title: 'Disposal / Lifecycle Report',
+        title: 'BMEDIS Disposal / Lifecycle Report',
         description: 'Disposal requests, approvals, disposal methods, completed disposals, and end-of-life evidence.',
         methodologyNote: 'Disposal data comes from disposal_requests joined to equipment_assets and disposed_assets. Disposal status tracks the formal request workflow. Completed disposal records the method, value, and disposal authority.',
         filterDefs: ['status', 'date_range'],
@@ -1387,7 +1387,7 @@ function getReportConfig(type: string): ReportConfig | null {
 
     case 'work-orders':
       return {
-        title: 'Work Order Execution Report',
+        title: 'BMEDIS Work Order Execution Report',
         description: 'Open, assigned, in-progress, on-hold, and completed work orders with outcome, technician, and evidence trace.',
         methodologyNote: 'Work order data comes from work_orders joined to equipment_assets, profiles (assigned technician), and maintenance_requests (originating request). Completion outcome and final equipment condition are recorded at work order close.',
         filterDefs: ['status', 'date_range'],
@@ -1405,7 +1405,7 @@ function getReportConfig(type: string): ReportConfig | null {
 
     case 'procurement-pipeline':
       return {
-        title: 'Procurement Pipeline Report',
+        title: 'BMEDIS Procurement Pipeline Report',
         description: 'Procurement requests across all pipeline stages, delays, priority, and delivery evidence.',
         methodologyNote: methodologyFor('procurement-pipeline'),
         filterDefs: ['status', 'date_range'],
@@ -1422,7 +1422,7 @@ function getReportConfig(type: string): ReportConfig | null {
 
     case 'replacement-planning':
       return {
-        title: 'Replacement Planning Report',
+        title: 'BMEDIS Replacement Planning Report',
         description: 'RPI rankings, component scores, lifecycle drivers, and prototype decision thresholds.',
         methodologyNote: methodologyFor('replacement-planning'),
         filterDefs: [],
@@ -1442,7 +1442,7 @@ function getReportConfig(type: string): ReportConfig | null {
 
     case 'risk-fmea':
       return {
-        title: 'Risk and FMEA Report',
+        title: 'BMEDIS Risk and FMEA Report',
         description: 'RPN scores, severity, occurrence, detectability, risk bands, and risk driver explanations.',
         methodologyNote: methodologyFor('risk-fmea'),
         filterDefs: [],
@@ -1479,7 +1479,7 @@ function getReportConfig(type: string): ReportConfig | null {
 
     case 'technician-workload':
       return {
-        title: 'Technician Workload Report',
+        title: 'BMEDIS Technician Workload Report',
         description: 'Assignment load by technician, completion evidence, critical task distribution, and workload balance.',
         methodologyNote: 'Work order data comes from work_orders joined to profiles (assigned technician) and equipment_assets. Unassigned work orders are included. Completed work orders show outcome evidence.',
         filterDefs: ['status', 'date_range'],
@@ -1496,7 +1496,7 @@ function getReportConfig(type: string): ReportConfig | null {
 
     case 'audit-security':
       return {
-        title: 'Audit and Security Report',
+        title: 'BMEDIS Audit and Security Report',
         description: 'Audit trail for role changes, settings, equipment condition, workflow completion, and security events.',
         methodologyNote: methodologyFor('audit-security'),
         filterDefs: ['date_range'],
@@ -1754,7 +1754,7 @@ export default function ReportTypePage() {
       {/* Print-only header — hidden on screen */}
       <div className="report-print-header hidden">
         <h1 className="text-xl font-bold">{config.title}</h1>
-        <p className="text-sm">Menelik II Hospital — BMERMS</p>
+        <p className="text-sm">Menelik II Hospital — BMEDIS</p>
         <p className="text-sm">Generated: {snapshotTs}</p>
         <hr className="my-2" />
       </div>
@@ -1789,7 +1789,7 @@ export default function ReportTypePage() {
         </p>
         <InfoPopover className="ml-auto" align="right">
           <p className="mb-2 text-[var(--foreground)]">
-            This report represents a system snapshot generated at <strong>{snapshotTs}</strong>. Operational metrics and evidence are read from the current BMERMS database state. Charts, summaries, and tables reflect available records at generation time.
+            This report represents a system snapshot generated at <strong>{snapshotTs}</strong>. Operational metrics and evidence are read from the current BMEDIS database state. Charts, summaries, and tables reflect available records at generation time.
           </p>
           {freshnessFail ? (
             <p className="text-xs text-amber-700 dark:text-amber-400">

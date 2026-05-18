@@ -32,13 +32,13 @@ function cellValue<T extends Record<string, unknown>>(row: T, column: ExportColu
   return String(val);
 }
 
-/** Pattern: bmerms-[slug]-snapshot-YYYY-MM-DD-HH-mm */
+/** Pattern: bmedis-[slug]-snapshot-YYYY-MM-DD-HH-mm */
 function datedFilename(slug: string, extension: string): string {
   const now = new Date();
   const date = now.toISOString().split('T')[0];
   const hh = String(now.getHours()).padStart(2, '0');
   const mm = String(now.getMinutes()).padStart(2, '0');
-  return `bmerms-${slug}-snapshot-${date}-${hh}-${mm}.${extension}`;
+  return `bmedis-${slug}-snapshot-${date}-${hh}-${mm}.${extension}`;
 }
 
 function escapeCsv(str: string): string {
@@ -68,7 +68,7 @@ export function exportToCSV<T extends Record<string, unknown>>(
     `Report,${escapeCsv(reportTitle)}`,
     `Institution,${escapeCsv(HOSPITAL_NAME)}`,
     `Snapshot Generated,${escapeCsv(generatedAt)}`,
-    `Source,BMERMS operational database`,
+    `Source,BMEDIS operational database`,
     ``,
   ];
 
@@ -163,7 +163,7 @@ function addFooterPageNumbers(doc: jsPDF): void {
     doc.setPage(i);
     doc.setFontSize(8);
     doc.setTextColor(120);
-    doc.text(`${HOSPITAL_NAME} — BMERMS`, PAGE_MARGIN, pageHeight - 12);
+    doc.text(`${HOSPITAL_NAME} — BMEDIS`, PAGE_MARGIN, pageHeight - 12);
     doc.text(`Page ${i} of ${pageCount}`, pageWidth - PAGE_MARGIN, pageHeight - 12, { align: 'right' });
     doc.setTextColor(0);
   }
@@ -215,11 +215,11 @@ export function exportToPDF<T extends Record<string, unknown>>(opts: ExportPdfOp
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(10);
   doc.setTextColor(80);
-  doc.text(`${HOSPITAL_NAME} — Biomedical Equipment Resource Management System`, PAGE_MARGIN, y);
+  doc.text(`${HOSPITAL_NAME} — Biomedical Equipment Management and Decision Intelligence System`, PAGE_MARGIN, y);
   y += 14;
   doc.text(`Snapshot Generated: ${snapshotTs}`, PAGE_MARGIN, y);
   y += 12;
-  doc.text(`Source: BMERMS operational database`, PAGE_MARGIN, y);
+  doc.text(`Source: BMEDIS operational database`, PAGE_MARGIN, y);
   y += 12;
   if (activeFilters) {
     y = drawWrappedText(doc, `Filters: ${activeFilters}`, PAGE_MARGIN, y, contentWidth, 12);

@@ -826,7 +826,7 @@ export default function QrAssetLandingPage({ asset, profile, context }: Props) {
             <h1 className="text-lg font-semibold text-amber-200">Limited access</h1>
             <p className="mt-2 text-amber-100/90">{context.restrictedReason}</p>
             <p className="mt-3 text-xs text-amber-200/80">
-              The QR token confirms a BMERMS label was scanned, but department-scoped roles only see
+              The QR token confirms a BMEDIS label was scanned, but department-scoped roles only see
               operational details for assets linked to their own department.
             </p>
           </section>

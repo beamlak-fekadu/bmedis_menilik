@@ -117,7 +117,7 @@ export default function OfflineDiagnosticsPanel({ serverSummary }: Props) {
         setCacheState({ supported: true, appShellCached: null });
         setAppShellVersion('Unknown');
       } else {
-        const shellKey = keys.find((key) => key.startsWith('bmerms-app-shell-')) ?? null;
+        const shellKey = keys.find((key) => key.startsWith('bmedis-app-shell-')) ?? null;
         setCacheState({ supported: true, appShellCached: shellKey !== null });
         setAppShellVersion(shellKey ?? 'Not present');
       }
@@ -141,12 +141,12 @@ export default function OfflineDiagnosticsPanel({ serverSummary }: Props) {
     };
     window.addEventListener(OFFLINE_QUEUE_CHANGED_EVENT, handleQueueChange);
     window.addEventListener(OFFLINE_CACHE_CHANGED_EVENT, handleCacheChange);
-    window.addEventListener('bmerms:service-worker-ready', refreshBrowserDiagnostics);
+    window.addEventListener('bmedis:service-worker-ready', refreshBrowserDiagnostics);
     return () => {
       window.clearTimeout(timer);
       window.removeEventListener(OFFLINE_QUEUE_CHANGED_EVENT, handleQueueChange);
       window.removeEventListener(OFFLINE_CACHE_CHANGED_EVENT, handleCacheChange);
-      window.removeEventListener('bmerms:service-worker-ready', refreshBrowserDiagnostics);
+      window.removeEventListener('bmedis:service-worker-ready', refreshBrowserDiagnostics);
     };
   }, [refreshBrowserDiagnostics, refreshCacheSummary, refreshQueue]);
 
@@ -169,7 +169,7 @@ export default function OfflineDiagnosticsPanel({ serverSummary }: Props) {
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement('a');
     anchor.href = url;
-    anchor.download = `bmerms-offline-queue-${new Date().toISOString().slice(0, 10)}.json`;
+    anchor.download = `bmedis-offline-queue-${new Date().toISOString().slice(0, 10)}.json`;
     anchor.click();
     URL.revokeObjectURL(url);
   }

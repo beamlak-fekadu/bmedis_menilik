@@ -29,6 +29,8 @@ because the corresponding roles (`developer`, `department_head`) are not
 present in the base seed — `developer` is provisioned by migration 00022, and
 `department_head` would require a future role-adding migration.
 
+The legacy `@bmerms-demo.local` email domain is retained to avoid breaking seeded Supabase Auth users.
+
 ## Step-by-step setup
 
 1. Open Supabase Dashboard for your project.

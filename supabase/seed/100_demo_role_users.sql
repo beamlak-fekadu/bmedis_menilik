@@ -1,4 +1,4 @@
--- Seed 100: BMERMS demo login accounts (7 roles)
+-- Seed 100: BMEDIS demo login accounts (7 roles)
 --
 -- IMPORTANT — Job titles vs database roles:
 --   Job titles are stored in profiles.job_title and are FREE TEXT
@@ -62,7 +62,8 @@ SET
 --
 --   email                              | full_name           | job_title (free text)            | role            | department
 --   -----------------------------------+---------------------+----------------------------------+-----------------+-----------------------
---   developer@bmerms-demo.local        | BMERMS Developer    | Thesis Developer                 | developer       | (none)
+-- Legacy demo email domain retained to avoid breaking seeded Supabase Auth users.
+--   developer@bmerms-demo.local        | BMEDIS Developer    | Thesis Developer                 | developer       | (none)
 --   bme.head@bmerms-demo.local         | Ermias Tadesse      | Biomedical Engineering Head      | bme_head        | (none)
 --   technician@bmerms-demo.local       | Hanna Gebremedhin   | Clinical Engineer                | technician      | (none)
 --   department.head@bmerms-demo.local  | Tigist Worku        | ICU Head                         | department_head | Intensive Care Unit
@@ -79,7 +80,7 @@ WITH demo_accounts AS (
   SELECT *
   FROM (
     VALUES
-      ('developer@bmerms-demo.local',       'BMERMS Developer',    'Thesis Developer',                  'developer',       NULL::text),
+      ('developer@bmerms-demo.local',       'BMEDIS Developer',    'Thesis Developer',                  'developer',       NULL::text),
       ('bme.head@bmerms-demo.local',        'Ermias Tadesse',      'Biomedical Engineering Head',       'bme_head',        NULL::text),
       ('technician@bmerms-demo.local',      'Hanna Gebremedhin',   'Clinical Engineer',                 'technician',      NULL::text),
       ('department.head@bmerms-demo.local', 'Tigist Worku',        'ICU Head',                          'department_head', 'icu'),
@@ -197,7 +198,7 @@ WITH demo_accounts AS (
   SELECT *
   FROM (
     VALUES
-      ('developer@bmerms-demo.local',       'BMERMS Developer',    'Thesis Developer',                  'developer',       NULL::text),
+      ('developer@bmerms-demo.local',       'BMEDIS Developer',    'Thesis Developer',                  'developer',       NULL::text),
       ('bme.head@bmerms-demo.local',        'Ermias Tadesse',      'Biomedical Engineering Head',       'bme_head',        NULL::text),
       ('technician@bmerms-demo.local',      'Hanna Gebremedhin',   'Clinical Engineer',                 'technician',      NULL::text),
       ('department.head@bmerms-demo.local', 'Tigist Worku',        'ICU Head',                          'department_head', 'Intensive Care Unit'),

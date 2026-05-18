@@ -1,11 +1,11 @@
-export const APP_NAME = 'BMERMS';
-export const APP_NAME_SHORT = 'BMERMS';
-export const APP_NAME_FULL = 'Biomedical Engineering Resource Management System';
-export const APP_DESCRIPTION = 'Biomedical Engineering Resource Management System';
-export const APP_OPERATIONAL_TAGLINE = 'Clinical engineering operations, reliability, and decision support in one unified platform.';
+export const APP_NAME = 'BMEDIS';
+export const APP_NAME_SHORT = 'BMEDIS';
+export const APP_NAME_FULL = 'Biomedical Equipment Management and Decision Intelligence System';
+export const APP_DESCRIPTION = 'Biomedical Equipment Management and Decision Intelligence System';
+export const APP_OPERATIONAL_TAGLINE = 'Hospital-level biomedical equipment lifecycle operations and decision intelligence in one unified platform.';
 export const HOSPITAL_NAME = 'Menelik II Hospital';
-export const CHATBOT_NAME = 'BMERMS AI Chatbot';
-export const ASSISTANT_NAME = 'BMERMS AI Assistant';
+export const CHATBOT_NAME = 'BMEDIS Copilot';
+export const ASSISTANT_NAME = 'BMEDIS Copilot';
 
 export { ROLE_CONFIG } from './roles';
 
@@ -135,7 +135,7 @@ export const NAV_SECTIONS = [
       // to /notifications by middleware. The capability is reused so existing
       // role membership doesn't need migration.
       { label: 'Notifications', href: ROUTES.NOTIFICATIONS, icon: 'Bell', capability: 'nav.alerts', roles: ['developer', 'admin', 'bme_head', 'technician', 'department_head', 'department_user', 'viewer', 'store_user'] },
-      // BMERMS AI Chatbot has no dedicated capability; keep roles-based.
+      // BMEDIS Copilot has no dedicated capability; keep roles-based.
       { label: CHATBOT_NAME, href: ROUTES.CHATBOT, icon: 'MessageSquareText', roles: ['developer', 'admin', 'bme_head', 'technician', 'department_head', 'department_user', 'store_user', 'viewer'] },
     ],
   },

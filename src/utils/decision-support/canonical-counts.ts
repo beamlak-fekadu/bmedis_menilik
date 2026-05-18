@@ -1,4 +1,4 @@
-// Canonical count definitions for BMERMS.
+// Canonical count definitions for BMEDIS.
 //
 // Every count surfaced in the UI must agree with these definitions. If two
 // pages mention "Overdue PM", they must derive that number from

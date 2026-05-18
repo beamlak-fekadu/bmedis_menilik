@@ -1,7 +1,7 @@
 {
-  "name": "BMERMS - Biomedical Equipment Management",
-  "short_name": "BMERMS",
-  "description": "Biomedical equipment management and decision-support system for hospital operations.",
+  "name": "BMEDIS - Biomedical Equipment Management",
+  "short_name": "BMEDIS",
+  "description": "Biomedical Equipment Management and Decision Intelligence System",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
@@ -10,7 +10,7 @@
   "orientation": "any",
   "icons": [
     {
-      "src": "/icons/bmerms-icon.svg",
+      "src": "/icons/bmedis-icon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any maskable"

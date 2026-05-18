@@ -13,7 +13,7 @@ export default function OfflinePage() {
         </p>
         <p className="mt-1 text-xs text-[var(--text-muted)]">{HOSPITAL_NAME}</p>
 
-        <h1 className="mt-8 text-3xl font-semibold tracking-tight">BMERMS is offline</h1>
+        <h1 className="mt-8 text-3xl font-semibold tracking-tight">BMEDIS is offline</h1>
         <p className="mt-3 max-w-md text-sm leading-relaxed text-[var(--text-muted)]">
           Cached pages and queued actions may still be available. Reconnect to sync changes.
         </p>

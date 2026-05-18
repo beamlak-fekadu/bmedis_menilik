@@ -72,8 +72,8 @@ function mergeEvidence(assistant: AssistantContent, deterministic: AssistantCont
 }
 
 function replacementReason(params: GuardParams) {
-  if (params.providerFallback) return 'Gemini did not complete, so BMERMS used retrieved system context.';
-  if (params.parserRecoveryUsed) return 'Provider output needed recovery, so BMERMS used retrieved system context.';
+  if (params.providerFallback) return 'Gemini did not complete, so BMEDIS used retrieved system context.';
+  if (params.parserRecoveryUsed) return 'Provider output needed recovery, so BMEDIS used retrieved system context.';
   return 'Model response was too generic for the available system evidence.';
 }
 

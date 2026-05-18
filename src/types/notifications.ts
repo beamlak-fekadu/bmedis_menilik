@@ -1,6 +1,6 @@
 // Notification subsystem types.
 //
-// In-app notifications are the source of truth for BMERMS. Telegram is only
+// In-app notifications are the source of truth for BMEDIS. Telegram is only
 // an external delivery channel. These types describe the engine inputs and
 // outputs; database shapes mirror migration 00055.
 

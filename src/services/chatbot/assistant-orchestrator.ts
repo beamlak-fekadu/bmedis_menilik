@@ -145,9 +145,9 @@ export function shouldUseProvider(params: { capability: CapabilityId; message: s
 export function buildDeterministicAssistantIntro(): AssistantContent {
   return {
     decision: 'answer',
-    title: 'BMERMS Assistant',
+    title: 'BMEDIS Copilot',
     summary:
-      "Hello, I’m your BMERMS biomedical equipment management copilot. I can help you understand tasks, work orders, equipment status, preventive maintenance, calibration, logistics, alerts, decision support, and safe first-line troubleshooting.",
+      "Hello, I’m your BMEDIS biomedical equipment management copilot. I can help you understand tasks, work orders, equipment status, preventive maintenance, calibration, logistics, alerts, decision support, and safe first-line troubleshooting.",
     actions: [
       'Review and prioritize your tasks',
       'Summarize work orders and equipment history',
@@ -229,8 +229,8 @@ function enrichAssistantPayload(params: {
 
 function enforceOffTopicRedirect(assistant: AssistantContent, capability: CapabilityId): AssistantContent {
   if (capability !== 'general_conversation' && capability !== 'off_topic_safe') return assistant;
-  const redirect = 'I can also help with BMERMS tasks, work orders, equipment summaries, alerts, and safe troubleshooting.';
-  const summary = assistant.summary.includes('BMERMS') ? assistant.summary : `${assistant.summary.trim()} ${redirect}`.trim();
+  const redirect = 'I can also help with BMEDIS tasks, work orders, equipment summaries, alerts, and safe troubleshooting.';
+  const summary = assistant.summary.includes('BMEDIS') ? assistant.summary : `${assistant.summary.trim()} ${redirect}`.trim();
   return {
     ...assistant,
     summary: summary.slice(0, 2000),
@@ -268,7 +268,7 @@ function buildBlockedAssistantContent(decision: ChatDecision, reason: string): A
     troubleshooting_steps: unsafeEscalation || specificTechnical ? safeChecks : [],
     maintenance_tips: [],
     required_tools_or_parts: [],
-    actions: unsafeEscalation || specificTechnical ? ['Escalate safely'] : outOfScopeRefusal ? ['Ask a BMERMS equipment-management question'] : [],
+    actions: unsafeEscalation || specificTechnical ? ['Escalate safely'] : outOfScopeRefusal ? ['Ask a BMEDIS equipment-management question'] : [],
     insights: [],
     recommendations: [],
     entities_referenced: [],
@@ -454,7 +454,7 @@ export async function orchestrateAssistantResponse(params: OrchestrateParams): P
               summary:
                 capability === 'unsafe_or_restricted'
                   ? safety.reason
-                  : "I can help with BMERMS operations like tasks, work orders, equipment summaries, alerts, and safe troubleshooting.",
+                  : "I can help with BMEDIS operations like tasks, work orders, equipment summaries, alerts, and safe troubleshooting.",
               answer_basis: capability === 'unsafe_or_restricted' ? 'insufficient_data' : 'system_capabilities',
               confidence: capability === 'unsafe_or_restricted' ? 'low' : 'high',
             },
@@ -823,7 +823,7 @@ export async function orchestrateAssistantResponse(params: OrchestrateParams): P
             decision: safety.decision === 'answer' ? 'limited_answer' : safety.decision,
             limitations: [
               ...(deterministicCandidate.limitations ?? []),
-              'Gemini did not complete; this answer used available BMERMS system context instead.',
+              'Gemini did not complete; this answer used available BMEDIS system context instead.',
             ],
             reason_for_limit: 'Provider call did not complete; deterministic system-data fallback used.',
           }

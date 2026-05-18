@@ -25,3 +25,16 @@ export { default as ExpandableText } from './ExpandableText';
 export { default as InfoPopover } from './InfoPopover';
 export { ToastProvider, useToast } from './Toast';
 export { ConditionBadge, UrgencyBadge, WorkOrderStatusBadge, RequestStatusBadge, PMStatusBadge, RiskBadge } from './StatusBadge';
+
+// Semifinal UI refresh (foundation) — Motion + react-spring + Lottie + role shells.
+// Page-level adoption happens in a later pass; these are safe to import today.
+export { default as AnimatedMetric } from './AnimatedMetric';
+export type { AnimatedMetricProps } from './AnimatedMetric';
+export { default as SpringGauge } from './SpringGauge';
+export type { SpringGaugeProps, GaugeTone } from './SpringGauge';
+export { default as MotionCard } from './MotionCard';
+export { default as SectionHeader } from './SectionHeader';
+export { default as ResponsiveTableShell } from './ResponsiveTableShell';
+export { default as LoadingState } from './LoadingState';
+export { default as RoleWorkspaceShell } from './RoleWorkspaceShell';
+export { default as LottiePlayer, LOTTIE_PATHS, type LottieKey } from './LottiePlayer';

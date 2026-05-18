@@ -27,7 +27,7 @@ function exportCsv(filename: string, rows: Array<Record<string, unknown>>, colum
     return text;
   };
   const meta = [
-    `# BMERMS Offline Sync Evidence Report`,
+    `# BMEDIS Offline Sync Evidence Report`,
     `# Generated: ${new Date().toISOString()}`,
     `# Source: offline_sync_events`,
     `# Total events in snapshot: ${rows.length}`,
@@ -55,7 +55,7 @@ export default function OfflineSyncEvidenceClient({ summary, events }: Props) {
   }, [events, filter]);
 
   function exportAll() {
-    exportCsv(`bmerms-offline-sync-evidence-${new Date().toISOString().slice(0, 10)}.csv`, filtered.map((event) => ({
+    exportCsv(`bmedis-offline-sync-evidence-${new Date().toISOString().slice(0, 10)}.csv`, filtered.map((event) => ({
       created_at: event.created_at,
       action_type: event.action_type,
       entity_type: event.entity_type,

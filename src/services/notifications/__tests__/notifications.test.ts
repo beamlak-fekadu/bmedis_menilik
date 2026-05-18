@@ -146,7 +146,7 @@ test('formatTelegramMonitorMessage shows original recipient and delivery status'
     { full_name: 'Hanna', primaryRole: 'technician' },
     { status: 'skipped', skipReason: 'no_chat_id' },
   );
-  assert.match(text, /BMERMS Notification Monitor/);
+  assert.match(text, /BMEDIS Notification Monitor/);
   assert.match(text, /Original recipient: Hanna/);
   assert.match(text, /Role: technician/);
   assert.match(text, /Priority: critical/);

@@ -25,7 +25,7 @@ export const CAPABILITY_REGISTRY: Record<CapabilityId, CapabilityDefinition> = {
   assistant_intro: {
     id: 'assistant_intro',
     intents: ['assistant_intro', 'general_help'],
-    description: 'BMERMS copilot intro, capabilities, and safe scope.',
+    description: 'BMEDIS copilot intro, capabilities, and safe scope.',
     requiredInputs: [],
     retrievalBlocks: ['currentUserContext', 'openWorkPreview', 'alertsTeaser'],
     responseSections: ALL_SECTIONS,
@@ -36,7 +36,7 @@ export const CAPABILITY_REGISTRY: Record<CapabilityId, CapabilityDefinition> = {
   general_conversation: {
     id: 'general_conversation',
     intents: ['general_conversation', 'off_topic_safe'],
-    description: 'Short harmless conversational responses with BMERMS redirect.',
+    description: 'Short harmless conversational responses with BMEDIS redirect.',
     requiredInputs: [],
     retrievalBlocks: [],
     responseSections: ALL_SECTIONS,
@@ -47,7 +47,7 @@ export const CAPABILITY_REGISTRY: Record<CapabilityId, CapabilityDefinition> = {
   off_topic_safe: {
     id: 'off_topic_safe',
     intents: ['off_topic_safe'],
-    description: 'Handles harmless non-BMERMS prompts without forcing system data retrieval.',
+    description: 'Handles harmless non-BMEDIS prompts without forcing system data retrieval.',
     requiredInputs: [],
     retrievalBlocks: [],
     responseSections: ALL_SECTIONS,

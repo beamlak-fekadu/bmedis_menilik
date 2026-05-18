@@ -1,4 +1,4 @@
-# Decision support data model (BMERMS / MEMIS)
+# Decision support data model (BMEDIS / MEMIS)
 
 This document maps database tables to roles in the system and defines the **canonical** sources of truth for decision support. It is a reference for operators and for future AI read models. **No table merges or deletions** are implied here.
 
@@ -149,7 +149,7 @@ Specification Request = request/tracking item. Specification Document = output/e
 
 ## Hospital Operations Calendar source-of-truth rules
 
-The Hospital Operations Calendar at `/calendar` is a fully internal BMERMS read/overview surface. It is not Google Calendar integration and must not create external events, request Google OAuth, or store external calendar tokens.
+The Hospital Operations Calendar at `/calendar` is a fully internal BMEDIS read/overview surface. It is not Google Calendar integration and must not create external events, request Google OAuth, or store external calendar tokens.
 
 | Event family | Calendar source | Routing rule |
 | --- | --- | --- |

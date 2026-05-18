@@ -232,7 +232,7 @@ const INTENT_PATTERNS: Array<{ intent: ChatIntent; patterns: RegExp[] }> = [
   {
     intent: 'workflow_help',
     patterns: [
-      /\bhow do i use (this page|this system|bmerms)\b/i,
+      /\bhow do i use (this page|this system|bmedis)\b/i,
       /\bwhat can (this|the) page do\b/i,
       /\bworkflow help\b/i,
       /\bhow do i (create|track|open|request|report)\b/i,
@@ -498,7 +498,7 @@ const CAPABILITY_KEYWORDS: Array<{ capability: CapabilityId; patterns: RegExp[];
   },
   {
     capability: 'general_system_fallback',
-    patterns: [/\bhow do i use (this page|this system|bmerms)\b/i, /\bwhat can (this|the) page do\b/i],
+    patterns: [/\bhow do i use (this page|this system|bmedis)\b/i, /\bwhat can (this|the) page do\b/i],
     baseScore: 0.72,
   },
 ];
@@ -654,14 +654,14 @@ export function classifyChatRequest(message: string, hint?: MemoryRoutingHint): 
   }
 
   if (ASSISTANT_INTRO_PATTERNS.some((pattern) => pattern.test(normalized))) {
-    reasons.push('Matched BMERMS assistant intro / help intent.');
+    reasons.push('Matched BMEDIS assistant intro / help intent.');
     matchedSignals.push('assistant_intro');
     return buildResult('assistant_intro', {
       capability: 'assistant_intro',
       confidence: 0.95,
       confidenceLabel: 'high',
       fallbackReason: undefined,
-      candidates: [{ capability: 'assistant_intro', confidence: 0.95, reasons: ['BMERMS assistant intro heuristics.'] }],
+      candidates: [{ capability: 'assistant_intro', confidence: 0.95, reasons: ['BMEDIS assistant intro heuristics.'] }],
     });
   }
 
