@@ -5,6 +5,9 @@ import { Bot, MessageSquareText, Plus, Send, X } from 'lucide-react';
 import { Button, EmptyState, Textarea } from '@/components/ui';
 import LottiePlayer, { LOTTIE_PATHS } from '@/components/ui/LottiePlayer';
 import { Loader2 } from 'lucide-react';
+import { useDrawerA11y } from '@/hooks/useDrawerA11y';
+import { AnimatePresence, motion } from 'framer-motion';
+import { cardItem, cardStagger, slideUp, transitions } from '@/lib/ui/motion-presets';
 import { AssistantContextChips } from './AssistantContextChips';
 import { AssistantMessageCard } from './AssistantMessageCard';
 import { useAssistantContext } from './AssistantProvider';
@@ -144,6 +147,12 @@ export function AssistantPanel() {
     await sendMessage();
   };
 
+  // The panel is mounted-but-translated rather than conditionally rendered,
+  // so we pass `isOpen` to the hook so focus management activates only when
+  // the user has actually opened the assistant. `disableAutoFocus` is true
+  // because the panel manages its own input focus via the Textarea below.
+  const panelRef = useDrawerA11y(isOpen, closeAssistant, { disableAutoFocus: true });
+
   return (
     <>
       <div
@@ -152,6 +161,7 @@ export function AssistantPanel() {
       />
 
       <aside
+        ref={panelRef}
         role="dialog"
         aria-modal="true"
         aria-label="Assistant"
@@ -192,22 +202,42 @@ export function AssistantPanel() {
                 icon={<Bot className="h-10 w-10 text-[var(--assistant-accent)]" />}
               />
             ) : (
-              messages.map((message) => <AssistantMessageCard key={message.id} message={message} />)
+              <AnimatePresence initial={false}>
+                {messages.map((message) => (
+                  <motion.div
+                    key={message.id}
+                    variants={slideUp}
+                    initial="initial"
+                    animate="animate"
+                    transition={transitions.fast}
+                  >
+                    <AssistantMessageCard message={message} />
+                  </motion.div>
+                ))}
+              </AnimatePresence>
             )}
 
-            {sending && (
-              <div className="assistant-panel-surface rounded-2xl border border-[var(--assistant-accent-soft)] p-4">
-                <div className="inline-flex items-center gap-3 text-sm text-[var(--text-muted)]">
-                  <LottiePlayer
-                    src={LOTTIE_PATHS.aiThinking}
-                    style={{ width: 28, height: 28 }}
-                    fallback={<Loader2 className="h-4 w-4 animate-spin" />}
-                    ariaLabel="Assistant thinking"
-                  />
-                  Generating response…
-                </div>
-              </div>
-            )}
+            <AnimatePresence>
+              {sending && (
+                <motion.div
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -4 }}
+                  transition={transitions.fast}
+                  className="assistant-panel-surface rounded-2xl border border-[var(--assistant-accent-soft)] p-4"
+                >
+                  <div className="inline-flex items-center gap-3 text-sm text-[var(--text-muted)]">
+                    <LottiePlayer
+                      src={LOTTIE_PATHS.aiThinking}
+                      style={{ width: 28, height: 28 }}
+                      fallback={<Loader2 className="h-4 w-4 animate-spin" />}
+                      ariaLabel="Assistant thinking"
+                    />
+                    Generating response…
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
 
           <div className="space-y-3 border-t border-[var(--assistant-accent-soft)] px-4 py-3 pb-[max(env(safe-area-inset-bottom),0.75rem)]">
@@ -234,17 +264,23 @@ export function AssistantPanel() {
                 No entity linked yet. Responses will stay general until equipment, work-order, or department context is attached.
               </p>
             )}
-            <div className="flex flex-wrap gap-2">
+            <motion.div
+              variants={cardStagger}
+              initial="initial"
+              animate="animate"
+              className="flex flex-wrap gap-2"
+            >
               {quickPrompts.map((prompt) => (
-                <button
+                <motion.button
                   key={prompt}
+                  variants={cardItem}
                   onClick={() => setDraftInput(prompt)}
                   className="rounded-full border border-[var(--assistant-accent-soft)] px-3 py-1 text-xs text-[var(--text-muted)] transition-colors hover:bg-[var(--surface-2)] hover:text-[var(--foreground)]"
                 >
                   {prompt}
-                </button>
+                </motion.button>
               ))}
-            </div>
+            </motion.div>
             <Textarea
               rows={3}
               value={draftInput}

@@ -1,8 +1,26 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title">
-  <title id="title">BMEDIS app icon</title>
-  <rect width="512" height="512" rx="96" fill="#2563eb"/>
-  <path d="M146 165c0-22.091 17.909-40 40-40h140c22.091 0 40 17.909 40 40v182c0 22.091-17.909 40-40 40H186c-22.091 0-40-17.909-40-40V165Z" fill="#ffffff"/>
-  <path d="M194 183h124v36H194v-36Zm0 118h124v34H194v-34Z" fill="#2563eb"/>
-  <path d="M238 241h36v36h-36v-36Zm-58 0h36v36h-36v-36Zm116 0h36v36h-36v-36Z" fill="#7c3aed"/>
-  <path d="M256 79v46m0 262v46M79 256h67m220 0h67" stroke="#ffffff" stroke-width="28" stroke-linecap="round"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="bmedis-favicon-title">
+  <title id="bmedis-favicon-title">BMEDIS</title>
+  <defs>
+    <linearGradient id="lm-grad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#2563eb"/>
+      <stop offset="100%" stop-color="#7c3aed"/>
+    </linearGradient>
+    <linearGradient id="lm-hi" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="rgba(255,255,255,0.55)"/>
+      <stop offset="40%" stop-color="rgba(255,255,255,0)"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Bottom layer -->
+  <rect x="8" y="20" width="36" height="36" rx="10" fill="#2563eb" opacity="0.28"/>
+
+  <!-- Middle layer -->
+  <rect x="14" y="14" width="36" height="36" rx="10" fill="#2563eb" opacity="0.55"/>
+
+  <!-- Top layer with gradient + highlight -->
+  <rect x="20" y="8" width="36" height="36" rx="10" fill="url(#lm-grad)"/>
+  <rect x="20" y="8" width="36" height="36" rx="10" fill="url(#lm-hi)" style="mix-blend-mode: overlay"/>
+
+  <!-- Definition stroke -->
+  <rect x="20.5" y="8.5" width="35" height="35" rx="9.5" fill="none" stroke="rgba(255,255,255,0.30)" stroke-width="1"/>
 </svg>

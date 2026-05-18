@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Bell, Check, CheckCheck, Inbox, X } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { attentionPulse, slideUp, transitions } from '@/lib/ui/motion-presets';
+import { useDrawerA11y } from '@/hooks/useDrawerA11y';
 import {
   getMyNotificationsAction,
   getMyNotificationSummaryAction,
@@ -90,6 +91,8 @@ export default function NotificationBell() {
     void loadList();
   }, [open, loadList]);
 
+  // Outside-click closes the drawer (kept here because the wrapperRef covers
+  // both the trigger and the panel; the a11y hook only handles the panel).
   useEffect(() => {
     if (!open) return;
     function handleClick(event: MouseEvent) {
@@ -97,16 +100,12 @@ export default function NotificationBell() {
         setOpen(false);
       }
     }
-    function handleEsc(event: KeyboardEvent) {
-      if (event.key === 'Escape') setOpen(false);
-    }
     document.addEventListener('mousedown', handleClick);
-    document.addEventListener('keydown', handleEsc);
-    return () => {
-      document.removeEventListener('mousedown', handleClick);
-      document.removeEventListener('keydown', handleEsc);
-    };
+    return () => document.removeEventListener('mousedown', handleClick);
   }, [open]);
+
+  const closeDrawer = useCallback(() => setOpen(false), []);
+  const drawerRef = useDrawerA11y(open, closeDrawer);
 
   const handleMarkRead = useCallback(
     async (id: string) => {
@@ -169,12 +168,14 @@ export default function NotificationBell() {
       <AnimatePresence>
         {open && (
         <motion.div
+          ref={drawerRef}
           variants={slideUp}
           initial="initial"
           animate="animate"
           exit="exit"
           transition={transitions.fast}
           role="dialog"
+          aria-modal="false"
           aria-label="Notifications drawer"
           className="panel-surface-solid absolute right-0 top-11 z-50 w-[min(92vw,380px)] rounded-xl border border-[var(--border-subtle)] shadow-xl"
         >

@@ -8,6 +8,7 @@ import Topbar from './Topbar';
 import { AssistantPanel } from '@/components/assistant/AssistantPanel';
 import OfflineStatusBanner from '@/components/offline/OfflineStatusBanner';
 import { pageFade, drawerSlideLeft, transitions } from '@/lib/ui/motion-presets';
+import { useDrawerA11y } from '@/hooks/useDrawerA11y';
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -35,6 +36,7 @@ export default function DashboardLayout({ children, userName, userRole, userJobT
   // dismiss it on tap; we don't need a separate route-change effect for that.
 
   const closeMobileMenu = () => setMobileMenuOpen(false);
+  const sidebarDrawerRef = useDrawerA11y(mobileMenuOpen, closeMobileMenu);
 
   return (
     <div className="app-shell flex h-screen overflow-hidden">
@@ -50,6 +52,7 @@ export default function DashboardLayout({ children, userName, userRole, userJobT
               onClick={closeMobileMenu}
             />
             <motion.div
+              ref={sidebarDrawerRef}
               role="dialog"
               aria-label="Navigation menu"
               aria-modal="true"

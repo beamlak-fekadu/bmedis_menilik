@@ -2,7 +2,7 @@ import { requireRole } from '@/lib/auth/helpers';
 import { createClient } from '@/lib/supabase/server';
 import Link from 'next/link';
 import { Activity, CalendarClock, FileBarChart, KeyRound, Monitor, ShieldAlert } from 'lucide-react';
-import { PageHeader, Badge, Card, StatCard } from '@/components/ui';
+import { PageHeader, Badge, Card, StatCard, StaggeredGrid, StaggeredItem } from '@/components/ui';
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
@@ -80,14 +80,14 @@ export default async function AuditLogPage({ searchParams }: { searchParams: Sea
         actions={<Badge variant={canSeeDiagnostics ? 'purple' : 'info'}>{canSeeDiagnostics ? 'Admin diagnostics' : 'BME Head governance'}</Badge>}
       />
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-6">
-        <Link href="/audit"><StatCard label="Events Today" value={todayEvents} icon={<CalendarClock className="h-6 w-6" />} color="green" active={!quick} /></Link>
-        <Link href="/audit"><StatCard label="Events This Week" value={weekEvents} icon={<Activity className="h-6 w-6" />} color="blue" /></Link>
-        <Link href="/audit?quick=security"><StatCard label="Security Events" value={roleSecurityEvents} icon={<KeyRound className="h-6 w-6" />} color="purple" active={quick === 'security'} /></Link>
-        <Link href="/audit?quick=data-changes"><StatCard label="Data Changes" value={dataChangeEvents} icon={<Monitor className="h-6 w-6" />} color="orange" active={quick === 'data-changes'} /></Link>
-        <Link href="/audit?quick=failed"><StatCard label="Failed/Blocked Actions" value={failedEvents} icon={<ShieldAlert className="h-6 w-6" />} color="red" active={quick === 'failed'} /></Link>
-        <Link href="/audit?quick=reports"><StatCard label="Report Generations" value={reportEvents} icon={<FileBarChart className="h-6 w-6" />} color="gray" active={quick === 'reports'} /></Link>
-      </div>
+      <StaggeredGrid className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-6">
+        <StaggeredItem><Link href="/audit"><StatCard label="Events Today" value={todayEvents} icon={<CalendarClock className="h-6 w-6" />} color="green" active={!quick} /></Link></StaggeredItem>
+        <StaggeredItem><Link href="/audit"><StatCard label="Events This Week" value={weekEvents} icon={<Activity className="h-6 w-6" />} color="blue" /></Link></StaggeredItem>
+        <StaggeredItem><Link href="/audit?quick=security"><StatCard label="Security Events" value={roleSecurityEvents} icon={<KeyRound className="h-6 w-6" />} color="purple" active={quick === 'security'} /></Link></StaggeredItem>
+        <StaggeredItem><Link href="/audit?quick=data-changes"><StatCard label="Data Changes" value={dataChangeEvents} icon={<Monitor className="h-6 w-6" />} color="orange" active={quick === 'data-changes'} /></Link></StaggeredItem>
+        <StaggeredItem><Link href="/audit?quick=failed"><StatCard label="Failed/Blocked Actions" value={failedEvents} icon={<ShieldAlert className="h-6 w-6" />} color="red" active={quick === 'failed'} /></Link></StaggeredItem>
+        <StaggeredItem><Link href="/audit?quick=reports"><StatCard label="Report Generations" value={reportEvents} icon={<FileBarChart className="h-6 w-6" />} color="gray" active={quick === 'reports'} /></Link></StaggeredItem>
+      </StaggeredGrid>
 
       <Card>
         <form className="grid gap-3 md:grid-cols-5">

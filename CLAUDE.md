@@ -1,6 +1,6 @@
 # CLAUDE.md — BMEDIS Project Intelligence
 
-Last updated: 2026-05-18 (Final deferred sweep + Tier 3 — Topbar/Sidebar mount motion, WO/MR/Reports detail entry motion, QR landing client conversion + pageFade, Reports list motion, Developer Lab QrCoverage/Offline summary strips, Settings staff/security strips. Mobile audit + role-decluttering reviewed and skipped with documented reasoning.)
+Last updated: 2026-05-18 (Cleanup + bug pass — light-mode contrast remediation (globals.css), favicon = LogoMark SVG, equipment/WO/MR detail dark-mode contrast fix, StaggeredGrid client wrapper for server pages, dead-code deletion (ThemeProvider/RoleWorkspaceShell), 12 Storybook stories, print CSS post-motion safeguards, useDrawerA11y focus-trap hook on 3 drawers, AssistantPanel message/prompt motion. Redirect aliases re-validated.)
 Branch: ui_semifinal
 Deployment: configured in Vercel project settings
 Supabase project ID: fgqyszbxzpmqzpqvdivx
@@ -1218,3 +1218,110 @@ the current dedicated-per-role architecture, it adds no value. Honest skip.
   in `developer-lab/page.tsx` and `audit/page.tsx` remain static
   (server-rendered). They inherit count-up via `StatCard`'s foundation
   upgrade and the route `pageFade`, but don't stagger.
+
+---
+
+## Cleanup + bug pass (2026-05-18, branch `ui_semifinal`)
+
+Tail-end pass that closed the long-tail items from Tiers 1–3 plus user-reported
+contrast bugs and the favicon. No business-logic or analytics changes.
+
+### Bug fixes
+- **Light-mode contrast** (`src/app/globals.css`): added a low-specificity
+  `:root:not([data-theme='dark']) :where(.text-{color}-{100|200|300})`
+  override that remaps the dark-first Tailwind 200/300 status colors
+  (rose/amber/emerald/violet/blue/cyan/sky/orange/yellow/slate/teal/indigo/
+  fuchsia/pink) to their `700` counterparts in light mode. Also covers
+  `text-slate-400`. Fixes ~370 occurrences across the dashboard without
+  per-page edits. `:where()` keeps specificity at 0,0,0 so component-level
+  overrides still win.
+- **Equipment / WO / MR detail dark-mode contrast** (`equipment/[id]/page.tsx`,
+  `maintenance/work-orders/[id]/page.tsx`, `maintenance/requests/[id]/page.tsx`):
+  replaced the hardcoded `text-gray-900 dark:text-white` on detail-row values
+  with `text-[var(--foreground)] font-medium` so the design tokens drive
+  theme behavior consistently.
+- **Browser-tab favicon** (`public/icons/bmedis-icon.svg`): rewrote the SVG
+  to match the `LogoMark` stacked-rounded-squares design with the brand→violet
+  gradient and white highlight. Removed `src/app/favicon.ico` (was a stale
+  unrelated icon, also caused a phantom route count). `next-themes`-driven
+  metadata `icons.icon: '/icons/bmedis-icon.svg'` is the canonical declaration.
+
+### Tier 3 stagger via shared client wrapper
+- New `src/components/ui/StaggeredGrid.tsx` exports `StaggeredGrid` +
+  `StaggeredItem` — a tiny client-side wrapper that lets server-rendered
+  pages opt into `cardStagger` reveal without converting the entire page to
+  client. Applied to `developer-lab/page.tsx` top 4-card strip and
+  `audit/page.tsx` 6-card StatCard strip.
+
+### Dead-code deletion
+- Deleted `src/providers/ThemeProvider.tsx` (next-themes wrapper that was
+  never imported; the active provider is `src/components/theme/ThemeProvider.tsx`).
+- Deleted `src/components/ui/RoleWorkspaceShell.tsx` (zero consumers; the
+  per-role component architecture self-identifies via PageHeader). Removed
+  its export from `src/components/ui/index.ts`.
+
+### Storybook stories (12 new files)
+Added `*.stories.tsx` next to each foundation component so the design system
+is browsable in Storybook:
+- `AnimatedMetric`, `SpringGauge`, `MotionCard`, `SectionHeader`,
+  `LoadingState`, `EmptyState`, `StaggeredGrid`, `LottiePlayer`
+- `NivoChartShell`, `BmedisBarChart`, `BmedisLineChart`, `BmedisPieChart`
+Each story file is small and self-documenting. Storybook config under
+`.storybook/main.ts` already globs `src/**/*.stories.tsx`, so no config
+change needed.
+
+### Print CSS post-motion safeguards (`globals.css`)
+Added an `@media print` rule:
+- Forces `opacity: 1` and `transform: none` on any inline-styled element so
+  a print triggered mid-animation never renders an invisible page or clips
+  translated content.
+- Hides `dotlottie-player` and `[class*="lottie"]` so decorative loaders/empty
+  visuals don't print.
+
+### a11y on motion drawers (new `src/hooks/useDrawerA11y.ts`)
+Reusable hook that, when `open === true`:
+- Saves the previously focused element and restores it on close.
+- Listens for Escape and calls `onClose` (skippable via `disableEscape`).
+- Auto-focuses the first focusable element in the panel (skippable via
+  `disableAutoFocus` for panels that manage their own initial focus, like
+  AssistantPanel which focuses the Textarea).
+- Implements a minimal Tab / Shift+Tab focus trap inside the panel.
+Adopted by:
+- `DashboardLayout` mobile sidebar drawer (replaces no a11y).
+- `NotificationBell` drawer (replaces DIY Escape handler; outside-click
+  handler stays separate since it spans the trigger + panel).
+- `AssistantPanel` (replaces nothing; `disableAutoFocus: true` because
+  the Textarea takes initial focus when the panel opens).
+
+### AI Copilot UI polish (`AssistantPanel.tsx`)
+- Message list wrapped in `AnimatePresence` with per-message `slideUp` so new
+  responses arrive smoothly instead of popping in.
+- Sending indicator now uses `motion.div` with fade/slide in+out so it
+  animates as it appears and as it's replaced by the assistant's reply.
+- Quick-prompts row wrapped in `cardStagger`; each prompt button is
+  `motion.button` with `cardItem` so they cascade in on panel open.
+
+### Redirect-alias validation
+Confirmed `src/middleware.ts` returns 301 redirects for
+- `/users` → `/settings?tab=staff-access`
+- `/security` → `/settings?tab=security-access`
+- (plus `/alerts`, `/decision-support`, `/dashboard`, etc.)
+Server fallback pages (`src/app/(dashboard)/users/page.tsx`,
+`src/app/(dashboard)/security/page.tsx`) still call `redirect()` in case the
+middleware is bypassed. Settings page's `normalizeSection(searchParams.get('tab'))`
+routes the correct section.
+
+### Verification
+- `npx tsc --noEmit` ✅
+- `npm run lint` ✅
+- `npm run test:chatbot` ✅ 147/147
+- `npm run build` ✅ 53/53 routes (route count dropped by 1 because the
+  stale `src/app/favicon.ico` is gone; the SVG favicon serves via metadata)
+
+### Still genuinely deferred (cannot be done without a human)
+- Manual browser validation of every motion/contrast change
+- Pixel-perfect mobile audit at 320/360/375/414/768/1024 px viewports
+- Reports Chart.js → Nivo per-chart migration (each chart needs eyes on its
+  export PDF flow)
+- 6 binary `.lottie` files in `public/lottie/` — graceful fallback works
+  fine until they're authored

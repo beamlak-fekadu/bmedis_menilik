@@ -566,7 +566,7 @@ export default function WorkOrderDetailPage() {
             <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <div>
                 <dt className="text-sm font-medium text-[var(--text-muted)]">Asset</dt>
-                <dd className="mt-1 text-sm text-gray-900 dark:text-white">
+                <dd className="mt-1 text-sm text-[var(--foreground)] font-medium">
                   {wo.equipment_assets
                     ? `${wo.equipment_assets.asset_code} — ${wo.equipment_assets.name}`
                     : '—'}
@@ -574,7 +574,7 @@ export default function WorkOrderDetailPage() {
               </div>
               <div>
                 <dt className="text-sm font-medium text-[var(--text-muted)]">Assigned To</dt>
-                <dd className="mt-1 text-sm text-gray-900 dark:text-white">
+                <dd className="mt-1 text-sm text-[var(--foreground)] font-medium">
                   {wo.profiles?.full_name ?? 'Unassigned'}
                 </dd>
               </div>
@@ -588,38 +588,38 @@ export default function WorkOrderDetailPage() {
               </div>
               <div>
                 <dt className="text-sm font-medium text-[var(--text-muted)]">Work Type</dt>
-                <dd className="mt-1 text-sm text-gray-900 dark:text-white">
+                <dd className="mt-1 text-sm text-[var(--foreground)] font-medium">
                   {wo.work_type.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
                 </dd>
               </div>
               <div>
                 <dt className="text-sm font-medium text-[var(--text-muted)]">External Vendor</dt>
-                <dd className="mt-1 text-sm text-gray-900 dark:text-white">
+                <dd className="mt-1 text-sm text-[var(--foreground)] font-medium">
                   {wo.external_vendor ? wo.external_vendor_name || 'Yes' : 'No'}
                 </dd>
               </div>
               <div>
                 <dt className="text-sm font-medium text-[var(--text-muted)]">Estimated Hours</dt>
-                <dd className="mt-1 text-sm text-gray-900 dark:text-white">
+                <dd className="mt-1 text-sm text-[var(--foreground)] font-medium">
                   {wo.estimated_hours ?? '—'}
                 </dd>
               </div>
               <div>
                 <dt className="text-sm font-medium text-[var(--text-muted)]">Actual Hours</dt>
-                <dd className="mt-1 text-sm text-gray-900 dark:text-white">
+                <dd className="mt-1 text-sm text-[var(--foreground)] font-medium">
                   {wo.actual_hours ?? '—'}
                 </dd>
               </div>
               <div>
                 <dt className="text-sm font-medium text-[var(--text-muted)]">Created</dt>
-                <dd className="mt-1 text-sm text-gray-900 dark:text-white">
+                <dd className="mt-1 text-sm text-[var(--foreground)] font-medium">
                   {new Date(wo.created_at).toLocaleString()}
                 </dd>
               </div>
               {wo.started_at && (
                 <div>
                   <dt className="text-sm font-medium text-[var(--text-muted)]">Started</dt>
-                  <dd className="mt-1 text-sm text-gray-900 dark:text-white">
+                  <dd className="mt-1 text-sm text-[var(--foreground)] font-medium">
                     {new Date(wo.started_at).toLocaleString()}
                   </dd>
                 </div>
@@ -627,7 +627,7 @@ export default function WorkOrderDetailPage() {
               {wo.completed_at && (
                 <div>
                   <dt className="text-sm font-medium text-[var(--text-muted)]">Completed</dt>
-                  <dd className="mt-1 text-sm text-gray-900 dark:text-white">
+                  <dd className="mt-1 text-sm text-[var(--foreground)] font-medium">
                     {new Date(wo.completed_at).toLocaleString()}
                   </dd>
                 </div>
@@ -635,7 +635,7 @@ export default function WorkOrderDetailPage() {
               {wo.root_cause && (
                 <div className="sm:col-span-2 lg:col-span-3">
                   <dt className="text-sm font-medium text-[var(--text-muted)]">Root Cause</dt>
-                  <dd className="mt-1 whitespace-pre-wrap text-sm text-gray-900 dark:text-white">
+                  <dd className="mt-1 whitespace-pre-wrap text-sm text-[var(--foreground)] font-medium">
                     {wo.root_cause}
                   </dd>
                 </div>
@@ -643,7 +643,7 @@ export default function WorkOrderDetailPage() {
               {wo.closure_notes && (
                 <div className="sm:col-span-2 lg:col-span-3">
                   <dt className="text-sm font-medium text-[var(--text-muted)]">Closure Notes</dt>
-                  <dd className="mt-1 whitespace-pre-wrap text-sm text-gray-900 dark:text-white">
+                  <dd className="mt-1 whitespace-pre-wrap text-sm text-[var(--foreground)] font-medium">
                     {wo.closure_notes}
                   </dd>
                 </div>
@@ -651,7 +651,7 @@ export default function WorkOrderDetailPage() {
               {wo.completion_outcome && (
                 <div>
                   <dt className="text-sm font-medium text-[var(--text-muted)]">Completion Outcome</dt>
-                  <dd className="mt-1 text-sm text-gray-900 dark:text-white">
+                  <dd className="mt-1 text-sm text-[var(--foreground)] font-medium">
                     {wo.completion_outcome.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase())}
                   </dd>
                 </div>
@@ -659,7 +659,7 @@ export default function WorkOrderDetailPage() {
               {wo.final_equipment_condition && (
                 <div>
                   <dt className="text-sm font-medium text-[var(--text-muted)]">Final Equipment Condition</dt>
-                  <dd className="mt-1 text-sm text-gray-900 dark:text-white">
+                  <dd className="mt-1 text-sm text-[var(--foreground)] font-medium">
                     {wo.final_equipment_condition.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase())}
                   </dd>
                 </div>
@@ -817,7 +817,7 @@ export default function WorkOrderDetailPage() {
                 )}
                 <div className="sm:col-span-2">
                   <dt className="text-xs font-medium text-[var(--text-muted)]">Fault Description</dt>
-                  <dd className="mt-1 whitespace-pre-wrap text-sm text-gray-900 dark:text-white">{originatingRequest.fault_description}</dd>
+                  <dd className="mt-1 whitespace-pre-wrap text-sm text-[var(--foreground)] font-medium">{originatingRequest.fault_description}</dd>
                 </div>
               </dl>
             </CardContent>

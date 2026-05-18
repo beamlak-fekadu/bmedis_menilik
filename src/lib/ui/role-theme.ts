@@ -3,7 +3,7 @@
 // The base theme tokens (--brand, --surface-*, --success, etc) stay identical
 // across roles — we don't want a technician to see a wildly different palette
 // from a BME Head. This module only adjusts an *accent hue* and a short
-// descriptor that lets role-aware shells (RoleWorkspaceShell, PageHeader) put
+// descriptor that lets role-aware shells / PageHeader put
 // a consistent visual tag on top of the shared surface.
 
 import type { RoleName } from '@/types/roles';

@@ -36,5 +36,5 @@ export { default as MotionCard } from './MotionCard';
 export { default as SectionHeader } from './SectionHeader';
 export { default as ResponsiveTableShell } from './ResponsiveTableShell';
 export { default as LoadingState } from './LoadingState';
-export { default as RoleWorkspaceShell } from './RoleWorkspaceShell';
 export { default as LottiePlayer, LOTTIE_PATHS, type LottieKey } from './LottiePlayer';
+export { StaggeredGrid, StaggeredItem } from './StaggeredGrid';

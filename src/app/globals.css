@@ -351,11 +351,58 @@ body,
   color: var(--assistant-warning-text-strong);
 }
 
+/* ── Light-mode status color contrast remediation ────────────────────────────
+   Tailwind utilities like `text-rose-300` / `text-amber-200` were chosen
+   while the app was dark-first. On light backgrounds those shades are too
+   pale to read (failing WCAG AA). Rather than rewriting 300+ usages, we
+   override the most common low-contrast status colors when the theme is
+   light. `:where()` keeps specificity low so component-level overrides still
+   win, and we only target the 200/300 shades which are the ones that
+   actually fail. 400 and stronger shades already read fine in both modes.
+   ──────────────────────────────────────────────────────────────────────── */
+:root:not([data-theme='dark']) :where(.text-rose-200, .text-rose-300)        { color: rgb(190 18 60); }   /* rose-700  */
+:root:not([data-theme='dark']) :where(.text-rose-100)                        { color: rgb(159 18 57); }   /* rose-800  */
+:root:not([data-theme='dark']) :where(.text-amber-200, .text-amber-300)      { color: rgb(180 83 9); }    /* amber-700 */
+:root:not([data-theme='dark']) :where(.text-amber-100)                       { color: rgb(146 64 14); }   /* amber-800 */
+:root:not([data-theme='dark']) :where(.text-emerald-200, .text-emerald-300)  { color: rgb(4 120 87); }    /* emerald-700 */
+:root:not([data-theme='dark']) :where(.text-emerald-100)                     { color: rgb(6 95 70); }     /* emerald-800 */
+:root:not([data-theme='dark']) :where(.text-violet-200, .text-violet-300)    { color: rgb(109 40 217); }  /* violet-700 */
+:root:not([data-theme='dark']) :where(.text-violet-100)                      { color: rgb(91 33 182); }   /* violet-800 */
+:root:not([data-theme='dark']) :where(.text-blue-200, .text-blue-300)        { color: rgb(29 78 216); }   /* blue-700  */
+:root:not([data-theme='dark']) :where(.text-blue-100)                        { color: rgb(30 64 175); }   /* blue-800  */
+:root:not([data-theme='dark']) :where(.text-cyan-200, .text-cyan-300)        { color: rgb(14 116 144); }  /* cyan-700  */
+:root:not([data-theme='dark']) :where(.text-cyan-100)                        { color: rgb(21 94 117); }   /* cyan-800  */
+:root:not([data-theme='dark']) :where(.text-sky-200, .text-sky-300)          { color: rgb(3 105 161); }   /* sky-700   */
+:root:not([data-theme='dark']) :where(.text-sky-100)                         { color: rgb(7 89 133); }    /* sky-800   */
+:root:not([data-theme='dark']) :where(.text-orange-200, .text-orange-300)    { color: rgb(194 65 12); }   /* orange-700 */
+:root:not([data-theme='dark']) :where(.text-orange-100)                      { color: rgb(154 52 18); }   /* orange-800 */
+:root:not([data-theme='dark']) :where(.text-yellow-200, .text-yellow-300)    { color: rgb(161 98 7); }    /* yellow-700 */
+:root:not([data-theme='dark']) :where(.text-slate-200, .text-slate-300, .text-slate-400) { color: rgb(51 65 85); }    /* slate-700 */
+:root:not([data-theme='dark']) :where(.text-teal-200, .text-teal-300)        { color: rgb(15 118 110); }  /* teal-700  */
+:root:not([data-theme='dark']) :where(.text-indigo-200, .text-indigo-300)    { color: rgb(67 56 202); }   /* indigo-700 */
+:root:not([data-theme='dark']) :where(.text-fuchsia-200, .text-fuchsia-300)  { color: rgb(162 28 175); }  /* fuchsia-700 */
+:root:not([data-theme='dark']) :where(.text-pink-200, .text-pink-300)        { color: rgb(190 24 93); }   /* pink-700  */
+
 /* ── Print styles (preserved) ────────────────────────────────────────────── */
 @media print {
   .no-print,
   .assistant-launcher,
   .assistant-panel {
+    display: none !important;
+  }
+
+  /* Neutralize framer-motion transforms/opacity so a mid-animation print
+     never clips content or renders an invisible page. Targets the inline
+     styles framer-motion sets on motion.* elements. */
+  [style*="opacity"],
+  [style*="transform"] {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
+  /* Lottie players never print — they're decorative loaders/empty visuals. */
+  dotlottie-player,
+  [class*="lottie"] {
     display: none !important;
   }
 

@@ -165,7 +165,7 @@ function DetailRow({ label, value }: { label: string; value: React.ReactNode }) 
       <dt className="text-xs font-medium uppercase tracking-wider text-[var(--text-muted)]">
         {label}
       </dt>
-      <dd className="text-sm text-gray-900 dark:text-white">{value || '—'}</dd>
+      <dd className="text-sm font-medium text-[var(--foreground)]">{value || '—'}</dd>
     </div>
   );
 }

@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { Activity, Beaker, ClipboardCheck, DatabaseZap, FileDown, ShieldCheck } from 'lucide-react';
 import { requireRole } from '@/lib/auth/helpers';
 import { createClient } from '@/lib/supabase/server';
-import { Badge, Card, CardContent, CardHeader, CardTitle, PageHeader } from '@/components/ui';
+import { Badge, Card, CardContent, CardHeader, CardTitle, PageHeader, StaggeredGrid, StaggeredItem } from '@/components/ui';
 import AssistantPageContextBridge from '@/components/assistant/AssistantPageContextBridge';
 import DeveloperLabClient, { type LabReplacementRow } from './DeveloperLabClient';
 import QrCoverageSection from './QrCoverageSection';
@@ -467,32 +467,32 @@ export default async function DeveloperLabPage({ searchParams }: { searchParams:
         actions={<Badge variant="purple">Developer Only</Badge>}
       />
 
-      <div className="grid gap-4 md:grid-cols-4">
-        <Card>
+      <StaggeredGrid className="grid gap-4 md:grid-cols-4">
+        <StaggeredItem><Card>
           <Activity className="mb-2 h-5 w-5 text-violet-300" />
           <p className="text-sm text-[var(--text-muted)]">Ranked assets</p>
           <p className="text-2xl font-semibold text-[var(--foreground)]">{replacementRows.length}</p>
-        </Card>
-        <Card>
+        </Card></StaggeredItem>
+        <StaggeredItem><Card>
           <DatabaseZap className="mb-2 h-5 w-5 text-cyan-300" />
           <p className="text-sm text-[var(--text-muted)]">Health checks</p>
           <p className="text-2xl font-semibold text-[var(--foreground)]">{healthChecks.length}</p>
-        </Card>
-        <Card>
+        </Card></StaggeredItem>
+        <StaggeredItem><Card>
           <ShieldCheck className="mb-2 h-5 w-5 text-emerald-300" />
           <p className="text-sm text-[var(--text-muted)]">Last refresh</p>
           <p className="text-sm font-semibold text-[var(--foreground)]">
             {lastRefresh?.started_at ? new Date(String(lastRefresh.started_at)).toLocaleString() : 'No log'}
           </p>
-        </Card>
-        <Card>
+        </Card></StaggeredItem>
+        <StaggeredItem><Card>
           <ClipboardCheck className="mb-2 h-5 w-5 text-amber-300" />
           <p className="text-sm text-[var(--text-muted)]">Refresh status</p>
           <Badge variant={lastRefresh?.status === 'error' ? 'error' : lastRefresh?.status === 'success' ? 'success' : 'info'}>
             {String(lastRefresh?.status ?? 'not run')}
           </Badge>
-        </Card>
-      </div>
+        </Card></StaggeredItem>
+      </StaggeredGrid>
 
       <QrCoverageSection stats={qrCoverageStats} scanStats={qrScanStats} />
 
