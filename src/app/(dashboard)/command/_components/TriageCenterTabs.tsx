@@ -426,8 +426,8 @@ function ProactiveRiskList({
       </ul>
       {total > rows.length && (
         <div className="mt-3 text-right">
-          <Link href="/alerts" className="text-xs text-violet-300 hover:text-violet-200">
-            View all {total} risk signals →
+          <Link href="/notifications" className="text-xs text-violet-300 hover:text-violet-200">
+            View all {total} notification signals →
           </Link>
         </div>
       )}

@@ -147,7 +147,7 @@ export function buildDeterministicAssistantIntro(): AssistantContent {
     decision: 'answer',
     title: 'BMEDIS Copilot',
     summary:
-      "Hello, I’m your BMEDIS biomedical equipment management copilot. I can help you understand tasks, work orders, equipment status, preventive maintenance, calibration, logistics, alerts, decision support, and safe first-line troubleshooting.",
+      "Hello, I’m your BMEDIS biomedical equipment management copilot. I can help you understand tasks, work orders, equipment status, preventive maintenance, calibration, logistics, notifications, decision support, and safe first-line troubleshooting.",
     actions: [
       'Review and prioritize your tasks',
       'Summarize work orders and equipment history',
@@ -172,7 +172,7 @@ export function buildDeterministicAssistantIntro(): AssistantContent {
     follow_up_suggestions: [
       'What is on my to-do list?',
       'Summarize open work orders',
-      'What alerts need attention?',
+      'What notifications need attention?',
       'What should I check first if this monitor is not powering on?',
     ],
     proactive_signals: [],
@@ -229,7 +229,7 @@ function enrichAssistantPayload(params: {
 
 function enforceOffTopicRedirect(assistant: AssistantContent, capability: CapabilityId): AssistantContent {
   if (capability !== 'general_conversation' && capability !== 'off_topic_safe') return assistant;
-  const redirect = 'I can also help with BMEDIS tasks, work orders, equipment summaries, alerts, and safe troubleshooting.';
+  const redirect = 'I can also help with BMEDIS tasks, work orders, equipment summaries, notifications, and safe troubleshooting.';
   const summary = assistant.summary.includes('BMEDIS') ? assistant.summary : `${assistant.summary.trim()} ${redirect}`.trim();
   return {
     ...assistant,
@@ -454,7 +454,7 @@ export async function orchestrateAssistantResponse(params: OrchestrateParams): P
               summary:
                 capability === 'unsafe_or_restricted'
                   ? safety.reason
-                  : "I can help with BMEDIS operations like tasks, work orders, equipment summaries, alerts, and safe troubleshooting.",
+                  : "I can help with BMEDIS operations like tasks, work orders, equipment summaries, notifications, and safe troubleshooting.",
               answer_basis: capability === 'unsafe_or_restricted' ? 'insufficient_data' : 'system_capabilities',
               confidence: capability === 'unsafe_or_restricted' ? 'low' : 'high',
             },

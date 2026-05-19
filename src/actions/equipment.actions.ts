@@ -127,6 +127,7 @@ export async function updateEquipmentConditionAction(
       oldValues: oldRow.data as Record<string, unknown> | null,
       newValues: { condition: parsedCondition },
     });
+    await recomputeAssetAnalytics(assetId).catch(() => undefined);
     revalidateMany([...equipmentRevalidatePaths, `/equipment/${assetId}`]);
     return { success: true };
   } catch (err) {

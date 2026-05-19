@@ -15,19 +15,19 @@ const DEFAULTS: Record<CapabilityId, CapabilityResponseDefaults> = {
     follow_up_suggestions: [
       'What is on my to-do list?',
       'Summarize open work orders',
-      'What alerts need attention?',
+      'What notifications need attention?',
       'What should I check first if this monitor is not powering on?',
     ],
   },
   general_conversation: {
     title: 'General Conversation',
     intelligence_mode: 'standard',
-    follow_up_suggestions: ['What is on my to-do list?', 'Summarize this work order', 'Show open alerts'],
+    follow_up_suggestions: ['What is on my to-do list?', 'Summarize this work order', 'Show open notifications'],
   },
   off_topic_safe: {
     title: 'General Guidance',
     intelligence_mode: 'standard',
-    follow_up_suggestions: ['What should I prioritize today?', 'Summarize this equipment', 'What alerts need attention?'],
+    follow_up_suggestions: ['What should I prioritize today?', 'Summarize this equipment', 'What notifications need attention?'],
   },
   my_tasks: { title: 'Task and Priority Summary', intelligence_mode: 'prioritization', follow_up_suggestions: BASE_SUGGESTIONS },
   prioritize_tasks: {
@@ -56,9 +56,9 @@ const DEFAULTS: Record<CapabilityId, CapabilityResponseDefaults> = {
     follow_up_suggestions: ['Show overdue PM items', 'What should be prioritized first?', 'How does this affect readiness?'],
   },
   summarize_alerts: {
-    title: 'Alerts Summary',
+    title: 'Notification Summary',
     intelligence_mode: 'synthesis',
-    follow_up_suggestions: ['Show critical alerts first', 'What needs escalation now?', 'Summarize alert trends'],
+    follow_up_suggestions: ['Show critical notifications first', 'What needs escalation now?', 'Summarize notification trends'],
   },
   safe_troubleshooting: {
     title: 'Safe First-Line Troubleshooting',
@@ -137,7 +137,7 @@ const DEFAULTS: Record<CapabilityId, CapabilityResponseDefaults> = {
   general_system_fallback: {
     title: 'BMEDIS Copilot',
     intelligence_mode: 'standard',
-    follow_up_suggestions: ['What is on my to-do list?', 'Summarize this work order', 'What alerts need attention?'],
+    follow_up_suggestions: ['What is on my to-do list?', 'Summarize this work order', 'What notifications need attention?'],
   },
 };
 

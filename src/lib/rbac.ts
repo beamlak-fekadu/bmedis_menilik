@@ -73,7 +73,7 @@ export type Capability =
   | 'disposal.request.create'
   | 'disposal.approve'
   | 'disposal.record'
-  // Alerts
+  // Notification signals
   | 'alerts.acknowledge'
   // Reports
   | 'reports.view'

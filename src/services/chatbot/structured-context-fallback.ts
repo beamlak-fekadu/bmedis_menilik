@@ -113,7 +113,7 @@ export function buildDeterministicStructuredFallback(params: {
       ...baseAssistant(
         capability,
         decision,
-        'Based on current operational signals, your highest priorities are overdue PM plans, unacknowledged high/critical recommendation flags, and assets with concurrent alerts.',
+        'Based on current operational signals, your highest priorities are overdue PM plans, unacknowledged high/critical recommendation flags, and assets with concurrent notification signals.',
         findings.length ? findings : ['Operational queue was used to derive top priorities.'],
         actions.length ? actions : ['Review the ranked operational queue and address highest-score items first.'],
         topPriorities.length ? topPriorities : ['Prioritization used ranked operational queue and active risk signals.']

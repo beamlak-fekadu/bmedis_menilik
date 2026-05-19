@@ -52,7 +52,7 @@ Mention:
 - equipment summaries
 - PM and calibration
 - logistics and procurement
-- alerts and decision support
+- notifications and decision support
 - safe first-line troubleshooting
 
 Be concise and helpful.
@@ -95,7 +95,7 @@ function capabilityAddendum(capability: CapabilityId): string {
     case 'safe_troubleshooting':
       return 'Follow tier1Troubleshooting (checklist + message_hints) order. troubleshooting_steps must be safe verification checks, not internal repair. Map hypotheses only to evidence; otherwise state unknown.';
     case 'summarize_alerts':
-      return 'Use alertSynthesis.countsBySeverity and getAlertsSummary from toolTrace; group by severity and asset where possible.';
+      return 'Use notification signal synthesis and getAlertsSummary from toolTrace; group by severity and asset where possible. Refer to the user-facing surface as Notifications, not /alerts.';
     case 'logistics_status':
     case 'procurement_status':
       return 'Use getInventoryLogisticsStatus / getProcurementStatus in toolTrace; do not invent SKUs or delivery dates.';

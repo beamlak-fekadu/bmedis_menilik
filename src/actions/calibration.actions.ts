@@ -34,6 +34,7 @@ export async function updateCalibrationRequestStatusAction(id: string, status: s
       newValues: result.data as Record<string, unknown>,
     });
     const assetId = (result.data as Record<string, unknown>).asset_id as string | undefined;
+    if (assetId && parsedStatus === 'completed') await recomputeAssetAnalytics(assetId).catch(() => undefined);
     revalidateMany([...calibrationPaths, `/calibration/requests/${id}`, ...(assetId ? [`/equipment/${assetId}`] : [])]);
     return { success: true, data: result.data };
   } catch (err) {

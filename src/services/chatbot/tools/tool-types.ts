@@ -17,6 +17,7 @@ export type CopilotToolCategory =
   | 'replacement'
   | 'command'
   | 'alerts'
+  | 'notifications'
   | 'qr'
   | 'offline'
   | 'reports'
@@ -85,4 +86,3 @@ export interface CopilotToolResult {
   deniedReason?: string;
   staleDataWarning?: string;
 }
-

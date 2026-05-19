@@ -132,7 +132,7 @@ export default function DepartmentDashboard({
     { label: 'My Requests', value: myRequests.length, subtitle: 'Requests you submitted.', icon: <ClipboardCheck className="h-5 w-5" />, tone: 'info', href: '/requests?tab=my-requests', hrefLabel: 'View My Requests' },
     { label: 'Open Work Orders', value: metrics.openWorkOrders, subtitle: 'Work affecting department equipment.', icon: <Wrench className="h-5 w-5" />, tone: 'info', href: '/maintenance', hrefLabel: 'View Work Status' },
     { label: 'Unavailable Equipment', value: metrics.nonFunctionalAssets + metrics.underMaintenanceAssets, subtitle: 'Non-functional or under maintenance.', icon: <AlertTriangle className="h-5 w-5" />, tone: metrics.nonFunctionalAssets + metrics.underMaintenanceAssets > 0 ? 'warning' : 'success' },
-    { label: 'Critical Alerts', value: metrics.unacknowledgedAlerts, subtitle: 'Unacknowledged signals affecting your department.', icon: <ShieldAlert className="h-5 w-5" />, tone: metrics.unacknowledgedAlerts > 0 ? 'warning' : 'success', href: '/notifications', hrefLabel: 'Open Notifications' },
+    { label: 'Critical Notifications', value: metrics.unacknowledgedAlerts, subtitle: 'Unacknowledged signals affecting your department.', icon: <ShieldAlert className="h-5 w-5" />, tone: metrics.unacknowledgedAlerts > 0 ? 'warning' : 'success', href: '/notifications', hrefLabel: 'Open Notifications' },
     { label: 'Completed This Month', value: metrics.monthlyCompletedWork, subtitle: 'Work orders completed this month.', icon: <TrendingUp className="h-5 w-5" />, tone: 'info' },
   ];
 
@@ -145,7 +145,7 @@ export default function DepartmentDashboard({
           <PageHeader
             title={title}
             description={isHead
-              ? 'Department equipment, requests, work status, compliance, and alerts — scoped to your department.'
+              ? 'Department equipment, requests, work status, compliance, and notifications — scoped to your department.'
               : 'Track your equipment, submitted requests, and open work — scoped to your department.'}
           />
           <p className="text-xs text-[var(--text-muted)]">Updated {generatedAt} · Department view</p>
@@ -408,7 +408,7 @@ export default function DepartmentDashboard({
           <Link href="/requests" className="inline-flex items-center gap-2 rounded-md border border-[var(--border-subtle)] px-3 py-1.5 text-sm text-[var(--text-muted)] hover:text-[var(--foreground)]"><ClipboardCheck className="h-4 w-4" /> Department Requests</Link>
           <Link href="/maintenance" className="inline-flex items-center gap-2 rounded-md border border-[var(--border-subtle)] px-3 py-1.5 text-sm text-[var(--text-muted)] hover:text-[var(--foreground)]"><Wrench className="h-4 w-4" /> Work Status</Link>
           <Link href="/compliance" className="inline-flex items-center gap-2 rounded-md border border-[var(--border-subtle)] px-3 py-1.5 text-sm text-[var(--text-muted)] hover:text-[var(--foreground)]"><CalendarDays className="h-4 w-4" /> Compliance</Link>
-          <Link href="/alerts" className="inline-flex items-center gap-2 rounded-md border border-[var(--border-subtle)] px-3 py-1.5 text-sm text-[var(--text-muted)] hover:text-[var(--foreground)]"><ShieldAlert className="h-4 w-4" /> Department Alerts</Link>
+          <Link href="/notifications" className="inline-flex items-center gap-2 rounded-md border border-[var(--border-subtle)] px-3 py-1.5 text-sm text-[var(--text-muted)] hover:text-[var(--foreground)]"><ShieldAlert className="h-4 w-4" /> Department Notifications</Link>
           <Link href="/calendar" className="inline-flex items-center gap-2 rounded-md border border-[var(--border-subtle)] px-3 py-1.5 text-sm text-[var(--text-muted)] hover:text-[var(--foreground)]"><CalendarDays className="h-4 w-4" /> Calendar</Link>
           <Link href={deptReport('department-readiness', departmentId)} className="inline-flex items-center gap-2 rounded-md border border-[var(--border-subtle)] px-3 py-1.5 text-sm text-[var(--text-muted)] hover:text-[var(--foreground)]">Reports</Link>
         </div>

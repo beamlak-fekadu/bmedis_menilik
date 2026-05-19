@@ -9,6 +9,12 @@ import type { RecipientProfile } from '@/types/notifications';
 
 type DbClient = SupabaseClient;
 
+export const NOTIFICATION_RECIPIENT_IDENTITY_CONTRACT = {
+  recipientProfileId: 'profiles.id',
+  roleAssignment: 'user_roles.user_id = profiles.id',
+  telegramConnection: 'telegram_connections.profile_id = profiles.id',
+} as const;
+
 interface ProfileRolesRow {
   id: string;
   full_name: string | null;

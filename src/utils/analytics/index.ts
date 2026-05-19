@@ -35,3 +35,23 @@ export {
   type RecommendationInput,
   type GeneratedRecommendation,
 } from './recommendations';
+
+export {
+  SCORE_REGISTRY,
+  SENSITIVITY_SUPPORTED_SCORES,
+  NOT_WEIGHT_ADJUSTABLE_SCORES,
+  SNAPSHOT_FRESH_HOURS,
+  SNAPSHOT_VERY_STALE_HOURS,
+  evaluateSnapshotFreshness,
+  formatLastRefresh,
+  getDefaultWeightMap,
+  getScoreRegistryEntry,
+  scoreFreshnessBadgeVariant,
+  type OperationalImplementation,
+  type ScoreCriterion,
+  type ScoreDataMode,
+  type ScoreFreshness,
+  type ScoreRefreshMode,
+  type ScoreRegistryEntry,
+  type ScoreWeight,
+} from './score-registry';

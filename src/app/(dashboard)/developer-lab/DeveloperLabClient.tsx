@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, useTransition } from 'react';
+import { useState, useTransition } from 'react';
 import Link from 'next/link';
 import { RefreshCcw, RotateCcw } from 'lucide-react';
 import { Badge, Button, Card, CardContent, CardHeader, CardTitle, useToast } from '@/components/ui';
@@ -8,28 +8,32 @@ import {
   recomputeAllAnalyticsDeveloperAction,
   refreshDecisionSupportSnapshotsAction,
   refreshFmeaRiskScoresAction,
+  type DecisionSupportRefreshSummary,
 } from '@/actions/developer-lab.actions';
+import {
+  NOT_WEIGHT_ADJUSTABLE_SCORES,
+  SENSITIVITY_SUPPORTED_SCORES,
+  getDefaultWeightMap,
+  type ScoreRegistryEntry,
+} from '@/utils/analytics/score-registry';
 
-const SCORE_CRITERIA = [
-  { key: 'ageScore', label: 'Age' },
-  { key: 'failureScore', label: 'Failures' },
-  { key: 'availabilityScore', label: 'Availability' },
-  { key: 'maintenanceBurdenScore', label: 'Maintenance burden' },
-  { key: 'sparePartScore', label: 'Spare support' },
-  { key: 'riskScore', label: 'FMEA risk' },
-  { key: 'costScore', label: 'Lifecycle cost' },
-] as const;
+type ReplacementScoreKey =
+  | 'ageScore'
+  | 'failureScore'
+  | 'availabilityScore'
+  | 'maintenanceBurdenScore'
+  | 'sparePartScore'
+  | 'riskScore'
+  | 'costScore';
 
-type ScoreKey = typeof SCORE_CRITERIA[number]['key'];
-
-const DEFAULT_WEIGHTS: Record<ScoreKey, number> = {
-  ageScore: 15,
-  failureScore: 20,
-  availabilityScore: 15,
-  maintenanceBurdenScore: 15,
-  sparePartScore: 10,
-  riskScore: 15,
-  costScore: 10,
+const RPI_SCORE_LABELS: Record<ReplacementScoreKey, string> = {
+  ageScore: 'Age',
+  failureScore: 'Failures',
+  availabilityScore: 'Availability',
+  maintenanceBurdenScore: 'Maintenance burden',
+  sparePartScore: 'Spare support',
+  riskScore: 'FMEA risk',
+  costScore: 'Lifecycle cost',
 };
 
 export interface LabReplacementRow {
@@ -39,19 +43,31 @@ export interface LabReplacementRow {
   departmentName: string;
   rank: number | null;
   priorityIndex: number | null;
-  scores: Record<ScoreKey, number | null>;
+  scores: Record<ReplacementScoreKey, number | null>;
 }
 
 interface Props {
   replacementRows: LabReplacementRow[];
 }
 
-function computeRpi(row: LabReplacementRow, weights: Record<ScoreKey, number>) {
-  const totalWeight = SCORE_CRITERIA.reduce((sum, criterion) => sum + weights[criterion.key], 0);
+type BasicActionResult = {
+  success: boolean;
+  error?: string;
+  data?: unknown;
+};
+
+function buildInitialWeights() {
+  return Object.fromEntries(
+    SENSITIVITY_SUPPORTED_SCORES.map((score) => [score.key, getDefaultWeightMap(score)]),
+  ) as Record<string, Record<string, number>>;
+}
+
+function computeRpi(row: LabReplacementRow, weights: Record<string, number>) {
+  const totalWeight = Object.values(weights).reduce((sum, value) => sum + value, 0);
   if (totalWeight <= 0) return 0;
-  const weighted = SCORE_CRITERIA.reduce((sum, criterion) => {
-    const value = row.scores[criterion.key] ?? 0;
-    return sum + value * weights[criterion.key];
+  const weighted = (Object.keys(RPI_SCORE_LABELS) as ReplacementScoreKey[]).reduce((sum, key) => {
+    const value = row.scores[key] ?? 0;
+    return sum + value * (weights[key] ?? 0);
   }, 0);
   return weighted / totalWeight;
 }
@@ -61,15 +77,28 @@ function runLabel(delta: number | null) {
   return delta > 0 ? `Up ${delta}` : `Down ${Math.abs(delta)}`;
 }
 
+function scoreBadgeVariant(score: ScoreRegistryEntry) {
+  if (score.dataMode === 'Live') return 'success';
+  if (score.dataMode === 'Snapshot' || score.dataMode === 'Mixed') return 'info';
+  if (score.dataMode === 'Sandbox') return 'warning';
+  return 'error';
+}
+
 export default function DeveloperLabClient({ replacementRows }: Props) {
   const { toast } = useToast();
   const [pendingAction, startTransition] = useTransition();
-  const [weights, setWeights] = useState<Record<ScoreKey, number>>(DEFAULT_WEIGHTS);
-  const [sandboxTab, setSandboxTab] = useState<'rpi' | 'health' | 'readiness' | 'critical' | 'stock'>('rpi');
+  const [weightsByScore, setWeightsByScore] = useState<Record<string, Record<string, number>>>(buildInitialWeights);
+  const [activeScoreKey, setActiveScoreKey] = useState(SENSITIVITY_SUPPORTED_SCORES[0]?.key ?? 'replacement_priority');
+  const [lastRefreshSummary, setLastRefreshSummary] = useState<DecisionSupportRefreshSummary | null>(null);
 
-  const simulated = useMemo(() => {
-    return replacementRows
-      .map((row) => ({ ...row, simulatedRpi: computeRpi(row, weights), simulatedRank: 0, rankDelta: null as number | null }))
+  const activeScore = SENSITIVITY_SUPPORTED_SCORES.find((score) => score.key === activeScoreKey) ?? SENSITIVITY_SUPPORTED_SCORES[0];
+  const activeWeights = weightsByScore[activeScore.key] ?? getDefaultWeightMap(activeScore);
+  const totalWeight = Object.values(activeWeights).reduce((sum, value) => sum + value, 0);
+  const isRpiSandbox = activeScore.key === 'replacement_priority';
+
+  const simulated = isRpiSandbox
+    ? replacementRows
+      .map((row) => ({ ...row, simulatedRpi: computeRpi(row, activeWeights), simulatedRank: 0, rankDelta: null as number | null }))
       .sort((a, b) => b.simulatedRpi - a.simulatedRpi)
       .map((row, index) => {
         const simulatedRank = index + 1;
@@ -78,10 +107,9 @@ export default function DeveloperLabClient({ replacementRows }: Props) {
           simulatedRank,
           rankDelta: row.rank == null ? null : row.rank - simulatedRank,
         };
-      });
-  }, [replacementRows, weights]);
+      })
+    : [];
 
-  const totalWeight = SCORE_CRITERIA.reduce((sum, criterion) => sum + weights[criterion.key], 0);
   const topMovement = simulated
     .filter((row) => row.rankDelta !== 0 && row.rankDelta != null)
     .sort((a, b) => Math.abs(b.rankDelta ?? 0) - Math.abs(a.rankDelta ?? 0))
@@ -92,22 +120,46 @@ export default function DeveloperLabClient({ replacementRows }: Props) {
       ? 'Sensitive: top candidates changed significantly'
       : 'Moderate movement: some rank order changes';
 
-  function runAction(label: string, action: () => Promise<{ success: boolean; error?: string }>) {
+  function setWeight(scoreKey: string, weightKey: string, value: number) {
+    setWeightsByScore((current) => ({
+      ...current,
+      [scoreKey]: {
+        ...(current[scoreKey] ?? {}),
+        [weightKey]: value,
+      },
+    }));
+  }
+
+  function resetActiveWeights() {
+    setWeightsByScore((current) => ({
+      ...current,
+      [activeScore.key]: getDefaultWeightMap(activeScore),
+    }));
+  }
+
+  function runAction(label: string, action: () => Promise<BasicActionResult>) {
     startTransition(async () => {
       const result = await action();
-      if (result.success) toast('success', `${label} completed`);
-      else toast('error', result.error ?? `${label} failed`);
+      if (label === 'Decision-support snapshot refresh' && result.data) {
+        setLastRefreshSummary(result.data as DecisionSupportRefreshSummary);
+      }
+      if (result.success) {
+        toast('success', `${label} completed`);
+      } else {
+        toast('error', result.error ?? `${label} failed`);
+      }
     });
   }
 
   return (
     <div className="space-y-6">
+
       <Card>
         <CardHeader className="items-start">
           <div>
             <CardTitle>Sensitivity Sandbox</CardTitle>
             <p className="mt-1 text-sm text-[var(--text-muted)]">
-              Simulation only. Does not modify operational decisions.
+              Operational pages use Live or Snapshot metrics only. Sandbox values are developer simulations and never modify operational pages.
             </p>
           </div>
           <div className="text-right text-xs text-[var(--text-muted)]">
@@ -117,213 +169,187 @@ export default function DeveloperLabClient({ replacementRows }: Props) {
             </p>
           </div>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-5">
           <div className="flex flex-wrap gap-2">
-            {[
-              ['rpi', 'RPI weights'],
-              ['health', 'Equipment Health weights'],
-              ['readiness', 'Department Readiness weights'],
-              ['critical', 'Critical Action score weights'],
-              ['stock', 'Stock/procurement priority weights'],
-            ].map(([id, label]) => (
-              <button key={id} type="button" onClick={() => setSandboxTab(id as typeof sandboxTab)} className={`rounded-lg border px-3 py-1.5 text-xs font-medium ${sandboxTab === id ? 'border-[var(--brand)] bg-[var(--surface-2)] text-[var(--foreground)]' : 'border-[var(--border-subtle)] text-[var(--text-muted)] hover:border-[var(--brand)]/50'}`}>
-                {label}
+            {SENSITIVITY_SUPPORTED_SCORES.map((score) => (
+              <button
+                key={score.key}
+                type="button"
+                onClick={() => setActiveScoreKey(score.key)}
+                className={`rounded-lg border px-3 py-1.5 text-xs font-medium ${activeScore.key === score.key ? 'border-[var(--brand)] bg-[var(--surface-2)] text-[var(--foreground)]' : 'border-[var(--border-subtle)] text-[var(--text-muted)] hover:border-[var(--brand)]/50'}`}
+              >
+                {score.displayName}
               </button>
             ))}
           </div>
-          {sandboxTab === 'rpi' ? (
-            <>
-              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                {SCORE_CRITERIA.map((criterion) => (
-                  <label key={criterion.key} className="rounded-lg border border-[var(--border-subtle)] p-3">
-                    <span className="mb-2 flex items-center justify-between gap-3 text-sm">
-                      <span className="font-medium text-[var(--foreground)]">{criterion.label}</span>
-                      <span className="text-[var(--text-muted)]">{weights[criterion.key]}%</span>
-                    </span>
-                    <input
-                      type="range"
-                      min={0}
-                      max={40}
-                      step={1}
-                      value={weights[criterion.key]}
-                      onChange={(event) => {
-                        const value = Number(event.target.value);
-                        setWeights((current) => ({ ...current, [criterion.key]: value }));
-                      }}
-                      className="w-full accent-[var(--brand)]"
-                      aria-label={`${criterion.label} simulated weight`}
-                    />
-                  </label>
-                ))}
+
+          <div className="rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-1)] p-4">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <h3 className="text-base font-semibold text-[var(--foreground)]">{activeScore.displayName}</h3>
+                  <Badge variant={scoreBadgeVariant(activeScore)}>{activeScore.dataMode}</Badge>
+                  <Badge>Simulation only</Badge>
+                </div>
+                <p className="mt-2 text-sm text-[var(--text-muted)]">{activeScore.sandboxMessage}</p>
               </div>
-              <Button size="sm" variant="outline" onClick={() => setWeights(DEFAULT_WEIGHTS)}>
+              <Button size="sm" variant="outline" onClick={resetActiveWeights}>
                 <RotateCcw className="h-4 w-4" />
                 Reset Sandbox
               </Button>
-            </>
-          ) : sandboxTab === 'health' ? (
-            <div className="space-y-3">
-              <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-300">
-                Preview only — Equipment Health simulation is not yet connected to live operational scores.
+            </div>
+            <div className="mt-4 grid gap-3 md:grid-cols-3">
+              <div className="rounded-md border border-[var(--border-subtle)]/70 p-3 text-sm">
+                <p className="text-xs text-[var(--text-muted)]">Formula</p>
+                <p className="mt-1 text-[var(--foreground)]">{activeScore.formulaSummary}</p>
               </div>
-              <div className="grid gap-3 md:grid-cols-2">
-                {[
-                  { label: 'Availability ratio', weight: '30%', source: 'equipment_reliability_metrics.availability_ratio', note: 'MTBF / (MTBF + MTTR) — higher is better' },
-                  { label: 'PM compliance', weight: '25%', source: 'pm_compliance_metrics.compliance_pct', note: 'Completed PM ÷ scheduled PM — higher is better' },
-                  { label: 'RPN penalty', weight: '25%', source: 'equipment_risk_scores.rpn', note: 'Inverted and normalized — lower RPN is better health' },
-                  { label: 'Condition / flag penalty', weight: '20%', source: 'equipment_assets.condition, recommendation_flags', note: 'Non-functional and active flags reduce score' },
-                ].map((row) => (
-                  <div key={row.label} className="rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-1)] p-3 text-sm">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="font-medium text-[var(--foreground)]">{row.label}</span>
-                      <span className="text-[var(--text-muted)]">{row.weight}</span>
-                    </div>
-                    <p className="mt-1 text-xs text-[var(--text-muted)]">{row.source}</p>
-                    <p className="mt-1 text-xs text-[var(--text-muted)]">{row.note}</p>
-                  </div>
-                ))}
+              <div className="rounded-md border border-[var(--border-subtle)]/70 p-3 text-sm">
+                <p className="text-xs text-[var(--text-muted)]">Source of truth</p>
+                <p className="mt-1 text-[var(--foreground)]">{activeScore.sourceOfTruth}</p>
+              </div>
+              <div className="rounded-md border border-[var(--border-subtle)]/70 p-3 text-sm">
+                <p className="text-xs text-[var(--text-muted)]">Used on pages</p>
+                <p className="mt-1 text-[var(--foreground)]">{activeScore.operationalConsumers.join(', ')}</p>
               </div>
             </div>
-          ) : sandboxTab === 'readiness' ? (
-            <div className="space-y-3">
-              <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-300">
-                Preview only — Department Readiness simulation is not yet connected to live operational scores.
-              </div>
-              <div className="grid gap-3 md:grid-cols-2">
-                {[
-                  { label: 'Essential functional assets', weight: 'Primary driver', source: 'equipment_assets (critical/high category, functional condition)', note: 'Count of essential assets in functional state' },
-                  { label: 'Total essential assets', weight: 'Denominator', source: 'equipment_assets (critical/high category, active status)', note: 'Readiness = essential functional ÷ total essential' },
-                  { label: 'Non-essential functional', weight: 'Secondary', source: 'equipment_assets (lower criticality)', note: 'Contributes to extended readiness view' },
-                  { label: 'Open corrective work', weight: 'Modifier', source: 'maintenance_requests (active statuses)', note: 'Under-maintenance assets are non-functional for readiness' },
-                ].map((row) => (
-                  <div key={row.label} className="rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-1)] p-3 text-sm">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="font-medium text-[var(--foreground)]">{row.label}</span>
-                      <span className="text-[var(--text-muted)]">{row.weight}</span>
-                    </div>
-                    <p className="mt-1 text-xs text-[var(--text-muted)]">{row.source}</p>
-                    <p className="mt-1 text-xs text-[var(--text-muted)]">{row.note}</p>
-                  </div>
-                ))}
-              </div>
+          </div>
+
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {(activeScore.weights ?? []).map((weight) => (
+              <label key={weight.key} className="rounded-lg border border-[var(--border-subtle)] p-3">
+                <span className="mb-2 flex items-center justify-between gap-3 text-sm">
+                  <span className="font-medium text-[var(--foreground)]">{weight.label}</span>
+                  <span className="text-[var(--text-muted)]">{activeWeights[weight.key] ?? weight.defaultWeight}%</span>
+                </span>
+                <input
+                  type="range"
+                  min={0}
+                  max={Math.max(120, weight.defaultWeight * 2)}
+                  step={1}
+                  value={activeWeights[weight.key] ?? weight.defaultWeight}
+                  onChange={(event) => setWeight(activeScore.key, weight.key, Number(event.target.value))}
+                  className="w-full accent-[var(--brand)]"
+                  aria-label={`${weight.label} simulated weight`}
+                />
+                <p className="mt-2 text-xs text-[var(--text-muted)]">{weight.explanation}</p>
+                {weight.sourceField ? <p className="mt-1 font-mono text-[10px] text-[var(--text-subtle)]">{weight.sourceField}</p> : null}
+              </label>
+            ))}
+          </div>
+
+          {totalWeight !== 100 ? (
+            <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-300">
+              Simulated weights currently total {totalWeight}%. Operational formulas keep their current production weights.
             </div>
-          ) : sandboxTab === 'critical' ? (
-            <div className="space-y-3">
-              <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-300">
-                Preview only — Critical Action score simulation is not yet connected to live operational scores.
+          ) : null}
+
+          <div className="grid gap-3 md:grid-cols-2">
+            {activeScore.criteria.map((criterion) => (
+              <div key={`${activeScore.key}-${criterion.label}`} className="rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-1)] p-3 text-sm">
+                <p className="font-medium text-[var(--foreground)]">{criterion.label}</p>
+                <p className="mt-1 text-xs text-[var(--text-muted)]">{criterion.source}</p>
+                <p className="mt-1 text-xs text-[var(--text-muted)]">{criterion.explanation}</p>
               </div>
-              <div className="grid gap-3 md:grid-cols-2">
-                {[
-                  { category: 'Corrective maintenance', base: 'Urgency × status age', note: 'Critical corrective → highest base weight; open > 7 days adds overdue penalty' },
-                  { category: 'PM overdue', base: 'Days overdue × criticality', note: 'Critical asset overdue PM scores highest; routine overdue is lower' },
-                  { category: 'Calibration overdue', base: 'Safety risk score', note: 'Critical + failed/adjusted last result gets maximum calibration score' },
-                  { category: 'Stock blocker', base: 'Stockout × linkage', note: 'Stockout blocking active work order scores highest' },
-                  { category: 'Procurement delay', base: 'Delay days × criticality', note: 'Linked procurement that is delayed scores on delay duration' },
-                  { category: 'Installation / replacement', base: 'Category weight', note: 'Lower base weight; included to surface lifecycle signals' },
-                ].map((row) => (
-                  <div key={row.category} className="rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-1)] p-3 text-sm">
-                    <p className="font-medium text-[var(--foreground)]">{row.category}</p>
-                    <p className="mt-1 text-xs text-[var(--text-muted)]">Base: {row.base}</p>
-                    <p className="text-xs text-[var(--text-muted)]">{row.note}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-300">
-                Preview only — Stock/Procurement priority simulation is not yet connected to live operational scores.
-              </div>
-              <div className="grid gap-3 md:grid-cols-2">
-                {[
-                  { label: 'Stockout severity', weight: 'Highest', source: 'spare_parts.current_stock = 0', note: 'Complete stockout is prioritized over low stock' },
-                  { label: 'Reorder deficit', weight: 'High', source: 'reorder_level - current_stock', note: 'Larger deficit relative to reorder level → higher urgency' },
-                  { label: 'Active work order linkage', weight: 'Multiplier', source: 'stock_issues.issued_to_event_id, work_orders', note: 'Parts linked to active work orders are treated as blockers' },
-                  { label: 'Procurement delay days', weight: 'Medium', source: 'procurement_requests.expected_delivery_date', note: 'Days past expected delivery date for open orders' },
-                ].map((row) => (
-                  <div key={row.label} className="rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-1)] p-3 text-sm">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="font-medium text-[var(--foreground)]">{row.label}</span>
-                      <span className="text-[var(--text-muted)]">{row.weight}</span>
-                    </div>
-                    <p className="mt-1 text-xs text-[var(--text-muted)]">{row.source}</p>
-                    <p className="mt-1 text-xs text-[var(--text-muted)]">{row.note}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+            ))}
+          </div>
         </CardContent>
       </Card>
 
+      {isRpiSandbox ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>RPI Ranking Comparison</CardTitle>
+            <Badge variant={stability.startsWith('Sensitive') ? 'warning' : stability.startsWith('Stable') ? 'success' : 'info'}>{stability}</Badge>
+          </CardHeader>
+          <CardContent>
+            {topMovement.length === 0 ? (
+              <div className="space-y-3">
+                <p className="text-sm text-[var(--text-muted)]">The top candidates are unchanged under the current simulated RPI weights. Simulated RPI is still recalculated from the slider values.</p>
+                <div className="grid gap-2 md:grid-cols-5">
+                  {simulated.slice(0, 5).map((row) => (
+                    <Link key={row.assetId} href={`/command/drilldown/replacement/${row.assetId}`} className="rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-1)] p-3 hover:border-[var(--brand)]/50">
+                      <p className="text-xs text-[var(--text-muted)]">#{row.simulatedRank}</p>
+                      <p className="mt-1 truncate text-sm font-semibold text-[var(--foreground)]">{row.assetCode}</p>
+                      <p className="truncate text-xs text-[var(--text-muted)]">{row.assetName}</p>
+                      <p className="mt-2 text-xs font-medium text-[var(--brand)]">RPI {row.simulatedRpi.toFixed(3)}</p>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-sm">
+                  <thead className="text-left text-xs uppercase text-[var(--text-muted)]">
+                    <tr>
+                      <th className="py-2 pr-4">Asset</th>
+                      <th className="py-2 pr-4">Current</th>
+                      <th className="py-2 pr-4">Simulated</th>
+                      <th className="py-2 pr-4">Movement</th>
+                      <th className="py-2 pr-4">Simulated RPI</th>
+                      <th className="py-2">Evidence</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[var(--border-subtle)]">
+                    {topMovement.map((row) => (
+                      <tr key={row.assetId}>
+                        <td className="py-3 pr-4">
+                          <p className="font-medium text-[var(--foreground)]">{row.assetCode} - {row.assetName}</p>
+                          <p className="text-xs text-[var(--text-muted)]">{row.departmentName}</p>
+                        </td>
+                        <td className="py-3 pr-4">#{row.rank ?? '-'}</td>
+                        <td className="py-3 pr-4">#{row.simulatedRank}</td>
+                        <td className="py-3 pr-4">{runLabel(row.rankDelta)}</td>
+                        <td className="py-3 pr-4">{row.simulatedRpi.toFixed(3)}</td>
+                        <td className="py-3">
+                          <Link className="text-xs text-[var(--brand)] hover:underline" href={`/command/drilldown/replacement/${row.assetId}`}>
+                            Open evidence
+                          </Link>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      ) : null}
+
       <Card>
-        <CardHeader>
-          <CardTitle>Ranking Comparison</CardTitle>
-          <Badge variant={stability.startsWith('Sensitive') ? 'warning' : stability.startsWith('Stable') ? 'success' : 'info'}>{stability}</Badge>
+        <CardHeader className="items-start">
+          <div>
+            <CardTitle>Not Weight-adjustable</CardTitle>
+            <p className="mt-1 text-sm text-[var(--text-muted)]">
+              These operational metrics are formulas, ratios, live views, or threshold classifications. They are tracked here so weighted scores do not hide outside the registry.
+            </p>
+          </div>
         </CardHeader>
         <CardContent>
-          {topMovement.length === 0 ? (
-            <div className="space-y-3">
-              <p className="text-sm text-[var(--text-muted)]">Current seed data is stable under these weights. The top five remain unchanged, but simulated RPI still recalculates from the slider values.</p>
-              <div className="grid gap-2 md:grid-cols-5">
-                {simulated.slice(0, 5).map((row) => (
-                  <Link key={row.assetId} href={`/command/drilldown/replacement/${row.assetId}`} className="rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-1)] p-3 hover:border-[var(--brand)]/50">
-                    <p className="text-xs text-[var(--text-muted)]">#{row.simulatedRank}</p>
-                    <p className="mt-1 truncate text-sm font-semibold text-[var(--foreground)]">{row.assetCode}</p>
-                    <p className="truncate text-xs text-[var(--text-muted)]">{row.assetName}</p>
-                    <p className="mt-2 text-xs font-medium text-[var(--brand)]">RPI {row.simulatedRpi.toFixed(3)}</p>
-                  </Link>
-                ))}
+          <div className="grid gap-3 md:grid-cols-2">
+            {NOT_WEIGHT_ADJUSTABLE_SCORES.map((score) => (
+              <div key={score.key} className="rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-1)] p-3 text-sm">
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="font-medium text-[var(--foreground)]">{score.displayName}</p>
+                  <Badge variant={scoreBadgeVariant(score)}>{score.dataMode}</Badge>
+                </div>
+                <p className="mt-2 text-xs text-[var(--text-muted)]">{score.formulaSummary}</p>
+                <p className="mt-1 text-xs text-[var(--text-muted)]">{score.notWeightAdjustableReason ?? 'No adjustable weights are defined for this score.'}</p>
               </div>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full text-sm">
-                <thead className="text-left text-xs uppercase text-[var(--text-muted)]">
-                  <tr>
-                    <th className="py-2 pr-4">Asset</th>
-                    <th className="py-2 pr-4">Current</th>
-                    <th className="py-2 pr-4">Simulated</th>
-                    <th className="py-2 pr-4">Movement</th>
-                    <th className="py-2 pr-4">Simulated RPI</th>
-                    <th className="py-2">Evidence</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[var(--border-subtle)]">
-                  {topMovement.map((row) => (
-                    <tr key={row.assetId}>
-                      <td className="py-3 pr-4">
-                        <p className="font-medium text-[var(--foreground)]">{row.assetCode} - {row.assetName}</p>
-                        <p className="text-xs text-[var(--text-muted)]">{row.departmentName}</p>
-                      </td>
-                      <td className="py-3 pr-4">#{row.rank ?? '-'}</td>
-                      <td className="py-3 pr-4">#{row.simulatedRank}</td>
-                      <td className="py-3 pr-4">{runLabel(row.rankDelta)}</td>
-                      <td className="py-3 pr-4">{row.simulatedRpi.toFixed(3)}</td>
-                      <td className="py-3">
-                        <Link className="text-xs text-[var(--brand)] hover:underline" href={`/command/drilldown/replacement/${row.assetId}`}>
-                          Open evidence
-                        </Link>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+            ))}
+          </div>
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader className="items-start">
           <div>
-            <CardTitle>Snapshot / Refresh Tools</CardTitle>
+            <CardTitle>Snapshot Refresh Center</CardTitle>
             <p className="mt-1 text-sm text-[var(--text-muted)]">
-              These buttons run real refresh actions and write audit evidence. Use them deliberately during demo or validation.
+              These actions run real refresh paths and report partial failures. They do not mark a metric refreshed unless the underlying RPC runs.
             </p>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
           <div className="flex flex-wrap gap-2">
             <Button
               variant="outline"
@@ -339,7 +365,7 @@ export default function DeveloperLabClient({ replacementRows }: Props) {
               onClick={() => runAction('Decision-support snapshot refresh', refreshDecisionSupportSnapshotsAction)}
             >
               <RefreshCcw className="h-4 w-4" />
-              Refresh Decision Snapshots
+              Refresh Decision Support Snapshots
             </Button>
             <Button
               variant="outline"
@@ -350,6 +376,37 @@ export default function DeveloperLabClient({ replacementRows }: Props) {
               Recompute Analytics
             </Button>
           </div>
+
+          {lastRefreshSummary ? (
+            <div className="panel-surface overflow-x-auto rounded-lg">
+              <table className="w-full min-w-[840px] text-left text-sm">
+                <thead>
+                  <tr className="border-b border-[var(--border-subtle)] text-xs uppercase tracking-wide text-[var(--text-muted)]">
+                    <th className="px-3 py-2">Metric</th>
+                    <th className="px-3 py-2">Attempted</th>
+                    <th className="px-3 py-2">Result</th>
+                    <th className="px-3 py-2">Before</th>
+                    <th className="px-3 py-2">After</th>
+                    <th className="px-3 py-2">Notes</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[var(--border-subtle)]/60">
+                  {lastRefreshSummary.metrics.map((metric) => (
+                    <tr key={metric.metricKey}>
+                      <td className="px-3 py-2 font-medium text-[var(--foreground)]">{metric.displayName}</td>
+                      <td className="px-3 py-2 text-[var(--text-muted)]">{metric.refreshAttempted ? 'Yes' : 'No'}</td>
+                      <td className="px-3 py-2">
+                        <Badge variant={metric.success ? 'success' : 'error'}>{metric.success ? 'Success' : 'Failed'}</Badge>
+                      </td>
+                      <td className="px-3 py-2 text-[var(--text-muted)]">{metric.lastRefreshBefore ?? 'No timestamp'}</td>
+                      <td className="px-3 py-2 text-[var(--text-muted)]">{metric.lastRefreshAfter ?? 'No timestamp'}</td>
+                      <td className="px-3 py-2 text-[var(--text-muted)]">{metric.error ?? (metric.warnings.join(' ') || 'OK')}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : null}
         </CardContent>
       </Card>
     </div>

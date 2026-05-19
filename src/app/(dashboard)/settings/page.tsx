@@ -810,7 +810,7 @@ export default function SettingsPage() {
         <Card>
           <CardHeader><CardTitle>Notifications</CardTitle><Badge variant="info">Planned</Badge></CardHeader>
           <CardContent className="grid gap-3 md:grid-cols-3 text-sm text-[var(--text-muted)]">
-            <p>Alert rules and escalation paths will build on the current Command Center-style Alerts inbox.</p>
+            <p>Notification rules and escalation paths build on the unified Notification Center and internal recommendation signals.</p>
             <p>Future channels may include in-app summaries, assigned owners, escalation rules, and weekly management digests.</p>
             <p>No external notification channel is configured in this pass.</p>
           </CardContent>

@@ -26,7 +26,7 @@ const EXTRA_ROUTE_RULES: Array<{ prefix: string; roles: RoleName[] }> = [
   { prefix: '/inventory/', roles: ['developer', 'admin', 'bme_head', 'technician', 'department_head', 'department_user', 'store_user', 'viewer'] },
   { prefix: '/maintenance/work-orders/new', roles: ['developer', 'admin', 'bme_head', 'technician'] },
   // Viewer can open work-order and maintenance-request detail records as
-  // read-only evidence from the Viewer Maintenance Overview and Alerts.
+  // read-only evidence from the Viewer Maintenance Overview and Notification Center.
   // Store user can open work-order detail as evidence from blocker rows.
   { prefix: '/maintenance/work-orders/', roles: ['developer', 'admin', 'bme_head', 'technician', 'department_head', 'viewer', 'store_user'] },
   { prefix: '/maintenance/requests/new', roles: ['developer', 'admin', 'bme_head', 'technician', 'department_head', 'department_user'] },

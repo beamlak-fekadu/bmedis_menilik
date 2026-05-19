@@ -58,7 +58,7 @@ function isInCurrentMonth(date: unknown): boolean {
 //    Source: v_replacement_decision (replacement_priority_index).
 //    Used by: /command summary card + drilldown + replacement watchlist,
 //             /replacement candidate filter, /developer-lab,
-//             /reports/replacement-planning, /alerts (replacement flags).
+//             /reports/replacement-planning, /notifications (replacement flags).
 export function countReplacementCandidates(
   rows: Array<{ priority_index?: number | null; replacement_priority_index?: number | null }>
 ): number {

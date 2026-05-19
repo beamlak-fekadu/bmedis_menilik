@@ -2,7 +2,7 @@
 
 import { getActionContextForCapability, logServerAuditEvent, revalidateMany, actionError, type ActionResult } from './_shared';
 
-const alertPaths = ['/alerts', '/command', '/command/triage', '/developer-lab'];
+const alertPaths = ['/notifications', '/command', '/command/triage', '/developer-lab'];
 
 export async function acknowledgeAlertFlagAction(id: string): Promise<ActionResult> {
   try {
@@ -35,6 +35,6 @@ export async function acknowledgeAlertFlagAction(id: string): Promise<ActionResu
     revalidateMany(alertPaths);
     return { success: true, data: result.data };
   } catch (err) {
-    return actionError(err, 'Failed to acknowledge alert');
+    return actionError(err, 'Failed to acknowledge notification signal');
   }
 }

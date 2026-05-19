@@ -322,7 +322,7 @@ async function readCommandCenterSnapshot(supabase: SupabaseClient, profile: User
     else if (scopedAssetIds) workQuery = applyAssetScope(workQuery, scopedAssetIds);
   }
 
-  const [triageRes, workRes, alerts] = await Promise.all([
+  const [triageRes, workRes, notificationSignals] = await Promise.all([
     triageQuery,
     workQuery,
     readAlertsSummary(supabase, profile),
@@ -330,7 +330,7 @@ async function readCommandCenterSnapshot(supabase: SupabaseClient, profile: User
   return {
     triage: (triageRes.data ?? []) as Record<string, unknown>[],
     activeWorkOrders: (workRes.data ?? []) as Record<string, unknown>[],
-    alerts,
+    alerts: notificationSignals,
   };
 }
 
@@ -558,8 +558,8 @@ export async function executeCopilotTool(
         data,
         evidenceSignals: ['Loaded active recommendation flags scoped by role.'],
         sourceTables: def.dataSources,
-        routeLinks: [{ label: 'Open notifications', href: '/notifications', type: 'alerts' }],
-        warnings: data.length ? [] : ['No active alerts were found in the permitted scope.'],
+        routeLinks: [{ label: 'Open notifications', href: '/notifications', type: 'notifications' }],
+        warnings: data.length ? [] : ['No active notification signals were found in the permitted scope.'],
       });
     }
 

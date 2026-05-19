@@ -477,8 +477,8 @@ export default function ViewerExecutiveCommandCenter({ metrics, departments, cri
           <Link href="/replacement" className="inline-flex items-center gap-2 rounded-md border border-[var(--border-subtle)] px-3 py-1.5 text-sm text-[var(--text-muted)] hover:text-[var(--foreground)]">
             <ArrowUpDown className="h-4 w-4" /> Replacement &amp; Risk
           </Link>
-          <Link href="/alerts" className="inline-flex items-center gap-2 rounded-md border border-[var(--border-subtle)] px-3 py-1.5 text-sm text-[var(--text-muted)] hover:text-[var(--foreground)]">
-            <ShieldAlert className="h-4 w-4" /> Management Alerts
+          <Link href="/notifications" className="inline-flex items-center gap-2 rounded-md border border-[var(--border-subtle)] px-3 py-1.5 text-sm text-[var(--text-muted)] hover:text-[var(--foreground)]">
+            <ShieldAlert className="h-4 w-4" /> Management Notifications
           </Link>
           <Link href="/calendar" className="inline-flex items-center gap-2 rounded-md border border-[var(--border-subtle)] px-3 py-1.5 text-sm text-[var(--text-muted)] hover:text-[var(--foreground)]">
             <Calendar className="h-4 w-4" /> Hospital Calendar

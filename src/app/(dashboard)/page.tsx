@@ -118,7 +118,7 @@ export default function DashboardPage() {
     { label: 'Overdue PM', value: stats?.overdue_pm ?? 0, icon: <CalendarX className="h-6 w-6" />, color: 'orange' },
     { label: 'Calibration Due', value: stats?.calibration_due_soon ?? 0, icon: <Gauge className="h-6 w-6" />, color: 'purple' },
     { label: 'Low Stock Parts', value: stats?.low_stock_parts ?? 0, icon: <Package className="h-6 w-6" />, color: 'orange' },
-    { label: 'Active Alerts', value: stats?.active_critical_alerts ?? 0, icon: <AlertTriangle className="h-6 w-6" />, color: 'red' },
+    { label: 'Active Notifications', value: stats?.active_critical_alerts ?? 0, icon: <AlertTriangle className="h-6 w-6" />, color: 'red' },
   ];
 
   const conditionLabels = conditionData.map((d) =>
@@ -267,18 +267,18 @@ export default function DashboardPage() {
         />
       </Card>
 
-      {/* Recent Alerts */}
+      {/* Recent notification signals */}
       <Card>
         <CardHeader>
           <CardTitle>
             <span className="inline-flex items-center gap-2">
               <AlertTriangle className="h-5 w-5 text-orange-500" />
-              Recent Alerts &amp; Recommendations
+              Recent Notifications &amp; Recommendations
             </span>
           </CardTitle>
         </CardHeader>
         {alerts.length === 0 ? (
-          <p className="py-8 text-center text-sm text-[var(--text-muted)]">No active alerts</p>
+          <p className="py-8 text-center text-sm text-[var(--text-muted)]">No active notifications</p>
         ) : (
           <div className="divide-y divide-gray-100 dark:divide-gray-800">
             {alerts.map((alert) => (

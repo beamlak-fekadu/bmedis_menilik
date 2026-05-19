@@ -1,7 +1,7 @@
 'use server';
 
 import { z } from 'zod';
-import { getActionContextForCapability, logServerAuditEvent, revalidateMany, actionError, nullIfEmpty, type ActionResult } from './_shared';
+import { getActionContextForCapability, logServerAuditEvent, refreshDecisionSupportSnapshotsBestEffort, revalidateMany, actionError, nullIfEmpty, type ActionResult } from './_shared';
 
 const sparePaths = ['/spare-parts', '/logistics', '/command'];
 
@@ -67,6 +67,13 @@ export async function createStockReceiptAction(payload: Record<string, unknown>)
     const part = await supabase.from('spare_parts').select('current_stock').eq('id', parsed.part_id).single();
     if (part.data) await supabase.from('spare_parts').update({ current_stock: Number(part.data.current_stock ?? 0) + parsed.quantity } as never).eq('id', parsed.part_id);
     await logServerAuditEvent({ supabase, profileId: profile.id, action: 'stock_receipt.create', entityType: 'stock_receipts', entityId: (receipt.data as { id?: string }).id ?? null, newValues: receipt.data as Record<string, unknown> });
+    await refreshDecisionSupportSnapshotsBestEffort({
+      supabase,
+      profileId: profile.id,
+      reason: 'stock_receipt.create',
+      entityType: 'stock_receipts',
+      entityId: (receipt.data as { id?: string }).id ?? null,
+    }).catch(() => undefined);
     revalidateMany(sparePaths);
     return { success: true, data: receipt.data };
   } catch (err) {
@@ -95,6 +102,13 @@ export async function createStockIssueAction(payload: Record<string, unknown>): 
     if (issue.error) return { success: false, error: issue.error.message };
     await supabase.from('spare_parts').update({ current_stock: Number(part.data.current_stock ?? 0) - parsed.quantity } as never).eq('id', parsed.part_id);
     await logServerAuditEvent({ supabase, profileId: profile.id, action: 'stock_issue.create', entityType: 'stock_issues', entityId: (issue.data as { id?: string }).id ?? null, newValues: issue.data as Record<string, unknown> });
+    await refreshDecisionSupportSnapshotsBestEffort({
+      supabase,
+      profileId: profile.id,
+      reason: 'stock_issue.create',
+      entityType: 'stock_issues',
+      entityId: (issue.data as { id?: string }).id ?? null,
+    }).catch(() => undefined);
     revalidateMany(sparePaths);
     return { success: true, data: issue.data };
   } catch (err) {

@@ -1,7 +1,7 @@
 'use server';
 
 import { z } from 'zod';
-import { getActionContextForCapability, logServerAuditEvent, revalidateMany, actionError, nullIfEmpty, type ActionResult } from './_shared';
+import { getActionContextForCapability, logServerAuditEvent, refreshDecisionSupportSnapshotsBestEffort, revalidateMany, actionError, nullIfEmpty, type ActionResult } from './_shared';
 
 const procurementPaths = ['/procurement', '/logistics', '/calendar', '/command'];
 const procurementStatus = z.enum(['requested', 'approved', 'ordered', 'in_transit', 'delivered', 'canceled']);
@@ -23,6 +23,13 @@ export async function createProcurementRequestAction(payload: Record<string, unk
     const result = await supabase.from('procurement_requests').insert(data as never).select('*').single();
     if (result.error) return { success: false, error: result.error.message };
     await logServerAuditEvent({ supabase, profileId: profile.id, action: 'procurement_request.create', entityType: 'procurement_requests', entityId: (result.data as { id?: string }).id ?? null, newValues: result.data as Record<string, unknown> });
+    await refreshDecisionSupportSnapshotsBestEffort({
+      supabase,
+      profileId: profile.id,
+      reason: 'procurement_request.create',
+      entityType: 'procurement_requests',
+      entityId: (result.data as { id?: string }).id ?? null,
+    }).catch(() => undefined);
     revalidateMany(procurementPaths);
     return { success: true, data: result.data };
   } catch (err) {
@@ -60,6 +67,13 @@ export async function updateProcurementStatusAction(id: string, status: string):
       }
     }
 
+    await refreshDecisionSupportSnapshotsBestEffort({
+      supabase,
+      profileId: profile.id,
+      reason: `procurement_request.status_update.${parsedStatus}`,
+      entityType: 'procurement_requests',
+      entityId: id,
+    }).catch(() => undefined);
     revalidateMany(procurementPaths);
     return { success: true, data: result.data };
   } catch (err) {

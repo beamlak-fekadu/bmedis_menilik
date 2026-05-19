@@ -12,6 +12,18 @@ import NotificationDiagnosticsSection from './NotificationDiagnosticsSection';
 import { getQrCoverageStats, getQrScanCoverageStats } from '@/services/qr.service';
 import { getOfflineSyncServerSummary } from '@/services/offline-sync.service';
 import {
+  getDemoRoleIntegrityDiagnostics,
+  getNotificationRoleDependencyDiagnostics,
+  getScoreSnapshotTimestamps,
+} from '@/services/developer-lab.service';
+import {
+  SCORE_REGISTRY,
+  evaluateSnapshotFreshness,
+  formatLastRefresh,
+  scoreFreshnessBadgeVariant,
+} from '@/utils/analytics/score-registry';
+import { demoRoleIntegritySummary } from '@/utils/developer-lab/demo-role-validation';
+import {
   countLowStock,
   countStockout,
   countOverdueCalibration,
@@ -153,7 +165,6 @@ export default async function DeveloperLabPage({ searchParams }: { searchParams:
     refreshLogRes,
     workOrdersRes,
     pmSchedulesAssignedRes,
-    demoProfilesRes,
   ] = await Promise.all([
     supabase.from('equipment_assets').select('id, asset_code, name, department_id, category_id, condition, status').is('deleted_at', null).limit(5000),
     supabase.from('equipment_risk_scores').select('asset_id').limit(5000),
@@ -174,18 +185,6 @@ export default async function DeveloperLabPage({ searchParams }: { searchParams:
     supabase.from('decision_support_refresh_log').select('scope, status, started_at, finished_at, error_message').order('started_at', { ascending: false }).limit(1).maybeSingle(),
     supabase.from('work_orders').select('id, assigned_to, status').limit(5000),
     supabase.from('pm_schedules').select('id, assigned_to, status').not('assigned_to', 'is', null).limit(5000),
-    supabase
-      .from('profiles')
-      .select('id, email, full_name, user_id, is_active, user_roles(id, roles(name))')
-      .in('email', [
-        'developer@bmerms-demo.local',
-        'bme.head@bmerms-demo.local',
-        'technician@bmerms-demo.local',
-        'department.head@bmerms-demo.local',
-        'department.user@bmerms-demo.local',
-        'store.user@bmerms-demo.local',
-        'viewer@bmerms-demo.local',
-      ]),
   ]);
 
   const assets = (assetsRes.data ?? []) as Array<Record<string, unknown>>;
@@ -210,16 +209,6 @@ export default async function DeveloperLabPage({ searchParams }: { searchParams:
   const profilesWithoutRoles = profiles.filter((row) => !Array.isArray(row.user_roles) || row.user_roles.length === 0).length;
   const disposalAssetIds = new Set(disposalRequests.map((row) => row.asset_id).filter(Boolean));
   const departmentIdsWithEquipment = new Set(assets.map((row) => row.department_id).filter(Boolean));
-  const demoProfiles = ((demoProfilesRes.data ?? []) as unknown) as Array<{ id: string; email: string; full_name: string | null; user_id: string | null; is_active: boolean | null; user_roles: Array<{ id: string; roles: Array<{ name: string }> | { name: string } | null }> | null }>;
-  const DEMO_EXPECTED: Array<{ email: string; role: string; nav: string }> = [
-    { email: 'developer@bmerms-demo.local', role: 'developer', nav: 'Everything + Developer Lab' },
-    { email: 'bme.head@bmerms-demo.local', role: 'bme_head', nav: 'All operational modules; no Developer Lab' },
-    { email: 'technician@bmerms-demo.local', role: 'technician', nav: 'Work execution + parts + alerts' },
-    { email: 'department.head@bmerms-demo.local', role: 'department_head', nav: 'Department equipment + requests + reports' },
-    { email: 'department.user@bmerms-demo.local', role: 'department_user', nav: 'Create/view department requests' },
-    { email: 'store.user@bmerms-demo.local', role: 'store_user', nav: 'Spare parts / logistics / procurement' },
-    { email: 'viewer@bmerms-demo.local', role: 'viewer', nav: 'Read-only command center + reports' },
-  ];
 
   const replacementRows: LabReplacementRow[] = ((replacementRes.data ?? []) as Array<Record<string, unknown>>)
     .filter((row) => row.asset_id)
@@ -276,7 +265,7 @@ export default async function DeveloperLabPage({ searchParams }: { searchParams:
       label: 'Active equipment without risk score',
       count: countByMissing(assets, (row) => row.status === 'active' && !riskAssetIds.has(row.id as string)),
       severity: countByMissing(assets, (row) => row.status === 'active' && !riskAssetIds.has(row.id as string)) > 0 ? 'critical' : 'ok',
-      explanation: 'FMEA coverage is needed for risk bands, triage, alerts, and replacement planning.',
+      explanation: 'FMEA coverage is needed for risk bands, triage, Notification Center signals, and replacement planning.',
       href: '/developer-lab?focus=risk-scores',
       actionLabel: 'Review Risk Scores',
       group: 'decision-support',
@@ -436,11 +425,49 @@ export default async function DeveloperLabPage({ searchParams }: { searchParams:
 
   const lastRefresh = refreshLogRes.data as Record<string, unknown> | null;
 
-  const [qrCoverageStats, qrScanStats, offlineSyncSummary] = await Promise.all([
+  const [
+    authUserRes,
+    demoRoleDiagnostics,
+    scoreSnapshotTimestamps,
+    notificationRoleDiagnostics,
+    qrCoverageStats,
+    qrScanStats,
+    offlineSyncSummary,
+  ] = await Promise.all([
+    supabase.auth.getUser(),
+    getDemoRoleIntegrityDiagnostics(supabase),
+    getScoreSnapshotTimestamps(supabase),
+    getNotificationRoleDependencyDiagnostics(supabase),
     getQrCoverageStats(),
     getQrScanCoverageStats(),
     getOfflineSyncServerSummary(),
   ]);
+  const authUser = authUserRes.data.user;
+  const demoSummary = demoRoleIntegritySummary(demoRoleDiagnostics.rows);
+  const currentDepartment = departments.find((row) => row.id === profile.department_id);
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL
+    ?? process.env.SITE_URL
+    ?? (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null);
+  const supabaseHost = (() => {
+    const raw = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    if (!raw) return null;
+    try {
+      return new URL(raw).host;
+    } catch {
+      return 'Invalid Supabase URL';
+    }
+  })();
+  const commitSha = process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) ?? null;
+  const vercelBranch = process.env.VERCEL_GIT_COMMIT_REF ?? null;
+  const environmentWarnings = [
+    !profile?.id ? 'Current authenticated user has no linked profile.' : null,
+    (profile.roleNames ?? []).length === 0 ? 'Current profile has no assigned roles.' : null,
+    !appUrl ? 'NEXT_PUBLIC_APP_URL/SITE_URL is missing; QR and Telegram links may resolve incorrectly.' : null,
+    !supabaseHost ? 'NEXT_PUBLIC_SUPABASE_URL is missing.' : null,
+    vercelBranch && vercelBranch !== 'ui_semifinal' ? `Vercel branch is ${vercelBranch}, expected ui_semifinal for this preview.` : null,
+    demoSummary.hasFailures ? 'Demo role integrity has failures. This may indicate wrong Supabase project, missing seed, or auth/profile linkage drift.' : null,
+    ...notificationRoleDiagnostics.warnings,
+  ].filter(Boolean) as string[];
 
   return (
     <div className="space-y-6">
@@ -494,13 +521,110 @@ export default async function DeveloperLabPage({ searchParams }: { searchParams:
         </Card></StaggeredItem>
       </StaggeredGrid>
 
-      <QrCoverageSection stats={qrCoverageStats} scanStats={qrScanStats} />
+      <section className="space-y-3">
+        <div>
+          <h2 className="text-lg font-semibold text-[var(--foreground)]">Environment Sanity</h2>
+          <p className="text-sm text-[var(--text-muted)]">Confirms the app, Supabase project, deployment, and current role context before evaluating decision support.</p>
+        </div>
+        <Card>
+          <CardContent>
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+              {[
+                ['App name', 'BMEDIS'],
+                ['Resolved app URL', appUrl ?? 'Missing'],
+                ['Supabase host', supabaseHost ?? 'Missing'],
+                ['Current auth email', authUser?.email ?? 'Not authenticated'],
+                ['Current auth user id', authUser?.id ?? 'Not authenticated'],
+                ['Current profile id', String(profile.id ?? 'Missing')],
+                ['Current full name', String(profile.full_name ?? 'Missing')],
+                ['Current job title', String(profile.job_title ?? 'Missing')],
+                ['Current role(s)', ((profile.roleNames ?? []) as string[]).join(', ') || 'None'],
+                ['Current department', (currentDepartment?.name as string | undefined) ?? 'None'],
+                ['Vercel environment', process.env.VERCEL_ENV ?? 'Unknown'],
+                ['Vercel git branch', vercelBranch ?? 'Unknown'],
+                ['Vercel commit', commitSha ?? 'Unknown'],
+                ['Deployment URL', process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'Unknown'],
+              ].map(([label, value]) => (
+                <div key={label} className="rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-1)] p-3 text-sm">
+                  <p className="text-xs text-[var(--text-muted)]">{label}</p>
+                  <p className="mt-1 break-words font-medium text-[var(--foreground)]">{value}</p>
+                </div>
+              ))}
+            </div>
+            <div className="mt-4 flex flex-wrap gap-2">
+              {environmentWarnings.length === 0 ? (
+                <Badge variant="success">Environment context healthy</Badge>
+              ) : (
+                environmentWarnings.map((warning) => <Badge key={warning} variant="warning">{warning}</Badge>)
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </section>
 
-      <OfflineDiagnosticsPanel serverSummary={offlineSyncSummary} />
-
-      <CopilotDiagnosticsSection profileId={String(profile.id)} roleNames={(profile.roleNames ?? []) as string[]} />
-
-      <NotificationDiagnosticsSection />
+      <section className="space-y-3">
+        <div>
+          <h2 className="text-lg font-semibold text-[var(--foreground)]">Demo Role Integrity</h2>
+          <p className="text-sm text-[var(--text-muted)]">
+            Validates the seven Supabase Auth demo logins through auth.users.email, auth.users.id,
+            profiles.user_id, profiles.id, departments, user_roles, and roles. Legacy @bmerms-demo.local auth email domain retained for seeded demo users.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Badge variant={demoSummary.hasFailures ? 'error' : 'success'}>{demoSummary.ok}/{demoSummary.total} OK</Badge>
+          <Badge variant={demoRoleDiagnostics.source === 'validate_demo_role_integrity_rpc' ? 'success' : 'warning'}>
+            {demoRoleDiagnostics.source === 'validate_demo_role_integrity_rpc' ? 'Auth RPC active' : 'Profiles fallback'}
+          </Badge>
+          {demoRoleDiagnostics.warning ? <Badge variant="warning">{demoRoleDiagnostics.warning}</Badge> : null}
+        </div>
+        <div className="panel-surface overflow-x-auto rounded-lg">
+          <table className="w-full min-w-[1180px] text-left text-sm">
+            <thead>
+              <tr className="border-b border-[var(--border-subtle)] text-xs uppercase tracking-wide text-[var(--text-muted)]">
+                <th className="px-3 py-2">Demo Email</th>
+                <th className="px-3 py-2">Auth User</th>
+                <th className="px-3 py-2">Profile</th>
+                <th className="px-3 py-2">Name / Job Title</th>
+                <th className="px-3 py-2">Department</th>
+                <th className="px-3 py-2">Expected Role</th>
+                <th className="px-3 py-2">Assigned Roles</th>
+                <th className="px-3 py-2">Navigation Focus</th>
+                <th className="px-3 py-2">Status</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[var(--border-subtle)]/60">
+              {demoRoleDiagnostics.rows.map((row) => (
+                <tr key={row.email}>
+                  <td className="px-3 py-2 font-mono text-xs text-[var(--foreground)]">{row.email}</td>
+                  <td className="px-3 py-2 font-mono text-xs text-[var(--text-muted)]">{row.authUserId ?? 'MISSING_AUTH_USER'}</td>
+                  <td className="px-3 py-2 text-[var(--text-muted)]">
+                    <p className="font-mono text-xs">{row.profileId ?? 'MISSING_PROFILE'}</p>
+                    <p className="font-mono text-[10px]">profile.user_id: {row.profileUserId ?? 'null'}</p>
+                  </td>
+                  <td className="px-3 py-2 text-[var(--text-muted)]">
+                    <p>{row.fullName ?? '—'} <span className="text-[var(--text-subtle)]">/ expected {row.expectedFullName}</span></p>
+                    <p className="text-xs">{row.jobTitle ?? '—'} <span className="text-[var(--text-subtle)]">/ expected {row.expectedJobTitle}</span></p>
+                  </td>
+                  <td className="px-3 py-2 text-[var(--text-muted)]">
+                    {row.departmentName ?? 'None'} <span className="text-[var(--text-subtle)]">/ expected {row.expectedDepartmentName ?? 'None'}</span>
+                  </td>
+                  <td className="px-3 py-2 text-[var(--text-muted)]">{row.expectedRole}</td>
+                  <td className="px-3 py-2 text-[var(--text-muted)]">{row.assignedRoles.length > 0 ? row.assignedRoles.join(', ') : '—'}</td>
+                  <td className="px-3 py-2 text-[var(--text-muted)]">{row.navigationFocus}</td>
+                  <td className="px-3 py-2">
+                    <Badge variant={row.primaryReason === 'OK' ? 'success' : 'error'}>
+                      {row.reasons.join(', ')}
+                    </Badge>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p className="text-xs text-[var(--text-muted)]">
+          Role routing, sidebar access, notifications, Telegram delivery, Copilot behavior, department scoping, page access, and QR role-specific experience depend on this mapping.
+        </p>
+      </section>
 
       <section className="space-y-3">
         <div>
@@ -530,125 +654,49 @@ export default async function DeveloperLabPage({ searchParams }: { searchParams:
 
       <section className="space-y-3">
         <div>
-          <h2 className="text-lg font-semibold text-[var(--foreground)]">Score Connection Status</h2>
+          <h2 className="text-lg font-semibold text-[var(--foreground)]">Operational Decision-Support Status</h2>
           <p className="text-sm text-[var(--text-muted)]">
-            Each composite score must be Live or Snapshot to appear on operational pages.
-            Sandbox-only scores are simulation surfaces here in Developer Lab and do not affect
-            decisions taken on Command Center, Equipment, or Reports.
+            Live metrics are computed from current operational records or views. Snapshot metrics are computed from operational records and stored, with freshness shown. Sandbox changes never affect operational pages.
           </p>
         </div>
         <div className="panel-surface overflow-x-auto rounded-lg">
-          <table className="w-full min-w-[960px] text-left text-sm">
+          <table className="w-full min-w-[1680px] text-left text-sm">
             <thead>
               <tr className="border-b border-[var(--border-subtle)] text-xs uppercase tracking-wide text-[var(--text-muted)]">
-                <th className="px-3 py-2">Score</th>
-                <th className="px-3 py-2">Source</th>
-                <th className="px-3 py-2">Appears in</th>
-                <th className="px-3 py-2">Status</th>
-                <th className="px-3 py-2">Sandbox → live?</th>
-                <th className="px-3 py-2">Last refresh</th>
+                <th className="px-3 py-2">Score / Metric</th>
+                <th className="px-3 py-2">Data Mode</th>
+                <th className="px-3 py-2">Source of Truth</th>
+                <th className="px-3 py-2">Refresh Mode</th>
+                <th className="px-3 py-2">Operational Consumers</th>
+                <th className="px-3 py-2">Affects Live Decisions?</th>
+                <th className="px-3 py-2">Sandbox Changes Affect Live?</th>
+                <th className="px-3 py-2">Last Snapshot Refresh</th>
+                <th className="px-3 py-2">Freshness</th>
+                <th className="px-3 py-2">Limitations / Notes</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--border-subtle)]/60">
-              {([
-                { name: 'RPN (FMEA)', src: 'equipment_risk_scores · fn_compute_rpn', pages: 'Command Center risk band, Equipment risk, Alerts', status: 'Snapshot', sandbox: 'No' },
-                { name: 'RPI (Replacement Priority)', src: 'replacement_priority_scores · v_replacement_decision', pages: 'Command Center, /replacement, /reports/replacement-planning, /developer-lab', status: 'Snapshot', sandbox: 'No' },
-                { name: 'Equipment Health Score', src: 'equipment_health_snapshots + operational fallback', pages: 'Command Center (interactive), Equipment detail', status: 'Snapshot', sandbox: 'No' },
-                { name: 'Department / Clinical Readiness', src: 'v_department_readiness', pages: 'Command Center readiness cards, /reports/department-readiness', status: 'Live', sandbox: 'No' },
-                { name: 'PM Compliance (PMC)', src: 'pm_compliance_metrics · fn_compute_pmc', pages: '/pm, /reports/pm, Command Center', status: 'Snapshot', sandbox: 'No' },
-                { name: 'Calibration Risk', src: 'calibration_records · calibration_requests · equipment_assets', pages: '/calibration, Command Center calibration triage, /alerts', status: 'Live', sandbox: 'No' },
-                { name: 'Critical Action Score', src: 'command-center-data.ts buildCriticalActions', pages: 'Command Center critical action strip', status: 'Live', sandbox: 'No' },
-                { name: 'Stock Blocker Priority', src: 'spare_parts · stock_issues · work_orders', pages: '/spare-parts, Command Center, /logistics', status: 'Live', sandbox: 'No' },
-                { name: 'Procurement Delay Priority', src: 'procurement_requests', pages: '/procurement, Command Center', status: 'Live', sandbox: 'No' },
-                { name: 'Workload / Capacity', src: 'work_orders · profiles (technician scope)', pages: 'Command Center workload, /work-orders', status: 'Live', sandbox: 'No' },
-                { name: 'Availability', src: 'equipment_reliability_metrics · fn_compute_availability', pages: 'Equipment detail, /reports', status: 'Snapshot', sandbox: 'No' },
-                { name: 'MTBF', src: 'equipment_reliability_metrics · fn_compute_mtbf', pages: 'Equipment detail, /reports', status: 'Snapshot', sandbox: 'No' },
-                { name: 'MTTR', src: 'equipment_reliability_metrics · fn_compute_mttr', pages: 'Equipment detail, /reports', status: 'Snapshot', sandbox: 'No' },
-                { name: 'Sensitivity sandbox RPI', src: 'In-memory recompute (Developer Lab only)', pages: 'Developer Lab Sandbox tab — never operational', status: 'Sandbox only', sandbox: 'No (simulation only)' },
-              ] as const).map((row) => (
-                <tr key={row.name}>
-                  <td className="px-3 py-2 font-medium text-[var(--foreground)]">{row.name}</td>
-                  <td className="px-3 py-2 text-[var(--text-muted)]">{row.src}</td>
-                  <td className="px-3 py-2 text-[var(--text-muted)]">{row.pages}</td>
-                  <td className="px-3 py-2">
-                    <Badge variant={row.status === 'Live' ? 'success' : row.status === 'Snapshot' ? 'info' : 'warning'}>{row.status}</Badge>
-                  </td>
-                  <td className="px-3 py-2 text-[var(--text-muted)]">{row.sandbox}</td>
-                  <td className="px-3 py-2 text-[var(--text-muted)]">
-                    {row.status === 'Snapshot' ? (lastRefresh?.started_at ? new Date(String(lastRefresh.started_at)).toLocaleString() : 'No log') : '—'}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        <p className="text-xs text-[var(--text-muted)]">
-          Live = computed from current operational rows on each request.
-          Snapshot = read from a precomputed table refreshed via the snapshot tools below.
-          Sandbox only = Developer Lab simulation that never writes to operational tables.
-        </p>
-      </section>
-
-      <section className="space-y-3">
-        <div>
-          <h2 className="text-lg font-semibold text-[var(--foreground)]">Role Demo Validation</h2>
-          <p className="text-sm text-[var(--text-muted)]">
-            Linkage status for the seven Supabase Auth demo logins. Source: profiles · user_roles · roles.
-            Driven by [[src/lib/rbac.ts]] capability matrix and supabase/seed/100_demo_role_users.sql.
-          </p>
-        </div>
-        <div className="panel-surface overflow-x-auto rounded-lg">
-          <table className="w-full min-w-[900px] text-left text-sm">
-            <thead>
-              <tr className="border-b border-[var(--border-subtle)] text-xs uppercase tracking-wide text-[var(--text-muted)]">
-                <th className="px-3 py-2">Demo Email</th>
-                <th className="px-3 py-2">Profile</th>
-                <th className="px-3 py-2">Auth linked</th>
-                <th className="px-3 py-2">Expected role</th>
-                <th className="px-3 py-2">Assigned roles</th>
-                <th className="px-3 py-2">Navigation focus</th>
-                <th className="px-3 py-2">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[var(--border-subtle)]/60">
-              {DEMO_EXPECTED.map((expected) => {
-                const profile = demoProfiles.find((p) => p.email === expected.email);
-                const assignedRoles = (profile?.user_roles ?? []).flatMap((ur) => {
-                  const r = ur.roles;
-                  if (!r) return [];
-                  if (Array.isArray(r)) return r.map((x) => x.name);
-                  return [r.name];
-                }).filter(Boolean) as string[];
-                const hasExpected = assignedRoles.includes(expected.role);
-                const isLinked = !!profile?.user_id;
-                let status: 'ok' | 'warning' | 'critical';
-                let statusLabel: string;
-                if (!profile) {
-                  status = 'critical';
-                  statusLabel = 'Missing profile';
-                } else if (!isLinked) {
-                  status = 'warning';
-                  statusLabel = 'Profile exists, not linked';
-                } else if (!hasExpected) {
-                  status = 'warning';
-                  statusLabel = 'Linked, wrong role';
-                } else {
-                  status = 'ok';
-                  statusLabel = 'Healthy';
-                }
+              {SCORE_REGISTRY.map((score) => {
+                const lastSnapshotRefresh = scoreSnapshotTimestamps[score.key] ?? null;
+                const freshness = evaluateSnapshotFreshness(score.dataMode, score.refreshMode, lastSnapshotRefresh);
                 return (
-                  <tr key={expected.email}>
-                    <td className="px-3 py-2 font-mono text-xs text-[var(--foreground)]">{expected.email}</td>
-                    <td className="px-3 py-2 text-[var(--text-muted)]">{profile?.full_name ?? '—'}</td>
-                    <td className="px-3 py-2 text-[var(--text-muted)]">{isLinked ? 'Yes' : 'No'}</td>
-                    <td className="px-3 py-2 text-[var(--text-muted)]">{expected.role}</td>
-                    <td className="px-3 py-2 text-[var(--text-muted)]">{assignedRoles.length > 0 ? assignedRoles.join(', ') : '—'}</td>
-                    <td className="px-3 py-2 text-[var(--text-muted)]">{expected.nav}</td>
+                  <tr key={score.key}>
+                    <td className="px-3 py-2 font-medium text-[var(--foreground)]">{score.displayName}</td>
                     <td className="px-3 py-2">
-                      <Badge variant={status === 'ok' ? 'success' : status === 'warning' ? 'warning' : 'error'}>
-                        {statusLabel}
+                      <Badge variant={score.dataMode === 'Live' ? 'success' : score.dataMode === 'Snapshot' || score.dataMode === 'Mixed' ? 'info' : score.dataMode === 'Sandbox' ? 'warning' : 'error'}>
+                        {score.dataMode}
                       </Badge>
                     </td>
+                    <td className="px-3 py-2 text-[var(--text-muted)]">{score.sourceOfTruth}</td>
+                    <td className="px-3 py-2 text-[var(--text-muted)]">{score.refreshMode}</td>
+                    <td className="px-3 py-2 text-[var(--text-muted)]">{score.operationalConsumers.join(', ')}</td>
+                    <td className="px-3 py-2 text-[var(--text-muted)]">{score.affectsLiveDecisions}</td>
+                    <td className="px-3 py-2 text-[var(--text-muted)]">{score.sandboxChangesAffectLive}</td>
+                    <td className="px-3 py-2 text-[var(--text-muted)]">{score.dataMode === 'Live' ? 'No snapshot needed' : formatLastRefresh(lastSnapshotRefresh)}</td>
+                    <td className="px-3 py-2">
+                      <Badge variant={scoreFreshnessBadgeVariant(freshness)}>{freshness}</Badge>
+                    </td>
+                    <td className="px-3 py-2 text-[var(--text-muted)]">{score.limitations}</td>
                   </tr>
                 );
               })}
@@ -656,11 +704,22 @@ export default async function DeveloperLabPage({ searchParams }: { searchParams:
           </table>
         </div>
         <p className="text-xs text-[var(--text-muted)]">
-          Healthy = profile exists, linked to a Supabase Auth user, and has the expected role. Fix linkage via supabase/seed/100_demo_role_users.sql or by adjusting user_roles directly in Settings → Role Permissions.
+          Latest refresh log: {lastRefresh?.started_at ? new Date(String(lastRefresh.started_at)).toLocaleString() : 'No log'} ({String(lastRefresh?.status ?? 'not run')}).
         </p>
       </section>
 
       <DeveloperLabClient replacementRows={replacementRows} />
+
+      <section className="space-y-3">
+        <div>
+          <h2 className="text-lg font-semibold text-[var(--foreground)]">Integration Diagnostics</h2>
+          <p className="text-sm text-[var(--text-muted)]">Copilot, QR, offline sync, notifications, and Telegram evidence. These depend on the same role/profile mapping validated above.</p>
+        </div>
+        <QrCoverageSection stats={qrCoverageStats} scanStats={qrScanStats} />
+        <OfflineDiagnosticsPanel serverSummary={offlineSyncSummary} />
+        <CopilotDiagnosticsSection profileId={String(profile.id)} roleNames={(profile.roleNames ?? []) as string[]} />
+        <NotificationDiagnosticsSection />
+      </section>
 
       <section className="space-y-4">
         <div>

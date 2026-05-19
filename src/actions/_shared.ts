@@ -111,6 +111,37 @@ export async function logServerAuditEvent(params: {
   }
 }
 
+export async function refreshDecisionSupportSnapshotsBestEffort(params: {
+  supabase: Awaited<ReturnType<typeof createClient>>;
+  profileId: string;
+  reason: string;
+  entityType?: string;
+  entityId?: string | null;
+}) {
+  const startedAt = new Date();
+  const { error } = await params.supabase.rpc('refresh_decision_support_snapshots');
+  const finishedAt = new Date();
+
+  await logServerAuditEvent({
+    supabase: params.supabase,
+    profileId: params.profileId,
+    action: error ? 'decision_support.refresh_after_workflow_failed' : 'decision_support.refresh_after_workflow',
+    entityType: params.entityType ?? 'decision_support',
+    entityId: params.entityId ?? null,
+    details: {
+      reason: params.reason,
+      started_at: startedAt.toISOString(),
+      finished_at: finishedAt.toISOString(),
+      duration_ms: finishedAt.getTime() - startedAt.getTime(),
+      error: error?.message ?? null,
+    },
+  });
+
+  if (error) {
+    console.error('[decision-support] Post-workflow snapshot refresh failed:', error.message);
+  }
+}
+
 export function revalidateMany(paths: string[]) {
   for (const path of paths) revalidatePath(path);
 }

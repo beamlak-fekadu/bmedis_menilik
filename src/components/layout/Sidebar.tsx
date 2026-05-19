@@ -36,7 +36,7 @@ const VIEWER_LABEL_OVERRIDES: Record<string, string> = {
   [ROUTES.MAINTENANCE]: 'Maintenance Overview',
   [ROUTES.REPLACEMENT]: 'Replacement & Risk',
   [ROUTES.COMPLIANCE]: 'Compliance Overview',
-  [ROUTES.ALERTS]: 'Management Alerts',
+  [ROUTES.ALERTS]: 'Management Notifications',
 };
 
 // Store-User-specific label overrides — store pages are framed as a
@@ -47,7 +47,7 @@ const STORE_LABEL_OVERRIDES: Record<string, string> = {
   [ROUTES.LOGISTICS]: 'Logistics Console',
   [ROUTES.PROCUREMENT]: 'Procurement Tracking',
   [ROUTES.MAINTENANCE]: 'Maintenance Blockers',
-  [ROUTES.ALERTS]: 'Logistics Alerts',
+  [ROUTES.ALERTS]: 'Logistics Notifications',
 };
 
 // Department-role label overrides — department pages are framed as a
@@ -59,7 +59,7 @@ const DEPARTMENT_LABEL_OVERRIDES: Record<string, string> = {
   [ROUTES.REQUESTS]: 'Department Requests',
   [ROUTES.MAINTENANCE]: 'Work Status',
   [ROUTES.COMPLIANCE]: 'Compliance Status',
-  [ROUTES.ALERTS]: 'Department Alerts',
+  [ROUTES.ALERTS]: 'Department Notifications',
 };
 
 export default function Sidebar({ userRoles = ['admin'], onNavigate, drawerMode = false }: SidebarProps) {
