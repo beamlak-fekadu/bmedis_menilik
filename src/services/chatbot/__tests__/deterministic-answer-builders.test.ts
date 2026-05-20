@@ -147,6 +147,177 @@ test('BME Head priority answer uses real ranked evidence instead of generic fill
   assert.equal(out.summary.includes('review the dashboard'), false);
 });
 
+test('BME Head priority answer uses Command Center Critical Action Score rows', () => {
+  const out = buildDeterministicAnswerCandidate({
+    capability: 'prioritize_tasks',
+    decision: 'answer',
+    profile: BME_HEAD,
+    message: 'What is the most urgent action right now?',
+    moduleContext: { route: '/command', pageLabel: 'Command Center' },
+    blocks: {
+      formalToolTrace: {
+        results: [
+          {
+            toolName: 'read_command_center_snapshot',
+            data: {
+              criticalActions: [
+                {
+                  title: 'Ward Nebulizer #2',
+                  category: 'needs_request',
+                  score: 262,
+                  urgency: 'critical',
+                  departmentName: 'Inpatient Ward',
+                  reason: 'non functional with RPN 324 and no open corrective request',
+                  scoreBreakdown: ['Base 100', 'Condition non functional', 'RPN 324'],
+                  primaryAction: 'Create Request',
+                },
+              ],
+            },
+            evidenceSignals: ['Loaded Command Center Critical Action Score rows.'],
+            sourceTables: ['work_order_parts_needed', 'v_calibration_due', 'v_overdue_pm'],
+          },
+        ],
+      },
+    },
+    evidence: EMPTY_EVIDENCE,
+  });
+
+  assert.ok(out);
+  assert.match(out.summary, /Ward Nebulizer #2/);
+  assert.match(out.summary, /Critical Action Score/);
+  assert.match(out.priority_reasoning.join(' '), /RPN 324/);
+});
+
+test('technician priority answer focuses assigned work instead of hospital triage', () => {
+  const out = buildDeterministicAnswerCandidate({
+    capability: 'prioritize_tasks',
+    decision: 'answer',
+    profile: TECHNICIAN,
+    message: 'What should I work on first?',
+    blocks: {
+      assignedWorkOrders: [
+        {
+          id: 'wo-9',
+          work_order_number: 'WO-2026-009',
+          status: 'assigned',
+          priority: 'critical',
+          equipment_assets: { asset_code: 'ICU-VEN-002', name: 'ICU Ventilator #2' },
+        },
+      ],
+      rankedOperationalQueue: [{ label: 'Hospital triage item', score: 250 }],
+    },
+    evidence: EMPTY_EVIDENCE,
+  });
+
+  assert.ok(out);
+  assert.match(out.summary, /WO-2026-009/);
+  assert.match(out.summary, /ICU-VEN-002/);
+  assert.doesNotMatch(out.summary, /Hospital triage item/);
+});
+
+test('technician reliability evidence answer names required metric fields', () => {
+  const out = buildDeterministicAnswerCandidate({
+    capability: 'explain_equipment_risk',
+    decision: 'answer',
+    profile: TECHNICIAN,
+    message: 'What evidence do I need to record so reliability metrics update?',
+    blocks: {
+      formalToolTrace: {
+        results: [
+          {
+            toolName: 'read_current_page_context',
+            data: { route: '/maintenance/work-orders' },
+            evidenceSignals: ['Loaded registered page context.'],
+            sourceTables: ['moduleContext'],
+          },
+        ],
+      },
+    },
+    evidence: EMPTY_EVIDENCE,
+  });
+
+  assert.ok(out);
+  assert.match(out.summary, /repair_duration_hours/);
+  assert.match(out.summary, /downtime_start/);
+  assert.match(out.summary, /downtime_end/);
+  assert.match(out.summary, /failure_date/);
+  assert.ok(out.source_tables.includes('maintenance_events'));
+});
+
+test('store blocker answer cites work_order_parts_needed declared blockers', () => {
+  const out = buildDeterministicAnswerCandidate({
+    capability: 'logistics_status',
+    decision: 'answer',
+    profile: { profileId: 'store-1', roleNames: ['store_user'], departmentId: null },
+    message: 'Which parts are blocking work?',
+    moduleContext: { route: '/spare-parts', pageLabel: 'Spare Parts' },
+    blocks: {
+      formalToolTrace: {
+        results: [
+          {
+            toolName: 'read_stock_blockers',
+            data: [
+              {
+                blocker_source: 'work_order_parts_needed',
+                part_code: 'SP-MOT-SUC',
+                name: 'Suction Motor Assembly',
+                current_stock: 0,
+                reorder_level: 2,
+                linked_work_order_number: 'WO-2026-014',
+                linked_asset_code: 'OR-SUC-002',
+                linked_asset_name: 'OR Suction Unit #2',
+              },
+            ],
+            evidenceSignals: ['Loaded 1 declared work_order_parts_needed blocker(s).'],
+            sourceTables: ['work_order_parts_needed', 'spare_parts'],
+          },
+        ],
+      },
+    },
+    evidence: EMPTY_EVIDENCE,
+  });
+
+  assert.ok(out);
+  assert.match(out.summary, /work_order_parts_needed/);
+  assert.match(out.summary, /Suction Motor Assembly/);
+  assert.match(out.summary, /WO-2026-014/);
+  assert.ok(out.source_tables.includes('work_order_parts_needed'));
+});
+
+test('department user report prompt gives request intake guidance', () => {
+  const out = buildDeterministicAnswerCandidate({
+    capability: 'general_system_fallback',
+    decision: 'answer',
+    profile: { profileId: 'dept-user-1', roleNames: ['department_user'], departmentId: 'dep-icu', departmentName: 'ICU' },
+    message: 'Help me report a problem with this equipment.',
+    moduleContext: { route: '/maintenance/requests/new', selectedRecordLabel: 'ICU Ventilator #2' },
+    blocks: {},
+    evidence: EMPTY_EVIDENCE,
+  });
+
+  assert.ok(out);
+  assert.match(out.summary, /department-scoped maintenance request/);
+  assert.match(out.key_findings.join(' '), /observed symptom/);
+  assert.match(out.recommended_actions.join(' '), /assignment/);
+});
+
+test('viewer zero metric answer explains source and freshness without developer trace', () => {
+  const out = buildDeterministicAnswerCandidate({
+    capability: 'metric_debug',
+    decision: 'limited_answer',
+    profile: VIEWER,
+    message: 'Why is this metric zero?',
+    moduleContext: { route: '/command', pageLabel: 'Command Center' },
+    blocks: { sourceTables: ['clinical_readiness_snapshots'] },
+    evidence: EMPTY_EVIDENCE,
+  });
+
+  assert.ok(out);
+  assert.match(out.summary, /source produced zero/);
+  assert.match(out.key_findings.join(' '), /raw developer traces are hidden/);
+  assert.deepEqual(out.action_drafts, []);
+});
+
 test('technician troubleshooting stays safe and refuses bypass-style depth', () => {
   const out = buildDeterministicAnswerCandidate({
     capability: 'safe_troubleshooting',
@@ -242,6 +413,54 @@ test('usefulness guard replaces display-repair metadata when deterministic evide
   });
 
   assert.match(guarded.summary, /Schedule diagnostic/);
+  assert.equal(guarded.answer_basis, 'system_data');
+});
+
+test('usefulness guard replaces truncated markdown provider output', () => {
+  const deterministic = buildDeterministicAnswerCandidate({
+    capability: 'logistics_status',
+    decision: 'answer',
+    profile: { profileId: 'store-1', roleNames: ['store_user'], departmentId: null },
+    message: 'Which parts are blocking work?',
+    blocks: {
+      formalToolTrace: {
+        results: [
+          {
+            toolName: 'read_stock_blockers',
+            data: [
+              {
+                blocker_source: 'work_order_parts_needed',
+                part_code: 'SP-MOT-SUC',
+                name: 'Suction Motor Assembly',
+                current_stock: 0,
+                reorder_level: 2,
+              },
+            ],
+            evidenceSignals: ['Loaded 1 declared work_order_parts_needed blocker(s).'],
+            sourceTables: ['work_order_parts_needed'],
+          },
+        ],
+      },
+    },
+    evidence: EMPTY_EVIDENCE,
+  });
+  assert.ok(deterministic);
+
+  const guarded = applyResponseUsefulnessGuard({
+    capability: 'logistics_status',
+    deterministic,
+    evidenceAvailable: true,
+    assistant: {
+      ...deterministic,
+      summary: 'Based on current records: 1. **Suction Motor Assembly',
+      evidence_used: [],
+      links: [],
+      answer_basis: 'model_output',
+      confidence: 'medium',
+    },
+  });
+
+  assert.match(guarded.summary, /work_order_parts_needed/);
   assert.equal(guarded.answer_basis, 'system_data');
 });
 

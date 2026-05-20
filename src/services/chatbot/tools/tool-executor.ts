@@ -1,4 +1,16 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
+import {
+  buildCriticalActions,
+  fetchCalibrationTriage,
+  fetchCorrectiveMaintenanceTriage,
+  fetchInstallationTriage,
+  fetchNeedsRequestTriage,
+  fetchPMTriage,
+  fetchProcurementTriage,
+  fetchProactiveRiskWatch,
+  fetchStockBlockers as fetchCommandStockBlockers,
+  fetchTrainingTriage,
+} from '@/app/(dashboard)/command/_lib/command-center-data';
 import type { ChatContextRefs, ChatModuleContext, UserChatProfile } from '@/types/chatbot';
 import { canReadAllOperationalCopilotContext, canReadCopilotDepartment, canUseDeveloperCopilotDiagnostics, requiresDepartmentScope } from '../copilot-rbac';
 import { copilotRoutes } from '../route-link-builder';
@@ -195,6 +207,25 @@ async function readQrScanEvidence(supabase: SupabaseClient, refs?: ChatContextRe
 
 const EMPTY_UUID = '00000000-0000-0000-0000-000000000000';
 
+function firstJoinRecord(value: unknown): Record<string, unknown> | null {
+  if (Array.isArray(value)) {
+    const first = value[0];
+    return first && typeof first === 'object' ? (first as Record<string, unknown>) : null;
+  }
+  return value && typeof value === 'object' ? (value as Record<string, unknown>) : null;
+}
+
+function text(value: unknown, fallback = '') {
+  if (typeof value === 'string') return value.trim() || fallback;
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+  return fallback;
+}
+
+function numberValue(value: unknown, fallback = 0) {
+  const n = typeof value === 'number' ? value : Number(value ?? fallback);
+  return Number.isFinite(n) ? n : fallback;
+}
+
 function isPrivilegedOperationalProfile(profile: UserChatProfile) {
   return profile.roleNames.some((role) => ['developer', 'admin', 'bme_head', 'viewer'].includes(role));
 }
@@ -303,6 +334,58 @@ async function readReplacementRisk(supabase: SupabaseClient, profile: UserChatPr
 
 async function readCommandCenterSnapshot(supabase: SupabaseClient, profile: UserChatProfile) {
   const scopedAssetIds = await scopedAssetIdsForTool(supabase, profile);
+  let criticalActions: Record<string, unknown>[] = [];
+  let criticalActionCategories: Record<string, number> = {};
+
+  if (isPrivilegedOperationalProfile(profile)) {
+    const commandClient = supabase as unknown as Parameters<typeof fetchCorrectiveMaintenanceTriage>[0];
+    const [
+      corrective,
+      needsRequest,
+      proactiveRisk,
+      calibration,
+      pm,
+      stockBlockers,
+      installation,
+      procurement,
+      training,
+    ] = await Promise.all([
+      fetchCorrectiveMaintenanceTriage(commandClient),
+      fetchNeedsRequestTriage(commandClient),
+      fetchProactiveRiskWatch(commandClient),
+      fetchCalibrationTriage(commandClient, { limit: null }),
+      fetchPMTriage(commandClient, { limit: null }),
+      fetchCommandStockBlockers(commandClient, { limit: null }),
+      fetchInstallationTriage(commandClient),
+      fetchProcurementTriage(commandClient),
+      fetchTrainingTriage(commandClient),
+    ]);
+
+    criticalActions = buildCriticalActions({
+      corrective: corrective.rows,
+      needsRequest: needsRequest.rows,
+      proactiveRisk: proactiveRisk.rows,
+      calibration: calibration.rows,
+      pm: pm.rows,
+      stockBlockers: stockBlockers.rows,
+      installation: installation.rows,
+      replacement: [],
+      procurement: procurement.rows,
+      training: training.rows,
+    }) as unknown as Record<string, unknown>[];
+    criticalActionCategories = {
+      corrective: corrective.total,
+      needs_request: needsRequest.total,
+      risk_watch: proactiveRisk.total,
+      calibration: calibration.total,
+      pm: pm.total,
+      stock: stockBlockers.total,
+      installation: installation.total,
+      procurement: procurement.total,
+      training: training.total,
+    };
+  }
+
   let triageQuery = supabase
     .from('triage_action_queue')
     .select('id, asset_id, priority_score, recommendation, status, due_by, equipment_assets(asset_code, name, department_id, departments(name))')
@@ -328,9 +411,103 @@ async function readCommandCenterSnapshot(supabase: SupabaseClient, profile: User
     readAlertsSummary(supabase, profile),
   ]);
   return {
+    criticalActions,
+    criticalActionCategories,
     triage: (triageRes.data ?? []) as Record<string, unknown>[],
     activeWorkOrders: (workRes.data ?? []) as Record<string, unknown>[],
     alerts: notificationSignals,
+  };
+}
+
+async function readStockBlockers(supabase: SupabaseClient, maxRows: number) {
+  const [declaredRes, lowStockRes] = await Promise.all([
+    supabase
+      .from('work_order_parts_needed')
+      .select(`
+        id,
+        spare_part_id,
+        work_order_id,
+        quantity_needed,
+        status,
+        notes,
+        spare_parts(id, part_code, name, current_stock, reorder_level),
+        work_orders(id, work_order_number, status, asset_id, equipment_assets(id, asset_code, name, department_id, departments(name)))
+      `)
+      .eq('status', 'open')
+      .limit(maxRows),
+    supabase
+      .from('v_low_stock_parts')
+      .select('id, part_code, name, current_stock, reorder_level, deficit')
+      .order('deficit', { ascending: false })
+      .limit(maxRows),
+  ]);
+
+  const declaredRows = declaredRes.error ? [] : ((declaredRes.data ?? []) as Record<string, unknown>[]);
+  const lowRows = lowStockRes.error ? [] : ((lowStockRes.data ?? []) as Record<string, unknown>[]);
+  const seenPartIds = new Set<string>();
+
+  const declared = declaredRows.map((row) => {
+    const part = firstJoinRecord(row.spare_parts);
+    const workOrder = firstJoinRecord(row.work_orders);
+    const asset = firstJoinRecord(workOrder?.equipment_assets);
+    const department = firstJoinRecord(asset?.departments);
+    const partId = text(row.spare_part_id ?? part?.id);
+    if (partId) seenPartIds.add(partId);
+    const currentStock = numberValue(part?.current_stock, 0);
+    const reorderLevel = numberValue(part?.reorder_level, 0);
+    return {
+      id: text(row.id),
+      part_id: partId,
+      part_code: text(part?.part_code, 'N/A'),
+      name: text(part?.name, 'Unknown part'),
+      current_stock: currentStock,
+      reorder_level: reorderLevel,
+      deficit: Math.max(0, reorderLevel - currentStock),
+      quantity_needed: numberValue(row.quantity_needed, 1),
+      blocker_source: 'work_order_parts_needed',
+      linked_work_order_id: text(row.work_order_id ?? workOrder?.id),
+      linked_work_order_number: text(workOrder?.work_order_number),
+      linked_work_order_status: text(workOrder?.status),
+      linked_asset_id: text(workOrder?.asset_id ?? asset?.id),
+      linked_asset_code: text(asset?.asset_code),
+      linked_asset_name: text(asset?.name),
+      department_name: text(department?.name),
+      notes: text(row.notes),
+      status: text(row.status, 'open'),
+    };
+  });
+
+  const lowStock = lowRows
+    .filter((row) => !seenPartIds.has(text(row.id)))
+    .map((row) => ({
+      id: text(row.id),
+      part_id: text(row.id),
+      part_code: text(row.part_code, 'N/A'),
+      name: text(row.name, 'Unknown part'),
+      current_stock: numberValue(row.current_stock, 0),
+      reorder_level: numberValue(row.reorder_level, 0),
+      deficit: numberValue(row.deficit, Math.max(0, numberValue(row.reorder_level, 0) - numberValue(row.current_stock, 0))),
+      quantity_needed: null,
+      blocker_source: 'v_low_stock_parts',
+      linked_work_order_id: null,
+      linked_work_order_number: null,
+      linked_work_order_status: null,
+      linked_asset_id: null,
+      linked_asset_code: null,
+      linked_asset_name: null,
+      department_name: null,
+      notes: null,
+      status: 'low_stock',
+    }));
+
+  return {
+    rows: [...declared, ...lowStock].slice(0, maxRows),
+    declaredCount: declared.length,
+    lowStockCount: lowStock.length,
+    warnings: [
+      declaredRes.error ? `Could not read work_order_parts_needed: ${declaredRes.error.message}` : '',
+      lowStockRes.error ? `Could not read v_low_stock_parts: ${lowStockRes.error.message}` : '',
+    ].filter(Boolean),
   };
 }
 
@@ -486,12 +663,25 @@ export async function executeCopilotTool(
     }
 
     if (name === 'read_stock_blockers') {
-      const { data } = await supabase
-        .from('v_low_stock_parts')
-        .select('id, part_code, name, current_stock, reorder_level, deficit')
-        .order('deficit', { ascending: false })
-        .limit(def.maxRows);
-      return baseResult(name, { data: data ?? [], evidenceSignals: ['Loaded stock blocker rows.'], sourceTables: def.dataSources, routeLinks: [{ label: 'Open spare parts', href: '/spare-parts', type: 'inventory' }] });
+      const data = await readStockBlockers(supabase, def.maxRows);
+      return baseResult(name, {
+        data: data.rows,
+        evidenceSignals: [
+          data.declaredCount
+            ? `Loaded ${data.declaredCount} declared work_order_parts_needed blocker(s).`
+            : 'No open declared work_order_parts_needed blockers were found.',
+          data.lowStockCount ? `Loaded ${data.lowStockCount} additional low-stock row(s).` : '',
+        ].filter(Boolean),
+        sourceTables: def.dataSources,
+        routeLinks: [
+          { label: 'Open spare parts', href: '/spare-parts', type: 'inventory' },
+          ...data.rows
+            .filter((row) => row.linked_work_order_id)
+            .slice(0, 3)
+            .map((row) => copilotRoutes.workOrder(String(row.linked_work_order_id), String(row.linked_work_order_number || 'Open work order'))),
+        ],
+        warnings: data.warnings.length ? data.warnings : data.rows.length ? [] : ['No stock blocker rows were found in the permitted scope.'],
+      });
     }
 
     if (name === 'read_procurement_pipeline') {
@@ -545,10 +735,14 @@ export async function executeCopilotTool(
       const data = await readCommandCenterSnapshot(supabase, profile);
       return baseResult(name, {
         data,
-        evidenceSignals: ['Loaded Command Center snapshot rows scoped by role.'],
+        evidenceSignals: [
+          data.criticalActions.length
+            ? 'Loaded Command Center Critical Action Score rows.'
+            : 'Loaded legacy Command Center snapshot rows scoped by role.',
+        ],
         sourceTables: def.dataSources,
         routeLinks: [{ label: 'Open Command Center', href: '/command', type: 'command' }],
-        warnings: data.triage.length || data.activeWorkOrders.length || data.alerts.length ? [] : ['No command-center rows were found in the permitted scope.'],
+        warnings: data.criticalActions.length || data.triage.length || data.activeWorkOrders.length || data.alerts.length ? [] : ['No command-center rows were found in the permitted scope.'],
       });
     }
 

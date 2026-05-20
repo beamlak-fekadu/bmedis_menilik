@@ -1,9 +1,8 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { CapabilityId, ChatContextRefs, UserChatProfile } from '@/types/chatbot';
+import type { ChatContextRefs, UserChatProfile } from '@/types/chatbot';
 import {
   canReadAllOperationalCopilotContext,
   canUseStoreCopilotContext,
-  canUseTechnicianCopilotContext,
   requiresDepartmentScope,
 } from '../copilot-rbac';
 
@@ -11,9 +10,8 @@ export function isAdmin(profile: UserChatProfile) {
   return canReadAllOperationalCopilotContext(profile);
 }
 
-export function usesBroadWorkOrderPool(profile: UserChatProfile, capability: CapabilityId) {
+export function usesBroadWorkOrderPool(profile: UserChatProfile) {
   if (canReadAllOperationalCopilotContext(profile)) return true;
-  if (capability === 'prioritize_tasks' && canUseTechnicianCopilotContext(profile)) return true;
   return false;
 }
 
@@ -31,17 +29,16 @@ async function scopedAssetIdsForProfile(supabase: SupabaseClient, profile: UserC
 
 export async function loadTaskBlocks(
   supabase: SupabaseClient,
-  profile: UserChatProfile,
-  capability: CapabilityId
+  profile: UserChatProfile
 ) {
   const assignedWorkOrdersQuery = supabase
     .from('work_orders')
-    .select('id, work_order_number, status, priority, assigned_to, created_at, asset_id')
+    .select('id, work_order_number, status, priority, work_type, assigned_to, created_at, asset_id, equipment_assets(asset_code, name, departments(name))')
     .in('status', ['open', 'assigned', 'in_progress', 'on_hold'])
     .order('created_at', { ascending: false })
     .limit(24);
 
-  const scopedWorkOrdersQuery = usesBroadWorkOrderPool(profile, capability)
+  const scopedWorkOrdersQuery = usesBroadWorkOrderPool(profile)
     ? assignedWorkOrdersQuery
     : assignedWorkOrdersQuery.eq('assigned_to', profile.profileId);
 

@@ -148,6 +148,8 @@ const INTENT_PATTERNS: Array<{ intent: ChatIntent; patterns: RegExp[] }> = [
       /\bstockouts?\b/i,
       /\breorder level\b/i,
       /\bstock (receipts?|issues?|balance|blockers?|risks?)\b/i,
+      /\bparts?\b.*\b(blocking|blockers?|blocking work)\b/i,
+      /\bwhich parts?\b.*\bblocking work\b/i,
       /\blogistics\b/i,
     ],
   },
@@ -212,7 +214,10 @@ const INTENT_PATTERNS: Array<{ intent: ChatIntent; patterns: RegExp[] }> = [
     patterns: [
       /\bdashboard\b.*\b(summary|signals?|priorities?|status)\b/i,
       /\bsummarize hospital readiness\b/i,
+      /\bhospital\b.*\breadiness\b/i,
       /\bhospital readiness\b/i,
+      /\bequipment readiness\b/i,
+      /\bfleet readiness\b/i,
     ],
   },
   {
@@ -236,6 +241,10 @@ const INTENT_PATTERNS: Array<{ intent: ChatIntent; patterns: RegExp[] }> = [
       /\bwhat can (this|the) page do\b/i,
       /\bworkflow help\b/i,
       /\bhow do i (create|track|open|request|report)\b/i,
+      /\bhelp me report\b/i,
+      /\breport a problem\b/i,
+      /\bproblem with this equipment\b/i,
+      /\bcreate.*maintenance request\b/i,
     ],
   },
   {
@@ -343,7 +352,7 @@ const CAPABILITY_KEYWORDS: Array<{ capability: CapabilityId; patterns: RegExp[];
   {
     capability: 'summarize_equipment',
     patterns: [
-      /\bsummari[sz]e\b.*\b(equipment|asset|device)\b/i,
+      /\bsummari[sz]e\b(?!.*\bhospital\b)(?!.*\breadiness\b).*\b(equipment|asset|device)\b/i,
       /\bstatus\b.*\b(equipment|asset|device)\b/i,
       /\bmaintenance history\b.*\b(equipment|asset|device)\b/i,
       /\bequipment\b.*\b(history|status|condition)\b/i,
@@ -416,6 +425,8 @@ const CAPABILITY_KEYWORDS: Array<{ capability: CapabilityId; patterns: RegExp[];
       /\bstock (receipts?|issues?|balance|blockers?|risks?)\b/i,
       /\bstock blockers?\b/i,
       /\bwhich stockouts? are blocking work\b/i,
+      /\bparts?\b.*\b(blocking|blockers?|blocking work)\b/i,
+      /\bwhich parts?\b.*\bblocking work\b/i,
       /\bspare parts?\b/i,
       /\binventory\b/i,
     ],
@@ -450,6 +461,9 @@ const CAPABILITY_KEYWORDS: Array<{ capability: CapabilityId; patterns: RegExp[];
       /\bdepartment operational readiness\b/i,
       /\bdashboard\b.*\b(summary|signals?|priorities?|status)\b/i,
       /\bhospital readiness\b/i,
+      /\bhospital\b.*\breadiness\b/i,
+      /\bequipment readiness\b/i,
+      /\bfleet readiness\b/i,
       /\bdecision support\b/i,
       /\btriage queue\b/i,
       /\bcommand center\b/i,
@@ -498,7 +512,14 @@ const CAPABILITY_KEYWORDS: Array<{ capability: CapabilityId; patterns: RegExp[];
   },
   {
     capability: 'general_system_fallback',
-    patterns: [/\bhow do i use (this page|this system|bmedis)\b/i, /\bwhat can (this|the) page do\b/i],
+    patterns: [
+      /\bhow do i use (this page|this system|bmedis)\b/i,
+      /\bwhat can (this|the) page do\b/i,
+      /\bhelp me report\b/i,
+      /\breport a problem\b/i,
+      /\bproblem with this equipment\b/i,
+      /\bcreate.*maintenance request\b/i,
+    ],
     baseScore: 0.72,
   },
 ];

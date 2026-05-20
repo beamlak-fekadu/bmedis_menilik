@@ -90,11 +90,15 @@ function derivePageAwareCapability(params: {
   if ((contextRefs?.workOrderId || selected.includes('work_order') || route.includes('/maintenance/work-orders/')) && generic) {
     return 'summarize_work_order';
   }
+  if (route.startsWith('/maintenance/requests/new') || /\b(help me report|report a problem|problem with this equipment|create.*maintenance request)\b/i.test(message)) {
+    return 'general_system_fallback';
+  }
   if ((contextRefs?.equipmentId || selected.includes('equipment') || selected.includes('asset') || route.startsWith('/equipment/')) && generic) {
     return 'summarize_equipment';
   }
+  if (route.startsWith('/command') && /\b(hospital|equipment|fleet|readiness|summari[sz]e)\b/i.test(message)) return 'summarize_department_readiness';
   if (route.startsWith('/command') && /\b(priorit|urgent|first|today|what should|why)\b/i.test(message)) return 'prioritize_tasks';
-  if ((route.startsWith('/spare-parts') || route.startsWith('/logistics')) && /\b(stock|block|part|inventory|logistics|what should|summari[sz]e this)\b/i.test(message)) {
+  if ((route.startsWith('/spare-parts') || route.startsWith('/logistics')) && /\b(stock|block|part|inventory|logistics|what should|which one|handle first|first|next|summari[sz]e this)\b/i.test(message)) {
     return 'logistics_status';
   }
   if (route.startsWith('/procurement') && /\b(procurement|delivery|order|pipeline|what should|summari[sz]e this)\b/i.test(message)) {

@@ -152,7 +152,13 @@ function limitations(blocks: Record<string, unknown>, extra: string[] = []) {
         result.deniedReason,
         result.staleDataWarning,
       ]),
-    ],
+    ].map((item) => {
+      const value = text(item);
+      if (/Tool access denied by copilot RBAC|Role is not allowed to use/i.test(value)) {
+        return 'Some cross-module context is outside this role scope.';
+      }
+      return value;
+    }),
     6
   );
 }
@@ -251,6 +257,21 @@ function linkedAssetLabel(row: Record<string, unknown> | null) {
   return assetName(asset) || text(row?.asset_id, 'asset');
 }
 
+function workOrderAssetLabel(row: Record<string, unknown> | null) {
+  const asset = asRecord(row?.equipment_assets);
+  if (!asset) return '';
+  return [text(asset.asset_code), text(asset.name)].filter(Boolean).join(' - ');
+}
+
+function criticalActionLabel(row: Record<string, unknown> | null) {
+  if (!row) return 'the top critical action';
+  const title = text(row.title, text(row.assetName));
+  const category = text(row.category).replace(/_/g, ' ');
+  const score = row.score != null ? `score ${Math.round(count(row.score))}` : '';
+  const urgency = text(row.urgency);
+  return [title, category ? `(${category})` : '', score, urgency].filter(Boolean).join(' ');
+}
+
 function summarizeStatusFields(row: Record<string, unknown> | null, fields: string[]) {
   if (!row) return [];
   return fields
@@ -263,6 +284,8 @@ function summarizeStatusFields(row: Record<string, unknown> | null, fields: stri
 
 function buildOperationalPriorityAnswer(params: DeterministicAnswerParams): AssistantContent | null {
   const { blocks, profile } = params;
+  const commandSnapshot = asRecord(toolData(blocks, 'read_command_center_snapshot'));
+  const criticalActions = asRows(commandSnapshot?.criticalActions).slice(0, 4);
   const queue = asRows(blocks.rankedOperationalQueue).slice(0, 4);
   const workOrders = asRows(blocks.assignedWorkOrders);
   const overduePm = asRows(blocks.overduePm);
@@ -270,7 +293,69 @@ function buildOperationalPriorityAnswer(params: DeterministicAnswerParams): Assi
   const lowStock = asRows(blocks.lowStockParts).length ? asRows(blocks.lowStockParts) : asRows(toolData(blocks, 'read_stock_blockers'));
   const roleCategory = getCopilotRoleCategory(profile);
 
-  if (!queue.length && !workOrders.length && !overduePm.length && !flags.length && !lowStock.length) return null;
+  if (!criticalActions.length && !queue.length && !workOrders.length && !overduePm.length && !flags.length && !lowStock.length) return null;
+
+  if ((roleCategory === 'bme_head' || roleCategory === 'admin' || roleCategory === 'developer') && criticalActions.length) {
+    const first = criticalActions[0];
+    const label = criticalActionLabel(first);
+    const breakdown = asRows(first?.scoreBreakdown).length
+      ? asRows(first?.scoreBreakdown).map((row) => text(row))
+      : Array.isArray(first?.scoreBreakdown)
+        ? (first.scoreBreakdown as unknown[]).map((item) => text(item)).filter(Boolean)
+        : [];
+    return baseAssistant(params, {
+      summary: `On the Command Center, the most urgent action is ${label}. This is ranked by the Critical Action Score, which combines the category base weight with item signals like condition, RPN, age, PM/calibration delay, stock state, or procurement delay depending on the category.`,
+      key_findings: criticalActions.map((item, index) => {
+        const department = text(item.departmentName);
+        const reason = text(item.reason);
+        return `${index + 1}. ${criticalActionLabel(item)}${department ? ` in ${department}` : ''}${reason ? `: ${reason}` : ''}.`;
+      }),
+      priority_reasoning: [
+        ...breakdown,
+        'Urgency bands: critical >= 180, high >= 150, medium >= 100.',
+        ...criticalActions.slice(1, 4).map((item) => `${criticalActionLabel(item)} is next because its Critical Action Score is lower than the top item.`),
+      ],
+      recommended_actions: [
+        text(first?.primaryAction)
+          ? `${text(first.primaryAction)} for ${text(first.title, 'the top item')} and confirm owner, blocker, and next evidence.`
+          : 'Open the top Critical Action item and confirm owner, blocker, and next evidence.',
+        'Handle safety/downtime corrective and needs-request items before routine PM unless clinical availability requires a coordinated window.',
+        lowStock.length ? 'Coordinate stock blockers with Store before assigning technician time to a blocked repair.' : '',
+      ].filter(Boolean),
+      confidence: 'high',
+      intelligence_mode: 'prioritization',
+      source_tables: ['work_orders', 'maintenance_requests', 'equipment_assets', 'equipment_risk_scores', 'v_calibration_due', 'v_overdue_pm', 'work_order_parts_needed', 'procurement_requests'],
+    });
+  }
+
+  if (roleCategory === 'technician') {
+    const first = workOrders[0];
+    if (!first && !overduePm.length) return null;
+    const firstWo = first ? text(first.work_order_number, text(first.id, 'assigned work order')) : '';
+    const asset = first ? workOrderAssetLabel(first) : '';
+    const summary = first
+      ? `For your technician queue, work on ${firstWo}${asset ? ` on ${asset}` : ''} first. It is ${text(first.priority, 'unprioritized')} priority and currently ${text(first.status, 'open')}, so start by confirming the observed fault, safety state, parts blocker, and evidence needed before changing status.`
+      : `I do not see an assigned active work order in the retrieved technician queue. The next useful check is the oldest or most critical PM/calibration item visible in your scope.`;
+    return baseAssistant(params, {
+      summary,
+      key_findings: [
+        workOrders.length ? `${workOrders.length} active work order(s) assigned to you are visible.` : 'No assigned active work order was retrieved.',
+        overduePm.length ? `${overduePm.length} overdue PM item(s) are visible in your scope.` : '',
+        first ? `Top assigned work: ${firstWo}${asset ? `, ${asset}` : ''}, ${text(first.status)} / ${text(first.priority, 'priority not recorded')}.` : '',
+      ].filter(Boolean),
+      priority_reasoning: [
+        first ? `Assigned work comes before broad hospital triage for the technician role.` : '',
+        first ? `${firstWo} is already in your queue, with status ${text(first.status, 'unknown')} and priority ${text(first.priority, 'not recorded')}.` : '',
+        overduePm.length ? 'Overdue PM remains important, but active assigned repair work should be checked first when it affects service availability.' : '',
+      ].filter(Boolean),
+      recommended_actions: [
+        first ? 'Open the work order, verify the user-reported symptom, and record findings against the work order.' : 'Check assigned work and PM/calibration queues before starting new work.',
+        'If parts or vendor support block progress, add a note and escalate to BME Head or Store instead of reassigning work yourself.',
+      ],
+      confidence: first ? 'high' : 'medium',
+      intelligence_mode: 'prioritization',
+    });
+  }
 
   const first = queue[0];
   const firstLabel = text(first?.label, workOrders[0] ? `work order ${text(workOrders[0].work_order_number, text(workOrders[0].id))}` : 'the highest-risk open signal');
@@ -429,6 +514,9 @@ function buildDepartmentStatusAnswer(params: DeterministicAnswerParams): Assista
     : asRows(params.blocks.readinessSnapshot);
   const flags = asRows(params.blocks.recommendationFlags);
   const overduePm = asRows(params.blocks.overduePm);
+  const roleCategory = getCopilotRoleCategory(params.profile);
+  const page = pageContext(params.blocks, params.moduleContext);
+  const counts = asRecord(page.visibleCounts);
   if (!readiness.length && !flags.length && !overduePm.length) return null;
 
   const latest = readiness[0];
@@ -436,20 +524,62 @@ function buildDepartmentStatusAnswer(params: DeterministicAnswerParams): Assista
   const readinessScore = rawReadinessScore != null
     ? `${Math.round(rawReadinessScore <= 1 ? rawReadinessScore * 100 : rawReadinessScore)}%`
     : '';
+  const departmentName = text(params.profile.departmentName, roleCategory === 'viewer' || roleCategory === 'bme_head' ? 'hospital scope' : 'your department');
+  const countSummary = counts
+    ? Object.entries(counts)
+        .map(([key, value]) => `${key.replace(/_/g, ' ')} ${text(value)}`)
+        .slice(0, 4)
+        .join(', ')
+    : '';
   const summary = readinessScore
-    ? `Based on current readiness records, the latest department readiness score is ${readinessScore}. The main follow-up is to address equipment issues, overdue PM, and high-severity flags that reduce clinical readiness.`
-    : `Based on current scoped records, I found ${flags.length} recommendation flag(s) and ${overduePm.length} overdue PM item(s) affecting readiness.`;
+    ? roleCategory === 'viewer'
+      ? `For the read-only hospital view, the latest readiness snapshot is ${readinessScore}. The main oversight risks are open/high-severity flags, overdue PM, calibration gaps, stock blockers, and replacement pressure; use these as questions for the BME team rather than edit actions.`
+      : `Based on current readiness records for ${departmentName}, the latest readiness score is ${readinessScore}. The main follow-up is to address equipment issues, overdue PM, and high-severity flags that reduce clinical readiness.`
+    : `Based on current scoped records${countSummary ? ` (${countSummary})` : ''}, I found ${flags.length} recommendation flag(s) and ${overduePm.length} overdue PM item(s) affecting readiness.`;
 
   return baseAssistant(params, {
     summary,
     key_findings: [
+      roleCategory !== 'viewer' && departmentName ? `Scope: ${departmentName}.` : '',
       readinessScore ? `Latest readiness score: ${readinessScore}.` : '',
       latest?.essential_total != null ? `${text(latest.essential_functional, '0')} of ${text(latest.essential_total)} essential assets are functional in the latest snapshot.` : '',
       flags.length ? `${flags.length} recommendation flag(s) are visible.` : '',
       overduePm.length ? `${overduePm.length} overdue PM item(s) are visible.` : '',
+      countSummary ? `Visible page counts: ${countSummary}.` : '',
     ].filter(Boolean),
-    recommended_actions: ['Open the lowest-readiness evidence first.', 'Resolve active work and compliance blockers before treating the score as recovered.'],
+    recommended_actions: roleCategory === 'viewer'
+      ? ['Ask BME which critical action or compliance gap explains the readiness pressure first.', 'Use the evidence links for review; this role should not create or mutate records.']
+      : ['Open the lowest-readiness evidence first.', 'Follow up on active requests and compliance blockers before treating the score as recovered.'],
     confidence: readiness.length ? 'high' : 'medium',
+  });
+}
+
+function buildDepartmentRequestIntakeAnswer(params: DeterministicAnswerParams): AssistantContent | null {
+  const roleCategory = getCopilotRoleCategory(params.profile);
+  const msg = params.message.toLowerCase();
+  const route = params.moduleContext?.route ?? params.moduleContext?.pathname ?? '';
+  const requestIntent = route.startsWith('/maintenance/requests/new') || /\b(help me report|report a problem|problem with this equipment|maintenance request)\b/i.test(msg);
+  if (!requestIntent || (roleCategory !== 'department_user' && roleCategory !== 'department_head' && roleCategory !== 'technician')) return null;
+
+  const page = pageContext(params.blocks, params.moduleContext);
+  const selected = text(page.selectedRecordLabel);
+  const scope = text(params.profile.departmentName, roleCategory === 'technician' ? 'your assigned work scope' : 'your department');
+
+  return baseAssistant(params, {
+    title: 'Maintenance Request Intake',
+    summary: `I can help prepare a ${roleCategory === 'technician' ? 'work note or maintenance request' : 'department-scoped maintenance request'}${selected ? ` for ${selected}` : ''}. Keep it factual: identify the asset, describe the observed fault, explain clinical impact, and include safe external details. Do not attempt BME execution steps from this role.`,
+    key_findings: [
+      `Scope: ${scope}.`,
+      selected ? `Selected context: ${selected}.` : 'No exact asset was attached, so the request should name or scan the equipment first.',
+      'A useful request includes asset/code, department/location, observed symptom, urgency, when noticed, user impact, visible error code, and photo/evidence if supported.',
+    ],
+    recommended_actions: [
+      'Confirm the asset label or QR page before drafting so the request links to the right equipment.',
+      'State whether the equipment is unsafe for clinical use, unavailable, intermittent, or still usable with caution.',
+      'Leave assignment, work-order creation, and repair execution to the BME workflow.',
+    ],
+    confidence: selected || route.startsWith('/maintenance/requests/new') ? 'high' : 'medium',
+    answer_basis: 'system_capabilities',
   });
 }
 
@@ -597,27 +727,51 @@ function buildStockBlockerAnswer(params: DeterministicAnswerParams): AssistantCo
   const procurement = asRows(toolData(params.blocks, 'read_procurement_pipeline')).length
     ? asRows(toolData(params.blocks, 'read_procurement_pipeline'))
     : asRows(params.blocks.procurementPipeline);
-  if (!lowStock.length && !procurement.length) return null;
+  const askedBlockers = /\b(block|blocker|stockout|low stock|parts? needed|parts?\b.*work)\b/i.test(params.message);
+  if (!lowStock.length && !procurement.length) {
+    if (!askedBlockers) return null;
+    return baseAssistant(params, {
+      summary:
+        'I do not see an open stock blocker in the retrieved BMEDIS context. System-specific reasons can be: no open work_order_parts_needed rows, the part is above reorder level, the work order is not linked to a part need, filters are hiding the row, or fixture data did not load for this role.',
+      key_findings: ['No open work_order_parts_needed blocker rows were retrieved.', 'No low-stock rows were retrieved from the stock blocker view.'],
+      recommended_actions: ['Check Spare Parts filters and open work-order parts-needed declarations.', 'If a technician is waiting on a part, ask them to declare the part need on the work order so Store can act on it.'],
+      confidence: 'medium',
+      source_tables: ['work_order_parts_needed', 'v_low_stock_parts', 'spare_parts'],
+    });
+  }
 
-  const first = lowStock[0];
+  const declared = lowStock.filter((row) => text(row.blocker_source) === 'work_order_parts_needed');
+  const first = declared[0] ?? lowStock[0];
   const firstLabel = first ? `${text(first.part_code)} ${text(first.name)}`.trim() : '';
+  const linkedWork = text(first?.linked_work_order_number || first?.linked_work_order_id);
+  const linkedAsset = [text(first?.linked_asset_code), text(first?.linked_asset_name)].filter(Boolean).join(' - ');
   const summary = firstLabel
-    ? `Based on current stock records, start with ${firstLabel}. It has ${text(first.current_stock, 'unknown')} on hand against a reorder level of ${text(first.reorder_level, 'unknown')}, so it is the clearest stock blocker in the retrieved rows.`
+    ? declared.length
+      ? `Based on declared work_order_parts_needed blockers, start with ${firstLabel}${linkedWork ? ` for work order ${linkedWork}` : ''}${linkedAsset ? ` on ${linkedAsset}` : ''}. It has ${text(first.current_stock, 'unknown')} on hand against reorder level ${text(first.reorder_level, 'unknown')}, and the open parts-needed row makes it a real work blocker rather than just generic low stock.`
+      : `Based on current stock records, start with ${firstLabel}. It has ${text(first.current_stock, 'unknown')} on hand against a reorder level of ${text(first.reorder_level, 'unknown')}, so it is the clearest stock risk in the retrieved rows.`
     : `Based on current logistics records, I found ${procurement.length} procurement row(s) that may affect service restoration.`;
 
   return baseAssistant(params, {
     summary,
     key_findings: [
-      lowStock.length ? `${lowStock.length} low-stock or stockout row(s) were retrieved.` : '',
+      declared.length ? `${declared.length} open work_order_parts_needed blocker row(s) were retrieved.` : '',
+      lowStock.length ? `${lowStock.length} total stock blocker/low-stock row(s) were retrieved.` : '',
       procurement.length ? `${procurement.length} procurement pipeline row(s) were retrieved.` : '',
       first?.deficit != null ? `Top deficit: ${text(first.deficit)}.` : '',
+      ...lowStock.slice(0, 4).map((row) => {
+        const source = text(row.blocker_source) === 'work_order_parts_needed' ? 'declared blocker' : 'low-stock signal';
+        const wo = text(row.linked_work_order_number || row.linked_work_order_id);
+        const asset = [text(row.linked_asset_code), text(row.linked_asset_name)].filter(Boolean).join(' - ');
+        return `${text(row.part_code)} ${text(row.name)}: ${source}${wo ? `, WO ${wo}` : ''}${asset ? `, ${asset}` : ''}, stock ${text(row.current_stock, 'unknown')} / reorder ${text(row.reorder_level, 'unknown')}.`;
+      }),
     ].filter(Boolean),
     recommended_actions: [
-      lowStock.length ? 'Open spare parts and resolve stockout/low-stock rows tied to active work first.' : '',
+      declared.length ? 'Handle declared parts-needed blockers before generic low-stock cleanup.' : lowStock.length ? 'Open spare parts and resolve stockout/low-stock rows tied to active work first.' : '',
       procurement.length ? 'Track existing procurement before drafting a duplicate request.' : '',
       'Use exact stock/procurement evidence rather than guessing part availability.',
     ].filter(Boolean),
     confidence: 'high',
+    source_tables: ['work_order_parts_needed', 'spare_parts', 'work_orders', 'equipment_assets', 'v_low_stock_parts'],
   });
 }
 
@@ -648,6 +802,65 @@ function buildTroubleshootingAnswer(params: DeterministicAnswerParams): Assistan
     confidence: checks.length ? 'medium' : 'low',
     answer_basis: hasRecordData(params) ? 'system_data' : 'general_safe_guidance',
     intelligence_mode: 'troubleshooting',
+  });
+}
+
+function buildReliabilityEvidenceAnswer(params: DeterministicAnswerParams): AssistantContent | null {
+  if (!/\b(reliability|metrics? update|mttr|mtbf|availability|repair_duration|downtime|failure_date|evidence)\b/i.test(params.message)) return null;
+  if (!/\b(record|log|need|required|update|evidence)\b/i.test(params.message)) return null;
+
+  return baseAssistant(params, {
+    title: 'Reliability Evidence',
+    summary:
+      'To make BMEDIS reliability metrics update, record the work-order completion evidence as structured fields, not just a free-text note. The important fields are repair_duration_hours, downtime_start, downtime_end, failure_date, completion_outcome, and final_equipment_condition. BMEDIS stores the completion event in maintenance_events and derives downtime_logs from the event trigger.',
+    key_findings: [
+      'repair_duration_hours feeds repair-time evidence for MTTR.',
+      'downtime_start and downtime_end feed downtime evidence and the derived downtime_logs row.',
+      'failure_date anchors when the failure occurred for reliability timelines.',
+      'completion_outcome and final_equipment_condition are required when completing a work order.',
+    ],
+    recommended_actions: [
+      'Before closing the work order, capture when the failure began, when downtime ended, how long repair work took, the outcome, and the final condition.',
+      'If a part, vendor, or safety issue blocked completion, record that blocker instead of marking the work complete.',
+    ],
+    source_tables: ['work_orders', 'maintenance_events', 'downtime_logs', 'equipment_reliability_metrics'],
+    confidence: 'high',
+    answer_basis: 'system_data',
+  });
+}
+
+function buildMetricZeroAnswer(params: DeterministicAnswerParams): AssistantContent | null {
+  if (params.capability !== 'metric_debug' && !/\bwhy\b.*\b(metric|card|number|value)\b.*\b(0|zero)\b/i.test(params.message)) return null;
+  const roleCategory = getCopilotRoleCategory(params.profile);
+  const page = pageContext(params.blocks, params.moduleContext);
+  const tables = sourceTables(params.blocks);
+  const domainTables = tables.filter((table) => !['profiles', 'user_roles', 'moduleContext'].includes(table));
+  const defaultMetricTables = ['clinical_readiness_snapshots', 'maintenance_events', 'downtime_logs', 'v_overdue_pm', 'v_calibration_due', 'work_order_parts_needed'];
+  const pageLabel = text(page.pageLabel || page.moduleLabel || page.route);
+  const pageName = pageLabel && !pageLabel.startsWith('/') ? pageLabel : 'this page';
+  const normalSourceLine =
+    domainTables.length
+      ? `I would check these retrieved sources first: ${domainTables.slice(0, 6).join(', ')}.`
+      : `I would check the metric-specific sources first, such as ${defaultMetricTables.slice(0, 4).join(', ')}.`;
+
+  return baseAssistant(params, {
+    title: 'Metric Source Check',
+    summary:
+      `A zero metric in BMEDIS should be treated as "the source produced zero for this scope," not as proof that nothing exists. On ${pageName}, common reasons are: no rows in the source table for your role scope, a stale or missing snapshot refresh, page filters, missing fixture data, or the metric depending on completed events that have not been recorded yet. ${normalSourceLine}`,
+    key_findings: [
+      'MTTR/MTBF/availability can be zero or empty when maintenance_events lacks repair_duration_hours, failure_date, downtime_start, or downtime_end.',
+      'PM/calibration counts can be zero when v_overdue_pm or v_calibration_due has no rows for the current filter/scope.',
+      'Stock blockers can be zero when there are no open work_order_parts_needed rows and no part below reorder level.',
+      roleCategory === 'developer' ? 'Developer can inspect raw tool trace and freshness metadata in Developer Lab.' : 'This role gets source/freshness explanation only; raw developer traces are hidden.',
+    ],
+    recommended_actions: [
+      'Check the page filters and role scope first.',
+      'Ask "where did you get that?" to see the lightweight source list.',
+      'Ask BME/Developer to refresh snapshots if the source data should exist but the card still shows zero.',
+    ],
+    source_tables: domainTables.length ? domainTables : defaultMetricTables,
+    confidence: 'medium',
+    answer_basis: 'system_data',
   });
 }
 
@@ -861,12 +1074,18 @@ export function buildDeterministicAnswerCandidate(params: DeterministicAnswerPar
     return developer;
   }
 
+  const metricZero = buildMetricZeroAnswer(params);
+  if (metricZero) return metricZero;
+
   const conceptual = buildConceptualAnswer(params);
   if (conceptual && !hasRecordData(params)) return conceptual;
 
   if (params.capability === 'safe_troubleshooting' || params.classified?.troubleshootingSubtype === 'safe_general_troubleshooting') {
     return buildTroubleshootingAnswer(params);
   }
+
+  const reliabilityEvidence = buildReliabilityEvidenceAnswer(params);
+  if (reliabilityEvidence) return reliabilityEvidence;
 
   if (params.capability === 'qr_asset_context' || params.moduleContext?.qrToken || params.moduleContext?.route?.startsWith('/qr/a/')) {
     const answer = buildQrAssetAnswer(params);
@@ -880,6 +1099,11 @@ export function buildDeterministicAnswerCandidate(params: DeterministicAnswerPar
 
   if (params.capability === 'report_summary' || params.moduleContext?.reportType || params.moduleContext?.route?.startsWith('/reports')) {
     const answer = buildReportSummaryAnswer(params);
+    if (answer) return answer;
+  }
+
+  {
+    const answer = buildDepartmentRequestIntakeAnswer(params);
     if (answer) return answer;
   }
 

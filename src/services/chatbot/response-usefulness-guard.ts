@@ -40,6 +40,11 @@ function uniqueLinks(links: AssistantContent['links']) {
 function looksGeneric(assistant: AssistantContent) {
   const text = [assistant.title ?? '', assistant.summary, ...assistant.recommended_actions, ...assistant.key_findings].join(' ');
   if (GENERIC_PATTERNS.some((pattern) => pattern.test(text))) return true;
+  const trimmedSummary = assistant.summary.trim();
+  const boldMarkers = trimmedSummary.match(/\*\*/g)?.length ?? 0;
+  if (boldMarkers % 2 === 1) return true;
+  if (/[(:,-]\s*$/.test(trimmedSummary)) return true;
+  if (/\b[A-Z]{2,}-[A-Z0-9-]{0,3}$/.test(trimmedSummary)) return true;
   if (assistant.answer_basis === 'insufficient_data' && assistant.confidence === 'low') return true;
   if (assistant.summary.length < 80 && assistant.evidence_used.length === 0 && assistant.links.length === 0) return true;
   return false;
@@ -85,6 +90,8 @@ export function applyResponseUsefulnessGuard(params: GuardParams): AssistantCont
     providerFallback ||
     parserRecoveryUsed ||
     (evidenceAvailable && looksGeneric(assistant)) ||
+    (deterministic.title === 'Reliability Evidence' && !/repair_duration_hours|downtime_start|downtime_end|failure_date/i.test(assistant.summary)) ||
+    (deterministic.title === 'Metric Source Check' && assistant.decision === 'refuse') ||
     (deterministic.answer_basis === 'system_data' && assistant.answer_basis === 'insufficient_data');
 
   if (shouldReplace) {

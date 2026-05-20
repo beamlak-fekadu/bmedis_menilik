@@ -79,6 +79,23 @@ test('summarize this equipment maps to summarize_equipment', () => {
   assert.equal(c.capability, 'summarize_equipment');
 });
 
+test('hospital equipment readiness maps to readiness instead of single equipment summary', () => {
+  const c = classifyChatRequest('Summarize hospital equipment readiness for me.');
+  assert.equal(c.capability, 'summarize_department_readiness');
+  assert.notEqual(c.capability, 'summarize_equipment');
+});
+
+test('parts blocking work maps to logistics blockers', () => {
+  const c = classifyChatRequest('Which parts are blocking work?');
+  assert.equal(c.capability, 'logistics_status');
+});
+
+test('department problem reporting maps to request intake fallback', () => {
+  const c = classifyChatRequest('Help me report a problem with this equipment.');
+  assert.equal(c.capability, 'general_system_fallback');
+  assert.equal(c.intent, 'workflow_help');
+});
+
 test('domain classifier covers final BMEDIS operational intents', () => {
   const cases = [
     ['What open work orders need attention?', 'work_order_status', 'prioritize_tasks'],
@@ -191,6 +208,16 @@ test('viewer mutation requests are refused as read-only', () => {
   const safety = evaluateSafetyDecision(msg, classified, profile, BASE_EVIDENCE);
   assert.equal(safety.blocked, true);
   assert.equal(safety.decision, 'refuse');
+});
+
+test('viewer can ask zero-metric source questions without developer trace access', () => {
+  const profile: UserChatProfile = { ...BASE_PROFILE, roleNames: ['viewer'] };
+  const msg = 'Why is this metric zero?';
+  const classified = classifyChatRequest(msg);
+  assert.equal(classified.capability, 'metric_debug');
+  const safety = evaluateSafetyDecision(msg, classified, profile, BASE_EVIDENCE);
+  assert.equal(safety.blocked, false);
+  assert.equal(safety.decision, 'limited_answer');
 });
 
 test('assistant sanitizer clamps provider arrays before API schema parse', () => {

@@ -56,7 +56,7 @@ function planFormalTools(capability: CapabilityId, moduleContext?: ChatModuleCon
     tools.push('read_offline_sync_summary');
   }
   if (capability === 'report_summary' || moduleContext?.reportType) tools.push('read_report_snapshot');
-  if (capability === 'metric_debug' || capability === 'copilot_diagnostics') {
+  if (capability === 'copilot_diagnostics') {
     tools.push('read_tool_trace', 'read_routing_trace', 'read_provider_trace', 'read_parser_failures');
   }
   if (capability === 'usage_status' || capability === 'copilot_diagnostics') tools.push('read_gemini_usage_summary');
@@ -364,7 +364,7 @@ export async function buildTaskContext(params: TaskContextParams): Promise<TaskC
 
   const evidence: ChatEvidence = await buildChatEvidence(supabase, contextRefs, profile, intentForEvidence, message);
   const [shared, riskAnalytics, logistics, decisionSupport] = await Promise.all([
-    loadTaskBlocks(supabase, profile, capability),
+    loadTaskBlocks(supabase, profile),
     loadRiskAndAnalytics(supabase, contextRefs, profile),
     loadLogistics(supabase, profile),
     loadDecisionSupportSnapshot(supabase, profile),

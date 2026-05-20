@@ -25,11 +25,11 @@ const ROLE_INTENT_BLOCKS: Record<string, ChatIntent[]> = {
 };
 
 const ROLE_CAPABILITY_BLOCKS: Record<string, CapabilityId[]> = {
-  viewer: ['procurement_status', 'metric_debug', 'copilot_diagnostics'],
-  store_user: ['safe_troubleshooting', 'metric_debug', 'copilot_diagnostics'],
-  technician: ['metric_debug', 'copilot_diagnostics'],
-  department_head: ['metric_debug', 'copilot_diagnostics'],
-  department_user: ['metric_debug', 'copilot_diagnostics'],
+  viewer: ['procurement_status', 'copilot_diagnostics'],
+  store_user: ['safe_troubleshooting', 'copilot_diagnostics'],
+  technician: ['copilot_diagnostics'],
+  department_head: ['copilot_diagnostics'],
+  department_user: ['copilot_diagnostics'],
 };
 
 const EXACT_ERROR_CODE_PATTERN = /\b(error\s*code|code\s*[a-z]?\d{2,}|E\d{2,})\b/i;
@@ -72,7 +72,7 @@ function roleRestrictedIntent(intent: ChatIntent, roleNames: string[]): boolean 
 }
 
 function roleRestrictedCapability(capability: CapabilityId, roleNames: string[]) {
-  if (capability === 'copilot_diagnostics' || capability === 'metric_debug') {
+  if (capability === 'copilot_diagnostics') {
     return !canUseDeveloperCopilotDiagnostics({ roleNames });
   }
   if (roleNames.some((role) => role === 'developer' || role === 'admin' || role === 'bme_head')) return false;
