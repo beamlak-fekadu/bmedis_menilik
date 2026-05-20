@@ -50,14 +50,14 @@ export default async function RequestsHubPage() {
       <AssistantPageContextBridge
         moduleLabel="Requests"
         pageLabel="Requests Hub"
-        pageSummary="Central request hub across maintenance, calibration, procurement, training, disposal, installation, and specification workflows."
+        pageSummary="Central request hub across maintenance, calibration, procurement, training, disposal, installation, specification, and BMEDIS system training workflows."
         visibleCounts={{ requests: data.unifiedRequests.length }}
         availableEvidenceLinks={[{ label: 'Requests Hub', href: '/requests', type: 'module' }]}
         quickPrompts={['Which requests are pending?', 'Prepare a concise request status summary.', 'Which requests need attention?']}
       />
       <PageHeader
         title="Requests Hub"
-        descriptionInfo="Central intake and tracking for maintenance, calibration, procurement, training, disposal, installation, and specification requests."
+        descriptionInfo="Central intake and tracking for maintenance, calibration, procurement, training, disposal, installation, specification, and BMEDIS system training requests."
         actions={<Badge variant="info">Role-based visibility enabled</Badge>}
       />
       <RequestsHubClient data={data} />

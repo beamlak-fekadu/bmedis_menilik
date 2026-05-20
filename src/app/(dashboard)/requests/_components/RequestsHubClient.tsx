@@ -9,6 +9,7 @@ import {
   FileSearch,
   Gauge,
   GraduationCap,
+  Mail,
   PackageCheck,
   Search,
   Trash2,
@@ -109,6 +110,7 @@ export default function RequestsHubClient({ data }: { data: RequestsHubData }) {
 
   const totalPages = Math.ceil(filteredRows.length / pageSize);
   const pageRows = filteredRows.slice((page - 1) * pageSize, page * pageSize);
+  const canRequestBmedisTraining = data.roleScope.roleNames.some((role) => ['developer', 'admin', 'bme_head'].includes(role));
 
   const setFilter = (setter: () => void) => {
     setter();
@@ -156,6 +158,46 @@ export default function RequestsHubClient({ data }: { data: RequestsHubData }) {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
+        {canRequestBmedisTraining ? (
+          <Card className="flex h-full flex-col gap-4">
+            <div className="flex items-start gap-3">
+              <div className="rounded-lg bg-[var(--surface-3)] p-2 text-[var(--brand)]">
+                <Mail className="h-5 w-5" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="font-semibold text-[var(--foreground)]">BMEDIS System Training</p>
+                  <Badge variant="info">BME Head</Badge>
+                </div>
+                <p className="mt-1 text-sm text-[var(--text-muted)]">
+                  Request onboarding, refresher training, or workflow coaching from the BMEDIS support team.
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <div>
+                <p className="text-xs text-[var(--text-muted)]">Delivery</p>
+                <p className="font-semibold text-[var(--foreground)]">Email request</p>
+              </div>
+              <div>
+                <p className="text-xs text-[var(--text-muted)]">Owner / Reviewer</p>
+                <p className="font-semibold text-[var(--foreground)]">BMEDIS Support</p>
+              </div>
+              <div className="col-span-2">
+                <p className="text-xs text-[var(--text-muted)]">Scope</p>
+                <p className="font-semibold text-[var(--foreground)]">System training coordination</p>
+              </div>
+            </div>
+
+            <div className="mt-auto flex flex-wrap gap-2">
+              <Link href="/requests/bmedis-training" className={PRIMARY_LINK}>
+                Request Training
+              </Link>
+            </div>
+            <p className="text-xs text-[var(--text-muted)]">Sends a coordination email to the BMEDIS training contact.</p>
+          </Card>
+        ) : null}
         {data.workflowCards.map((card) => {
           const Icon = ICONS[card.type];
           const canShowMainAction = data.roleScope.canMutate && card.canCreate;
