@@ -37,5 +37,17 @@ export const copilotRoutes = {
   qrCoverage: (label = 'Open QR coverage') => link(label, '/equipment/qr-coverage', 'qr'),
   qrScans: (label = 'Open QR scans') => link(label, '/equipment/qr-scans', 'qr'),
   developerLab: (label = 'Open Developer Lab') => link(label, '/developer-lab', 'developer'),
+  notifications: (label = 'Open Notification Center') => link(label, '/notifications', 'report'),
+  /** Generic request route link by intake type — falls back to module home. */
+  request: (kind: 'maintenance' | 'calibration' | 'training' | 'disposal', id: string, label?: string) => {
+    switch (kind) {
+      case 'maintenance':
+        return link(label ?? 'Open maintenance request', `/maintenance/requests/${id}`, 'maintenance_request');
+      case 'calibration':
+        return link(label ?? 'Open calibration request', `/calibration/requests/${id}`, 'calibration_request');
+      default:
+        return link(label ?? 'Open request', `/requests/${kind}/${id}`, 'maintenance_request');
+    }
+  },
 };
 

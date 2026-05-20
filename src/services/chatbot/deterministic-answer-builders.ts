@@ -10,6 +10,8 @@ import type {
 } from '@/types/chatbot';
 import { getCapabilityResponseDefaults } from './capability-response-defaults';
 import { getCopilotRoleCategory } from './copilot-rbac';
+import { buildWorkflowExplainerAnswer, workflowExplainerToAssistant } from './workflow-explainers';
+import { handleFollowUp, type FollowUpMemoryContext } from './follow-up-handlers';
 
 type ToolResultLike = {
   ok?: boolean;
@@ -33,6 +35,8 @@ export type DeterministicAnswerParams = {
   moduleContext?: ChatModuleContext;
   blocks: Record<string, unknown>;
   evidence: ChatEvidence;
+  /** Optional follow-up memory context threaded from the orchestrator. */
+  followUpMemory?: FollowUpMemoryContext;
 };
 
 function asRows(value: unknown): Record<string, unknown>[] {
@@ -1072,6 +1076,43 @@ export function buildDeterministicAnswerCandidate(params: DeterministicAnswerPar
   const developer = buildDeveloperDiagnosticAnswer(params);
   if (developer && (params.capability === 'copilot_diagnostics' || params.capability === 'metric_debug' || /classified|classifier|telemetry|provider|parser|usage/i.test(params.message))) {
     return developer;
+  }
+
+  // Phase 3: short pronoun-y follow-ups ("why?", "explain simply", "where did
+  // you get that?", "what if I ignore it?", "is that safe?", "what happens
+  // next?"). Runs before workflow / capability builders so a follow-up is
+  // anchored on the previous turn instead of being treated as a brand-new
+  // generic question. Only activates when the orchestrator supplied
+  // `followUpMemory` — pure capability tests that don't thread memory keep
+  // the old behavior so e.g. "why that one first?" still reaches the
+  // operational-priority builder.
+  if (params.followUpMemory) {
+    const followUp = handleFollowUp({
+      message: params.message,
+      profile: params.profile,
+      memory: params.followUpMemory,
+      decision: params.decision,
+    });
+    if (followUp) {
+      return followUp.answer;
+    }
+  }
+
+  // Phase 2: workflow / formula / notification / QR / offline / report /
+  // validation explainers. These run before capability-specific builders so
+  // questions like "What happens after I complete this WO?" get a real
+  // workflow chain answer instead of a generic summary.
+  const explainer = buildWorkflowExplainerAnswer({
+    message: params.message,
+    capability: params.capability,
+    profile: params.profile,
+    contextRefs: params.contextRefs,
+    moduleContext: params.moduleContext,
+    evidence: params.evidence,
+    decision: params.decision,
+  });
+  if (explainer) {
+    return workflowExplainerToAssistant(explainer, params.decision);
   }
 
   const metricZero = buildMetricZeroAnswer(params);

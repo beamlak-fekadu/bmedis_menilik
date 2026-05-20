@@ -5,6 +5,7 @@ import Badge from '@/components/ui/Badge';
 import Button from '@/components/ui/Button';
 import Card, { CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { createClient } from '@/lib/supabase/server';
+import AssistantPageContextBridge from '@/components/assistant/AssistantPageContextBridge';
 
 type Params = Promise<{ id: string }>;
 type RawRow = Record<string, unknown>;
@@ -69,6 +70,39 @@ export default async function CalibrationRecordDetailPage({ params }: { params: 
 
   return (
     <div className="space-y-6">
+      <AssistantPageContextBridge
+        moduleLabel="Calibration"
+        pageLabel={`Calibration Record ${String(row.result ?? '').toUpperCase()}`}
+        selectedRecordType="calibration_record"
+        selectedRecordId={id}
+        selectedRecordLabel={`${asset?.asset_code ?? 'Asset'} · ${formatLabel(row.result)}`}
+        contextRefs={row.asset_id ? { equipmentId: row.asset_id as string } : undefined}
+        pageSummary="Calibration record evidence with result (pass/fail/adjusted), next due date, certificate reference, asset and department context, and follow-up links."
+        visibleCounts={{
+          result: String(row.result ?? ''),
+          is_failed_or_adjusted: failedOrAdjusted,
+          has_certificate: Boolean(row.certificate_path),
+        }}
+        pageDataHints={[
+          `Result: ${formatLabel(row.result)}`,
+          `Next due: ${row.next_due_date ? new Date(row.next_due_date as string).toLocaleDateString() : 'unset'}`,
+          asset ? `Asset: ${asset.asset_code ?? ''} ${asset.name ?? ''}` : 'Asset: unknown',
+          failedOrAdjusted ? 'Failed/Adjusted result — copilot will surface corrective options.' : 'Pass result — no corrective request expected.',
+          prior.data?.id ? `Prior calibration on ${String(prior.data.calibration_date ?? '')}: ${String(prior.data.result ?? '')}` : 'No prior calibration on file.',
+        ]}
+        availableEvidenceLinks={[
+          { label: 'Calibration Record', href: `/calibration/records/${id}`, type: 'calibration_record' },
+          ...(row.asset_id ? [{ label: 'Asset', href: `/equipment/${row.asset_id as string}`, type: 'equipment' }] : []),
+          ...(request.data?.id ? [{ label: 'Related Request', href: `/calibration/requests/${String((request.data as RawRow).id)}`, type: 'calibration_request' }] : []),
+          { label: 'Calibration Center', href: '/calibration', type: 'module' },
+        ]}
+        quickPrompts={[
+          'Summarize this calibration result.',
+          'What is the compliance/risk impact?',
+          'What should I do for a failed or adjusted result?',
+          'Which report proves this calibration?',
+        ]}
+      />
       <PageHeader
         title="Calibration Evidence"
         description={`${asset?.asset_code ?? 'Asset'} · ${asset?.name ?? 'Unknown asset'} · ${formatLabel(row.result)}`}

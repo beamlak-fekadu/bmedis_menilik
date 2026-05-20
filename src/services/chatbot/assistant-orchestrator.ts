@@ -11,7 +11,7 @@ import {
 } from '@/types/chatbot';
 import { buildRoutingExplanation, classifyChatRequest } from './classifier-service';
 import { buildRollingMemorySummary, loadConversationMemory, persistConversationMemory } from './conversation-memory-service';
-import { resolveEntities } from './entity-resolution-service';
+import { resolveEntitiesDetailed, type EntityResolutionWarning } from './entity-resolution-service';
 import { buildTaskContext } from './task-context-service';
 import { evaluateSafetyDecision, STANDARD_RESPONSES } from './safety-service';
 import { buildPromptPayload } from './prompt-service';
@@ -21,6 +21,8 @@ import { normalizeAssistantResponse } from './assistant-response-pipeline';
 import { buildDeterministicStructuredFallback, hasUsableStructuredContext } from './structured-context-fallback';
 import { buildDeterministicAnswerCandidate, deterministicAnswerForPrompt } from './deterministic-answer-builders';
 import { applyResponseUsefulnessGuard } from './response-usefulness-guard';
+import { verifyAssistantClaimsAgainstEvidence } from './claim-verification';
+import { resolveDataLineage } from './data-lineage';
 import { logCopilotTelemetry } from './telemetry-service';
 import { getCapabilityDefinition, normalizeCapabilityId } from './capability-registry';
 import { getOwnCopilotUsageSnapshot, logCopilotUsageEvent } from './usage-service';
@@ -196,8 +198,10 @@ function enrichAssistantPayload(params: {
   blocks: Record<string, unknown>;
   classified: ClassifiedRequest;
   capability: CapabilityId;
+  evidence?: import('@/types/chatbot').ChatEvidence;
+  moduleContext?: ChatModuleContext;
 }): AssistantContent {
-  const { assistant, blocks, classified, capability } = params;
+  const { assistant, blocks, classified, capability, evidence, moduleContext } = params;
   const fromBlocks =
     shouldAttachProactiveSignals(capability) && Array.isArray(blocks.proactiveSignals)
       ? (blocks.proactiveSignals as string[])
@@ -218,6 +222,20 @@ function enrichAssistantPayload(params: {
   const routing = buildRoutingExplanation(classified);
   const routingEcho =
     capability === 'assistant_intro' ? [] : assistant.routing_explanation?.length ? assistant.routing_explanation : routing;
+  const sandboxOverride =
+    Boolean(blocks?.sandboxSimulation) ||
+    /developer-lab/.test(moduleContext?.route ?? moduleContext?.pathname ?? '') &&
+      /sensitivity|sandbox|simulation/.test(
+        (moduleContext?.pageLabel ?? '') + ' ' + (moduleContext?.activeTab ?? '')
+      );
+  const explicitMode = assistant.data_mode;
+  const lineage = resolveDataLineage({
+    capability,
+    evidence,
+    sandboxOverride,
+    explicitMode,
+    ageLabel: assistant.data_age_label,
+  });
   return {
     ...assistant,
     proactive_signals: mergedProactive,
@@ -226,7 +244,9 @@ function enrichAssistantPayload(params: {
     links: [...(assistant.links ?? []), ...routeLinks].slice(0, 10),
     limitations: [...new Set([...(assistant.limitations ?? []), ...warnings])].slice(0, 8),
     source_tables: [...new Set([...(assistant.source_tables ?? []), ...sourceTables])].slice(0, 12),
-    data_freshness: assistant.data_freshness ?? 'Current system records available to the request; page context is lightweight and bounded.',
+    data_freshness: assistant.data_freshness ?? lineage.data_freshness,
+    data_mode: lineage.data_mode,
+    data_age_label: assistant.data_age_label ?? lineage.data_age_label,
     intelligence_mode: assistant.intelligence_mode ?? defaultIntelligenceMode(capability),
   };
 }
@@ -245,31 +265,52 @@ function enforceOffTopicRedirect(assistant: AssistantContent, capability: Capabi
   };
 }
 
-function buildBlockedAssistantContent(decision: ChatDecision, reason: string): AssistantContent {
-  const unsafeEscalation = decision === 'escalate' && reason === STANDARD_RESPONSES.escalate;
+function buildBlockedAssistantContent(
+  decision: ChatDecision,
+  reason: string,
+  extras?: { policyAlternative?: string; safeChecks?: string[]; policyTags?: string[] }
+): AssistantContent {
+  const unsafeEscalation = decision === 'escalate';
   const specificTechnical = decision === 'check_manual';
   const outOfScopeRefusal = decision === 'refuse';
-  const safeChecks = [
+  const defaultSafeChecks = [
     'Confirm power source, plug, cable, battery, and accessories externally.',
     'Inspect for visible damage, overheating, blocked ventilation, cleaning issues, and displayed messages.',
     'Check current asset history, PM/calibration status, and open work/request records.',
     'Remove from clinical use and escalate if alarms, safety features, internal repair, or calibration are involved.',
   ];
+  const safeChecks = extras?.safeChecks && extras.safeChecks.length > 0 ? extras.safeChecks : defaultSafeChecks;
+  const tags = extras?.policyTags ?? [];
+  const isInjection = tags.some((tag) => tag.startsWith('injection:'));
+  const titleForInjection = 'Request follows a restricted pattern';
+  const summaryUnsafe = `I cannot guide internal repair, alarm bypass, service mode, or unsupported manufacturer-specific steps. ${reason}${extras?.policyAlternative ? ' ' + extras.policyAlternative : ' Here are safe first-line checks you can do without opening the equipment.'}`;
+  const summaryInjection = `${reason}${extras?.policyAlternative ? ' ' + extras.policyAlternative : ''}`.trim();
+  const summaryRefuseDefault = `${reason}${extras?.policyAlternative ? ' ' + extras.policyAlternative : ''}`.trim();
   return {
     decision,
-    title: decision === 'refuse' ? 'Request outside safe scope' : 'Limited operational guidance',
-    summary: unsafeEscalation || specificTechnical
-      ? `I cannot guide internal repair, alarm bypass, service mode, or unsupported manufacturer-specific steps. ${reason} Here are safe first-line checks you can do without opening the equipment.`
-      : reason,
+    title: isInjection
+      ? titleForInjection
+      : decision === 'refuse'
+        ? 'Request outside safe scope'
+        : 'Limited operational guidance',
+    summary: isInjection
+      ? summaryInjection || reason
+      : unsafeEscalation || specificTechnical
+        ? summaryUnsafe
+        : outOfScopeRefusal
+          ? summaryRefuseDefault || reason
+          : reason,
     key_findings: [],
-    recommended_actions: unsafeEscalation || specificTechnical
-      ? ['Use only safe external checks.', 'Escalate to a qualified biomedical engineer or vendor when the issue persists or affects safety.']
-      : outOfScopeRefusal
-        ? ['Use this assistant for biomedical equipment inventory, maintenance, PM, calibration, logistics, reports, and decision-support questions.', 'For patient symptoms or treatment decisions, involve the appropriate licensed clinical staff.']
-        : [],
+    recommended_actions: isInjection
+      ? ['Ask the question using your real BMEDIS role.', extras?.policyAlternative ?? 'Tell me the BMEDIS task or evidence you need; I will route it correctly.'].filter(Boolean)
+      : unsafeEscalation || specificTechnical
+        ? ['Use only safe external checks.', 'Escalate to a qualified biomedical engineer or vendor when the issue persists or affects safety.']
+        : outOfScopeRefusal
+          ? ['Use this assistant for biomedical equipment inventory, maintenance, PM, calibration, logistics, reports, and decision-support questions.', 'For patient symptoms or treatment decisions, involve the appropriate licensed clinical staff.']
+          : [],
     priority_reasoning: [],
     likely_causes: [],
-    troubleshooting_steps: unsafeEscalation || specificTechnical ? safeChecks : [],
+    troubleshooting_steps: isInjection ? [] : unsafeEscalation || specificTechnical ? safeChecks : [],
     maintenance_tips: [],
     required_tools_or_parts: [],
     actions: unsafeEscalation || specificTechnical ? ['Escalate safely'] : outOfScopeRefusal ? ['Ask a BMEDIS equipment-management question'] : [],
@@ -323,7 +364,7 @@ export async function orchestrateAssistantResponse(params: OrchestrateParams): P
   const capability = normalizeCapabilityId(classified.capability);
   const effectiveClassified = { ...classified, capability };
   const capabilityDef = getCapabilityDefinition(capability);
-  const resolvedEntities = await resolveEntities({
+  const resolution = await resolveEntitiesDetailed({
     supabase,
     message,
     contextRefs,
@@ -331,6 +372,8 @@ export async function orchestrateAssistantResponse(params: OrchestrateParams): P
     memory: initialMemory,
     profile,
   });
+  const resolvedEntities = resolution.resolved;
+  const entityWarnings: EntityResolutionWarning[] = resolution.warnings;
   const memory = await loadConversationMemory(supabase, sessionId, resolvedEntities);
   const taskContext = await buildTaskContext({
     supabase,
@@ -365,7 +408,11 @@ export async function orchestrateAssistantResponse(params: OrchestrateParams): P
         decision: safety.decision,
       });
     }
-    const blockedAssistant = buildBlockedAssistantContent(safety.decision, safety.reason);
+    const blockedAssistant = buildBlockedAssistantContent(safety.decision, safety.reason, {
+      policyAlternative: safety.policyAlternative,
+      safeChecks: safety.safeChecks,
+      policyTags: safety.policyTags,
+    });
     const blockedSummary = blockedAssistant.summary;
     await logCopilotTelemetry(supabase, {
       sessionId,
@@ -425,6 +472,28 @@ export async function orchestrateAssistantResponse(params: OrchestrateParams): P
     };
   }
 
+  // Build a lightweight follow-up memory context from the persisted memory
+  // snapshot. Phase 3 follow-up handlers ("why?", "explain simply",
+  // "where did you get that?", "what if I ignore it?", "is that safe?",
+  // "what happens next?") use it to anchor on the previous turn rather than
+  // treating each short prompt as a fresh question. Evidence / source-tables
+  // are not currently persisted across turns, so the handler degrades
+  // honestly when they are absent.
+  const lastAssistantTurn = [...(memory.recentTurns ?? [])].reverse().find((turn) => turn.role === 'assistant');
+  const lastAssistantContent = lastAssistantTurn?.content ?? '';
+  const followUpMemory = {
+    shortSummary: memory.shortSummary,
+    activeCapability: memory.activeCapability,
+    lastEntityLabels: (memory.lastEntities ?? []).map((e) => e.label).filter(Boolean),
+    lastSummary: lastAssistantContent || undefined,
+    lastTitle: undefined,
+    lastEvidenceUsed: undefined,
+    lastSourceTables: undefined,
+    lastDataFreshness: undefined,
+    lastDataMode: undefined,
+    hadActionDraft: false,
+  };
+
   const deterministicCandidate = buildDeterministicAnswerCandidate({
     capability,
     decision: safety.decision,
@@ -435,6 +504,7 @@ export async function orchestrateAssistantResponse(params: OrchestrateParams): P
     moduleContext,
     blocks: taskContext.blocks,
     evidence: taskContext.evidence,
+    followUpMemory,
   });
   const promptContextBlocks = deterministicCandidate
     ? {
@@ -652,6 +722,8 @@ export async function orchestrateAssistantResponse(params: OrchestrateParams): P
       blocks: taskContext.blocks,
       classified,
       capability,
+      evidence: taskContext.evidence,
+      moduleContext,
     });
     let scopedAssistant = enforceOffTopicRedirect(finalAssistant, capability);
     if (capabilityDef.responseMode === 'structured' && contextBlocksAvailable && (parserRecoveryUsed || providerFallback)) {
@@ -691,6 +763,32 @@ export async function orchestrateAssistantResponse(params: OrchestrateParams): P
       providerFallback,
       parserRecoveryUsed,
     });
+    const verifiedAssistant = verifyAssistantClaimsAgainstEvidence({
+      assistant: guardedAssistant,
+      deterministic: deterministicCandidate,
+      evidence: taskContext.evidence,
+      contextBlocks: taskContext.blocks,
+      profile,
+    });
+    const claimVerifiedAssistant = verifiedAssistant.assistant;
+    const entityWarningLimitations = entityWarnings.length
+      ? Array.from(
+          new Set(
+            entityWarnings
+              .map((w) => w.detail ?? null)
+              .filter((d): d is string => Boolean(d))
+          )
+        )
+      : [];
+    const claimWithEntityWarnings: AssistantContent =
+      entityWarningLimitations.length === 0
+        ? claimVerifiedAssistant
+        : {
+            ...claimVerifiedAssistant,
+            limitations: Array.from(
+              new Set([...(claimVerifiedAssistant.limitations ?? []), ...entityWarningLimitations])
+            ).slice(0, 8),
+          };
     const formalTrace = taskContext.blocks.formalToolTrace as { selectedTools?: unknown } | undefined;
     const selectedFormalTools = Array.isArray(formalTrace?.selectedTools)
       ? (formalTrace.selectedTools as unknown[]).map((tool) => String(tool)).filter(Boolean).slice(0, 8)
@@ -715,10 +813,18 @@ export async function orchestrateAssistantResponse(params: OrchestrateParams): P
       },
       evidenceSignals: taskContext.evidence.evidenceSignals,
     });
+    const claimDebugLines =
+      verifiedAssistant.unsupportedClaims.length > 0 && profile.roleNames.includes('developer')
+        ? [`Claim verification removed: ${verifiedAssistant.unsupportedClaims.slice(0, 6).join(', ')}`]
+        : [];
     const safeAssistant: AssistantContent = ensureUiSafeAssistant(
       {
-        ...guardedAssistant,
-        routing_explanation: [...(guardedAssistant.routing_explanation ?? []), ...developerDebugRouting].slice(0, 12),
+        ...claimWithEntityWarnings,
+        routing_explanation: [
+          ...(claimWithEntityWarnings.routing_explanation ?? []),
+          ...developerDebugRouting,
+          ...claimDebugLines,
+        ].slice(0, 12),
         action_drafts: actionDrafts,
       },
       safety.decision

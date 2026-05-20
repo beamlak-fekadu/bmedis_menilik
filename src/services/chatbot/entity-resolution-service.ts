@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { ChatContextRefs, ChatModuleContext, MemorySnapshot, ResolvedEntity, UserChatProfile } from '@/types/chatbot';
+import { requiresDepartmentScope } from './copilot-rbac';
 
 interface ResolveParams {
   supabase: SupabaseClient;
@@ -8,6 +9,17 @@ interface ResolveParams {
   moduleContext?: ChatModuleContext;
   memory?: MemorySnapshot;
   profile: UserChatProfile;
+}
+
+export interface EntityResolutionWarning {
+  type: 'ambiguous_text_match' | 'out_of_department_text_match' | 'no_scoped_match';
+  reason: string;
+  detail?: string;
+}
+
+export interface EntityResolutionResult {
+  resolved: ResolvedEntity[];
+  warnings: EntityResolutionWarning[];
 }
 
 function parseWorkOrderNumber(message: string) {
@@ -24,42 +36,86 @@ function asksForPriorReference(message: string) {
 }
 
 export async function resolveEntities(params: ResolveParams): Promise<ResolvedEntity[]> {
+  const result = await resolveEntitiesDetailed(params);
+  return result.resolved;
+}
+
+export async function resolveEntitiesDetailed(params: ResolveParams): Promise<EntityResolutionResult> {
   const { supabase, message, contextRefs, moduleContext, memory, profile } = params;
   const resolved: ResolvedEntity[] = [];
+  const warnings: EntityResolutionWarning[] = [];
+  const departmentScopedRole = requiresDepartmentScope(profile);
+  const profileDepartmentId = profile.departmentId ?? null;
 
   if (contextRefs?.equipmentId) {
-    const { data } = await supabase.from('equipment_assets').select('id, asset_code, name').eq('id', contextRefs.equipmentId).maybeSingle();
+    const { data } = await supabase
+      .from('equipment_assets')
+      .select('id, asset_code, name, department_id')
+      .eq('id', contextRefs.equipmentId)
+      .maybeSingle();
     if (data?.id) {
-      resolved.push({
-        type: 'equipment',
-        id: data.id as string,
-        label: `${(data.asset_code as string) ?? ''} ${(data.name as string) ?? ''}`.trim(),
-        source: 'explicit_context',
-      });
+      const deptId = (data.department_id as string | null) ?? null;
+      if (departmentScopedRole && profileDepartmentId && deptId && deptId !== profileDepartmentId) {
+        warnings.push({
+          type: 'out_of_department_text_match',
+          reason: 'explicit_context_equipment_out_of_department',
+          detail: 'Explicit equipment context points to an asset outside your department.',
+        });
+        // Do NOT leak the asset code/name into the resolved set.
+      } else {
+        resolved.push({
+          type: 'equipment',
+          id: data.id as string,
+          label: `${(data.asset_code as string) ?? ''} ${(data.name as string) ?? ''}`.trim(),
+          source: 'explicit_context',
+        });
+      }
     }
   }
 
   if (contextRefs?.workOrderId) {
-    const { data } = await supabase.from('work_orders').select('id, work_order_number').eq('id', contextRefs.workOrderId).maybeSingle();
+    const { data } = await supabase
+      .from('work_orders')
+      .select('id, work_order_number, asset_id, equipment_assets:asset_id(department_id)')
+      .eq('id', contextRefs.workOrderId)
+      .maybeSingle();
     if (data?.id) {
-      resolved.push({
-        type: 'work_order',
-        id: data.id as string,
-        label: (data.work_order_number as string) ?? 'Work order',
-        source: 'explicit_context',
-      });
+      const deptId =
+        ((data as Record<string, unknown>).equipment_assets as { department_id?: string | null } | null)?.department_id ?? null;
+      if (departmentScopedRole && profileDepartmentId && deptId && deptId !== profileDepartmentId) {
+        warnings.push({
+          type: 'out_of_department_text_match',
+          reason: 'explicit_context_work_order_out_of_department',
+          detail: 'Explicit work-order context points to a record outside your department.',
+        });
+      } else {
+        resolved.push({
+          type: 'work_order',
+          id: data.id as string,
+          label: (data.work_order_number as string) ?? 'Work order',
+          source: 'explicit_context',
+        });
+      }
     }
   }
 
   if (contextRefs?.departmentId) {
-    const { data } = await supabase.from('departments').select('id, name').eq('id', contextRefs.departmentId).maybeSingle();
-    if (data?.id) {
-      resolved.push({
-        type: 'department',
-        id: data.id as string,
-        label: (data.name as string) ?? 'Department',
-        source: 'explicit_context',
+    if (departmentScopedRole && profileDepartmentId && contextRefs.departmentId !== profileDepartmentId) {
+      warnings.push({
+        type: 'out_of_department_text_match',
+        reason: 'explicit_context_department_mismatch',
+        detail: 'Explicit department context does not match your scope.',
       });
+    } else {
+      const { data } = await supabase.from('departments').select('id, name').eq('id', contextRefs.departmentId).maybeSingle();
+      if (data?.id) {
+        resolved.push({
+          type: 'department',
+          id: data.id as string,
+          label: (data.name as string) ?? 'Department',
+          source: 'explicit_context',
+        });
+      }
     }
   }
 
@@ -100,41 +156,102 @@ export async function resolveEntities(params: ResolveParams): Promise<ResolvedEn
 
   const workOrderNumber = parseWorkOrderNumber(message);
   if (workOrderNumber && !resolved.find((item) => item.type === 'work_order')) {
-    const { data } = await supabase
+    let woQuery = supabase
       .from('work_orders')
-      .select('id, work_order_number')
+      .select('id, work_order_number, asset_id, equipment_assets:asset_id(department_id)')
       .ilike('work_order_number', `${workOrderNumber}%`)
-      .limit(1)
-      .maybeSingle();
-    if (data?.id) {
-      resolved.push({
-        type: 'work_order',
-        id: data.id as string,
-        label: data.work_order_number as string,
-        source: 'text_match',
-      });
+      .limit(2);
+    if (departmentScopedRole && profileDepartmentId) {
+      // Only resolve work orders whose asset belongs to the user's department.
+      // The .filter on a foreign key is enforced at the DB layer too (RLS),
+      // but we make the scope explicit so we don't accept silently-empty
+      // ambiguous matches when permission is the cause.
+      woQuery = woQuery.filter('equipment_assets.department_id', 'eq', profileDepartmentId);
     }
-  }
-
-  if (!resolved.find((item) => item.type === 'equipment')) {
-    const equipmentToken = message.match(/\basset\s+([A-Z0-9-]{3,})\b/i)?.[1];
-    if (equipmentToken) {
-      const { data } = await supabase
-        .from('equipment_assets')
-        .select('id, asset_code, name')
-        .ilike('asset_code', `${equipmentToken}%`)
-        .limit(1)
-        .maybeSingle();
-      if (data?.id) {
+    const { data: rows } = await woQuery;
+    const rowList = (rows ?? []) as Array<Record<string, unknown>>;
+    if (rowList.length === 0) {
+      if (departmentScopedRole && profileDepartmentId) {
+        warnings.push({
+          type: 'no_scoped_match',
+          reason: 'work_order_text_no_department_match',
+          detail: `No work order matching "${workOrderNumber}" is available in your department.`,
+        });
+      }
+    } else if (rowList.length > 1) {
+      warnings.push({
+        type: 'ambiguous_text_match',
+        reason: 'work_order_text_ambiguous',
+        detail: `Multiple work orders match "${workOrderNumber}"; please share the full work-order number or open the record from the Work Orders page.`,
+      });
+    } else {
+      const row = rowList[0];
+      const deptId =
+        ((row as Record<string, unknown>).equipment_assets as { department_id?: string | null } | null)?.department_id ?? null;
+      if (departmentScopedRole && profileDepartmentId && deptId && deptId !== profileDepartmentId) {
+        warnings.push({
+          type: 'out_of_department_text_match',
+          reason: 'work_order_text_out_of_department',
+          detail: 'The matched work order is outside your department.',
+        });
+      } else {
         resolved.push({
-          type: 'equipment',
-          id: data.id as string,
-          label: `${(data.asset_code as string) ?? ''} ${(data.name as string) ?? ''}`.trim(),
+          type: 'work_order',
+          id: row.id as string,
+          label: row.work_order_number as string,
           source: 'text_match',
         });
       }
     }
   }
 
-  return resolved;
+  if (!resolved.find((item) => item.type === 'equipment')) {
+    const equipmentToken = message.match(/\basset\s+([A-Z0-9-]{3,})\b/i)?.[1];
+    if (equipmentToken) {
+      let assetQuery = supabase
+        .from('equipment_assets')
+        .select('id, asset_code, name, department_id')
+        .ilike('asset_code', `${equipmentToken}%`)
+        .limit(2);
+      if (departmentScopedRole && profileDepartmentId) {
+        assetQuery = assetQuery.eq('department_id', profileDepartmentId);
+      }
+      const { data: rows } = await assetQuery;
+      const rowList = (rows ?? []) as Array<Record<string, unknown>>;
+      if (rowList.length === 0) {
+        if (departmentScopedRole && profileDepartmentId) {
+          warnings.push({
+            type: 'no_scoped_match',
+            reason: 'equipment_text_no_department_match',
+            detail: `No asset matching "${equipmentToken}" is available in your department.`,
+          });
+        }
+      } else if (rowList.length > 1) {
+        warnings.push({
+          type: 'ambiguous_text_match',
+          reason: 'equipment_text_ambiguous',
+          detail: `Multiple assets match "${equipmentToken}"; please share the full asset code or open the asset from the Equipment list.`,
+        });
+      } else {
+        const row = rowList[0];
+        const deptId = (row.department_id as string | null) ?? null;
+        if (departmentScopedRole && profileDepartmentId && deptId && deptId !== profileDepartmentId) {
+          warnings.push({
+            type: 'out_of_department_text_match',
+            reason: 'equipment_text_out_of_department',
+            detail: 'The matched asset is outside your department.',
+          });
+        } else {
+          resolved.push({
+            type: 'equipment',
+            id: row.id as string,
+            label: `${(row.asset_code as string) ?? ''} ${(row.name as string) ?? ''}`.trim(),
+            source: 'text_match',
+          });
+        }
+      }
+    }
+  }
+
+  return { resolved, warnings };
 }

@@ -52,7 +52,18 @@ export type CopilotToolName =
   | 'read_provider_trace'
   | 'read_parser_failures'
   | 'read_copilot_usage_events'
-  | 'run_gemini_smoke_test';
+  | 'run_gemini_smoke_test'
+  // Phase 2 — high-value record-level tools
+  | 'read_maintenance_request_status'
+  | 'read_pm_schedule_evidence'
+  | 'read_calibration_request_evidence'
+  | 'read_calibration_record_evidence'
+  | 'read_report_data'
+  | 'read_notification_delivery_status'
+  | 'read_telegram_eligibility'
+  | 'read_notification_rule_logs'
+  | 'read_qr_coverage_status'
+  | 'read_validation_readiness';
 
 export interface CopilotToolDefinition {
   name: CopilotToolName;

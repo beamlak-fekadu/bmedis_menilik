@@ -214,6 +214,15 @@ export const AssistantContentSchema = z.object({
   limitations: z.array(z.string().max(320)).max(8).default([]),
   data_freshness: z.string().max(200).optional(),
   source_tables: z.array(z.string().max(120)).max(12).default([]),
+  /**
+   * Structured data lineage tag — one of "live", "snapshot", "stale",
+   * "sandbox", "missing", "unknown". Used by the UI and tests to consistently
+   * surface honesty about whether a number is current, a stored snapshot, a
+   * developer-only simulation, or absent.
+   */
+  data_mode: z.enum(['live', 'snapshot', 'stale', 'sandbox', 'missing', 'unknown']).optional(),
+  /** Optional explicit age label, e.g. "computed 38m ago". */
+  data_age_label: z.string().max(120).optional(),
   action_drafts: z.array(CopilotActionDraftSchema).max(6).default([]),
 });
 
@@ -341,6 +350,12 @@ export interface SafetyEvaluation {
   escalationRequired: boolean;
   evidenceTier: 'high' | 'medium' | 'low';
   policyCategory: 'general_operational' | 'specific_technical' | 'unsafe_or_out_of_scope';
+  /** Optional alternative path to suggest after a refusal. */
+  policyAlternative?: string;
+  /** Optional safe first-line checks to include with unsafe refusals. */
+  safeChecks?: string[];
+  /** Optional structured tag for downstream telemetry/debug. */
+  policyTags?: string[];
 }
 
 export interface TelemetryEvent {

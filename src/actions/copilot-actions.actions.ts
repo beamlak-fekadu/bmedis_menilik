@@ -80,6 +80,85 @@ function mergePayload(draft: CopilotActionDraft, overrides?: Record<string, unkn
   return merged;
 }
 
+/**
+ * Re-derive department scope from server-side records, NEVER from client-supplied
+ * `contextRefs`. Returns:
+ *   - { state: 'unknown' } when no record reference is present in the draft
+ *   - { state: 'derived', departmentId }
+ *   - { state: 'derived', departmentId: null } if the referenced record is missing
+ *     or has no department (e.g. department-less request).
+ */
+async function deriveDepartmentScopeForDraft(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  draft: CopilotActionDraft,
+  payload: Record<string, unknown>
+): Promise<{ state: 'unknown' | 'derived'; departmentId: string | null; signals: string[] }> {
+  const signals: string[] = [];
+  const stringIfId = (value: unknown): string | null => {
+    if (typeof value !== 'string') return null;
+    const trimmed = value.trim();
+    return trimmed.length >= 8 ? trimmed : null;
+  };
+
+  const refs = draft.contextRefs ?? {};
+  const assetId =
+    stringIfId(refs.assetId) ||
+    stringIfId((payload as Record<string, unknown>).asset_id) ||
+    stringIfId((payload as Record<string, unknown>).equipment_id);
+  const workOrderId =
+    stringIfId(refs.workOrderId) ||
+    stringIfId((payload as Record<string, unknown>).work_order_id);
+  const requestId =
+    stringIfId(refs.requestId) ||
+    stringIfId((payload as Record<string, unknown>).request_id) ||
+    stringIfId((payload as Record<string, unknown>).maintenance_request_id);
+  const partId =
+    stringIfId(refs.partId) ||
+    stringIfId((payload as Record<string, unknown>).part_id) ||
+    stringIfId((payload as Record<string, unknown>).spare_part_id);
+
+  if (assetId) {
+    signals.push('asset_id');
+    const { data } = await supabase.from('equipment_assets').select('department_id').eq('id', assetId).maybeSingle();
+    return { state: 'derived', departmentId: ((data?.department_id as string | null) ?? null), signals };
+  }
+
+  if (workOrderId) {
+    signals.push('work_order_id');
+    const { data } = await supabase
+      .from('work_orders')
+      .select('id, asset_id, equipment_assets:asset_id(department_id)')
+      .eq('id', workOrderId)
+      .maybeSingle();
+    const deptId =
+      ((data as Record<string, unknown> | null)?.equipment_assets as { department_id?: string | null } | null)?.department_id ??
+      null;
+    return { state: 'derived', departmentId: deptId, signals };
+  }
+
+  if (requestId) {
+    signals.push('request_id');
+    const { data } = await supabase
+      .from('maintenance_requests')
+      .select('id, asset_id, department_id, equipment_assets:asset_id(department_id)')
+      .eq('id', requestId)
+      .maybeSingle();
+    const deptId =
+      ((data?.department_id as string | null) ?? null) ||
+      ((data as Record<string, unknown> | null)?.equipment_assets as { department_id?: string | null } | null)?.department_id ||
+      null;
+    return { state: 'derived', departmentId: deptId, signals };
+  }
+
+  if (partId) {
+    signals.push('part_id');
+    // Parts are hospital-wide in BMEDIS; department cannot be derived from a part alone.
+    return { state: 'derived', departmentId: null, signals };
+  }
+
+  return { state: 'unknown', departmentId: null, signals };
+}
+
 function recordRoute(draft: CopilotActionDraft, recordId: string | undefined): string | undefined {
   if (!recordId) return undefined;
   switch (draft.kind) {
@@ -121,23 +200,59 @@ export async function executeCopilotActionDraftAction(input: unknown): Promise<C
     return { status: 'blocked', error: 'Your role cannot execute this copilot draft' };
   }
 
-  // Department scope guard for department-only roles.
-  const roleCategory = getCopilotRoleCategory({ roleNames: profile.roleNames });
-  if (
-    (roleCategory === 'department_head' || roleCategory === 'department_user') &&
-    draft.contextRefs?.departmentId &&
-    profile.departmentId &&
-    draft.contextRefs.departmentId !== profile.departmentId
-  ) {
-    return { status: 'blocked', error: 'Action is outside your department scope' };
-  }
-
   // Drafts marked draft_only / link_only cannot be server-executed.
   if (draft.executionMode === 'draft_only' || draft.executionMode === 'link_only') {
     return { status: 'failed', error: 'This draft is review-only and not executed by the copilot.' };
   }
 
   const payload = mergePayload(draft, overrides);
+
+  // Department scope guard — re-derive department from server records (NEVER
+  // trust client-supplied draft.contextRefs.departmentId alone). For
+  // department-scoped roles we fail closed when scope cannot be established.
+  const roleCategory = getCopilotRoleCategory({ roleNames: profile.roleNames });
+  const isDepartmentScoped = roleCategory === 'department_head' || roleCategory === 'department_user';
+  if (isDepartmentScoped) {
+    if (!profile.departmentId) {
+      return {
+        status: 'blocked',
+        error: 'Your profile has no department assigned, so this action cannot be authorized.',
+      };
+    }
+    const derivedScope = await deriveDepartmentScopeForDraft(supabase, draft, payload);
+    if (derivedScope.state === 'unknown') {
+      // No asset/request/work-order reference is present. For mutation drafts
+      // this is unsafe — the draft could land in any department. Reject and
+      // ask the client to attach an asset/work-order/request reference.
+      return {
+        status: 'blocked',
+        error:
+          'This copilot action could not be tied to a specific asset, request, or work order, so your department scope cannot be verified. Please open the related record and try again.',
+      };
+    }
+    if (derivedScope.departmentId && derivedScope.departmentId !== profile.departmentId) {
+      return {
+        status: 'blocked',
+        error: 'The referenced record is outside your department scope.',
+      };
+    }
+    if (!derivedScope.departmentId) {
+      // Derived record had no department_id (e.g. legacy row). Fail closed for
+      // department-scoped roles — they should never act on department-less rows
+      // through the Copilot.
+      return {
+        status: 'blocked',
+        error: 'The referenced record has no department assignment, so your department scope cannot be verified.',
+      };
+    }
+  } else if (
+    draft.contextRefs?.departmentId &&
+    profile.departmentId &&
+    draft.contextRefs.departmentId !== profile.departmentId &&
+    isDepartmentScoped
+  ) {
+    return { status: 'blocked', error: 'Action is outside your department scope' };
+  }
   let actionResult: { success: boolean; error?: string; data?: unknown } = { success: false, error: 'Unsupported draft' };
 
   try {

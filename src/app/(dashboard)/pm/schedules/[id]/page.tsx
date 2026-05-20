@@ -36,6 +36,7 @@ import { useRole } from '@/hooks/useRole';
 import type { EquipmentCondition, PMChecklistItem, PMScheduleStatus, RiskLevel } from '@/types/domain';
 import { ScoreExplanation } from '../../../command/_components/ScoreExplanation';
 import { getPMScheduleStatusExplanation } from '@/utils/pm/semantics';
+import AssistantPageContextBridge from '@/components/assistant/AssistantPageContextBridge';
 
 const DEFAULT_CHECKLIST: PMChecklistItem[] = [
   { task: 'Visual inspection completed', required: true, completed: false },
@@ -404,6 +405,39 @@ export default function PMScheduleDetailPage() {
 
   return (
     <div className="space-y-6">
+      <AssistantPageContextBridge
+        moduleLabel="Preventive Maintenance"
+        pageLabel={schedule.pm_plans?.name ?? 'PM Schedule Detail'}
+        selectedRecordType="pm_schedule"
+        selectedRecordId={schedule.id}
+        selectedRecordLabel={schedule.pm_plans?.name ?? `PM-${schedule.id.slice(0, 8)}`}
+        contextRefs={schedule.asset_id ? { equipmentId: schedule.asset_id } : undefined}
+        pageSummary="PM schedule detail with plan, due/overdue state, assigned technician, completion evidence (result, checklist, condition), and compliance impact."
+        visibleCounts={{
+          status: schedule.status,
+          has_plan: Boolean(schedule.pm_plans?.name),
+          has_assigned: Boolean(schedule.assigned_to),
+        }}
+        pageDataHints={[
+          `Schedule status: ${schedule.status}`,
+          `Plan: ${schedule.pm_plans?.name ?? 'Unknown'}`,
+          schedule.assigned_to ? 'Assigned to a technician.' : 'Not assigned.',
+          'Completion writes a pm_completions row, updates equipment condition, and refreshes PM compliance / readiness snapshots.',
+        ]}
+        availableEvidenceLinks={[
+          { label: 'PM Schedule', href: `/pm/schedules/${schedule.id}`, type: 'pm_schedule' },
+          ...(schedule.asset_id
+            ? [{ label: 'Asset', href: `/equipment/${schedule.asset_id}`, type: 'equipment' }]
+            : []),
+          { label: 'PM Center', href: '/pm', type: 'module' },
+        ]}
+        quickPrompts={[
+          'What is the PM compliance impact of completing this?',
+          'What evidence does the completion need?',
+          'What happens if this is skipped or deferred?',
+          'Who gets notified on completion?',
+        ]}
+      />
       <PageHeader
         title="PM Execution Detail"
         description={schedule.pm_plans?.name ?? 'Preventive maintenance schedule'}

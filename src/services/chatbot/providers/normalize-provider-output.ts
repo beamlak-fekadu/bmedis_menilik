@@ -66,6 +66,31 @@ function clampStringArray(value: unknown, maxItems: number, maxLength: number) {
     .slice(0, maxItems);
 }
 
+const RAW_UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Drop chip strings that are nothing more than a raw UUID. */
+function filterRawUuidChips(value: unknown, maxItems: number, maxLength: number) {
+  const arr = clampStringArray(value, maxItems, maxLength);
+  return arr.filter((entry) => !RAW_UUID_PATTERN.test(entry));
+}
+
+function looksLikeRawJsonSummary(text: string) {
+  const trimmed = text.trim();
+  if (!trimmed) return false;
+  if (trimmed.startsWith('```')) return true;
+  if (/^\{[\s\S]*\}$/.test(trimmed)) return true;
+  if (/\[object Object\]/.test(trimmed)) return true;
+  return false;
+}
+
+function sanitizeSummary(text: string, fallback: string) {
+  if (!text) return fallback;
+  const cleaned = text.replace(/\[object Object\]/g, '').trim();
+  if (!cleaned) return fallback;
+  if (looksLikeRawJsonSummary(cleaned)) return fallback;
+  return cleaned;
+}
+
 function clampLinks(value: unknown) {
   if (!Array.isArray(value)) return [];
   return value
@@ -152,7 +177,7 @@ export function ensureUiSafeAssistant(
     title: typeof assistant.title === 'string' ? clampString(assistant.title, 180) : undefined,
     summary:
       typeof assistant.summary === 'string' && assistant.summary.trim()
-        ? clampString(assistant.summary, 2000)
+        ? clampString(sanitizeSummary(assistant.summary, FALLBACK_SUMMARY), 2000)
         : FALLBACK_SUMMARY,
     key_findings: clampStringArray(assistant.key_findings, 10, 400),
     recommended_actions: clampStringArray(assistant.recommended_actions, 10, 400),
@@ -164,15 +189,22 @@ export function ensureUiSafeAssistant(
     actions: clampStringArray(assistant.actions, 10, 400),
     insights: clampStringArray(assistant.insights, 10, 400),
     recommendations: clampStringArray(assistant.recommendations, 10, 400),
-    entities_referenced: clampStringArray(assistant.entities_referenced, 12, 160),
+    entities_referenced: filterRawUuidChips(assistant.entities_referenced, 12, 160),
     follow_up_suggestions: clampStringArray(assistant.follow_up_suggestions, 8, 240),
     proactive_signals: clampStringArray(assistant.proactive_signals, 8, 400),
     routing_explanation: clampStringArray(assistant.routing_explanation, 8, 320),
-    evidence_used: clampStringArray(assistant.evidence_used, 12, 320),
+    evidence_used: filterRawUuidChips(assistant.evidence_used, 12, 320),
     links: clampLinks(assistant.links),
     limitations: clampStringArray(assistant.limitations, 8, 320),
     data_freshness: typeof assistant.data_freshness === 'string' ? clampString(assistant.data_freshness, 200) : undefined,
     source_tables: clampStringArray(assistant.source_tables, 12, 120),
+    data_mode: ['live', 'snapshot', 'stale', 'sandbox', 'missing', 'unknown'].includes(
+      assistant.data_mode as string
+    )
+      ? (assistant.data_mode as AssistantContent['data_mode'])
+      : undefined,
+    data_age_label:
+      typeof assistant.data_age_label === 'string' ? clampString(assistant.data_age_label, 120) : undefined,
     action_drafts: Array.isArray(assistant.action_drafts) ? assistant.action_drafts : [],
     intelligence_mode: assistant.intelligence_mode,
     escalation_recommendation: typeof assistant.escalation_recommendation === 'string' ? clampString(assistant.escalation_recommendation, 600) : undefined,

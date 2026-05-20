@@ -164,13 +164,30 @@ function buildMaintenanceRequestDraft(ctx: DraftBuildContext): CopilotActionDraf
       reported_condition_source: 'copilot',
     },
     evidenceUsed: evidence,
-    contextRefs: { assetId, departmentId: ctx.contextRefs?.departmentId },
+    contextRefs: { assetId, departmentId: scopedDepartmentId(ctx) },
     sourceRoute: ctx.moduleContext?.route ?? ctx.moduleContext?.pathname,
     validationWarnings: warnings,
     roleRequired: pickRoleRequired(['developer', 'admin', 'bme_head', 'technician', 'department_head', 'department_user']),
     primaryRoute: '/maintenance/requests/new?source=copilot',
     primaryRouteLabel: 'Open full request form',
   });
+}
+
+/**
+ * For department-scoped roles, the draft contextRefs.departmentId defaults
+ * to the profile's department so that the server-side scope revalidation in
+ * executeCopilotActionDraftAction can carry an explicit department even when
+ * the client did not supply one. Other roles use the explicit contextRefs
+ * value (or leave it undefined).
+ */
+function scopedDepartmentId(ctx: DraftBuildContext): string | undefined {
+  const explicit = ctx.contextRefs?.departmentId;
+  if (explicit) return explicit;
+  const roleCategory = getCopilotRoleCategory(ctx.profile);
+  if (roleCategory === 'department_head' || roleCategory === 'department_user') {
+    return ctx.profile.departmentId ?? undefined;
+  }
+  return undefined;
 }
 
 function buildCalibrationRequestDraft(ctx: DraftBuildContext): CopilotActionDraft | null {
@@ -195,7 +212,7 @@ function buildCalibrationRequestDraft(ctx: DraftBuildContext): CopilotActionDraf
       notes: clean(ctx.message, 400) ?? null,
     },
     evidenceUsed: ctx.evidenceSignals.slice(0, 4),
-    contextRefs: { assetId },
+    contextRefs: { assetId, departmentId: scopedDepartmentId(ctx) },
     sourceRoute: ctx.moduleContext?.route ?? ctx.moduleContext?.pathname,
     validationWarnings: warnings,
     roleRequired: pickRoleRequired(['developer', 'admin', 'bme_head', 'technician', 'department_head', 'department_user']),
@@ -257,7 +274,7 @@ function buildReorderDraft(ctx: DraftBuildContext): CopilotActionDraft | null {
       priority: 'medium',
     },
     evidenceUsed: ctx.evidenceSignals.slice(0, 4),
-    contextRefs: { departmentId: ctx.contextRefs?.departmentId },
+    contextRefs: { departmentId: scopedDepartmentId(ctx) },
     sourceRoute: ctx.moduleContext?.route ?? ctx.moduleContext?.pathname,
     validationWarnings: ['Procurement approval is online-only and not part of this draft.'],
     roleRequired: pickRoleRequired(['developer', 'admin', 'bme_head', 'store_user', 'technician']),
@@ -397,7 +414,7 @@ function buildOpenRecordDraft(ctx: DraftBuildContext): CopilotActionDraft | null
     fields: [],
     payload: { asset_id: assetId },
     evidenceUsed: [],
-    contextRefs: { assetId },
+    contextRefs: { assetId, departmentId: scopedDepartmentId(ctx) },
     roleRequired: [],
     confirmationRequired: false,
     primaryRoute: `/equipment/${assetId}`,

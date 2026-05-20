@@ -8,6 +8,7 @@ import type {
   UserChatProfile,
 } from '@/types/chatbot';
 import { canUseDeveloperCopilotDiagnostics } from './copilot-rbac';
+import { evaluateUnsafeOrInjectionMessage } from './prompt-injection-guard';
 
 export const STANDARD_RESPONSES = {
   checkManual:
@@ -165,6 +166,42 @@ export function evaluateSafetyDecision(
   }
 
   if (intent === 'unsafe') {
+    const evaluation = evaluateUnsafeOrInjectionMessage(normalizedMessage);
+    if (evaluation.blocked) {
+      const reasonText = [evaluation.reasonText, evaluation.alternative].filter(Boolean).join(' ').trim();
+      const policyTags: string[] = [];
+      if (evaluation.injection.isInjection) policyTags.push(`injection:${evaluation.injection.category}`);
+      if (evaluation.unsafe.isUnsafe) policyTags.push(`unsafe:${evaluation.unsafe.category}`);
+      // Injection-only (no unsafe biomedical content): a refuse + alternative is
+      // more honest than an escalate (there is no clinical safety escalation).
+      if (evaluation.injection.isInjection && !evaluation.unsafe.isUnsafe) {
+        return {
+          decision: 'refuse',
+          blocked: true,
+          answerBasis: 'insufficient_data',
+          confidence: 'low',
+          reason: reasonText || STANDARD_RESPONSES.escalate,
+          escalationRequired: false,
+          evidenceTier: 'low',
+          policyCategory: 'unsafe_or_out_of_scope',
+          policyAlternative: evaluation.alternative,
+          policyTags,
+        };
+      }
+      return {
+        decision: 'escalate',
+        blocked: true,
+        answerBasis: 'insufficient_data',
+        confidence: 'low',
+        reason: reasonText || STANDARD_RESPONSES.escalate,
+        escalationRequired: true,
+        evidenceTier: 'low',
+        policyCategory: 'unsafe_or_out_of_scope',
+        policyAlternative: evaluation.alternative,
+        safeChecks: evaluation.safeChecks,
+        policyTags,
+      };
+    }
     return {
       decision: 'escalate',
       blocked: true,

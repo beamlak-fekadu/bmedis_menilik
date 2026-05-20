@@ -6,6 +6,7 @@ import Card, { CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { createClient } from '@/lib/supabase/server';
 import { requireRole } from '@/lib/auth/helpers';
 import CalibrationRequestActions from './_components/CalibrationRequestActions';
+import AssistantPageContextBridge from '@/components/assistant/AssistantPageContextBridge';
 
 type Params = Promise<{ id: string }>;
 type SearchParams = Promise<{ action?: string }>;
@@ -70,6 +71,41 @@ export default async function CalibrationRequestDetailPage({ params, searchParam
 
   return (
     <div className="space-y-6">
+      <AssistantPageContextBridge
+        moduleLabel="Calibration"
+        pageLabel={`Request ${String(row.request_number ?? '')}`}
+        selectedRecordType="calibration_request"
+        selectedRecordId={id}
+        selectedRecordLabel={String(row.request_number ?? '')}
+        contextRefs={row.asset_id ? { equipmentId: row.asset_id as string } : undefined}
+        pageSummary="Calibration request detail with asset, calibration type, urgency, status, requester, and any linked calibration record."
+        visibleCounts={{
+          status: String(row.status ?? ''),
+          urgency: String(row.urgency ?? ''),
+          has_linked_record: Boolean(relatedRecord.data?.id),
+        }}
+        pageDataHints={[
+          `Status: ${formatLabel(row.status)}`,
+          `Urgency: ${formatLabel(row.urgency)}`,
+          asset ? `Asset: ${asset.asset_code ?? ''} ${asset.name ?? ''}` : 'Asset: unknown',
+          `Calibration type: ${calibrationType?.name ?? 'General calibration'}`,
+          relatedRecord.data?.id
+            ? `Latest calibration record: ${String(relatedRecord.data.result ?? '')} on ${String(relatedRecord.data.calibration_date ?? '')}`
+            : 'No prior calibration record found for this asset/type.',
+        ]}
+        availableEvidenceLinks={[
+          { label: 'Calibration Request', href: `/calibration/requests/${id}`, type: 'calibration_request' },
+          ...(asset?.id ? [{ label: 'Asset', href: `/equipment/${asset.id}`, type: 'equipment' }] : []),
+          ...(relatedRecord.data?.id ? [{ label: 'Calibration Record', href: `/calibration/records/${relatedRecord.data.id}`, type: 'calibration_record' }] : []),
+          { label: 'Calibration Center', href: '/calibration', type: 'module' },
+        ]}
+        quickPrompts={[
+          'Summarize this calibration request.',
+          'Why is this request urgent?',
+          'What happens after the calibration is recorded?',
+          'What evidence does the next step need?',
+        ]}
+      />
       <PageHeader
         title={`Calibration Request ${String(row.request_number ?? '')}`}
         description={`${asset?.asset_code ?? 'Asset'} · ${asset?.name ?? 'Unknown asset'} · ${formatLabel(row.status)}`}

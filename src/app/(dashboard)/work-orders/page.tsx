@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { AlertTriangle, CalendarClock, CheckCircle, Clock, UserPlus, Wrench } from 'lucide-react';
 import { PageHeader, DataTable, Button, Spinner, StatCard, Badge } from '@/components/ui';
+import AssistantPageContextBridge from '@/components/assistant/AssistantPageContextBridge';
 import ClearFiltersButton from '@/components/ui/ClearFiltersButton';
 import { UrgencyBadge, WorkOrderStatusBadge } from '@/components/ui/StatusBadge';
 import { getWorkOrders } from '@/services/maintenance.service';
@@ -398,6 +399,27 @@ export default function WorkOrdersPage() {
 
   return (
     <div className="space-y-6">
+      <AssistantPageContextBridge
+        moduleLabel="Work Orders"
+        pageLabel="Technical execution center"
+        pageSummary="Open, assigned, in-progress, on-hold, and completed work orders for biomedical equipment. Aging is age >14 days since work_orders has no scheduled_date."
+        pageDataHints={[
+          'Active statuses: open, assigned, in_progress, on_hold. Completed/canceled are terminal.',
+          'Reliability metrics (MTBF/MTTR/availability) only change when a corrective WO completes with maintenance_events evidence (repair_duration_hours, downtime_start/end, failure_date).',
+          'Stock blocker priority reads work_order_parts_needed (open).',
+        ]}
+        availableEvidenceLinks={[
+          { label: 'Work Orders', href: '/work-orders', type: 'module' },
+          { label: 'Maintenance Center', href: '/maintenance', type: 'module' },
+          { label: 'Command Center', href: '/command', type: 'module' },
+        ]}
+        quickPrompts={[
+          'What should I work on first?',
+          'Which work orders are blocked by parts?',
+          'What evidence does completion need to update MTTR/MTBF?',
+          'Why is this work order aging?',
+        ]}
+      />
       <PageHeader
         title="Work Orders"
         description="Technical execution center for open, assigned, blocked, and completed biomedical work."

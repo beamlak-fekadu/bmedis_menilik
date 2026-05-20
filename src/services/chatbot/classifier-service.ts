@@ -5,6 +5,7 @@ import type {
   ConfidenceLevel,
   MemoryRoutingHint,
 } from '@/types/chatbot';
+import { detectPromptInjection, detectUnsafeBiomedical } from './prompt-injection-guard';
 
 const OUT_OF_SCOPE_PATTERNS = [
   /\bdiagnos(is|e)\b/i,
@@ -649,9 +650,29 @@ export function classifyChatRequest(message: string, hint?: MemoryRoutingHint): 
     });
   }
 
-  if (UNSAFE_PATTERNS.some((pattern) => pattern.test(normalized))) {
-    reasons.push('Detected unsafe internal repair or bypass language.');
-    matchedSignals.push('unsafe_pattern');
+  const injection = detectPromptInjection(normalized);
+  if (injection.isInjection) {
+    reasons.push(`Detected prompt-injection or role-override signal (${injection.category}).`);
+    matchedSignals.push(`prompt_injection:${injection.matchedSignal ?? injection.category}`);
+    return buildResult('unsafe', {
+      capability: 'unsafe_or_restricted',
+      confidence: 0.97,
+      confidenceLabel: 'high',
+      troubleshootingSubtype: 'none',
+      specificity: 'unsafe',
+      fallbackReason: 'unsafe_query',
+    });
+  }
+
+  const unsafeBiomedical = detectUnsafeBiomedical(normalized);
+  if (unsafeBiomedical.isUnsafe || UNSAFE_PATTERNS.some((pattern) => pattern.test(normalized))) {
+    if (unsafeBiomedical.isUnsafe) {
+      reasons.push(`Detected unsafe biomedical request (${unsafeBiomedical.category}).`);
+      matchedSignals.push(`unsafe_biomedical:${unsafeBiomedical.matchedSignal ?? unsafeBiomedical.category}`);
+    } else {
+      reasons.push('Detected unsafe internal repair or bypass language.');
+      matchedSignals.push('unsafe_pattern');
+    }
     return buildResult('unsafe', {
       capability: 'unsafe_or_restricted',
       confidence: 0.97,

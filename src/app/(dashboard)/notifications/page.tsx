@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Bell, CheckCheck, Filter, RefreshCw, ShieldAlert } from 'lucide-react';
 import { useRole } from '@/hooks/useRole';
+import AssistantPageContextBridge from '@/components/assistant/AssistantPageContextBridge';
 import { PageHeader, Badge, Button, Tabs, EmptyState } from '@/components/ui';
 import Card, { CardContent } from '@/components/ui/Card';
 import { PageLoader } from '@/components/ui/Spinner';
@@ -350,8 +351,43 @@ export default function NotificationsPage() {
 
   if (loading) return <PageLoader />;
 
+  const criticalUnread = notifications.filter((n) => n.priority === 'critical' && n.status === 'unread').length;
+  const unread = notifications.filter((n) => n.status === 'unread').length;
+
   return (
     <div className="space-y-5">
+      <AssistantPageContextBridge
+        moduleLabel="Notifications"
+        pageLabel="Notification Center"
+        selectedRecordType="notification"
+        activeTab={tab}
+        pageSummary="Unified BMEDIS Notification Center. Tabs filter by role-relevant category (For Me, Critical, Tasks, Requests, Compliance, Stock & Procurement, System, Reviewed). Telegram is an optional external delivery channel and never an authorization plane; in-app notifications are the canonical source of truth."
+        visibleCounts={{
+          total: notifications.length,
+          unread,
+          critical_unread: criticalUnread,
+          reviewed: counts.reviewed,
+          active_tab_count: filtered.length,
+        }}
+        pageDataHints={[
+          `Active tab: ${tab}`,
+          `Filter status=${filters.status} priority=${filters.priority} category=${filters.category}`,
+          'Source tables: notifications, notification_events, notification_deliveries, notification_rule_logs, telegram_connections.',
+          'Telegram delivery is opt-in per user and only fires for eligible events (priority >= TELEGRAM_MIN_PRIORITY, or specific event types).',
+        ]}
+        availableEvidenceLinks={[
+          { label: 'Notification Center', href: '/notifications', type: 'notifications' },
+          ...(isDeveloper
+            ? [{ label: 'Developer Lab — Notification Diagnostics', href: '/developer-lab#notification-diagnostics', type: 'diagnostics' }]
+            : []),
+        ]}
+        quickPrompts={[
+          'Why did I get this notification?',
+          'Why didn\'t Telegram send?',
+          'When was the last notification rule check?',
+          'What does no_chat_id mean?',
+        ]}
+      />
       <PageHeader
         title="Notifications"
         description="Centralized inbox for everything that needs your attention. Quick personal updates also appear in the bell at the top right."

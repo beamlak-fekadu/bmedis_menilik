@@ -11,7 +11,15 @@ export function displayableAssistantSummary(summary: string | undefined) {
   if (/^```/.test(raw)) return DISPLAY_REPAIR_SUMMARY;
   if (/^\{[\s\S]*\}$/.test(raw)) return DISPLAY_REPAIR_SUMMARY;
   if (/"summary"\s*:|{"decision"|{"title"/i.test(raw)) return DISPLAY_REPAIR_SUMMARY;
-  return raw;
+  // Defensive client-side guard for [object Object] and bare "undefined"/"null"
+  // tokens that can sneak into provider text fields.
+  const cleaned = raw
+    .replace(/\[object Object\]/g, '')
+    .replace(/\bundefined\b/g, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+  if (!cleaned) return EMPTY_SUMMARY;
+  return cleaned;
 }
 
 export function buildAssistantCopyText(assistant: AssistantContent) {

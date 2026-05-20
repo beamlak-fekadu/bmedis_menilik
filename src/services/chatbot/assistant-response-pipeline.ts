@@ -92,35 +92,87 @@ function safeJsonParse(candidate: string): unknown | null {
 }
 
 function extractFirstBalancedJsonObject(text: string): string | null {
-  const source = text.trim();
-  const first = source.indexOf('{');
-  if (first < 0) return null;
-  let depth = 0;
-  let inString = false;
-  let escaped = false;
-  for (let i = first; i < source.length; i += 1) {
-    const ch = source[i];
-    if (inString) {
-      if (escaped) {
-        escaped = false;
-      } else if (ch === '\\') {
-        escaped = true;
-      } else if (ch === '"') {
-        inString = false;
+  const matches = extractAllBalancedJsonObjects(text);
+  return matches.length > 0 ? matches[0] : null;
+}
+
+/**
+ * Extracts every balanced JSON object substring from the input. Used by the
+ * multi-object candidate scorer so the provider can emit several JSON
+ * blocks (markdown commentary + assistant payload, retries, etc.) without
+ * silently picking the first one.
+ */
+function extractAllBalancedJsonObjects(text: string): string[] {
+  const source = text;
+  const results: string[] = [];
+  let cursor = 0;
+  while (cursor < source.length) {
+    const first = source.indexOf('{', cursor);
+    if (first < 0) break;
+    let depth = 0;
+    let inString = false;
+    let escaped = false;
+    let closed = -1;
+    for (let i = first; i < source.length; i += 1) {
+      const ch = source[i];
+      if (inString) {
+        if (escaped) {
+          escaped = false;
+        } else if (ch === '\\') {
+          escaped = true;
+        } else if (ch === '"') {
+          inString = false;
+        }
+        continue;
       }
-      continue;
+      if (ch === '"') {
+        inString = true;
+        continue;
+      }
+      if (ch === '{') depth += 1;
+      if (ch === '}') {
+        depth -= 1;
+        if (depth === 0) {
+          closed = i;
+          break;
+        }
+      }
     }
-    if (ch === '"') {
-      inString = true;
-      continue;
-    }
-    if (ch === '{') depth += 1;
-    if (ch === '}') {
-      depth -= 1;
-      if (depth === 0) return source.slice(first, i + 1);
-    }
+    if (closed < 0) break;
+    results.push(source.slice(first, closed + 1));
+    cursor = closed + 1;
+    if (results.length >= 8) break;
   }
-  return null;
+  return results;
+}
+
+/** Heuristic completeness score for picking the best assistant candidate. */
+function scoreAssistantCandidate(candidate: Record<string, unknown>): number {
+  let score = 0;
+  if (typeof candidate.summary === 'string' && candidate.summary.trim().length > 0) score += 4;
+  if (typeof candidate.decision === 'string') score += 2;
+  if (typeof candidate.answer_basis === 'string' || typeof candidate.answerBasis === 'string') score += 2;
+  if (typeof candidate.confidence === 'string') score += 1;
+  const arrayFields = [
+    'key_findings',
+    'recommended_actions',
+    'priority_reasoning',
+    'troubleshooting_steps',
+    'maintenance_tips',
+    'actions',
+    'insights',
+    'recommendations',
+    'evidence_used',
+    'links',
+    'limitations',
+    'source_tables',
+    'follow_up_suggestions',
+  ];
+  for (const field of arrayFields) {
+    const value = (candidate as Record<string, unknown>)[field];
+    if (Array.isArray(value) && value.length > 0) score += 1;
+  }
+  return score;
 }
 
 function collectJsonCandidates(raw: string) {
@@ -233,6 +285,18 @@ function normalizeObjectPayload(rawObject: Record<string, unknown>, requiredDeci
     limitations: stringArray(rawObject.limitations, 8, 320),
     data_freshness: typeof rawObject.data_freshness === 'string' ? rawObject.data_freshness.slice(0, 200) : undefined,
     source_tables: stringArray(rawObject.source_tables ?? rawObject.sourceTables, 12, 120),
+    data_mode: (() => {
+      const v = (rawObject.data_mode ?? rawObject.dataMode) as unknown;
+      return typeof v === 'string' && ['live', 'snapshot', 'stale', 'sandbox', 'missing', 'unknown'].includes(v)
+        ? (v as AssistantContent['data_mode'])
+        : undefined;
+    })(),
+    data_age_label:
+      typeof rawObject.data_age_label === 'string'
+        ? rawObject.data_age_label.slice(0, 120)
+        : typeof rawObject.dataAgeLabel === 'string'
+          ? rawObject.dataAgeLabel.slice(0, 120)
+          : undefined,
     action_drafts: [],
   };
 
@@ -380,45 +444,45 @@ export function normalizeAssistantResponse(params: NormalizeAssistantResponsePar
     };
   }
 
-  const candidates = collectJsonCandidates(rawText);
-  for (const candidate of candidates) {
+  // Collect every JSON object the provider produced — fenced, raw, multiple
+  // — and pick the candidate that validates best against
+  // AssistantContentSchema (rather than blindly picking the first).
+  const fenceCandidates = collectJsonCandidates(rawText);
+  const balancedCandidates = extractAllBalancedJsonObjects(rawText);
+  const allCandidatesText = Array.from(new Set([...fenceCandidates, ...balancedCandidates]));
+
+  const parsedCandidates: Array<{ obj: Record<string, unknown>; score: number; validationPassed: boolean; source: 'fence' | 'balanced' }>
+    = [];
+  for (const candidate of allCandidatesText) {
     const parsed = safeJsonParse(candidate);
     if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) continue;
-    const normalized = normalizeObjectPayload(parsed as Record<string, unknown>, requiredDecision);
-    return {
-      assistant: normalized.assistant,
-      metadata: {
-        ...parserMetadata({
-          strategy: candidate === stripCodeFences(rawText) && /^```/i.test(rawText.trim()) ? 'markdown_fenced_json' : 'json_candidate',
-          rawText,
-          responseMode,
-          structuredValidationPassed: normalized.validationPassed,
-          recovery: !normalized.validationPassed,
-          failureReason: normalized.validationPassed ? null : 'schema_validation_recovered',
-          candidateCount: candidates.length,
-        }),
-        parserStrategy: 'json_candidate',
-      },
-    };
+    const obj = parsed as Record<string, unknown>;
+    const normalized = normalizeObjectPayload(obj, requiredDecision);
+    parsedCandidates.push({
+      obj,
+      score: scoreAssistantCandidate(obj) + (normalized.validationPassed ? 6 : 0),
+      validationPassed: normalized.validationPassed,
+      source: fenceCandidates.includes(candidate) ? 'fence' : 'balanced',
+    });
   }
 
-  const balanced = extractFirstBalancedJsonObject(rawText);
-  if (balanced) {
-    const parsed = safeJsonParse(balanced);
-    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-      const normalized = normalizeObjectPayload(parsed as Record<string, unknown>, requiredDecision);
-      return {
-        assistant: normalized.assistant,
-        metadata: parserMetadata({
-          strategy: 'balanced_json',
-          rawText,
-          responseMode,
-          structuredValidationPassed: normalized.validationPassed,
-          recovery: !normalized.validationPassed,
-          failureReason: normalized.validationPassed ? null : 'schema_validation_recovered',
-        }),
-      };
-    }
+  if (parsedCandidates.length > 0) {
+    parsedCandidates.sort((a, b) => b.score - a.score);
+    const best = parsedCandidates[0];
+    const normalized = normalizeObjectPayload(best.obj, requiredDecision);
+    const strategy = best.source === 'balanced' ? 'balanced_json' : 'json_candidate';
+    return {
+      assistant: normalized.assistant,
+      metadata: parserMetadata({
+        strategy,
+        rawText,
+        responseMode,
+        structuredValidationPassed: normalized.validationPassed,
+        recovery: !normalized.validationPassed || parsedCandidates.length > 1,
+        failureReason: normalized.validationPassed ? null : 'schema_validation_recovered',
+        candidateCount: parsedCandidates.length,
+      }),
+    };
   }
 
   const cleanedText = sanitizeAssistantSummaryForUi(rawText);

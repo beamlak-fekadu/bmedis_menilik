@@ -6,6 +6,7 @@ import { Badge, Card, CardContent, CardHeader, CardTitle, PageHeader } from '@/c
 import { ScoreExplanation } from '../../../_components/ScoreExplanation';
 import { buildReplacementReason } from '@/utils/decision-support/command-center-reasons';
 import { replacementReportPrefill } from '../../../_lib/command-center-routes';
+import AssistantPageContextBridge from '@/components/assistant/AssistantPageContextBridge';
 
 export default async function ReplacementEvidencePage({ params }: { params: Promise<{ assetId: string }> }) {
   const { assetId } = await params;
@@ -53,6 +54,38 @@ export default async function ReplacementEvidencePage({ params }: { params: Prom
 
   return (
     <div className="space-y-6">
+      <AssistantPageContextBridge
+        moduleLabel="Command Center"
+        pageLabel={`Replacement Evidence — ${data.asset_name ?? 'Asset'}`}
+        selectedRecordType="equipment_asset"
+        selectedRecordId={assetId}
+        selectedRecordLabel={`${data.asset_code ?? ''} ${data.asset_name ?? ''}`.trim()}
+        contextRefs={{ equipmentId: assetId }}
+        pageSummary="Replacement priority drilldown. RPI is a weighted, normalized snapshot score derived from age, availability, failure rate, maintenance burden, risk, spare parts, and cost. Use as decision-support evidence for BME Head; downstream actions (disposal, procurement, specification) persist source_replacement_score_id."
+        visibleCounts={{
+          replacement_rank: Number(data.replacement_rank ?? 0),
+          rpi_x100: Math.round(rpi * 100),
+          has_score_row: Boolean(replacementScoreId),
+        }}
+        pageDataHints={[
+          `RPI: ${(rpi * 100).toFixed(1)}/100`,
+          `Rank: ${Number(data.replacement_rank ?? 0)}`,
+          `Department: ${data.department_name ?? 'Unknown'}`,
+          'Lifecycle linkage: disposal_requests / procurement_requests / specification_requests carry source_replacement_score_id when created from here.',
+          'Score row source: replacement_priority_scores (weights_profile_id IS NULL = canonical computed row).',
+        ]}
+        availableEvidenceLinks={[
+          { label: 'Replacement Evidence', href: `/command/drilldown/replacement/${assetId}`, type: 'replacement' },
+          { label: 'Asset', href: `/equipment/${assetId}`, type: 'equipment' },
+          { label: 'Replacement Center', href: '/replacement', type: 'module' },
+        ]}
+        quickPrompts={[
+          'Explain this replacement priority index.',
+          'What evidence supports replacing this asset?',
+          'What downstream records will be linked to this score?',
+          'How does this compare to the rest of the fleet?',
+        ]}
+      />
       <Link href="/command/drilldown/replacement" className="inline-flex items-center gap-1 text-sm text-violet-300"><ArrowLeft className="h-4 w-4" /> Replacement queue</Link>
       <PageHeader title={`Replacement evidence — ${data.asset_name ?? 'Asset'}`} description={`${data.asset_code ?? 'N/A'} · ${data.department_name ?? 'Unknown'}`} />
       <Card>
