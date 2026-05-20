@@ -366,8 +366,17 @@ export async function runOfflineCapableAction<T>(params: {
   }
 
   try {
-    if (params.roleNames && !canQueueOfflineAction(params.roleNames, params.actionType)) {
-      return { status: 'failed', error: 'Your role cannot queue this action offline' };
+    // R12: client-side role gate before enqueue. Server replay
+    // (syncOfflineQueuedActionAction) still re-checks permissions — this is
+    // UX-only, but it prevents silent late-failures when the user discovers
+    // hours later that their queued action is unsupported. Fail closed if
+    // roleNames is missing: a caller that forgets to pass roles should not
+    // accidentally bypass the gate.
+    if (!params.roleNames || params.roleNames.length === 0) {
+      return { status: 'failed', error: 'Cannot queue offline action without an authenticated role.' };
+    }
+    if (!canQueueOfflineAction(params.roleNames, params.actionType)) {
+      return { status: 'failed', error: 'Your role cannot queue this action offline.' };
     }
     const action = await enqueueOfflineAction({
       action_type: params.actionType,

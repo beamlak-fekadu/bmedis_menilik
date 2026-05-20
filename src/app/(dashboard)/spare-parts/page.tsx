@@ -104,6 +104,11 @@ function OperationalSparePartsPage() {
   const [recInvoice, setRecInvoice] = useState('');
   const [recUnitCost, setRecUnitCost] = useState('');
   const [recNotes, setRecNotes] = useState('');
+  // R21: when the receipt modal is opened from a "procurement delivered_
+  // pending_receipt" notification deep-link, the procurement_id is carried
+  // through the URL and persisted on the resulting stock_receipts row via
+  // the record_stock_receipt RPC's p_procurement_id arg.
+  const [recProcurementId, setRecProcurementId] = useState<string | null>(null);
 
   // Issue form
   const [issPartId, setIssPartId] = useState('');
@@ -151,6 +156,14 @@ function OperationalSparePartsPage() {
     }
     if (searchParams.get('action') === 'issue') setIssueOpen(true);
     if (searchParams.get('action') === 'receive') setReceiptOpen(true);
+    // R21: deep-link from a 'procurement.delivered_pending_receipt'
+    // notification. Open the receipt modal and capture the procurement id
+    // for handoff to record_stock_receipt.
+    if (searchParams.get('action') === 'record-receipt') {
+      setReceiptOpen(true);
+      const procurementId = searchParams.get('procurement_id');
+      if (procurementId) setRecProcurementId(procurementId);
+    }
   }, [searchParams]);
 
   const handleAddPart = async () => {
@@ -205,6 +218,9 @@ function OperationalSparePartsPage() {
       invoice_ref: recInvoice || null,
       unit_cost: recUnitCost ? parseFloat(recUnitCost) : null,
       notes: recNotes || null,
+      // R21: forward procurement linkage when the modal was opened from a
+      // 'procurement.delivered_pending_receipt' notification.
+      procurement_id: recProcurementId,
       current_stock_snapshot: typeof partSnapshot?.current_stock === 'number' ? partSnapshot.current_stock : null,
       reorder_level_snapshot: typeof partSnapshot?.reorder_level === 'number' ? partSnapshot.reorder_level : null,
       part_name_snapshot: typeof partSnapshot?.name === 'string' ? partSnapshot.name : null,
@@ -298,6 +314,7 @@ function OperationalSparePartsPage() {
   const resetReceiptForm = () => {
     setRecPartId(''); setRecQuantity(''); setRecSupplier(''); setRecInvoice('');
     setRecUnitCost(''); setRecNotes('');
+    setRecProcurementId(null);
   };
   const resetIssueForm = () => {
     setIssPartId(''); setIssQuantity(''); setIssDepartment(''); setIssNotes('');

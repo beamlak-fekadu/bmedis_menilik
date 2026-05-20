@@ -522,7 +522,8 @@ async function rule_stock(
     }
   } else if (event.event_type === 'spare_part.low_stock') {
     const onHand = pickPayloadNumber(event.payload ?? {}, 'on_hand');
-    const minLevel = pickPayloadNumber(event.payload ?? {}, 'minimum_level');
+    const minLevel = pickPayloadNumber(event.payload ?? {}, 'minimum_level')
+      ?? pickPayloadNumber(event.payload ?? {}, 'reorder_level');
     for (const r of storeUsers) {
       rows.push(
         buildRow(event, r, {
@@ -530,6 +531,22 @@ async function rule_stock(
           title: 'Low stock',
           message: `${part} is low (on hand ${onHand ?? '?'} / min ${minLevel ?? '?'}).`,
           priority: 'medium',
+        }),
+      );
+    }
+  } else if (event.event_type === 'spare_part.restocked') {
+    // R9: confirmation event. Store User sees that the part is back above
+    // reorder level. Low priority — informational only, no Telegram by
+    // default (TELEGRAM_MIN_PRIORITY filters it out).
+    const onHand = pickPayloadNumber(event.payload ?? {}, 'on_hand');
+    const reorder = pickPayloadNumber(event.payload ?? {}, 'reorder_level');
+    for (const r of storeUsers) {
+      rows.push(
+        buildRow(event, r, {
+          category: 'stock',
+          title: 'Stock restocked',
+          message: `${part} is back above the reorder level (on hand ${onHand ?? '?'} / reorder ${reorder ?? '?'}).`,
+          priority: 'low',
         }),
       );
     }
@@ -596,6 +613,21 @@ async function rule_procurement(
           category: 'procurement',
           title: 'Procurement delivered',
           message: `Delivery ready for receive: ${description}.`,
+          priority: 'medium',
+        }),
+      );
+    }
+  } else if (event.event_type === 'procurement.delivered_pending_receipt') {
+    // R21: Store User gets a clear "record receipt" action item. The action
+    // link in the payload deep-links to /spare-parts with the receipt modal
+    // prefilled (procurement_id pre-set, so the resulting stock_receipts
+    // row carries the procurement linkage).
+    for (const r of storeUsers) {
+      rows.push(
+        buildRow(event, r, {
+          category: 'procurement',
+          title: 'Record stock receipt for delivered procurement',
+          message: `Delivered: ${description}. Click to record the stock receipt — current_stock is not updated until you do.`,
           priority: 'medium',
         }),
       );
@@ -931,6 +963,7 @@ export async function applyNotificationRules(
         };
       case 'spare_part.stockout':
       case 'spare_part.low_stock':
+      case 'spare_part.restocked':
       case 'work_order.stock_blocked':
       case 'reorder.requested':
         return {
@@ -940,6 +973,7 @@ export async function applyNotificationRules(
         };
       case 'procurement.delayed':
       case 'procurement.delivered':
+      case 'procurement.delivered_pending_receipt':
         return {
           rule_name: 'procurement',
           rows: await rule_procurement(client, event),

@@ -42,6 +42,11 @@ export type Capability =
   | 'equipment.create'
   | 'equipment.edit'
   | 'equipment.delete'
+  // Equipment condition (sub-capability of edit, with broader role allowlist
+  // because department users/heads reporting an issue or technicians completing
+  // work both legitimately drive condition transitions through the maintenance
+  // workflow). Store users and viewers never update condition.
+  | 'equipment.condition.update'
   // Maintenance + work orders
   | 'maintenance.request.create'
   | 'maintenance.request.approve'
@@ -50,6 +55,11 @@ export type Capability =
   | 'work_order.start'
   | 'work_order.complete'
   | 'work_order.add_event'
+  // R18: hold/pause is a distinct authority — a technician may pause work
+  // they own, but pausing in general (vs starting and completing) is a
+  // workflow-level decision. Granted to anyone who can start or complete,
+  // and intentionally NOT broader.
+  | 'work_order.hold'
   // Preventive maintenance
   | 'pm.plan.create'
   | 'pm.assign'
@@ -100,9 +110,9 @@ const DEVELOPER_CAPS: Capability[] = [
   'nav.pm', 'nav.calibration', 'nav.work_orders', 'nav.spare_parts', 'nav.logistics', 'nav.procurement',
   'nav.training', 'nav.replacement', 'nav.disposal', 'nav.alerts', 'nav.reports', 'nav.settings', 'nav.audit',
   'nav.compliance', 'nav.offline_sync',
-  'equipment.create', 'equipment.edit', 'equipment.delete',
+  'equipment.create', 'equipment.edit', 'equipment.delete', 'equipment.condition.update',
   'maintenance.request.create', 'maintenance.request.approve',
-  'work_order.create', 'work_order.assign', 'work_order.start', 'work_order.complete', 'work_order.add_event',
+  'work_order.create', 'work_order.assign', 'work_order.start', 'work_order.complete', 'work_order.add_event', 'work_order.hold',
   'pm.plan.create', 'pm.assign', 'pm.complete',
   'calibration.request.create', 'calibration.request.approve', 'calibration.schedule', 'calibration.record_result',
   'spare_parts.manage', 'stock.receive', 'stock.issue', 'procurement.request', 'procurement.status_update',
@@ -131,12 +141,13 @@ export const CAPABILITY_MATRIX: Matrix = {
     'nav.command', 'nav.calendar', 'nav.equipment', 'nav.maintenance', 'nav.requests',
     'nav.pm', 'nav.calibration', 'nav.work_orders', 'nav.spare_parts', 'nav.training', 'nav.alerts', 'nav.reports',
     'maintenance.request.create',
-    'work_order.start', 'work_order.complete', 'work_order.add_event',
+    'work_order.start', 'work_order.complete', 'work_order.add_event', 'work_order.hold',
     'pm.complete',
     'calibration.request.create', 'calibration.record_result',
     'procurement.request',
     'training.request.create',
     'alerts.acknowledge', 'reports.view',
+    'equipment.condition.update',
   ),
 
   // Store User = Store / Logistics Operations Console. Read-only outside of
@@ -165,6 +176,7 @@ export const CAPABILITY_MATRIX: Matrix = {
     'training.request.create',
     'disposal.request.create',
     'reports.view',
+    'equipment.condition.update',
   ),
 
   department_user: caps(
@@ -175,6 +187,7 @@ export const CAPABILITY_MATRIX: Matrix = {
     'training.request.create',
     'disposal.request.create',
     'reports.view',
+    'equipment.condition.update',
   ),
 
   // Viewer = Executive Oversight Portal. Read-only management view with

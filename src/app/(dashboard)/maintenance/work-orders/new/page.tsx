@@ -76,8 +76,15 @@ export default function NewWorkOrderPage() {
       setSubmitting(false);
       return;
     }
-    toast('success', 'Work order created');
-    router.push(`/maintenance/work-orders/${(result.data as unknown as Record<string, string>).id}`);
+    // R17: surface request-status-sync failure if the WO was created from a
+    // request but the request's status couldn't be flipped.
+    const created = result.data as { id?: string; request_status_sync_warning?: string };
+    if (created.request_status_sync_warning) {
+      toast('warning', `Work order created. Originating request status could not be updated: ${created.request_status_sync_warning}`);
+    } else {
+      toast('success', 'Work order created');
+    }
+    router.push(`/maintenance/work-orders/${created.id ?? ''}`);
   }
 
   if (loading) {

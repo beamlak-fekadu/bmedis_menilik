@@ -23,6 +23,20 @@ export default async function ReplacementEvidencePage({ params }: { params: Prom
     return <div className="space-y-4"><Link href="/command" className="inline-flex items-center gap-1 text-sm text-violet-300"><ArrowLeft className="h-4 w-4" /> Command Center</Link><p className="text-sm text-[var(--text-muted)]">Replacement evidence not found.</p></div>;
   }
 
+  // R32: load the canonical replacement_priority_scores.id so the lifecycle
+  // launchers can persist source_replacement_score_id on the resulting
+  // disposal/procurement record. Filter to computed rows (NULL weights_profile_id)
+  // — same filter analytics.service.ts:getReplacementPriorities uses.
+  const scoreRow = await supabase
+    .from('replacement_priority_scores')
+    .select('id')
+    .eq('asset_id', assetId)
+    .is('weights_profile_id', null)
+    .order('computed_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const replacementScoreId = (scoreRow.data as { id?: string } | null)?.id ?? null;
+
   const rpi = Number(data.replacement_priority_index ?? 0);
   const reason = buildReplacementReason({
     rank: Number(data.replacement_rank ?? 0),
@@ -85,6 +99,41 @@ export default async function ReplacementEvidencePage({ params }: { params: Prom
           )}
         </CardContent>
       </Card>
+
+      {canMutate && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Start Lifecycle Planning (R32)</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-sm text-[var(--text-muted)]">
+              Turn this replacement recommendation into a governed lifecycle action. Final approval remains
+              with BME Head — these buttons prefill the corresponding request form and persist the
+              source replacement-score id so reports can trace each action back to its evidence.
+            </p>
+            {!replacementScoreId && (
+              <p className="rounded-md border border-amber-500/50 bg-amber-500/10 px-3 py-2 text-xs text-amber-300">
+                No computed replacement-priority score row found for this asset. Lifecycle planning launchers will
+                still prefill the asset, but the source_replacement_score_id linkage will be empty.
+              </p>
+            )}
+            <div className="flex flex-wrap items-center gap-2">
+              <Link
+                href={`/disposal?action=new-request&source=replacement-evidence&assetId=${encodeURIComponent(assetId)}&reason=${encodeURIComponent(reason)}${replacementScoreId ? `&source_replacement_score_id=${encodeURIComponent(replacementScoreId)}` : ''}`}
+                className="inline-flex items-center rounded-md border border-rose-500/40 bg-rose-500/10 px-3 py-1.5 text-sm font-medium text-rose-200 hover:bg-rose-500/20"
+              >
+                Open disposal request
+              </Link>
+              <Link
+                href={`/procurement?source=replacement-evidence&assetId=${encodeURIComponent(assetId)}&itemName=${encodeURIComponent(data.asset_name ?? 'Asset replacement')}&reason=${encodeURIComponent(reason)}${replacementScoreId ? `&source_replacement_score_id=${encodeURIComponent(replacementScoreId)}` : ''}`}
+                className="inline-flex items-center rounded-md border border-violet-500/40 bg-violet-500/10 px-3 py-1.5 text-sm font-medium text-violet-200 hover:bg-violet-500/20"
+              >
+                Start replacement procurement spec
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

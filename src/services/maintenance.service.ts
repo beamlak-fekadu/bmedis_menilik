@@ -253,6 +253,23 @@ export async function getLastCompletedWorkOrderForAsset(assetId: string) {
     .maybeSingle();
 }
 
+// R19: parts declared as needed for a specific work order. Used by the WO
+// detail Parts Needed panel and indirectly by Command Center stock blockers
+// (fetchStockBlockers in command-center-data.ts pulls all open needs).
+export async function getWorkOrderPartsNeeded(workOrderId: string) {
+  const supabase = createClient();
+  return supabase
+    .from('work_order_parts_needed')
+    .select(`
+      id, work_order_id, spare_part_id, quantity_needed, notes, status,
+      declared_by, created_at, fulfilled_at, canceled_at,
+      spare_parts(id, part_code, name, current_stock, reorder_level),
+      profiles!work_order_parts_needed_declared_by_fkey(id, full_name)
+    `)
+    .eq('work_order_id', workOrderId)
+    .order('created_at', { ascending: false });
+}
+
 export async function getMaintenanceEvents(assetId: string) {
   const supabase = createClient();
   return supabase

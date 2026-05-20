@@ -260,133 +260,224 @@ export async function listNotificationRuleLogs(
 // Best-effort scheduled-condition scan. Looks for currently overdue PM,
 // stockouts, etc., and creates events for them. Cooldown + dedupe keep the
 // noise level acceptable when the developer reruns the check.
-export async function runNotificationRuleCheck(): Promise<{
+export interface RuleScanResult {
+  ruleId: 'pm_overdue' | 'aging_work_orders' | 'low_stock' | 'calibration_overdue';
+  scanned: number;
+  eventsCreated: number;
+  error: string | null;
+}
+
+export interface RuleCheckOutcome {
   ok: boolean;
   events_created: number;
   errors: string[];
-}> {
+  // R1: per-scan diagnostics. Developer Lab renders this directly — a
+  // single aggregate "success" hid sub-scan failures before. With this
+  // shape, an overdue-PM scan that errors does not get masked by a healthy
+  // stock scan.
+  scans: RuleScanResult[];
+}
+
+export async function runNotificationRuleCheck(): Promise<RuleCheckOutcome> {
   const client = await db();
   const errors: string[] = [];
-  let eventsCreated = 0;
+  const scans: RuleScanResult[] = [];
 
   const { emitNotificationEvent } = await import('./notification-engine');
 
-  // Overdue PM
-  try {
-    const { data: overduePm } = (await client
-      .from('v_overdue_pm')
-      .select('schedule_id, asset_id, department_id, days_overdue')
-      .limit(50)) as {
-      data: Array<{
-        schedule_id: string | null;
-        asset_id: string | null;
-        department_id: string | null;
-        days_overdue: number | null;
-      }> | null;
-    };
-    for (const row of overduePm ?? []) {
-      if (!row.schedule_id || !row.asset_id) continue;
-      await emitNotificationEvent({
-        event_type: 'pm.overdue',
-        source_table: 'pm_schedules',
-        source_id: row.schedule_id,
-        asset_id: row.asset_id,
-        department_id: row.department_id ?? null,
-        priority: 'high',
-        payload: { days_overdue: row.days_overdue ?? 0 },
-      });
-      eventsCreated++;
+  // ---- Overdue PM (R1 + R20) ----
+  // View column was renamed from `schedule_id` → `id` in migration 00044.
+  // The scanner used to select `schedule_id` and silently emit zero events.
+  {
+    const scan: RuleScanResult = { ruleId: 'pm_overdue', scanned: 0, eventsCreated: 0, error: null };
+    try {
+      const { data: overduePm, error: pmErr } = (await client
+        .from('v_overdue_pm')
+        .select('id, asset_id, department_id, days_overdue')
+        .limit(50)) as {
+        data: Array<{
+          id: string | null;
+          asset_id: string | null;
+          department_id: string | null;
+          days_overdue: number | null;
+        }> | null;
+        error: { message: string } | null;
+      };
+      if (pmErr) throw new Error(pmErr.message);
+      scan.scanned = overduePm?.length ?? 0;
+      for (const row of overduePm ?? []) {
+        if (!row.id || !row.asset_id) continue;
+        await emitNotificationEvent({
+          event_type: 'pm.overdue',
+          source_table: 'pm_schedules',
+          source_id: row.id,
+          asset_id: row.asset_id,
+          department_id: row.department_id ?? null,
+          priority: 'high',
+          payload: { days_overdue: row.days_overdue ?? 0 },
+        });
+        scan.eventsCreated++;
+      }
+    } catch (err) {
+      scan.error = err instanceof Error ? err.message : 'unknown';
+      errors.push(`pm_overdue: ${scan.error}`);
     }
-  } catch (err) {
-    errors.push(`pm_overdue: ${err instanceof Error ? err.message : 'unknown'}`);
+    scans.push(scan);
   }
 
-  // Stockouts
-  try {
-    const { data: parts } = (await client
-      .from('spare_parts')
-      .select('id, name, current_stock, minimum_stock_level, is_active')
-      .eq('is_active', true)
-      .limit(500)) as {
-      data: Array<{
-        id: string;
-        name: string;
-        current_stock: number | null;
-        minimum_stock_level: number | null;
-        is_active: boolean | null;
-      }> | null;
-    };
-    for (const part of parts ?? []) {
-      const onHand = part.current_stock ?? 0;
-      const min = part.minimum_stock_level ?? 0;
-      if (onHand <= 0) {
+  // ---- Low-stock / stockout (R1 + R9 fallback) ----
+  // spare_parts uses `reorder_level`, not `minimum_stock_level`. R9's
+  // direct emission from the stock_issue RPC is the primary path; this
+  // scan exists as a backstop (e.g. for stock that drifted via direct
+  // DB writes outside the action layer).
+  {
+    const scan: RuleScanResult = { ruleId: 'low_stock', scanned: 0, eventsCreated: 0, error: null };
+    try {
+      const { data: parts, error: partsErr } = (await client
+        .from('spare_parts')
+        .select('id, name, current_stock, reorder_level, is_active')
+        .eq('is_active', true)
+        .limit(500)) as {
+        data: Array<{
+          id: string;
+          name: string;
+          current_stock: number | null;
+          reorder_level: number | null;
+          is_active: boolean | null;
+        }> | null;
+        error: { message: string } | null;
+      };
+      if (partsErr) throw new Error(partsErr.message);
+      scan.scanned = parts?.length ?? 0;
+      for (const part of parts ?? []) {
+        const onHand = part.current_stock ?? 0;
+        const reorder = part.reorder_level ?? 0;
+        if (onHand <= 0) {
+          await emitNotificationEvent({
+            event_type: 'spare_part.stockout',
+            source_table: 'spare_parts',
+            source_id: part.id,
+            priority: 'high',
+            payload: { part_id: part.id, part_name: part.name, on_hand: onHand, reorder_level: reorder },
+          });
+          scan.eventsCreated++;
+        } else if (reorder > 0 && onHand <= reorder) {
+          await emitNotificationEvent({
+            event_type: 'spare_part.low_stock',
+            source_table: 'spare_parts',
+            source_id: part.id,
+            priority: 'medium',
+            payload: { part_id: part.id, part_name: part.name, on_hand: onHand, reorder_level: reorder },
+          });
+          scan.eventsCreated++;
+        }
+      }
+    } catch (err) {
+      scan.error = err instanceof Error ? err.message : 'unknown';
+      errors.push(`low_stock: ${scan.error}`);
+    }
+    scans.push(scan);
+  }
+
+  // ---- Aging work orders (>14d open) (R1) ----
+  // View column was renamed from `work_order_id` → `id` in migration 00044.
+  {
+    const scan: RuleScanResult = { ruleId: 'aging_work_orders', scanned: 0, eventsCreated: 0, error: null };
+    try {
+      const cutoff = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
+      const { data: aging, error: agingErr } = (await client
+        .from('v_open_work_orders')
+        .select('id, asset_id, department_id, created_at, status, work_order_number, asset_name, asset_code')
+        .lt('created_at', cutoff)
+        .limit(50)) as {
+        data: Array<{
+          id: string;
+          asset_id: string | null;
+          department_id: string | null;
+          created_at: string;
+          status: string;
+          work_order_number: string | null;
+          asset_name: string | null;
+          asset_code: string | null;
+        }> | null;
+        error: { message: string } | null;
+      };
+      if (agingErr) throw new Error(agingErr.message);
+      scan.scanned = aging?.length ?? 0;
+      for (const wo of aging ?? []) {
         await emitNotificationEvent({
-          event_type: 'spare_part.stockout',
-          source_table: 'spare_parts',
-          source_id: part.id,
+          event_type: 'work_order.aging_or_overdue',
+          source_table: 'work_orders',
+          source_id: wo.id,
+          asset_id: wo.asset_id ?? null,
+          department_id: wo.department_id ?? null,
           priority: 'high',
-          payload: { part_id: part.id, part_name: part.name, on_hand: onHand },
-        });
-        eventsCreated++;
-      } else if (min > 0 && onHand <= min) {
-        await emitNotificationEvent({
-          event_type: 'spare_part.low_stock',
-          source_table: 'spare_parts',
-          source_id: part.id,
-          priority: 'medium',
           payload: {
-            part_id: part.id,
-            part_name: part.name,
-            on_hand: onHand,
-            minimum_level: min,
+            work_order_number: wo.work_order_number,
+            asset_name: wo.asset_name,
+            asset_code: wo.asset_code,
+            status: wo.status,
           },
         });
-        eventsCreated++;
+        scan.eventsCreated++;
       }
+    } catch (err) {
+      scan.error = err instanceof Error ? err.message : 'unknown';
+      errors.push(`aging_work_orders: ${scan.error}`);
     }
-  } catch (err) {
-    errors.push(`spare_parts: ${err instanceof Error ? err.message : 'unknown'}`);
+    scans.push(scan);
   }
 
-  // Aging work orders (>14d open)
-  try {
-    const cutoff = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
-    const { data: aging } = (await client
-      .from('v_open_work_orders')
-      .select('work_order_id, asset_id, department_id, created_at, status, work_order_number, asset_name, asset_code')
-      .lt('created_at', cutoff)
-      .limit(50)) as {
-      data: Array<{
-        work_order_id: string;
-        asset_id: string | null;
-        department_id: string | null;
-        created_at: string;
-        status: string;
-        work_order_number: string | null;
-        asset_name: string | null;
-        asset_code: string | null;
-      }> | null;
-    };
-    for (const wo of aging ?? []) {
-      await emitNotificationEvent({
-        event_type: 'work_order.aging_or_overdue',
-        source_table: 'work_orders',
-        source_id: wo.work_order_id,
-        asset_id: wo.asset_id ?? null,
-        department_id: wo.department_id ?? null,
-        priority: 'high',
-        payload: {
-          work_order_number: wo.work_order_number,
-          asset_name: wo.asset_name,
-          asset_code: wo.asset_code,
-          status: wo.status,
-        },
-      });
-      eventsCreated++;
+  // ---- Overdue calibration (R1) ----
+  // New scan — was missing from the previous implementation. Uses
+  // v_calibration_due (exposes asset_id via migration 00043) and the
+  // canonical `result` column (not `last_result`).
+  {
+    const scan: RuleScanResult = { ruleId: 'calibration_overdue', scanned: 0, eventsCreated: 0, error: null };
+    try {
+      const { data: due, error: dueErr } = (await client
+        .from('v_calibration_due')
+        .select('id, asset_id, next_due_date, result, asset_name, asset_code, days_until_due')
+        .lt('days_until_due', 0)
+        .limit(50)) as {
+        data: Array<{
+          id: string;
+          asset_id: string | null;
+          next_due_date: string | null;
+          result: string | null;
+          asset_name: string | null;
+          asset_code: string | null;
+          days_until_due: number | null;
+        }> | null;
+        error: { message: string } | null;
+      };
+      if (dueErr) throw new Error(dueErr.message);
+      scan.scanned = due?.length ?? 0;
+      for (const cal of due ?? []) {
+        if (!cal.asset_id) continue;
+        await emitNotificationEvent({
+          event_type: 'calibration.overdue',
+          source_table: 'calibration_records',
+          source_id: cal.id,
+          asset_id: cal.asset_id,
+          priority: 'high',
+          payload: {
+            next_due_date: cal.next_due_date,
+            last_result: cal.result,
+            asset_name: cal.asset_name,
+            asset_code: cal.asset_code,
+            days_overdue: cal.days_until_due != null ? Math.abs(cal.days_until_due) : null,
+          },
+        });
+        scan.eventsCreated++;
+      }
+    } catch (err) {
+      scan.error = err instanceof Error ? err.message : 'unknown';
+      errors.push(`calibration_overdue: ${scan.error}`);
     }
-  } catch (err) {
-    errors.push(`aging_wo: ${err instanceof Error ? err.message : 'unknown'}`);
+    scans.push(scan);
   }
 
-  return { ok: errors.length === 0, events_created: eventsCreated, errors };
+  const eventsCreated = scans.reduce((acc, s) => acc + s.eventsCreated, 0);
+  return { ok: errors.length === 0, events_created: eventsCreated, errors, scans };
 }

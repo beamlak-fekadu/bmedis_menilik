@@ -35,6 +35,37 @@ export async function updateCalibrationRequestStatusAction(id: string, status: s
     });
     const assetId = (result.data as Record<string, unknown>).asset_id as string | undefined;
     if (assetId && parsedStatus === 'completed') await recomputeAssetAnalytics(assetId).catch(() => undefined);
+
+    // R6: emit calibration.request_status_changed so BME Head + requester +
+    // assigned technician + department head all see the workflow move.
+    // Notification rules in notification-rules.ts already handle this event
+    // type — before R6 the rule was defined but never emitted.
+    try {
+      const { data: asset } = await supabase
+        .from('equipment_assets')
+        .select('name, asset_code, department_id')
+        .eq('id', assetId ?? '')
+        .maybeSingle();
+      const row = (asset ?? null) as { name?: string | null; asset_code?: string | null; department_id?: string | null } | null;
+      const { emitNotificationEvent } = await import('@/services/notifications/notification-engine');
+      await emitNotificationEvent({
+        event_type: 'calibration.request_status_changed',
+        source_table: 'calibration_requests',
+        source_id: id,
+        asset_id: assetId ?? null,
+        department_id: row?.department_id ?? null,
+        // Rejection is more attention-worthy than routine status moves.
+        priority: parsedStatus === 'rejected' ? 'high' : 'medium',
+        payload: {
+          asset_name: row?.name ?? null,
+          asset_code: row?.asset_code ?? null,
+          status: parsedStatus,
+        },
+      });
+    } catch (e) {
+      console.error('[notifications] calibration.request_status_changed emit failed:', e);
+    }
+
     revalidateMany([...calibrationPaths, `/calibration/requests/${id}`, ...(assetId ? [`/equipment/${assetId}`] : [])]);
     return { success: true, data: result.data };
   } catch (err) {
@@ -114,6 +145,44 @@ export async function createCalibrationRecordAction(payload: Record<string, unkn
     if (result.error) return { success: false, error: result.error.message };
     await logServerAuditEvent({ supabase, profileId: profile.id, action: 'calibration_record.create', entityType: 'calibration_records', entityId: (result.data as { id?: string }).id ?? null, newValues: result.data as Record<string, unknown> });
     await recomputeAssetAnalytics(parsed.asset_id).catch(() => undefined);
+
+    // R6: failed or adjusted calibration is a clinical-safety event.
+    // Notification rules in notification-rules.ts wire this event to
+    // BME Head + technicians + department head with HIGH priority — but
+    // before R6 the action never emitted the event, so the rule was dead
+    // code. A passed result is intentionally NOT emitted (no spam).
+    if (parsed.result === 'fail' || parsed.result === 'adjusted') {
+      try {
+        const { data: asset } = await supabase
+          .from('equipment_assets')
+          .select('name, asset_code, department_id')
+          .eq('id', parsed.asset_id)
+          .maybeSingle();
+        const row = (asset ?? null) as { name?: string | null; asset_code?: string | null; department_id?: string | null } | null;
+        const inserted = result.data as { id?: string };
+        const { emitNotificationEvent } = await import('@/services/notifications/notification-engine');
+        await emitNotificationEvent({
+          event_type: 'calibration.failed_or_adjusted',
+          source_table: 'calibration_records',
+          source_id: inserted.id ?? null,
+          asset_id: parsed.asset_id,
+          department_id: row?.department_id ?? null,
+          // Failed = high (compliance breach); adjusted = medium (corrective
+          // action taken but evidence of drift).
+          priority: parsed.result === 'fail' ? 'high' : 'medium',
+          payload: {
+            asset_name: row?.name ?? null,
+            asset_code: row?.asset_code ?? null,
+            result: parsed.result,
+            calibration_date: parsed.calibration_date,
+            next_due_date: parsed.next_due_date ?? null,
+          },
+        });
+      } catch (e) {
+        console.error('[notifications] calibration.failed_or_adjusted emit failed:', e);
+      }
+    }
+
     revalidateMany(calibrationPaths);
     return { success: true, data: result.data };
   } catch (err) {

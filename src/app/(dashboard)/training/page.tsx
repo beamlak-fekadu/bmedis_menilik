@@ -588,6 +588,18 @@ export default function TrainingPage() {
         ) : <Badge variant="info">{primaryRole === 'viewer' ? 'Read-only' : 'View access'}</Badge>}
       />
 
+      {/* R22: honest scope label. Training has create-request, create-session,
+          and record-attendance actions with audit + capability gates. It
+          intentionally does NOT emit notifications and does not implement a
+          request status-update flow (approve/reject). Treat as auditable
+          evidence capture rather than a fully active workflow until those
+          gaps are closed in a future pass. */}
+      <p className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-200">
+        <strong>Preview workflow:</strong> training requests, sessions, and attendance records are captured
+        with audit + role gates. Notifications and approval/rejection of pending training requests are not
+        yet wired — use the Requests Hub to track open items.
+      </p>
+
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard label="Training Sessions" value={sessions.length} icon={<GraduationCap className="h-6 w-6" />} color="blue" active={selectedTab === 'completed' && activeFilter === 'all'} onClick={() => selectTrainingView('completed')} />
         <StatCard label="Pending Requests" value={pendingRequests.length} icon={<ClipboardList className="h-6 w-6" />} color="yellow" active={selectedTab === 'requests' && activeFilter === 'pending'} onClick={() => selectTrainingView('requests', 'pending')} />

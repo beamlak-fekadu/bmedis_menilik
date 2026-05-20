@@ -280,7 +280,13 @@ function buildOperationalPriorityAnswer(params: DeterministicAnswerParams): Assi
       : `Based on current system records, start with ${firstLabel}. After that, review the remaining active work, overdue PM, and any stock blockers that can delay service restoration.`;
 
   const reasoning = queue.length
-    ? queue.map((item) => `${text(item.label, 'Priority item')} ${item.score != null ? `(score ${text(item.score)})` : ''}`.trim())
+    ? [
+        ...queue.map((item) => `${text(item.label, 'Priority item')} ${item.score != null ? `(score ${text(item.score)})` : ''}`.trim()),
+        // R30: surface the documented urgency bands so a viewer/BME Head can
+        // see WHY the engine ranked these items in this order — not just the
+        // scores themselves.
+        'Urgency bands: critical ≥ 180, high ≥ 150, medium ≥ 100 (corrective base 100, calibration 85, PM 75, stock 70, replacement 55, procurement 45, training 35).',
+      ]
     : [
         workOrders.length ? `${workOrders.length} active work order(s) are in scope.` : '',
         overduePm.length ? `${overduePm.length} PM item(s) are overdue.` : '',

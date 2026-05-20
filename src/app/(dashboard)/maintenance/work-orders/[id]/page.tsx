@@ -19,6 +19,7 @@ import {
 import { getEquipmentById } from '@/services/equipment.service';
 import { formatEquipmentCondition, getConditionBadgeClass } from '@/utils/equipment/condition-labels';
 import { assignWorkOrder, createMaintenanceEventAction, reassignWorkOrder, updateWorkOrderAction } from '@/actions/maintenance.actions';
+import WorkOrderPartsNeededPanel from './WorkOrderPartsNeededPanel';
 import { getOfflineQueue, runOfflineCapableAction } from '@/lib/offline/queue';
 import { getAll } from '@/services/settings.service';
 import { getActiveTechnicians, ASSIGNABLE_TECHNICIANS_EMPTY_STATE } from '@/services/users.service';
@@ -101,6 +102,13 @@ export default function WorkOrderDetailPage() {
   const [completionModalOpen, setCompletionModalOpen] = useState(false);
   const [completionOutcome, setCompletionOutcome] = useState('resolved');
   const [finalCondition, setFinalCondition] = useState('functional');
+  // R2: reliability evidence captured at completion. Auto-feeds the
+  // maintenance_events writer in updateWorkOrderAction, which migration
+  // 00061's trigger then materializes into a downtime_logs row.
+  const [repairDurationHours, setRepairDurationHours] = useState<string>('');
+  const [downtimeStart, setDowntimeStart] = useState<string>('');
+  const [downtimeEnd, setDowntimeEnd] = useState<string>('');
+  const [failureDate, setFailureDate] = useState<string>('');
 
   const [eventModalOpen, setEventModalOpen] = useState(false);
   const [eventForm, setEventForm] = useState(emptyEventForm);
@@ -187,7 +195,13 @@ export default function WorkOrderDetailPage() {
     if (!result.success) {
       toast('error', result.error ?? `Failed to update work order`);
     } else {
-      toast('success', `Work order ${status.replace(/_/g, ' ')}`);
+      const warning = (result.data as { condition_sync_warning?: string } | undefined)?.condition_sync_warning;
+      if (warning) {
+        // R5: work order status changed but equipment condition didn't sync.
+        toast('warning', `Work order updated. Equipment condition could not be updated: ${warning}`);
+      } else {
+        toast('success', `Work order ${status.replace(/_/g, ' ')}`);
+      }
       await loadWO();
     }
     setActionLoading(false);
@@ -207,6 +221,13 @@ export default function WorkOrderDetailPage() {
   function openCompletionModal() {
     setCompletionOutcome('resolved');
     setFinalCondition('functional');
+    // R2: prefill downtime fields from the work order's lifecycle. If the WO
+    // recorded started_at, that's a reasonable downtime_start default; the
+    // technician can edit. Repair duration defaults to actual_hours when set.
+    setDowntimeStart(wo?.started_at ? new Date(wo.started_at).toISOString().slice(0, 16) : '');
+    setDowntimeEnd(new Date().toISOString().slice(0, 16));
+    setRepairDurationHours(wo?.actual_hours ? String(wo.actual_hours) : '');
+    setFailureDate(wo?.created_at ? new Date(wo.created_at).toISOString().slice(0, 10) : '');
     setCompletionModalOpen(true);
   }
 
@@ -218,12 +239,26 @@ export default function WorkOrderDetailPage() {
       completed_at: new Date().toISOString(),
       completion_outcome: completionOutcome,
       final_equipment_condition: finalCondition,
+      // R2: reliability evidence
+      repair_duration_hours: repairDurationHours || null,
+      downtime_start: downtimeStart ? new Date(downtimeStart).toISOString() : null,
+      downtime_end: downtimeEnd ? new Date(downtimeEnd).toISOString() : null,
+      failure_date: failureDate || null,
     });
     setActionLoading(false);
     if (!result.success) {
       toast('error', result.error ?? 'Failed to complete work order');
     } else {
-      toast('success', 'Work order completed');
+      const data = result.data as { condition_sync_warning?: string; reliability_evidence_warning?: string } | undefined;
+      if (data?.condition_sync_warning) {
+        // R5: completion succeeded but final equipment condition could not be recorded.
+        toast('warning', `Work order completed. Final equipment condition could not be recorded: ${data.condition_sync_warning}`);
+      } else if (data?.reliability_evidence_warning) {
+        // R2: completion happened but reliability evidence was not captured.
+        toast('warning', `Work order completed. ${data.reliability_evidence_warning}`);
+      } else {
+        toast('success', 'Work order completed');
+      }
       setCompletionModalOpen(false);
       await loadWO();
     }
@@ -891,6 +926,12 @@ export default function WorkOrderDetailPage() {
           </Card>
         )}
 
+        {/* R19: Parts Needed panel */}
+        <WorkOrderPartsNeededPanel
+          workOrderId={id}
+          workOrderStatus={wo?.status ?? ''}
+        />
+
         {/* Maintenance Event Log */}
         <Card>
           <CardHeader>
@@ -975,6 +1016,50 @@ export default function WorkOrderDetailPage() {
           <p className="rounded-md bg-[var(--surface-2)] px-3 py-2 text-xs text-[var(--text-muted)]">
             Equipment condition will be updated to <strong className="text-[var(--foreground)]">{finalCondition.replace(/_/g, ' ')}</strong> after completion.
           </p>
+
+          {/* R2: Reliability evidence pipeline.
+              Capturing these fields auto-creates a maintenance_events row and
+              the trigger from migration 00061 derives the downtime_logs row
+              that fn_compute_mtbf reads. Leaving them blank still completes
+              the work order but surfaces a "completed without reliability
+              evidence" warning toast so the gap is honest. */}
+          <div className="space-y-3 rounded-md border border-[var(--border-subtle)] bg-[var(--surface-2)] px-3 py-3">
+            <p className="text-xs font-medium text-[var(--foreground)]">
+              Reliability evidence (recommended for corrective work)
+            </p>
+            <p className="text-xs text-[var(--text-muted)]">
+              MTTR / MTBF / availability for this asset will only refresh when this evidence is logged.
+            </p>
+            <Input
+              type="number"
+              step="0.25"
+              min="0"
+              label="Repair duration (hours)"
+              placeholder="e.g. 2.5"
+              value={repairDurationHours}
+              onChange={(e) => setRepairDurationHours(e.target.value)}
+            />
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Input
+                type="datetime-local"
+                label="Downtime start"
+                value={downtimeStart}
+                onChange={(e) => setDowntimeStart(e.target.value)}
+              />
+              <Input
+                type="datetime-local"
+                label="Downtime end"
+                value={downtimeEnd}
+                onChange={(e) => setDowntimeEnd(e.target.value)}
+              />
+            </div>
+            <Input
+              type="date"
+              label="Failure date"
+              value={failureDate}
+              onChange={(e) => setFailureDate(e.target.value)}
+            />
+          </div>
         </div>
       </Modal>
 

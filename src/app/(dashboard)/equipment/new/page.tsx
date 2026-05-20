@@ -137,7 +137,15 @@ export default function NewEquipmentPage() {
       const result = await createEquipmentAction(payload);
       if (!result.success) throw new Error(result.error ?? 'Failed to register equipment');
 
-      toast('success', 'Equipment registered successfully');
+      // R7: surface auto-generated QR token outcome. Asset is registered either
+      // way — the warning just tells the user to use the equipment detail
+      // QR Identity panel to generate the token manually if auto-gen failed.
+      const qrWarning = (result.data as { qr_token_generation_warning?: string } | undefined)?.qr_token_generation_warning;
+      if (qrWarning) {
+        toast('warning', `Equipment registered. QR token could not be auto-generated: ${qrWarning}`);
+      } else {
+        toast('success', 'Equipment registered successfully (QR token generated)');
+      }
       router.push(ROUTES.EQUIPMENT);
     } catch (err) {
       toast('error', err instanceof Error ? err.message : 'Failed to register equipment');

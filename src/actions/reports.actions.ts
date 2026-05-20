@@ -28,3 +28,36 @@ export async function prepareReportSnapshotAction(reportType: string): Promise<A
     return actionError(err, 'Failed to prepare report snapshot') as ActionResult<{ generatedAt: string; refreshStatus: string }>;
   }
 }
+
+// R33: audit-only action invoked from the client when a user actually
+// triggers a download (PDF or CSV). The file itself is generated client-
+// side; this action exists purely to record who exported what and when so
+// governance/security has a trail.
+export async function recordReportExportAction(input: {
+  reportType: string;
+  format: 'pdf' | 'csv';
+  rowCount: number;
+}): Promise<ActionResult> {
+  try {
+    const { supabase, profile, error } = await getActionContextForCapability('reports.export');
+    if (error || !profile) return { success: false, error };
+    if (!['pdf', 'csv'].includes(input.format)) {
+      return { success: false, error: 'Invalid export format' };
+    }
+    await logServerAuditEvent({
+      supabase,
+      profileId: profile.id,
+      action: 'report.exported',
+      entityType: 'reports',
+      entityId: input.reportType,
+      details: {
+        report_type: input.reportType,
+        format: input.format,
+        row_count: Number.isFinite(input.rowCount) ? input.rowCount : 0,
+      },
+    });
+    return { success: true };
+  } catch (err) {
+    return actionError(err, 'Failed to record report export');
+  }
+}

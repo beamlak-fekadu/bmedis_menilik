@@ -1,5 +1,21 @@
 'use server';
 
+// R22 (Phase 6) — Audit summary:
+//   - Capability gates: ✓ disposal.request.create / disposal.approve /
+//     disposal.record are mapped to the capability matrix.
+//   - Audit logging: ✓ every mutation writes audit_logs with profile.id.
+//   - Department scoping: ✓ disposal_requests carry asset linkage that
+//     downstream RLS scopes per department for dept roles. The action
+//     itself uses the authenticated profile.
+//   - Reports: ✓ /reports/disposal reads via reports.service.ts.
+//   - Replacement → disposal linkage (R32): ✓ source_replacement_score_id
+//     accepted from prefilled flow on /command/drilldown/replacement.
+//   - Notification emits: NOT IMPLEMENTED. Disposal approval would benefit
+//     from a notification to BME Head + Department Head, but this would
+//     require a new disposal.request_status_changed event type and rule.
+//     The module is otherwise production-ready and is not labelled
+//     "Preview".
+
 import { z } from 'zod';
 import { getActionContextForCapability, logServerAuditEvent, revalidateMany, actionError, nullIfEmpty, type ActionResult } from './_shared';
 
@@ -17,8 +33,17 @@ export async function createDisposalRequestAction(payload: Record<string, unknow
       disposal_method_proposed: z.enum(['auction', 'donation', 'recycling', 'destruction', 'return_to_vendor', 'other']),
       status: disposalStatus.optional(),
       notes: z.string().optional().nullable(),
+      // R32: when launched from /replacement/[assetId] evidence panel.
+      source_replacement_score_id: z.string().uuid().optional().nullable(),
     }).parse(payload);
-    const data = { ...parsed, request_number: `DSP-${Date.now().toString(36).toUpperCase()}`, requested_by: nullIfEmpty(parsed.requested_by) ?? profile.id, status: parsed.status ?? 'pending', notes: nullIfEmpty(parsed.notes) };
+    const data = {
+      ...parsed,
+      request_number: `DSP-${Date.now().toString(36).toUpperCase()}`,
+      requested_by: nullIfEmpty(parsed.requested_by) ?? profile.id,
+      status: parsed.status ?? 'pending',
+      notes: nullIfEmpty(parsed.notes),
+      source_replacement_score_id: nullIfEmpty(parsed.source_replacement_score_id),
+    };
     const result = await supabase.from('disposal_requests').insert(data as never).select('*').single();
     if (result.error) return { success: false, error: result.error.message };
     await logServerAuditEvent({ supabase, profileId: profile.id, action: 'disposal_request.create', entityType: 'disposal_requests', entityId: (result.data as { id?: string }).id ?? null, newValues: result.data as Record<string, unknown> });

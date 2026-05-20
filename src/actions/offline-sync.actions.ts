@@ -521,7 +521,13 @@ async function replayStockReceiptDraft(params: {
     .maybeSingle();
   if (!part) return replayConflictDetail(partMissingConflict());
   if ((part as { is_active?: boolean }).is_active === false) return replayConflictDetail(partInactiveConflict());
-  const procurementId = nullableString(payload, 'procurement_request_id');
+  // R21 / R8: receipts linked to procurement requests are now accepted on
+  // replay. Migration 00064 added stock_receipts.procurement_id and the
+  // record_stock_receipt RPC accepts p_procurement_id. The replay still
+  // verifies the procurement row exists; if it doesn't, surface a clean
+  // conflict instead of corrupting linkage.
+  const procurementId =
+    nullableString(payload, 'procurement_request_id') ?? nullableString(payload, 'procurement_id');
   if (procurementId) {
     const { data: proc } = await params.supabase
       .from('procurement_requests')
@@ -531,10 +537,6 @@ async function replayStockReceiptDraft(params: {
     if (!proc) {
       return replayConflictDetail(procurementStateChangedConflict('Linked procurement request no longer exists', null));
     }
-    return replayConflictDetail(procurementStateChangedConflict(
-      'Receipt drafts linked to procurement need manual review (stock_receipts table does not yet expose procurement_request_id)',
-      proc as Record<string, unknown>,
-    ));
   }
   const quantity = numberValue(payload, 'quantity_received', numberValue(payload, 'quantity', 0));
   if (quantity <= 0) return replayConflictDetail(buildConflictDetail({
@@ -552,6 +554,7 @@ async function replayStockReceiptDraft(params: {
     invoice_ref: nullableString(payload, 'invoice_ref'),
     unit_cost: payload.unit_cost ?? null,
     notes: mergeNotes(nullableString(payload, 'note'), offlineSourceNote(params.action)),
+    procurement_id: procurementId,
   });
   return result.success ? replaySynced(safeServerResult(result.data)) : replayFailed(result.error ?? 'Stock receipt draft sync failed');
 }

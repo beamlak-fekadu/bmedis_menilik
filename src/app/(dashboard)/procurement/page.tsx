@@ -404,12 +404,16 @@ function OperationalProcurementPage() {
                   return;
                 }
                 setSubmitting(true);
+                // R32: forward the source_replacement_score_id query param when the
+                // form was launched from /command/drilldown/replacement/[assetId].
+                const sourceReplacementScoreId = searchParams.get('source_replacement_score_id');
                 const result = await createProcurementRequestAction({
                   title: parsed.data.title,
                   justification: parsed.data.justification,
                   status: parsed.data.status,
                   priority: parsed.data.priority,
                   expected_delivery_date: parsed.data.expected_delivery_date || null,
+                  source_replacement_score_id: sourceReplacementScoreId,
                 });
                 setSubmitting(false);
                 if (!result.success) {

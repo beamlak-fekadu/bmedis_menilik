@@ -1,5 +1,19 @@
 'use server';
 
+// R22 (Phase 6) — Audit summary:
+//   - Capability gates: ✓ training.request.create / training.schedule /
+//     training.record_attendance are mapped to the capability matrix.
+//   - Audit logging: ✓ every mutation writes audit_logs with profile.id.
+//   - Department scoping: ✓ training_request department_id defaults from
+//     the authenticated profile.
+//   - Reports: ✓ /reports/training reads via reports.service.ts.
+//   - Notification emits: NOT IMPLEMENTED in current scope. Training is an
+//     intake/workflow lifecycle module; notifications would be a separate
+//     follow-up scope (new event types in src/types/notifications.ts + new
+//     rules in notification-rules.ts). The /training page renders the
+//     request/session/attendance flows correctly without notifications,
+//     so this module is not labelled "Preview".
+
 import { z } from 'zod';
 import { getActionContextForCapability, logServerAuditEvent, revalidateMany, actionError, nullIfEmpty, type ActionResult } from './_shared';
 

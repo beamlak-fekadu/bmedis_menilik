@@ -180,9 +180,17 @@ export default function NewMaintenanceRequestPage() {
     }
 
     if (result.status === 'success') {
-      toast('success', 'Maintenance request created');
-      const created = result.data as { data?: { id?: string } };
+      const created = result.data as { data?: { id?: string; condition_sync_warning?: string } };
       const id = created.data?.id;
+      const warning = created.data?.condition_sync_warning;
+      if (warning) {
+        // R5: request was created but equipment condition could not be synced.
+        // Show this honestly instead of letting the asset's condition silently
+        // disagree with the request's reported_condition.
+        toast('warning', `Request created. Equipment condition could not be updated: ${warning}`);
+      } else {
+        toast('success', 'Maintenance request created');
+      }
       router.push(id ? `/maintenance/requests/${id}` : '/requests');
     }
   }

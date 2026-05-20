@@ -84,6 +84,10 @@ export default function DisposalPage() {
   const [formReason, setFormReason] = useState('');
   const [formMethod, setFormMethod] = useState<DisposalMethod>('recycling');
   const [formNotes, setFormNotes] = useState('');
+  // R32: when launched from /command/drilldown/replacement/[assetId], the
+  // evidence-page link carries source_replacement_score_id so the resulting
+  // disposal_requests row keeps a hard link back to the score that prompted it.
+  const [formSourceReplacementScoreId, setFormSourceReplacementScoreId] = useState<string | null>(null);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -143,8 +147,15 @@ export default function DisposalPage() {
       setCreateOpen(true);
     }
     if (searchParams.get('action') === 'new-request') setCreateOpen(true);
-    if (searchParams.get('assetId')) setFormAssetId(searchParams.get('assetId') ?? '');
+    // R32: support both legacy `assetId` and replacement-evidence link `asset_id`.
+    const incomingAssetId = searchParams.get('assetId') ?? searchParams.get('asset_id');
+    if (incomingAssetId) setFormAssetId(incomingAssetId);
     if (searchParams.get('reason')) setFormReason(searchParams.get('reason') ?? '');
+    if (searchParams.get('source') === 'replacement-evidence') {
+      setCreateOpen(true);
+      const scoreId = searchParams.get('source_replacement_score_id');
+      if (scoreId) setFormSourceReplacementScoreId(scoreId);
+    }
   }, [searchParams]);
 
   const handleCreate = async () => {
@@ -161,6 +172,9 @@ export default function DisposalPage() {
         disposal_method_proposed: formMethod,
         status: 'pending' as DisposalRequestStatus,
         notes: formNotes || null,
+        // R32: persist replacement-score linkage when prefilled from the
+        // /command/drilldown/replacement/[assetId] evidence page.
+        source_replacement_score_id: formSourceReplacementScoreId,
       });
       if (!result.success) throw new Error(result.error ?? 'Failed to create disposal request');
       toast('success', 'Disposal request created');
@@ -214,6 +228,7 @@ export default function DisposalPage() {
 
   const resetForm = () => {
     setFormAssetId(''); setFormReason(''); setFormMethod('recycling'); setFormNotes('');
+    setFormSourceReplacementScoreId(null);
   };
 
   const requestColumns = [
@@ -536,6 +551,17 @@ export default function DisposalPage() {
           </Button>
         ) : <Badge variant="info">{primaryRole === 'viewer' ? 'Read-only' : 'View access'}</Badge>}
       />
+
+      {/* R22: disposal has create/approve/reject/record-disposed-asset
+          actions with full audit + capability gates. Notifications are not
+          emitted from disposal actions; lifecycle linkage to replacement
+          scores is wired (Phase 3 R32). Honest scope: governance-grade
+          evidence capture, not a notification-driven workflow. */}
+      <p className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-200">
+        <strong>Evidence capture only:</strong> disposal actions audit who did what and when, but do not
+        emit notifications. Use the Notification Center for active workflow signals; use this page for
+        approvals and end-of-life evidence.
+      </p>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard label="Disposal Requests" value={disposalRequests.length} icon={<ClipboardList className="h-6 w-6" />} color="blue" active={selectedTab === 'requests' && activeFilter === 'all'} onClick={() => selectDisposalView('requests')} />

@@ -100,6 +100,16 @@ export function buildNotificationLink(
       return { href: '/spare-parts?tab=low_stock', label: 'Open Low Stock' };
     }
 
+    case 'spare_part.restocked': {
+      // R9: confirmation event. Store user can open the part page to see
+      // the new stock level. Informational only — no separate filter tab.
+      const partId = pickPayloadString(payload, 'part_id');
+      if (partId) {
+        return { href: `/spare-parts?partId=${partId}`, label: 'Open Part' };
+      }
+      return { href: '/spare-parts', label: 'Open Stock' };
+    }
+
     case 'work_order.stock_blocked': {
       if (sourceId) {
         return { href: `/maintenance/work-orders/${sourceId}`, label: 'Open Blocked Work Order' };
@@ -116,6 +126,20 @@ export function buildNotificationLink(
         return { href: `/command/drilldown/procurement/${sourceId}`, label: 'Open Procurement' };
       }
       return { href: '/procurement', label: 'Open Procurement' };
+    }
+
+    case 'procurement.delivered_pending_receipt': {
+      // R21: deep-link straight to /spare-parts with the receipt modal
+      // prefilled. procurement_id is carried so the resulting
+      // stock_receipts row picks up the linkage via the record_stock_receipt
+      // RPC's p_procurement_id arg.
+      if (sourceId) {
+        return {
+          href: `/spare-parts?action=record-receipt&procurement_id=${encodeURIComponent(sourceId)}&source=procurement-delivery`,
+          label: 'Record Stock Receipt',
+        };
+      }
+      return { href: '/spare-parts', label: 'Open Stock' };
     }
 
     case 'reorder.requested': {

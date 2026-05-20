@@ -54,6 +54,13 @@ export default async function SyncReviewCenterPage() {
         permitted; resolve a draft by retrying after server-side issues are fixed, or by discarding the local
         action.
       </p>
+      <p className="rounded-md border border-[var(--border-subtle)] bg-[var(--surface-2)] p-3 text-xs text-[var(--text-muted)]">
+        <strong className="text-[var(--foreground)]">How offline sync works:</strong> BMEDIS uses a foreground
+        IndexedDB queue with replay-on-reconnect. The queue runs when this device reconnects to the network AND
+        the BMEDIS app is open in a tab. There is no Background Sync API integration, no server-side queue,
+        and no browser push notifications — closing the app or losing power while offline preserves the queue
+        but no sync happens until the app is reopened with network access.
+      </p>
       <SyncReviewCenterClient
         serverSummary={summary}
         serverEvents={events}

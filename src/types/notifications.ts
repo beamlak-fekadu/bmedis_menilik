@@ -55,9 +55,18 @@ export type NotificationEventType =
   // Stock / Procurement
   | 'spare_part.stockout'
   | 'spare_part.low_stock'
+  // R9 Phase 5: stock crossed the reorder threshold UPWARD after a receipt.
+  // Lets Store User clear the previously-surfaced low-stock signal without
+  // requiring a stale scheduled scan.
+  | 'spare_part.restocked'
   | 'work_order.stock_blocked'
   | 'procurement.delayed'
   | 'procurement.delivered'
+  // R21 Phase 4: separate event for the Store-User-actionable "now record
+  // the receipt" step. Distinct from 'procurement.delivered' so dashboards
+  // and reports can count pending-receipt work separately from already-
+  // delivered procurement.
+  | 'procurement.delivered_pending_receipt'
   | 'reorder.requested'
   // Replacement / Risk
   | 'replacement.review_candidate'

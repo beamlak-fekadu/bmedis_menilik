@@ -2,6 +2,7 @@ import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import type { RoleName } from '@/types/roles';
 import { hasCapability, hasAnyCapability, type Capability } from '@/lib/rbac';
+import { departmentScopeFor, type DepartmentScope } from '@/lib/rbac/department-scope';
 
 export type ActionResult<T = unknown> = {
   success: boolean;
@@ -16,6 +17,11 @@ export type ActionProfile = {
   email: string | null;
   department_id: string | null;
   roleNames: string[];
+  // R4: every action context carries its department scope by construction.
+  // Mutations on dept-scoped tables should branch on this BEFORE writing so
+  // dept users cannot operate on assets outside their department even when a
+  // request targets a foreign asset_id.
+  departmentScope: DepartmentScope;
 };
 
 type AuthorizeFn = (roleNames: string[]) => boolean;
@@ -56,8 +62,12 @@ async function loadActionContext(authorize: AuthorizeFn) {
   return {
     supabase,
     profile: {
-      ...(profileRow as Omit<ActionProfile, 'roleNames'>),
+      ...(profileRow as Omit<ActionProfile, 'roleNames' | 'departmentScope'>),
       roleNames,
+      departmentScope: departmentScopeFor({
+        roleNames,
+        departmentId: (profileRow as { department_id: string | null }).department_id,
+      }),
     } as ActionProfile,
     error: null,
   };

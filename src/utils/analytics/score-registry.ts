@@ -249,8 +249,16 @@ export const SCORE_REGISTRY: ScoreRegistryEntry[] = [
       { label: 'Category base', source: 'command-center-data.ts', explanation: 'Base weights rank cross-module categories.' },
       { label: 'Item score', source: 'typed command fetchers', explanation: 'Each triage fetcher computes current operational urgency.' },
     ],
-    formulaSummary: 'Critical action score = category base weight + current item priority score.',
-    limitations: 'Sandbox changes are not wired to Command Center. Operational ranking remains code-defined until an audited weighting profile feature exists.',
+    formulaSummary:
+      'Critical action score = category base weight + current item priority score. ' +
+      'Urgency bands (R30, see src/utils/analytics/critical-action-bands.ts): ' +
+      'critical ≥ 180, high ≥ 150, medium ≥ 100, else low. ' +
+      'Category order on tiebreak: corrective > needs_request > calibration > pm > ' +
+      'stock > risk_watch > installation > replacement > procurement > training.',
+    limitations:
+      'Sandbox changes are not wired to Command Center. Operational ranking remains code-defined until ' +
+      'an audited weighting profile feature exists. The 180/150/100 band thresholds are fixed by ' +
+      'src/utils/analytics/critical-action-bands.ts and tested in critical-action-bands.test.ts.',
     sandboxMessage: 'Operational critical actions are built from current work, PM, calibration, stock, procurement, replacement, installation, and risk signals. This sandbox only simulates alternative weighting and does not modify the Command Center.',
   },
   {

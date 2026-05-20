@@ -501,6 +501,13 @@ export type Database = {
             foreignKeyName: "chat_sessions_work_order_id_fkey"
             columns: ["work_order_id"]
             isOneToOne: false
+            referencedRelation: "v_work_orders_missing_reliability_evidence"
+            referencedColumns: ["work_order_id"]
+          },
+          {
+            foreignKeyName: "chat_sessions_work_order_id_fkey"
+            columns: ["work_order_id"]
+            isOneToOne: false
             referencedRelation: "work_orders"
             referencedColumns: ["id"]
           },
@@ -839,6 +846,7 @@ export type Database = {
           reason: string
           request_number: string
           requested_by: string | null
+          source_replacement_score_id: string | null
           status: string
           updated_at: string
         }
@@ -853,6 +861,7 @@ export type Database = {
           reason: string
           request_number: string
           requested_by?: string | null
+          source_replacement_score_id?: string | null
           status?: string
           updated_at?: string
         }
@@ -867,6 +876,7 @@ export type Database = {
           reason?: string
           request_number?: string
           requested_by?: string | null
+          source_replacement_score_id?: string | null
           status?: string
           updated_at?: string
         }
@@ -904,6 +914,13 @@ export type Database = {
             columns: ["requested_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "disposal_requests_source_replacement_score_id_fkey"
+            columns: ["source_replacement_score_id"]
+            isOneToOne: false
+            referencedRelation: "replacement_priority_scores"
             referencedColumns: ["id"]
           },
         ]
@@ -1924,6 +1941,13 @@ export type Database = {
             foreignKeyName: "escalation_events_work_order_id_fkey"
             columns: ["work_order_id"]
             isOneToOne: false
+            referencedRelation: "v_work_orders_missing_reliability_evidence"
+            referencedColumns: ["work_order_id"]
+          },
+          {
+            foreignKeyName: "escalation_events_work_order_id_fkey"
+            columns: ["work_order_id"]
+            isOneToOne: false
             referencedRelation: "work_orders"
             referencedColumns: ["id"]
           },
@@ -2382,6 +2406,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_open_work_orders"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "maintenance_events_work_order_id_fkey"
+            columns: ["work_order_id"]
+            isOneToOne: false
+            referencedRelation: "v_work_orders_missing_reliability_evidence"
+            referencedColumns: ["work_order_id"]
           },
           {
             foreignKeyName: "maintenance_events_work_order_id_fkey"
@@ -2964,7 +2995,7 @@ export type Database = {
           department_id: string | null
           dismissed_at: string | null
           escalation_step: number
-          event_id: string
+          event_id: string | null
           failure_reason: string | null
           id: string
           is_digest: boolean
@@ -3002,7 +3033,7 @@ export type Database = {
           department_id?: string | null
           dismissed_at?: string | null
           escalation_step?: number
-          event_id: string
+          event_id?: string | null
           failure_reason?: string | null
           id?: string
           is_digest?: boolean
@@ -3040,7 +3071,7 @@ export type Database = {
           department_id?: string | null
           dismissed_at?: string | null
           escalation_step?: number
-          event_id?: string
+          event_id?: string | null
           failure_reason?: string | null
           id?: string
           is_digest?: boolean
@@ -3590,6 +3621,7 @@ export type Database = {
           priority: string
           request_number: string
           requested_by: string | null
+          source_replacement_score_id: string | null
           status: string
           title: string
           updated_at: string
@@ -3603,6 +3635,7 @@ export type Database = {
           priority?: string
           request_number: string
           requested_by?: string | null
+          source_replacement_score_id?: string | null
           status?: string
           title: string
           updated_at?: string
@@ -3616,6 +3649,7 @@ export type Database = {
           priority?: string
           request_number?: string
           requested_by?: string | null
+          source_replacement_score_id?: string | null
           status?: string
           title?: string
           updated_at?: string
@@ -3633,6 +3667,13 @@ export type Database = {
             columns: ["requested_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "procurement_requests_source_replacement_score_id_fkey"
+            columns: ["source_replacement_score_id"]
+            isOneToOne: false
+            referencedRelation: "replacement_priority_scores"
             referencedColumns: ["id"]
           },
         ]
@@ -3996,6 +4037,7 @@ export type Database = {
           requested_equipment_name: string | null
           required_by: string | null
           source: string | null
+          source_replacement_score_id: string | null
           status: string
           title: string
           updated_at: string
@@ -4019,6 +4061,7 @@ export type Database = {
           requested_equipment_name?: string | null
           required_by?: string | null
           source?: string | null
+          source_replacement_score_id?: string | null
           status?: string
           title: string
           updated_at?: string
@@ -4042,6 +4085,7 @@ export type Database = {
           requested_equipment_name?: string | null
           required_by?: string | null
           source?: string | null
+          source_replacement_score_id?: string | null
           status?: string
           title?: string
           updated_at?: string
@@ -4115,6 +4159,13 @@ export type Database = {
             columns: ["requested_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "specification_requests_source_replacement_score_id_fkey"
+            columns: ["source_replacement_score_id"]
+            isOneToOne: false
+            referencedRelation: "replacement_priority_scores"
             referencedColumns: ["id"]
           },
         ]
@@ -4276,6 +4327,7 @@ export type Database = {
           invoice_ref: string | null
           notes: string | null
           part_id: string
+          procurement_id: string | null
           quantity: number
           received_by: string | null
           received_date: string
@@ -4288,6 +4340,7 @@ export type Database = {
           invoice_ref?: string | null
           notes?: string | null
           part_id: string
+          procurement_id?: string | null
           quantity: number
           received_by?: string | null
           received_date?: string
@@ -4300,6 +4353,7 @@ export type Database = {
           invoice_ref?: string | null
           notes?: string | null
           part_id?: string
+          procurement_id?: string | null
           quantity?: number
           received_by?: string | null
           received_date?: string
@@ -4319,6 +4373,13 @@ export type Database = {
             columns: ["part_id"]
             isOneToOne: false
             referencedRelation: "v_low_stock_parts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_receipts_procurement_id_fkey"
+            columns: ["procurement_id"]
+            isOneToOne: false
+            referencedRelation: "procurement_requests"
             referencedColumns: ["id"]
           },
           {
@@ -4753,6 +4814,91 @@ export type Database = {
             columns: ["profile_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      work_order_parts_needed: {
+        Row: {
+          canceled_at: string | null
+          created_at: string
+          declared_by: string | null
+          fulfilled_at: string | null
+          id: string
+          notes: string | null
+          quantity_needed: number
+          spare_part_id: string
+          status: string
+          updated_at: string
+          work_order_id: string
+        }
+        Insert: {
+          canceled_at?: string | null
+          created_at?: string
+          declared_by?: string | null
+          fulfilled_at?: string | null
+          id?: string
+          notes?: string | null
+          quantity_needed?: number
+          spare_part_id: string
+          status?: string
+          updated_at?: string
+          work_order_id: string
+        }
+        Update: {
+          canceled_at?: string | null
+          created_at?: string
+          declared_by?: string | null
+          fulfilled_at?: string | null
+          id?: string
+          notes?: string | null
+          quantity_needed?: number
+          spare_part_id?: string
+          status?: string
+          updated_at?: string
+          work_order_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "work_order_parts_needed_declared_by_fkey"
+            columns: ["declared_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "work_order_parts_needed_spare_part_id_fkey"
+            columns: ["spare_part_id"]
+            isOneToOne: false
+            referencedRelation: "spare_parts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "work_order_parts_needed_spare_part_id_fkey"
+            columns: ["spare_part_id"]
+            isOneToOne: false
+            referencedRelation: "v_low_stock_parts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "work_order_parts_needed_work_order_id_fkey"
+            columns: ["work_order_id"]
+            isOneToOne: false
+            referencedRelation: "v_open_work_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "work_order_parts_needed_work_order_id_fkey"
+            columns: ["work_order_id"]
+            isOneToOne: false
+            referencedRelation: "v_work_orders_missing_reliability_evidence"
+            referencedColumns: ["work_order_id"]
+          },
+          {
+            foreignKeyName: "work_order_parts_needed_work_order_id_fkey"
+            columns: ["work_order_id"]
+            isOneToOne: false
+            referencedRelation: "work_orders"
             referencedColumns: ["id"]
           },
         ]
@@ -5288,6 +5434,50 @@ export type Database = {
           },
         ]
       }
+      v_work_orders_missing_reliability_evidence: {
+        Row: {
+          asset_code: string | null
+          asset_id: string | null
+          asset_name: string | null
+          completed_at: string | null
+          completion_outcome: string | null
+          department_id: string | null
+          final_equipment_condition: string | null
+          work_order_id: string | null
+          work_order_number: string | null
+          work_type: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "equipment_assets_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "work_orders_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "equipment_assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "work_orders_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "v_equipment_summary"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "work_orders_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "v_maintenance_risk_context"
+            referencedColumns: ["asset_id"]
+          },
+        ]
+      }
     }
     Functions: {
       _ensure_baseline_risk_scores: { Args: never; Returns: undefined }
@@ -5295,6 +5485,7 @@ export type Database = {
         Args: { p_asset_id: string }
         Returns: undefined
       }
+      auth_profile_department_id: { Args: never; Returns: string }
       auth_user_has_role: { Args: { required_role: string }; Returns: boolean }
       cleanup_cron_job_log: { Args: never; Returns: number }
       cleanup_net_http_response: { Args: never; Returns: number }
@@ -5353,6 +5544,7 @@ export type Database = {
         }
         Returns: string
       }
+      is_dept_scoped_role: { Args: never; Returns: boolean }
       match_equipment_documents: {
         Args: {
           match_count: number
@@ -5375,11 +5567,74 @@ export type Database = {
         Args: { p_asset_id: string }
         Returns: undefined
       }
+      record_stock_issue: {
+        Args: {
+          p_department_id?: string
+          p_issue_date: string
+          p_issued_by: string
+          p_issued_to_event_id?: string
+          p_notes?: string
+          p_part_id: string
+          p_quantity: number
+        }
+        Returns: {
+          crossed_reorder: boolean
+          crossed_zero: boolean
+          issue_id: string
+          new_current_stock: number
+          part_id: string
+          reorder_level: number
+        }[]
+      }
+      record_stock_receipt: {
+        Args: {
+          p_invoice_ref?: string
+          p_notes?: string
+          p_part_id: string
+          p_procurement_id?: string
+          p_quantity: number
+          p_received_by: string
+          p_received_date: string
+          p_supplier_id?: string
+          p_unit_cost?: number
+        }
+        Returns: {
+          crossed_up: boolean
+          new_current_stock: number
+          part_id: string
+          receipt_id: string
+          reorder_level: number
+        }[]
+      }
       refresh_decision_support_snapshots: {
         Args: { snapshot_dt?: string }
         Returns: undefined
       }
       trigger_snapshot_refresh: { Args: never; Returns: string }
+      update_equipment_condition_secure: {
+        Args: { p_asset_id: string; p_condition: string }
+        Returns: {
+          asset_id: string
+          new_condition: string
+          old_condition: string
+        }[]
+      }
+      validate_demo_role_integrity: {
+        Args: never
+        Returns: {
+          assigned_roles: string[]
+          auth_user_id: string
+          department_id: string
+          department_name: string
+          email: string
+          full_name: string
+          job_title: string
+          primary_reason: string
+          profile_id: string
+          profile_user_id: string
+          reasons: string[]
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never

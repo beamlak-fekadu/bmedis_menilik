@@ -6,6 +6,7 @@ import {
   getActionContextForCapability,
   revalidateMany,
   actionError,
+  logServerAuditEvent,
   type ActionResult,
 } from './_shared';
 import {
@@ -148,9 +149,29 @@ export async function listRuleLogsAction(filters: Record<string, unknown> = {}):
 
 export async function runNotificationRuleCheckAction(): Promise<ActionResult> {
   try {
-    const { error } = await getActionContextForCapability('developer.diagnostics');
-    if (error) return { success: false, error };
+    const { supabase, profile, error } = await getActionContextForCapability('developer.diagnostics');
+    if (error || !profile) return { success: false, error };
     const result = await runNotificationRuleCheck();
+    // R33: audit rule check runs so governance can see who triggered scans
+    // and what they produced. Per-scan summary is structured (R1) so the
+    // audit details capture the same shape Developer Lab renders.
+    await logServerAuditEvent({
+      supabase,
+      profileId: profile.id,
+      action: 'notification.rule_check_run',
+      entityType: 'notification_diagnostics',
+      details: {
+        ok: result.ok,
+        events_created: result.events_created,
+        errors: result.errors,
+        scans: result.scans.map((s) => ({
+          ruleId: s.ruleId,
+          scanned: s.scanned,
+          eventsCreated: s.eventsCreated,
+          error: s.error,
+        })),
+      },
+    });
     revalidateMany(notificationPaths);
     return { success: true, data: result };
   } catch (err) {
@@ -245,23 +266,60 @@ export async function createTestNotificationToSelfAction(): Promise<ActionResult
 
 export async function sendTelegramTestMessageAction(): Promise<ActionResult> {
   try {
-    const { error } = await getActionContextForCapability('developer.diagnostics');
-    if (error) return { success: false, error };
+    const { supabase, profile, error } = await getActionContextForCapability('developer.diagnostics');
+    if (error || !profile) return { success: false, error };
     if (!isTelegramConfigured()) {
+      // R33: audit the failed attempt — operationally important to know
+      // someone tried to test Telegram on a deployment where the env is
+      // missing.
+      await logServerAuditEvent({
+        supabase,
+        profileId: profile.id,
+        action: 'telegram.test_send_skipped',
+        entityType: 'telegram_diagnostics',
+        details: { reason: 'telegram_not_configured' },
+      });
       return { success: false, error: 'Telegram is disabled or bot token is missing.' };
     }
     const monitorChatId = getTelegramMonitorChatId();
     if (!monitorChatId) {
+      await logServerAuditEvent({
+        supabase,
+        profileId: profile.id,
+        action: 'telegram.test_send_skipped',
+        entityType: 'telegram_diagnostics',
+        details: { reason: 'monitor_chat_id_missing' },
+      });
       return { success: false, error: 'TELEGRAM_DEV_MONITOR_CHAT_ID is not configured.' };
     }
     const text = `BMEDIS Telegram test — ${new Date().toLocaleString()}\nThis confirms the bot can reach the monitor chat.`;
     const result = await sendTelegramMessage(monitorChatId, text);
     if (!result.ok) {
+      // R33: capture the failure reason in audit.
+      await logServerAuditEvent({
+        supabase,
+        profileId: profile.id,
+        action: 'telegram.test_send_failed',
+        entityType: 'telegram_diagnostics',
+        details: { error: result.error ?? result.skipReason ?? 'telegram_test_failed' },
+      });
       return {
         success: false,
         error: result.error ?? result.skipReason ?? 'telegram_test_failed',
       };
     }
+    // R33: success audit. provider_message_id is the Telegram API id, not
+    // a user PII identifier — safe to record.
+    await logServerAuditEvent({
+      supabase,
+      profileId: profile.id,
+      action: 'telegram.test_send',
+      entityType: 'telegram_diagnostics',
+      details: {
+        provider_message_id: result.providerMessageId ?? null,
+        monitor_enabled: isTelegramMonitorConfigured(),
+      },
+    });
     return {
       success: true,
       data: {

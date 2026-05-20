@@ -433,6 +433,7 @@ export default async function DeveloperLabPage({ searchParams }: { searchParams:
     qrCoverageStats,
     qrScanStats,
     offlineSyncSummary,
+    validationFixtures,
   ] = await Promise.all([
     supabase.auth.getUser(),
     getDemoRoleIntegrityDiagnostics(supabase),
@@ -441,6 +442,8 @@ export default async function DeveloperLabPage({ searchParams }: { searchParams:
     getQrCoverageStats(),
     getQrScanCoverageStats(),
     getOfflineSyncServerSummary(),
+    // R34: validation dataset readiness probes.
+    (await import('@/services/validation-readiness.service')).getValidationFixtureReadiness(supabase),
   ]);
   const authUser = authUserRes.data.user;
   const demoSummary = demoRoleIntegritySummary(demoRoleDiagnostics.rows);
@@ -467,6 +470,14 @@ export default async function DeveloperLabPage({ searchParams }: { searchParams:
     vercelBranch && vercelBranch !== 'ui_semifinal' ? `Vercel branch is ${vercelBranch}, expected ui_semifinal for this preview.` : null,
     demoSummary.hasFailures ? 'Demo role integrity has failures. This may indicate wrong Supabase project, missing seed, or auth/profile linkage drift.' : null,
     ...notificationRoleDiagnostics.warnings,
+    // R34: surface missing validation fixtures as pre-demo warnings. Each
+    // missing fixture is a workflow the evaluator might try but find empty.
+    ...validationFixtures
+      .filter((f) => f.status === 'missing')
+      .map((f) => `Validation fixture missing: ${f.label}. ${f.fixHint}`),
+    ...validationFixtures
+      .filter((f) => f.status === 'unknown')
+      .map((f) => `Validation fixture probe failed: ${f.label}. Error: ${f.error}`),
   ].filter(Boolean) as string[];
 
   return (

@@ -1,4 +1,10 @@
 import { createClient } from '@/lib/supabase/server';
+import { fetchCurrentTechnicianWorkload } from '@/services/metrics/workload.service';
+import {
+  CRITICAL_ACTION_CATEGORY_WEIGHTS,
+  urgencyBandFor,
+} from '@/utils/analytics/critical-action-bands';
+import { scoreProcurementDelay } from '@/utils/decision-support/procurement-delay';
 import {
   buildCalibrationReason,
   buildCorrectiveReason,
@@ -1043,17 +1049,26 @@ export async function fetchStockBlockers(
   options: { limit?: number | null } = {},
 ): Promise<{ rows: StockBlockerItem[]; total: number }> {
   try {
-    const [{ data, error }, woPartsRes] = await Promise.all([
+    // R19: declared "parts needed" rows are the primary blocker signal —
+    // they represent EXPLICIT operational need that hasn't been fulfilled
+    // yet. The historical parts_used path remains as a secondary signal so
+    // we don't lose visibility on already-consumed-but-still-low-stock parts.
+    const [{ data, error }, woPartsUsedRes, woPartsNeededRes] = await Promise.all([
       supabase
-      .from('spare_parts')
-      .select('id, part_code, name, current_stock, reorder_level')
-      .not('current_stock', 'is', null)
-      .not('reorder_level', 'is', null)
-      .gt('reorder_level', 0)
+        .from('spare_parts')
+        .select('id, part_code, name, current_stock, reorder_level')
+        .not('current_stock', 'is', null)
+        .not('reorder_level', 'is', null)
+        .gt('reorder_level', 0)
         .limit(500),
       supabase
         .from('maintenance_parts_used')
         .select('spare_part_id, maintenance_events(work_order_id, asset_id, work_orders(id, status))')
+        .limit(500),
+      supabase
+        .from('work_order_parts_needed')
+        .select('spare_part_id, quantity_needed, work_orders(id, status, asset_id)')
+        .eq('status', 'open')
         .limit(500),
     ]);
 
@@ -1065,14 +1080,37 @@ export async function fetchStockBlockers(
       return current <= reorder;
     });
 
-    const linkedOpenWorkByPart = new Map<string, { workOrderId: string | null; assetId: string | null }>();
-    for (const row of (woPartsRes.data ?? []) as Array<Record<string, unknown>>) {
+    const linkedOpenWorkByPart = new Map<string, { workOrderId: string | null; assetId: string | null; source: 'declared' | 'consumed' }>();
+
+    // R19: declared needs come first (higher trust signal). Open WO states
+    // for declared needs are open/assigned/in_progress/on_hold.
+    for (const row of (woPartsNeededRes.data ?? []) as Array<Record<string, unknown>>) {
+      const partId = row.spare_part_id as string | null;
+      if (!partId || linkedOpenWorkByPart.has(partId)) continue;
+      const wo = row.work_orders as { id?: string; status?: string; asset_id?: string } | Array<{ id?: string; status?: string; asset_id?: string }> | null;
+      const workOrder = Array.isArray(wo) ? wo[0] : wo;
+      if (workOrder?.status && ['open', 'assigned', 'in_progress', 'on_hold'].includes(workOrder.status)) {
+        linkedOpenWorkByPart.set(partId, {
+          workOrderId: workOrder.id ?? null,
+          assetId: workOrder.asset_id ?? null,
+          source: 'declared',
+        });
+      }
+    }
+
+    // Fallback to historical parts-used linkage (only if no declared need
+    // already covers this part).
+    for (const row of (woPartsUsedRes.data ?? []) as Array<Record<string, unknown>>) {
       const partId = row.spare_part_id as string | null;
       if (!partId || linkedOpenWorkByPart.has(partId)) continue;
       const event = row.maintenance_events as { work_order_id?: string | null; asset_id?: string | null; work_orders?: { id?: string; status?: string } | Array<{ id?: string; status?: string }> | null } | null;
       const workOrder = Array.isArray(event?.work_orders) ? event?.work_orders[0] : event?.work_orders;
       if (workOrder?.status && ['open', 'assigned', 'in_progress', 'on_hold'].includes(workOrder.status)) {
-        linkedOpenWorkByPart.set(partId, { workOrderId: workOrder.id ?? event?.work_order_id ?? null, assetId: event?.asset_id ?? null });
+        linkedOpenWorkByPart.set(partId, {
+          workOrderId: workOrder.id ?? event?.work_order_id ?? null,
+          assetId: event?.asset_id ?? null,
+          source: 'consumed',
+        });
       }
     }
 
@@ -1093,7 +1131,11 @@ export async function fetchStockBlockers(
             ? 90
             : 60 + ((reorderLevel - currentStock) / reorderLevel) * 30;
       const reason = linked
-        ? buildStockBlockerReason({ currentStock, reorderLevel }) + ' Confirmed maintenance blocker for open work.'
+        ? buildStockBlockerReason({ currentStock, reorderLevel }) + (
+            linked.source === 'declared'
+              ? ' Technician has declared this part as NEEDED for an open work order (R19 declared blocker).'
+              : ' Linked via historical maintenance-parts-used record.'
+          )
         : currentStock <= 0
           ? 'Stockout. No linked open work order found, so this is a stockout risk rather than a confirmed repair blocker.'
           : 'Low stock risk. No linked open work order found.';
@@ -1193,9 +1235,11 @@ export async function fetchInstallationTriage(supabase: SupabaseClient): Promise
 
 export async function fetchProcurementTriage(supabase: SupabaseClient): Promise<{ rows: ProcurementTriageItem[]; total: number }> {
   try {
+    // R10: include expected_delivery_date so delay scoring uses the
+    // operational signal instead of creation age.
     const { data, error } = await supabase
       .from('procurement_requests')
-      .select('id, request_number, title, justification, status, priority, created_at')
+      .select('id, request_number, title, justification, status, priority, created_at, expected_delivery_date')
       .not('status', 'in', '("delivered","canceled")')
       .limit(200);
 
@@ -1213,9 +1257,28 @@ export async function fetchProcurementTriage(supabase: SupabaseClient): Promise<
     }
 
     const rows: ProcurementTriageItem[] = ((data ?? []) as Array<Record<string, unknown>>).map((row) => {
-      const createdAt = (row.created_at as string | null) ?? null;
-      const daysDelayed = daysSince(createdAt);
-      const score = 45 + Math.min(45, daysDelayed * 0.5);
+      // R10: canonical scoring via scoreProcurementDelay. Reports, Copilot,
+      // and tests all use the same function — no inline math.
+      const delay = scoreProcurementDelay({
+        expectedDeliveryDate: (row.expected_delivery_date as string | null) ?? null,
+        createdAt: (row.created_at as string | null) ?? null,
+        status: (row.status as string | null) ?? null,
+        priority: (row.priority as 'low' | 'medium' | 'high' | 'critical' | null) ?? null,
+      });
+
+      // Surface the delay verb to operators: how many days past expected,
+      // not how old the request is. When expected delivery is missing, fall
+      // back to age but mark the fallback explicitly in the reason.
+      const daysDelayed = delay.isDelayed
+        ? (delay.daysPastDue ?? 0)
+        : (delay.usedFallback ? (delay.ageDays ?? 0) : 0);
+
+      const baseReason = buildProcurementReason({ status: row.status as string | null, daysDelayed });
+      const reason = delay.usedFallback
+        ? `${baseReason} (no expected delivery date — scored by request age as fallback).`
+        : delay.isDelayed
+          ? `${baseReason} Expected delivery passed ${daysDelayed} day${daysDelayed === 1 ? '' : 's'} ago.`
+          : `${baseReason} Expected delivery still in the future.`;
 
       return {
         id: row.id as string,
@@ -1224,8 +1287,8 @@ export async function fetchProcurementTriage(supabase: SupabaseClient): Promise<
         status: (row.status as string | undefined) ?? 'unknown',
         priority: (row.priority as string | null) ?? null,
         daysDelayed,
-        score,
-        reason: buildProcurementReason({ status: row.status as string | null, daysDelayed }),
+        score: delay.score,
+        reason,
         detailHref: procurementDetail(row.id as string),
         updateHref: procurementDetail(row.id as string, 'status'),
         escalateHref: procurementDetail(row.id as string, 'escalate'),
@@ -1284,122 +1347,13 @@ export async function fetchTrainingTriage(supabase: SupabaseClient): Promise<{ r
   }
 }
 
+// R29: this is now a thin wrapper around the canonical metric service in
+// src/services/metrics/workload.service.ts. Command Center, Developer Lab,
+// reports, and Copilot tools all import the same fetcher so workload numbers
+// never diverge across surfaces. Behavior preserved: returns [] on error.
 export async function fetchTechnicianWorkload(supabase: SupabaseClient): Promise<TechnicianWorkloadItem[]> {
   try {
-    const [techniciansRes, woRes] = await Promise.all([
-      supabase
-        .from('profiles')
-        .select('id, full_name, email, departments(name), user_roles!inner(roles!inner(name))')
-        .eq('is_active', true)
-        .eq('user_roles.roles.name', 'technician')
-        .order('full_name', { ascending: true })
-        .limit(500),
-      supabase
-        .from('work_orders')
-        .select('id, status, priority, estimated_hours, assigned_to, profiles(full_name)')
-        .in('status', ['open', 'assigned', 'in_progress', 'on_hold'])
-        .not('assigned_to', 'is', null)
-        .limit(500),
-    ]);
-
-    type WORow = {
-      id: string;
-      status: string;
-      priority: string | null;
-      estimated_hours: number | null;
-      assigned_to: string;
-      profiles: { full_name?: string } | null;
-    };
-
-    type TechnicianRow = {
-      id: string;
-      full_name: string | null;
-      email: string | null;
-      departments: { name?: string } | Array<{ name?: string }> | null;
-    };
-
-    const woRows = (woRes.data ?? []) as WORow[];
-
-    const workloadMap = new Map<string, {
-      name: string;
-      email: string | null;
-      departmentName: string | null;
-      openAssignments: number;
-      inProgress: number;
-      overdueTasks: number;
-      criticalTasks: number;
-      estimatedHours: number;
-    }>();
-
-    if (!techniciansRes.error) {
-      for (const tech of (techniciansRes.data ?? []) as TechnicianRow[]) {
-        const dept = Array.isArray(tech.departments)
-          ? tech.departments[0]?.name ?? null
-          : tech.departments?.name ?? null;
-        workloadMap.set(tech.id, {
-          name: tech.full_name ?? 'Unnamed Technician',
-          email: tech.email,
-          departmentName: dept,
-          openAssignments: 0,
-          inProgress: 0,
-          overdueTasks: 0,
-          criticalTasks: 0,
-          estimatedHours: 0,
-        });
-      }
-    }
-
-    for (const wo of woRows) {
-      const profileId = wo.assigned_to;
-      const name = wo.profiles?.full_name ?? 'Unknown Technician';
-
-      if (!workloadMap.has(profileId)) {
-        workloadMap.set(profileId, {
-          name,
-          email: null,
-          departmentName: null,
-          openAssignments: 0,
-          inProgress: 0,
-          overdueTasks: 0,
-          criticalTasks: 0,
-          estimatedHours: 0,
-        });
-      }
-
-      const entry = workloadMap.get(profileId)!;
-      entry.openAssignments++;
-
-      if (wo.status === 'in_progress') entry.inProgress++;
-      if (wo.priority === 'high' || wo.priority === 'critical') entry.overdueTasks++;
-      if (wo.priority === 'critical') entry.criticalTasks++;
-      if (wo.estimated_hours) entry.estimatedHours += wo.estimated_hours;
-    }
-
-    const items: TechnicianWorkloadItem[] = Array.from(workloadMap.entries()).map(([profileId, data]) => {
-      let status: 'available' | 'busy' | 'overloaded';
-      if (data.openAssignments >= 6 || data.criticalTasks > 0) {
-        status = 'overloaded';
-      } else if (data.openAssignments >= 3) {
-        status = 'busy';
-      } else {
-        status = 'available';
-      }
-
-      return {
-        profileId,
-        name: data.name,
-        email: data.email,
-        departmentName: data.departmentName,
-        openAssignments: data.openAssignments,
-        inProgress: data.inProgress,
-        overdueTasks: data.overdueTasks,
-        criticalTasks: data.criticalTasks,
-        estimatedHours: data.estimatedHours,
-        status,
-      };
-    });
-
-    return items.sort((a, b) => b.openAssignments - a.openAssignments);
+    return await fetchCurrentTechnicianWorkload(supabase);
   } catch (error) {
     warnCommandData('fetchTechnicianWorkload failed', error);
     return [];
@@ -1431,22 +1385,11 @@ export function buildCriticalActions(params: {
     training,
   } = params;
 
-  const CATEGORY_WEIGHTS = {
-    corrective: 100,
-    needs_request: 90,
-    calibration: 85,
-    pm: 75,
-    stock: 70,
-    risk_watch: 65,
-    installation: 60,
-    replacement: 55,
-    procurement: 45,
-    training: 35,
-  };
-
+  // R30: centralized in src/utils/analytics/critical-action-bands.ts so
+  // reports, Copilot tools, score-registry, and tests share the same numbers.
+  const CATEGORY_WEIGHTS = CRITICAL_ACTION_CATEGORY_WEIGHTS;
   const actions: CriticalActionItem[] = [];
-  const urgencyFor = (score: number): CriticalActionItem['urgency'] =>
-    score >= 180 ? 'critical' : score >= 150 ? 'high' : score >= 100 ? 'medium' : 'low';
+  const urgencyFor = urgencyBandFor;
 
   for (const item of corrective.slice(0, 3)) {
     const score = CATEGORY_WEIGHTS.corrective + item.score;

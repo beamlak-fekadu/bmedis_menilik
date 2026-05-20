@@ -48,6 +48,37 @@ export default async function QrLandingRoute({ params }: { params: RouteParams }
 
   if (resolution.status === 'revoked') {
     const { data: { user } } = await supabase.auth.getUser();
+
+    // R16: a revoked QR scan is a security/label-integrity event. Emit to
+    // Developer/Admin/BME Head so they see the attempted scan. The
+    // notification engine handles dedupe by (recipient + event + source_id)
+    // with a 10-minute cooldown, so a refreshing scanner does not spam.
+    // Source_id is the QR token itself — we do NOT include asset_id in
+    // the payload because the public-facing branch must not leak which
+    // asset the token belonged to. The masked token is enough for an
+    // admin to look up the scan in audit / equipment_qr_scans.
+    try {
+      const { emitNotificationEvent } = await import('@/services/notifications/notification-engine');
+      const maskedToken = token.length > 8
+        ? `${token.slice(0, 4)}…${token.slice(-4)}`
+        : token;
+      await emitNotificationEvent({
+        event_type: 'qr.revoked_scanned',
+        source_table: 'equipment_qr_scans',
+        source_id: token, // dedupe key — same revoked token from same scanner only fires once per window
+        priority: 'high',
+        payload: {
+          masked_token: maskedToken,
+          replaced_at: resolution.replacedAt ?? null,
+          scanner_profile_id: user?.id ?? null,
+          // Honest "we don't know which asset" — UI must not pretend otherwise.
+          asset_id: null,
+        },
+      });
+    } catch (e) {
+      console.error('[notifications] qr.revoked_scanned emit failed:', e);
+    }
+
     return <QrInvalidState variant="revoked" authenticated={!!user} />;
   }
 
@@ -73,9 +104,11 @@ export default async function QrLandingRoute({ params }: { params: RouteParams }
     client: supabase as never,
   });
 
-  // Fire-and-forget scan log. Never block rendering, never crash on failure.
-  // Refreshing the page intentionally writes another row in Phase 3 — Phase 6
-  // will introduce dedup/throttling once the scan log UI is built.
+  // R31: fire-and-forget scan log. Never block rendering, never crash on
+  // failure. logQrScan() (Phase 6 service) DOES dedup open_qr_landing
+  // page-render scans for the same asset/profile within
+  // QR_SCAN_DEDUP_WINDOW_MINUTES (default 5 min). The dedup is best-effort;
+  // a failed dedup probe still writes the scan rather than blocking it.
   try {
     const hdrs = await headers();
     const userAgent = hdrs.get('user-agent');

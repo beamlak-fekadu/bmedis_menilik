@@ -178,27 +178,43 @@ export async function getScoreSnapshotTimestamps(supabase: SupabaseServerClient)
 }
 
 export async function getNotificationRoleDependencyDiagnostics(supabase: SupabaseServerClient): Promise<{
-  roleRecipientCounts: Array<{ role: string; count: number }>;
+  roleRecipientCounts: Array<{ role: string; count: number; telegramConnected: number }>;
   telegramConnectionsWithMissingProfile: number | null;
   warnings: string[];
 }> {
   const expectedRoles = Array.from(new Set(EXPECTED_DEMO_USERS.map((user) => user.expectedRole)));
+
+  // R14: count Telegram connections per role by joining telegram_connections
+  // → profiles → user_roles → roles. A role with N profiles but 0 telegram
+  // connections is functional in-app but won't get any Telegram delivery —
+  // exactly the kind of silent gap R14 was filed to surface.
   const roleRecipientCounts = await Promise.all(expectedRoles.map(async (role) => {
-    const { count, error } = await supabase
-      .from('profiles')
-      .select('id, user_roles!inner(roles!inner(name))', { count: 'exact', head: true })
-      .eq('is_active', true)
-      .eq('user_roles.roles.name', role);
-    return { role, count: error ? 0 : count ?? 0 };
+    const [profilesRes, telegramRes] = await Promise.all([
+      supabase
+        .from('profiles')
+        .select('id, user_roles!inner(roles!inner(name))', { count: 'exact', head: true })
+        .eq('is_active', true)
+        .eq('user_roles.roles.name', role),
+      supabase
+        .from('telegram_connections')
+        .select('id, profiles!inner(id, is_active, user_roles!inner(roles!inner(name)))', { count: 'exact', head: true })
+        .eq('profiles.is_active', true)
+        .eq('profiles.user_roles.roles.name', role),
+    ]);
+    return {
+      role,
+      count: profilesRes.error ? 0 : profilesRes.count ?? 0,
+      telegramConnected: telegramRes.error ? 0 : telegramRes.count ?? 0,
+    };
   }));
 
   let telegramConnectionsWithMissingProfile: number | null = null;
-  const telegramRes = await supabase
+  const orphanRes = await supabase
     .from('telegram_connections')
     .select('id, profile_id, profiles(id)')
     .limit(1000);
-  if (!telegramRes.error) {
-    telegramConnectionsWithMissingProfile = ((telegramRes.data ?? []) as Array<Record<string, unknown>>)
+  if (!orphanRes.error) {
+    telegramConnectionsWithMissingProfile = ((orphanRes.data ?? []) as Array<Record<string, unknown>>)
       .filter((row) => {
         const profile = row.profiles;
         if (Array.isArray(profile)) return profile.length === 0;
@@ -209,6 +225,13 @@ export async function getNotificationRoleDependencyDiagnostics(supabase: Supabas
   const warnings: string[] = [];
   for (const row of roleRecipientCounts) {
     if (row.count === 0) warnings.push(`Notification recipient resolver found zero active profiles for role ${row.role}.`);
+    if (row.count > 0 && row.telegramConnected === 0) {
+      // R14: explicit silent-gap warning. A role that has active profiles
+      // but zero Telegram connections will get in-app notifications but
+      // never any Telegram delivery — operationally fine, but the gap
+      // should be visible to whoever is reviewing pre-validation readiness.
+      warnings.push(`Role ${row.role} has ${row.count} active profile(s) but zero Telegram connection(s). Telegram-eligible notifications for this role will skip with no_chat_id.`);
+    }
   }
   if (telegramConnectionsWithMissingProfile && telegramConnectionsWithMissingProfile > 0) {
     warnings.push(`${telegramConnectionsWithMissingProfile} Telegram connection(s) point to a missing profile.`);

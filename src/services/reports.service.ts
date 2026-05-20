@@ -1,3 +1,15 @@
+// R28 (Phase 6): reports.service.ts uses the BROWSER Supabase client. RLS
+// is the enforcement layer for who can read what. Two privileged reports
+// — `/reports/offline-sync-evidence` and the `/audit` page — already have
+// dedicated server-rendered routes using `@/lib/supabase/server` +
+// `requireRole`; do NOT route those through this file. Other admin-only
+// reports (QR scan evidence, QR coverage, audit-style data inside
+// `/reports/[type]`) are gated at the UI layer via reportConfigs.adminOnly
+// in `src/app/(dashboard)/reports/page.tsx` and at the DB layer via RLS.
+// A future pass MAY centralize all admin reports under server actions,
+// but doing so piecemeal would create a confusing two-pattern reports
+// service. Keep the entire file on the browser client OR migrate it all.
+
 import { createClient } from '@/lib/supabase/client';
 
 export interface ReportFilters {

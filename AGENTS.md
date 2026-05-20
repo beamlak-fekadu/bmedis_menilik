@@ -1,7 +1,7 @@
 # AGENTS.md — BMEDIS Codebase Reference for AI Agents
 
-Last updated: 2026-05-18 (System rebrand: BMEDIS — Biomedical Equipment Management and Decision Intelligence System)
-Branch: integration
+Last updated: 2026-05-19 (Phase 5 R1–R35: R1+R20 runNotificationRuleCheck rewritten with per-scan diagnostics + correct view column names + new calibration_overdue scan; R6 calibration status_changed + failed_or_adjusted emissions; R9 stock issue/receipt emit threshold-crossing events from RPC flags + spare_part.restocked event + migration 00065 crossed_up; R16 /qr/a/[token] revoked branch emits qr.revoked_scanned with no asset leak; R14 per-role Telegram-connection count + silent-gap warnings.)
+Branch: system_fix
 Supabase project ID: fgqyszbxzpmqzpqvdivx
 
 This file is the canonical technical reference for any AI agent working in this repo.
@@ -140,7 +140,186 @@ supabase.rpc('recompute_all_equipment_analytics')
 
 // Refresh decision support snapshots
 supabase.rpc('refresh_decision_support_snapshots')
+
+// R5: equipment condition update (SECURITY DEFINER, validates caller role
+// against the equipment.condition.update capability allowlist at DB layer)
+supabase.rpc('update_equipment_condition_secure', {
+  p_asset_id: assetId, p_condition: 'needs_repair'
+})
+
+// R4: caller's department_id (used inside RLS policies; rarely needed app-side)
+supabase.rpc('auth_profile_department_id')
 ```
+
+### Phase 1 R1–R35 rules (2026-05-19, branch system_fix)
+- **Capability gate, not role allowlist** — new server actions use
+  `getActionContextForCapability(cap)` from `src/actions/_shared.ts`. The
+  legacy `getActionContext(roles)` is kept only for in-flight migrations;
+  new code must declare a Capability from `src/lib/rbac.ts`.
+- **Server-side route guards** — admin-only routes use `requireRole` or
+  `requireCapability` from `src/lib/auth/helpers.ts`. The dashboard client
+  shell is friendly fallback, not security. `/settings` and `/reports/[type]`
+  have thin server `page.tsx` wrappers that gate before rendering the
+  client component (renamed to `*Client.tsx`).
+- **Department scope** — every `ActionProfile` carries a
+  `departmentScope: DepartmentScope` field. Mutations on dept-scoped tables
+  (equipment_assets, maintenance_requests, work_orders, pm_*, calibration_*,
+  analytics) must branch on `profile.departmentScope.kind === 'denied'`
+  before writing.
+- **No silent condition-sync** — `.catch(() => undefined)` around
+  `updateEquipmentConditionAction` is forbidden. Capture the return value,
+  audit the failure (`*.condition_sync_failed`), and surface a warning toast.
+- **RLS dept-scope policies** — migration 00060 adds dual `select_*` /
+  `select_*_dept_scope` policy pairs on the highest-risk tables. The
+  helper functions are `auth_profile_department_id()` and
+  `is_dept_scoped_role()`. Future tables with department_id should follow
+  the same pair pattern.
+
+### Phase 2 R1–R35 rules (2026-05-19, branch system_fix)
+- **Per-transition work-order capability** — `updateWorkOrderAction` picks
+  the capability from
+  `requiredCapabilityForWorkOrderTransition(requestedStatus)` in
+  `src/utils/maintenance/work-order-transitions.ts`. Do NOT use
+  `getActionContextForAnyCapability(['work_order.start',
+  'work_order.complete', 'work_order.add_event'])` for new transitions —
+  pick the exact capability for the status you're flipping to. New
+  transitions must extend the helper.
+- **R2 completion-evidence guard** — completing a work order REQUIRES
+  `completion_outcome` AND `final_equipment_condition` in the payload.
+  Optional reliability evidence fields are `repair_duration_hours`,
+  `downtime_start`, `downtime_end`, `failure_date`. When supplied, the
+  action auto-writes a `maintenance_events` row; trigger
+  `sync_downtime_logs_from_event` (migration 00061) derives the
+  `downtime_logs` row. Corrective work completed without ANY reliability
+  field returns a `reliability_evidence_warning` and audits
+  `work_order.completed_without_reliability_evidence`.
+- **R17 request↔WO sync** — `createWorkOrderAction` flips the originating
+  request's status to `assigned`/`approved` when `request_id` is set.
+  Terminal request statuses (completed/rejected/canceled) are not touched.
+  Failure surfaces `request_status_sync_warning` on the action result.
+- **R19 declared parts-needed** — the canonical "WO is blocked on this
+  part" signal is `work_order_parts_needed` (status=open), NOT
+  `maintenance_parts_used`. fetchStockBlockers reads needs first, falls
+  back to used. New WO mutations that imply a parts need should call
+  `declareWorkOrderPartNeededAction`. Store users fulfilling stock issues
+  may call `updateWorkOrderPartNeededStatusAction(id, 'fulfilled')`.
+- **Downtime evidence source-of-truth** — `maintenance_events.downtime_start`
+  + `downtime_end` is the source of truth; `downtime_logs` is a derived
+  table maintained by the trigger from migration 00061. Do NOT write to
+  `downtime_logs` directly from new code; write the event and let the
+  trigger materialize.
+
+### Phase 3 R1–R35 rules (2026-05-19, branch system_fix)
+- **Canonical technician workload (R29)** — read current workload from
+  `src/services/metrics/workload.service.ts::fetchCurrentTechnicianWorkload`.
+  Do NOT inline `work_orders` joins for workload anywhere else. Status
+  classification uses `classifyWorkloadStatus({openAssignments,
+  criticalTasks})` with thresholds from `WORKLOAD_STATUS_THRESHOLDS`. The
+  legacy `workload_capacity_snapshots` table is historical-trend only —
+  do NOT read it for current-workload UIs.
+- **Critical-action bands (R30)** — base weights and urgency bands live in
+  `src/utils/analytics/critical-action-bands.ts`. Use the exported
+  `CRITICAL_ACTION_CATEGORY_WEIGHTS` and `urgencyBandFor()` — do NOT
+  introduce a parallel category-weight dictionary. The order is
+  documented and locked by tests: corrective > needs_request >
+  calibration > pm > stock > risk_watch > installation > replacement >
+  procurement > training. Bands: ≥180 critical, ≥150 high, ≥100 medium.
+- **R32 replacement → lifecycle linkage** — disposal_requests,
+  procurement_requests, and specification_requests carry an optional
+  `source_replacement_score_id` FK to `replacement_priority_scores(id)`
+  (migration 00063). When launching disposal/procurement from
+  `/command/drilldown/replacement/[assetId]`, forward the score row id
+  (filter to NULL `weights_profile_id` — the canonical computed rows).
+- **Refresh observability (R3+R25)** — two surfaces exist:
+  (a) `refreshDecisionSupportSnapshotsAction` in
+  `src/actions/developer-lab.actions.ts` is the unscoped multi-step
+  pipeline that Developer Lab UI consumes. (b)
+  `refreshDecisionSupportScopedAction` in
+  `src/actions/decision-support.actions.ts` is the narrow per-asset /
+  per-metric path returning structured `RefreshResult[]` (metric / table
+  / status / before / after / error). Both audit-log.
+- **Canonical KPI services (R11+R28)** — high-divergence-risk KPIs (equipment
+  condition, PM compliance, calibration compliance, work orders,
+  maintenance events) live in
+  `src/services/metrics/canonical-metrics.ts`. Dashboards and reports
+  consume them via the same pure compute functions. Do NOT add new
+  inline KPI math in `buildReportKPIs` — extend the service.
+- **Reports server-side migration deferred** —
+  `src/services/reports.service.ts` still uses the browser Supabase
+  client. This is intentional for user-scoped reports; privileged
+  reports (audit, QR scan evidence, offline evidence) are already
+  server-rendered. A future pass can centralize the rest. Do not move
+  `reports.service.ts` to server client in a piecemeal way.
+
+### Phase 4 R1–R35 rules (2026-05-19, branch system_fix)
+- **Procurement delay scoring (R10)** — call `scoreProcurementDelay` from
+  `src/utils/decision-support/procurement-delay.ts`. The signal is
+  `expected_delivery_date` vs `now`, with priority boost and an explicit
+  `usedFallback` flag when the field is missing. Do NOT score procurement
+  delay anywhere else; do NOT score by `created_at` age as the primary
+  signal. Terminal statuses (delivered/canceled) score 0.
+- **QR auto-generation on equipment create (R7)** — every new asset MUST
+  get a QR token via `ensureAssetQrToken(assetId, supabase)` inside
+  `createEquipmentAction`. Token-gen failure does NOT roll back the asset
+  insert — it returns `qr_token_generation_warning` on the action result.
+  Audit events: `qr.token.generated.auto` (success),
+  `qr.token.auto_generation_failed` (failure),
+  `qr.token.already_present_on_create` (idempotent re-create).
+- **Transactional stock RPCs (R8)** — write stock movements via
+  `record_stock_receipt` / `record_stock_issue` (migration 00064), NEVER
+  via a two-step "insert movement + update spare_parts.current_stock"
+  pattern from the app. The RPCs use `SELECT … FOR UPDATE` row locks so
+  concurrent issues on the same part serialize. Sufficient-stock check
+  happens inside the lock. RPCs return `crossed_zero`/`crossed_reorder`
+  booleans for one-shot notification emission.
+- **Procurement → stock receipt handoff (R21)** — flipping a procurement
+  request to `delivered` does NOT auto-update `spare_parts.current_stock`.
+  The action emits BOTH `procurement.delivered_pending_receipt` (the new
+  Store-User-actionable signal, deep-links to /spare-parts receipt modal
+  with `procurement_id` carried through) AND `procurement.delivered`
+  (legacy event, preserved for downstream consumers). The resulting
+  stock_receipts row carries `procurement_id` (FK in 00064) so future
+  queries can answer "what came of procurement X". Offline replay of
+  `stock_receipt.draft` accepts the linkage too — what used to be a hard
+  manual-review conflict is now a clean replay path.
+
+### Phase 5 R1–R35 rules (2026-05-19, branch system_fix)
+- **Scheduled scanner column names (R1+R20)** — `runNotificationRuleCheck`
+  reads `v_overdue_pm.id`, `v_open_work_orders.id`,
+  `spare_parts.reorder_level`, `v_calibration_due.result`. Do NOT
+  reintroduce `schedule_id`, `work_order_id`, or `minimum_stock_level`
+  — they are stale aliases that the views/tables no longer expose. The
+  scanner returns `RuleCheckOutcome` with a `scans: RuleScanResult[]`
+  array; never collapse this to a single boolean — sub-scan failures
+  must remain visible per scan.
+- **Calibration emit-on-action (R6)** —
+  `updateCalibrationRequestStatusAction` MUST emit
+  `calibration.request_status_changed`;
+  `createCalibrationRecordAction` MUST emit
+  `calibration.failed_or_adjusted` when `result IN ('fail','adjusted')`.
+  These rules existed but were unfired before R6. A passing calibration
+  is intentionally NOT emitted (no spam).
+- **Stock direct emits (R9)** — `createStockIssueAction` emits
+  `spare_part.stockout` / `spare_part.low_stock` from the RPC's
+  `crossed_zero` / `crossed_reorder` booleans (NOT from a separate
+  current_stock re-read). `createStockReceiptAction` emits
+  `spare_part.restocked` from `crossed_up` (migration 00065). Do NOT
+  emit threshold events from outside the action — concurrent races
+  would re-introduce the corruption R8 just fixed.
+- **Revoked QR scan emit (R16)** — `/qr/a/[token]` revoked branch emits
+  `qr.revoked_scanned` with `asset_id: null` in the payload.
+  The masked token + scanner profile id (when authenticated) are the
+  only identifying fields. Do NOT add asset details to the payload —
+  the public-facing branch must never leak which asset the revoked
+  token belonged to. Use the equipment_qr_scans / audit_logs trail
+  for admin investigation instead.
+- **Telegram readiness diagnostics (R14)** —
+  `getNotificationRoleDependencyDiagnostics` returns
+  `{role, count, telegramConnected}` per role. A role with active
+  profiles but zero `telegram_connections` produces a warning that
+  surfaces in Developer Lab's environment-warnings list. The warning
+  message says exactly what will happen: "Telegram-eligible
+  notifications for this role will skip with no_chat_id."
 
 ---
 

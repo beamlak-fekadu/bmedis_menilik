@@ -2,7 +2,8 @@
 
 import { z } from 'zod';
 import { recomputeAssetAnalytics } from './analytics.actions';
-import { getActionContext, getActionContextForCapability, logServerAuditEvent, revalidateMany, actionError, nullIfEmpty, type ActionResult } from './_shared';
+import { getActionContextForCapability, logServerAuditEvent, revalidateMany, actionError, nullIfEmpty, type ActionResult } from './_shared';
+import { ensureAssetQrToken } from '@/services/qr.service';
 
 const equipmentSchema = z.object({
   asset_code: z.string().trim().min(1),
@@ -76,9 +77,48 @@ export async function createEquipmentAction(payload: Record<string, unknown>): P
       newValues: result.data as Record<string, unknown>,
     });
     const assetId = (result.data as { id?: string }).id;
+
+    // R7: auto-generate the QR token on creation so newly registered
+    // equipment has an identity immediately and QR coverage stays tight.
+    // Printing/attaching the physical label remains an explicit admin step
+    // (qr_label_status='generated'). Token-gen failure does not roll back
+    // the asset insert — it's surfaced as a warning so the user can retry
+    // via the Equipment Detail QR Identity panel.
+    let qrTokenGenerationWarning: string | null = null;
+    if (assetId) {
+      try {
+        const ensure = await ensureAssetQrToken(assetId, supabase);
+        await logServerAuditEvent({
+          supabase,
+          profileId: profile.id,
+          action: ensure.created
+            ? 'qr.token.generated.auto'
+            : 'qr.token.already_present_on_create',
+          entityType: 'equipment_assets',
+          entityId: assetId,
+          details: { source: 'createEquipmentAction', token_was_created: ensure.created },
+        });
+      } catch (qrErr) {
+        qrTokenGenerationWarning = qrErr instanceof Error ? qrErr.message : 'QR token generation failed';
+        await logServerAuditEvent({
+          supabase,
+          profileId: profile.id,
+          action: 'qr.token.auto_generation_failed',
+          entityType: 'equipment_assets',
+          entityId: assetId,
+          details: { source: 'createEquipmentAction', error: qrTokenGenerationWarning },
+        });
+      }
+    }
+
     if (assetId) await recomputeAssetAnalytics(assetId).catch(() => undefined);
     revalidateMany(equipmentRevalidatePaths);
-    return { success: true, data: result.data };
+    return {
+      success: true,
+      data: qrTokenGenerationWarning
+        ? { ...(result.data as Record<string, unknown>), qr_token_generation_warning: qrTokenGenerationWarning }
+        : result.data,
+    };
   } catch (err) {
     return actionError(err, 'Failed to create equipment');
   }
@@ -115,17 +155,44 @@ export async function updateEquipmentConditionAction(
   condition: 'functional' | 'needs_repair' | 'non_functional' | 'under_maintenance' | 'decommissioned',
 ): Promise<ActionResult> {
   try {
-    const { supabase, profile, error } = await getActionContext(['admin', 'bme_head', 'technician', 'department_head', 'department_user']);
+    // R5: capability-based gate replaces the legacy role allowlist. The
+    // capability matrix grants `equipment.condition.update` to bme_head/admin/
+    // technician/department_head/department_user — store_user and viewer are
+    // intentionally excluded.
+    const { supabase, profile, error } = await getActionContextForCapability('equipment.condition.update');
     if (error || !profile) return { success: false, error };
     const parsedCondition = z.enum(['functional', 'needs_repair', 'non_functional', 'under_maintenance', 'decommissioned']).parse(condition);
-    const oldRow = await supabase.from('equipment_assets').select('condition').eq('id', assetId).maybeSingle();
-    const result = await supabase.from('equipment_assets').update({ condition: parsedCondition } as never).eq('id', assetId).select('id').single();
-    if (result.error) return { success: false, error: result.error.message };
+
+    // R5: route through the SECURITY DEFINER RPC introduced in migration 00059.
+    // The RPC re-validates the caller's role at the DB layer (closing the
+    // app/DB authorization gap from migration 00012) and writes its own audit
+    // row. On RPC failure we audit and surface the error rather than silently
+    // swallowing it.
+    const { data: rpcData, error: rpcError } = await supabase.rpc(
+      'update_equipment_condition_secure',
+      { p_asset_id: assetId, p_condition: parsedCondition },
+    );
+
+    if (rpcError) {
+      await logServerAuditEvent({
+        supabase,
+        profileId: profile.id,
+        action: 'equipment.condition_update_failed',
+        entityType: 'equipment_assets',
+        entityId: assetId,
+        newValues: { condition: parsedCondition },
+        details: { error: rpcError.message },
+      });
+      return { success: false, error: rpcError.message };
+    }
+
     await logServerAuditEvent({
-      supabase, profileId: profile.id, action: 'equipment.condition_update',
-      entityType: 'equipment_assets', entityId: assetId,
-      oldValues: oldRow.data as Record<string, unknown> | null,
-      newValues: { condition: parsedCondition },
+      supabase,
+      profileId: profile.id,
+      action: 'equipment.condition_update',
+      entityType: 'equipment_assets',
+      entityId: assetId,
+      newValues: { condition: parsedCondition, rpc_result: rpcData },
     });
     await recomputeAssetAnalytics(assetId).catch(() => undefined);
     revalidateMany([...equipmentRevalidatePaths, `/equipment/${assetId}`]);
