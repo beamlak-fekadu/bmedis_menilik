@@ -198,7 +198,7 @@ export default function NotificationBell() {
           role="dialog"
           aria-modal="false"
           aria-label="Notifications drawer"
-          className="panel-surface-solid fixed left-2 right-2 top-[4.25rem] z-[75] max-h-[calc(100dvh-5rem)] overflow-hidden rounded-xl border border-[var(--border-subtle)] shadow-xl sm:absolute sm:left-auto sm:right-0 sm:top-11 sm:w-[min(92vw,380px)]"
+          className="panel-surface-solid fixed left-2 right-2 top-[4.25rem] z-[75] max-h-[calc(100dvh-5rem)] overflow-hidden rounded-xl border border-[var(--border-subtle)] shadow-xl sm:absolute sm:left-auto sm:right-0 sm:top-11 sm:w-[380px] sm:min-w-[320px]"
           style={{ maxWidth: 'none' }}
         >
           <div className="flex items-start justify-between gap-3 border-b border-[var(--border-subtle)] px-4 py-3">
