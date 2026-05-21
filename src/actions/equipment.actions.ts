@@ -2,7 +2,7 @@
 
 import { z } from 'zod';
 import { recomputeAssetAnalytics } from './analytics.actions';
-import { getActionContextForCapability, logServerAuditEvent, revalidateMany, actionError, nullIfEmpty, type ActionResult } from './_shared';
+import { getActionContextForCapability, logServerAuditEvent, revalidateMany, actionError, nullIfEmpty, interpretMissingMutationResult, type ActionResult } from './_shared';
 import { ensureAssetQrToken } from '@/services/qr.service';
 
 const equipmentSchema = z.object({
@@ -111,7 +111,21 @@ export async function createEquipmentAction(payload: Record<string, unknown>): P
       }
     }
 
-    if (assetId) await recomputeAssetAnalytics(assetId).catch(() => undefined);
+    // ANALYTICS-01: surface refresh failure (was silently swallowed).
+    if (assetId) {
+      try {
+        await recomputeAssetAnalytics(assetId);
+      } catch (refreshErr) {
+        const message = refreshErr instanceof Error ? refreshErr.message : 'unknown';
+        console.warn(`[analytics-01] equipment analytics refresh failed for ${assetId}: ${message}`);
+        await logServerAuditEvent({
+          supabase, profileId: profile.id,
+          action: 'equipment.analytics_refresh_failed',
+          entityType: 'equipment_assets', entityId: assetId,
+          details: { error: message, source: 'create' },
+        });
+      }
+    }
     revalidateMany(equipmentRevalidatePaths);
     return {
       success: true,
@@ -130,8 +144,16 @@ export async function updateEquipmentAction(id: string, payload: Record<string, 
     if (error || !profile) return { success: false, error };
     const data = normalizeEquipment(payload);
     const oldRow = await supabase.from('equipment_assets').select('*').eq('id', id).maybeSingle();
-    const result = await supabase.from('equipment_assets').update(data as never).eq('id', id).select('*').single();
+    // SHAPE-01: maybeSingle handles RLS-filtered rows cleanly.
+    const result = await supabase.from('equipment_assets').update(data as never).eq('id', id).select('*').maybeSingle();
     if (result.error) return { success: false, error: result.error.message };
+    if (!result.data) {
+      return interpretMissingMutationResult({
+        entity: 'equipment asset',
+        entityId: id,
+        profileId: profile.id,
+      });
+    }
 
     await logServerAuditEvent({
       supabase,
@@ -142,9 +164,27 @@ export async function updateEquipmentAction(id: string, payload: Record<string, 
       oldValues: oldRow.data as Record<string, unknown> | null,
       newValues: result.data as Record<string, unknown>,
     });
-    await recomputeAssetAnalytics(id).catch(() => undefined);
+    // ANALYTICS-01: surface refresh failure (was silently swallowed).
+    let updateAnalyticsWarning: string | null = null;
+    try {
+      await recomputeAssetAnalytics(id);
+    } catch (refreshErr) {
+      const message = refreshErr instanceof Error ? refreshErr.message : 'unknown';
+      updateAnalyticsWarning = `Equipment analytics refresh failed: ${message}. Metrics may be stale until the next scheduled refresh.`;
+      await logServerAuditEvent({
+        supabase, profileId: profile.id,
+        action: 'equipment.analytics_refresh_failed',
+        entityType: 'equipment_assets', entityId: id,
+        details: { error: message, source: 'update' },
+      });
+    }
     revalidateMany([...equipmentRevalidatePaths, `/equipment/${id}`, `/inventory/${id}`]);
-    return { success: true, data: result.data };
+    return {
+      success: true,
+      data: updateAnalyticsWarning
+        ? { ...(result.data as Record<string, unknown>), analytics_refresh_warning: updateAnalyticsWarning }
+        : result.data,
+    };
   } catch (err) {
     return actionError(err, 'Failed to update equipment');
   }
@@ -194,7 +234,19 @@ export async function updateEquipmentConditionAction(
       entityId: assetId,
       newValues: { condition: parsedCondition, rpc_result: rpcData },
     });
-    await recomputeAssetAnalytics(assetId).catch(() => undefined);
+    // ANALYTICS-01: refresh is best-effort but no longer silently swallowed.
+    try {
+      await recomputeAssetAnalytics(assetId);
+    } catch (refreshErr) {
+      const message = refreshErr instanceof Error ? refreshErr.message : 'unknown';
+      console.warn(`[analytics-01] equipment analytics refresh failed for ${assetId}: ${message}`);
+      await logServerAuditEvent({
+        supabase, profileId: profile.id,
+        action: 'equipment.analytics_refresh_failed',
+        entityType: 'equipment_assets', entityId: assetId,
+        details: { error: message },
+      });
+    }
     revalidateMany([...equipmentRevalidatePaths, `/equipment/${assetId}`]);
     return { success: true };
   } catch (err) {

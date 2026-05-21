@@ -54,30 +54,10 @@ export async function getStockReceipts(partId: string) {
 }
 
 export async function createStockReceipt(data: Omit<StockReceipt, 'id' | 'created_at'>) {
-  const supabase = createClient();
-
-  const { data: receipt, error: receiptError } = await supabase
-    .from('stock_receipts')
-    .insert(data)
-    .select('id, part_id, quantity, received_by, received_date, supplier_id, invoice_ref, unit_cost, notes, created_at')
-    .single();
-
-  if (receiptError) return { data: null, error: receiptError };
-
-  const { data: part } = await supabase
-    .from('spare_parts')
-    .select('current_stock')
-    .eq('id', data.part_id)
-    .single();
-
-  if (part) {
-    await supabase
-      .from('spare_parts')
-      .update({ current_stock: part.current_stock + data.quantity })
-      .eq('id', data.part_id);
-  }
-
-  return { data: receipt, error: null };
+  void data;
+  throw new Error(
+    'Deprecated unsafe stock mutation path: use createStockReceiptAction(), which calls the record_stock_receipt RPC under a row lock.'
+  );
 }
 
 export async function getStockIssues(partId: string) {
@@ -90,31 +70,10 @@ export async function getStockIssues(partId: string) {
 }
 
 export async function createStockIssue(data: Omit<StockIssue, 'id' | 'created_at'>) {
-  const supabase = createClient();
-
-  const { data: part } = await supabase
-    .from('spare_parts')
-    .select('current_stock')
-    .eq('id', data.part_id)
-    .single();
-
-  if (!part) return { data: null, error: { message: 'Spare part not found' } };
-  if (part.current_stock < data.quantity) return { data: null, error: { message: 'Insufficient stock' } };
-
-  const { data: issue, error: issueError } = await supabase
-    .from('stock_issues')
-    .insert(data)
-    .select('id, part_id, quantity, issued_to_event_id, issued_by, issue_date, department_id, notes, created_at')
-    .single();
-
-  if (issueError) return { data: null, error: issueError };
-
-  await supabase
-    .from('spare_parts')
-    .update({ current_stock: part.current_stock - data.quantity })
-    .eq('id', data.part_id);
-
-  return { data: issue, error: null };
+  void data;
+  throw new Error(
+    'Deprecated unsafe stock mutation path: use createStockIssueAction(), which calls the record_stock_issue RPC under a row lock.'
+  );
 }
 
 export async function getLowStockParts() {

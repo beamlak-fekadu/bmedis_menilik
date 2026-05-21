@@ -14,7 +14,7 @@
 import { headers } from 'next/headers';
 import { createClient } from '@/lib/supabase/server';
 import { getServerProfile } from '@/lib/auth/helpers';
-import { resolveQrLandingAsset, logQrScan } from '@/services/qr.service';
+import { resolveQrLandingAsset, logQrScan, logQrSecurityEvent } from '@/services/qr.service';
 import { getQrRoleContext } from '@/services/qr-context.service';
 import AssistantPageContextBridge from '@/components/assistant/AssistantPageContextBridge';
 import QrInvalidState from './QrInvalidState';
@@ -35,19 +35,55 @@ export default async function QrLandingRoute({ params }: { params: RouteParams }
 
   const supabase = await createClient();
   const resolution = await resolveQrLandingAsset(token, supabase as never);
+  const hdrs = await headers();
+  const userAgent = hdrs.get('user-agent');
 
   if (resolution.status === 'invalid') {
     const { data: { user } } = await supabase.auth.getUser();
+    await logQrSecurityEvent({
+      token,
+      scanStatus: 'invalid',
+      authUserId: user?.id ?? null,
+      userAgent,
+      metadata: { route: 'qr.landing.invalid' },
+    }, supabase as never);
     return <QrInvalidState variant="invalid" authenticated={!!user} />;
   }
 
   if (resolution.status === 'not_found') {
     const { data: { user } } = await supabase.auth.getUser();
+    await logQrSecurityEvent({
+      token,
+      scanStatus: 'not_found',
+      authUserId: user?.id ?? null,
+      userAgent,
+      metadata: { route: 'qr.landing.not_found' },
+    }, supabase as never);
     return <QrInvalidState variant="not_found" authenticated={!!user} />;
   }
 
   if (resolution.status === 'revoked') {
     const { data: { user } } = await supabase.auth.getUser();
+    const profile = user
+      ? await getServerProfile()
+      : null;
+    const profileId = (profile?.id as string | undefined) ?? null;
+    const roleName = Array.isArray(profile?.roleNames) ? profile.roleNames.join(',') : null;
+
+    await logQrSecurityEvent({
+      token,
+      scanStatus: 'revoked',
+      assetId: profile ? resolution.assetId : null,
+      scannerProfileId: profileId,
+      authUserId: user?.id ?? null,
+      roleName,
+      userAgent,
+      metadata: {
+        route: 'qr.landing.revoked',
+        replaced_at: resolution.replacedAt ?? null,
+        asset_known_to_server: Boolean(resolution.assetId),
+      },
+    }, supabase as never);
 
     // R16: a revoked QR scan is a security/label-integrity event. Emit to
     // Developer/Admin/BME Head so they see the attempted scan. The
@@ -70,7 +106,9 @@ export default async function QrLandingRoute({ params }: { params: RouteParams }
         payload: {
           masked_token: maskedToken,
           replaced_at: resolution.replacedAt ?? null,
-          scanner_profile_id: user?.id ?? null,
+          // profiles.id when logged in. auth.users.id is intentionally
+          // separate and only retained in security evidence.
+          scanner_profile_id: profileId,
           // Honest "we don't know which asset" — UI must not pretend otherwise.
           asset_id: null,
         },
@@ -84,6 +122,12 @@ export default async function QrLandingRoute({ params }: { params: RouteParams }
 
   const profile = await getServerProfile();
   if (!profile) {
+    await logQrSecurityEvent({
+      token,
+      scanStatus: 'auth_required',
+      userAgent,
+      metadata: { route: 'qr.landing.auth_required' },
+    }, supabase as never);
     return <QrLoginRequired returnTo={`/qr/a/${token}`} />;
   }
 
@@ -110,18 +154,18 @@ export default async function QrLandingRoute({ params }: { params: RouteParams }
   // QR_SCAN_DEDUP_WINDOW_MINUTES (default 5 min). The dedup is best-effort;
   // a failed dedup probe still writes the scan rather than blocking it.
   try {
-    const hdrs = await headers();
-    const userAgent = hdrs.get('user-agent');
     const primary = profile.roleNames?.[0] ?? null;
     await logQrScan(
       {
         assetId: asset.id,
         scannedBy: profile.id,
+        authUserId: (profile.user_id as string | null) ?? null,
         roleName: profile.roleNames?.join(',') || primary,
         scanSource: 'web',
         onlineStatus: 'online',
         userAgent: userAgent ?? null,
         actionTaken: 'open_qr_landing',
+        token,
         metadata: { route: 'qr.landing.v2', roleCategory: context.roleCategory },
       },
       supabase as never,

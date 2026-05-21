@@ -56,6 +56,7 @@ export function AssistantMessageCard({ message }: { message: AssistantUiMessage 
   const { toast } = useToast();
   const { isDeveloper } = useRole();
   const [showDebug, setShowDebug] = useState(false);
+  const [showEvidence, setShowEvidence] = useState(isDeveloper);
   const [showAllEvidence, setShowAllEvidence] = useState(false);
 
   const isUser = message.role === 'user';
@@ -225,34 +226,50 @@ export function AssistantMessageCard({ message }: { message: AssistantUiMessage 
         )}
 
         {(evidenceChips.length > 0 || links.length > 0) && (
-          <div className="mt-3 flex flex-wrap items-center gap-1.5">
-            {evidenceChips.slice(0, showAllEvidence ? evidenceChips.length : 3).map((chip, idx) => (
-              <span
-                key={`ev-${idx}`}
-                className="assistant-chip rounded-full px-2 py-0.5 text-[11px]"
-              >
-                {chip}
+          <div className="mt-3 rounded-xl border border-[var(--border-subtle)] bg-[var(--assistant-surface-elev)]/70">
+            <button
+              type="button"
+              onClick={() => setShowEvidence((prev) => !prev)}
+              className="flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-xs text-[var(--text-muted)] hover:text-[var(--foreground)]"
+              aria-expanded={showEvidence}
+            >
+              <span className="font-medium">Evidence & links</span>
+              <span className="inline-flex items-center gap-1">
+                {evidenceChips.length + links.length} item{evidenceChips.length + links.length === 1 ? '' : 's'}
+                {showEvidence ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
               </span>
-            ))}
-            {evidenceChips.length > 3 && !showAllEvidence && (
-              <button
-                type="button"
-                onClick={() => setShowAllEvidence(true)}
-                className="text-[11px] text-[var(--text-muted)] underline-offset-2 hover:underline"
-              >
-                +{evidenceChips.length - 3} more
-              </button>
+            </button>
+            {showEvidence && (
+              <div className="flex flex-wrap items-center gap-1.5 border-t border-[var(--border-subtle)] px-3 py-2">
+                {evidenceChips.slice(0, showAllEvidence ? evidenceChips.length : 3).map((chip, idx) => (
+                  <span
+                    key={`ev-${idx}`}
+                    className="assistant-chip rounded-full px-2 py-0.5 text-[11px]"
+                  >
+                    {chip}
+                  </span>
+                ))}
+                {evidenceChips.length > 3 && !showAllEvidence && (
+                  <button
+                    type="button"
+                    onClick={() => setShowAllEvidence(true)}
+                    className="text-[11px] text-[var(--text-muted)] underline-offset-2 hover:underline"
+                  >
+                    +{evidenceChips.length - 3} more
+                  </button>
+                )}
+                {links.map((link, idx) => (
+                  <Link
+                    key={`lk-${idx}`}
+                    href={link.href}
+                    className="assistant-chip inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] hover:text-[var(--foreground)]"
+                  >
+                    <ExternalLink className="h-3 w-3" />
+                    {link.label}
+                  </Link>
+                ))}
+              </div>
             )}
-            {links.map((link, idx) => (
-              <Link
-                key={`lk-${idx}`}
-                href={link.href}
-                className="assistant-chip inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] hover:text-[var(--foreground)]"
-              >
-                <ExternalLink className="h-3 w-3" />
-                {link.label}
-              </Link>
-            ))}
           </div>
         )}
 
@@ -294,7 +311,7 @@ export function AssistantMessageCard({ message }: { message: AssistantUiMessage 
               className="inline-flex items-center gap-1 rounded-full border border-[var(--border-subtle)] px-2 py-0.5 text-[11px] hover:text-[var(--foreground)]"
             >
               {showDebug ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
-              Debug
+              Developer trace
             </button>
           )}
         </div>

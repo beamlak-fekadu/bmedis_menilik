@@ -366,7 +366,7 @@ async function fetchWorkOrderCalendarEvents(supabase: Awaited<ReturnType<typeof 
       id, work_order_number, request_id, asset_id, assigned_to, status, priority, work_type,
       root_cause, action_taken, closure_notes, started_at, completed_at, created_at,
       equipment_assets(id, asset_code, name, department_id, departments(id, name), equipment_categories(id, name, criticality_level)),
-      profiles(id, full_name, email)
+      profiles!work_orders_assigned_to_fkey(id, full_name, email)
     `)
     .order('created_at', { ascending: false })
     .limit(1000);
@@ -643,7 +643,7 @@ async function fetchProcurementCalendarEvents(supabase: Awaited<ReturnType<typeo
     .select(`
       id, request_number, title, justification, status, priority, requested_by, department_id, expected_delivery_date, created_at,
       departments(id, name, code),
-      profiles(id, full_name, email)
+      profiles!procurement_requests_requested_by_fkey(id, full_name, email)
     `)
     .order('created_at', { ascending: false })
     .limit(1000);

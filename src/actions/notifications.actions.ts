@@ -184,6 +184,9 @@ export async function runNotificationRuleCheckAction(): Promise<ActionResult> {
 
 export async function createTestNotificationToSelfAction(): Promise<ActionResult> {
   try {
+    // NOTIF-03: every authenticated role can test the in-app path. Migration
+    // 00073 added a narrow "Self insert" RLS policy for `notifications` and
+    // `notification_events` that lets viewers insert their own self-test row.
     const { supabase, profile, error } = await getActionContext(['developer', 'admin', 'bme_head', 'technician', 'department_head', 'department_user', 'store_user', 'viewer']);
     if (error || !profile) return { success: false, error: error ?? 'Not authenticated' };
 
@@ -201,6 +204,7 @@ export async function createTestNotificationToSelfAction(): Promise<ActionResult
     // sees the actual constraint error rather than a silent failure.
     const timestamp = new Date().toLocaleString();
     let eventId: string | null = null;
+    const warnings: string[] = [];
 
     const eventInsert = await supabase
       .from('notification_events')
@@ -223,6 +227,18 @@ export async function createTestNotificationToSelfAction(): Promise<ActionResult
       .single();
 
     if (eventInsert.error) {
+      // NOTIF-03 / structured cause: surface the failure source plainly so
+      // Developer Lab diagnostics can distinguish RLS denial from other
+      // event-insert failures. The notification insert still proceeds with
+      // event_id = null on a post-00056 database.
+      const isRlsDenial = /row-level security|new row violates/i.test(
+        eventInsert.error.message,
+      );
+      warnings.push(
+        isRlsDenial
+          ? `notification_events insert was denied by RLS (apply migration 00073 to enable viewer / dept-user self-test). Raw: ${eventInsert.error.message}`
+          : `notification_events insert failed: ${eventInsert.error.message}`,
+      );
       console.error('[notifications] best-effort test event insert failed:', eventInsert.error.message);
     } else {
       eventId = (eventInsert.data as { id?: string } | null)?.id ?? null;
@@ -254,14 +270,28 @@ export async function createTestNotificationToSelfAction(): Promise<ActionResult
       .single();
 
     if (insert.error) {
+      const isRlsDenial = /row-level security|new row violates/i.test(insert.error.message);
       console.error('[notifications] test-to-self insert failed:', insert.error.message);
-      return { success: false, error: insert.error.message };
+      return {
+        success: false,
+        error: isRlsDenial
+          ? `In-app notification insert was denied by RLS for your role (${profile.roleNames?.[0] ?? 'unknown'}). Apply migration 00073 so viewers and dept-scoped roles can run the self-test. Raw error: ${insert.error.message}`
+          : insert.error.message,
+        data: { event_id: eventId, warnings },
+      };
     }
 
     const insertedId = (insert.data as { id?: string } | null)?.id ?? null;
 
     revalidateMany(notificationPaths);
-    return { success: true, data: { notification_id: insertedId, event_id: eventId } };
+    return {
+      success: true,
+      data: {
+        notification_id: insertedId,
+        event_id: eventId,
+        warnings: warnings.length > 0 ? warnings : undefined,
+      },
+    };
   } catch (err) {
     return actionError(err, 'Failed to send test notification');
   }

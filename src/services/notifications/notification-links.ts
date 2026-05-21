@@ -72,11 +72,29 @@ export function buildNotificationLink(
     case 'calibration.request_status_changed': {
       const requestId = pickPayloadString(payload, 'request_id');
       const recordId = pickPayloadString(payload, 'record_id');
+      if (eventType === 'calibration.failed_or_adjusted' && recordId) {
+        return { href: `/calibration/records/${recordId}`, label: 'Open Calibration Record' };
+      }
       if (requestId) {
         return { href: `/calibration/requests/${requestId}`, label: 'Open Calibration Request' };
       }
       if (recordId) {
         return { href: `/calibration/records/${recordId}`, label: 'Open Calibration Record' };
+      }
+      // NOTIF-02 fallback: use sourceId to differentiate request vs record.
+      // calibration_requests source_table sends `calibration_requests`;
+      // calibration_records sends `calibration_records`. We rely on event
+      // type as a heuristic: request_* events route to /calibration/requests.
+      if (sourceId) {
+        if (
+          eventType === 'calibration.request_status_changed' ||
+          eventType === 'calibration.request_created'
+        ) {
+          return { href: `/calibration/requests/${sourceId}`, label: 'Open Calibration Request' };
+        }
+        if (eventType === 'calibration.failed_or_adjusted') {
+          return { href: `/calibration/records/${sourceId}`, label: 'Open Calibration Record' };
+        }
       }
       if (assetId) {
         return { href: `/calibration?asset_id=${assetId}`, label: 'Open Calibration' };
@@ -134,8 +152,21 @@ export function buildNotificationLink(
       // stock_receipts row picks up the linkage via the record_stock_receipt
       // RPC's p_procurement_id arg.
       if (sourceId) {
+        const payloadHref = pickPayloadString(payload, 'stock_receipt_prefill_href');
+        if (payloadHref?.startsWith('/spare-parts?action=record-receipt')) {
+          return { href: payloadHref, label: 'Record Stock Receipt' };
+        }
+        const params = new URLSearchParams({
+          action: 'record-receipt',
+          procurement_id: sourceId,
+          source: 'procurement-delivery',
+        });
+        const partId = pickPayloadString(payload, 'spare_part_id') ?? pickPayloadString(payload, 'part_id');
+        const quantity = payload?.requested_quantity;
+        if (partId) params.set('partId', partId);
+        if (typeof quantity === 'number' && quantity > 0) params.set('quantity', String(quantity));
         return {
-          href: `/spare-parts?action=record-receipt&procurement_id=${encodeURIComponent(sourceId)}&source=procurement-delivery`,
+          href: `/spare-parts?${params.toString()}`,
           label: 'Record Stock Receipt',
         };
       }

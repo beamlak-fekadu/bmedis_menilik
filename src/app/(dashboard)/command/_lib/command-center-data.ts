@@ -427,7 +427,10 @@ export async function fetchCorrectiveMaintenanceTriage(
     const [woRes, mrRes] = await Promise.all([
       supabase
         .from('work_orders')
-        .select('id, asset_id, status, priority, assigned_to, created_at, profiles(full_name), equipment_assets(name, asset_code, departments(name))')
+        // EMBED-01: explicit FK hint — work_orders has multiple FKs to
+        // profiles (assigned_to). Using the bare alias works today but is
+        // fragile; PGRST201 ambiguity has already broken other paths.
+        .select('id, asset_id, status, priority, assigned_to, created_at, profiles!work_orders_assigned_to_fkey(full_name), equipment_assets(name, asset_code, departments(name))')
         .eq('work_type', 'corrective')
         .in('status', ['open', 'assigned', 'in_progress', 'on_hold'])
         .limit(200),
@@ -916,7 +919,8 @@ export async function fetchWorkQueue(supabase: SupabaseClient): Promise<WorkQueu
   try {
     const { data, error } = await supabase
       .from('work_orders')
-      .select('id, work_order_number, asset_id, status, priority, assigned_to, created_at, profiles(full_name), equipment_assets(name, asset_code)')
+      // EMBED-01: explicit FK hint for the assigned technician.
+      .select('id, work_order_number, asset_id, status, priority, assigned_to, created_at, profiles!work_orders_assigned_to_fkey(full_name), equipment_assets(name, asset_code)')
       .in('status', ['open', 'assigned', 'in_progress', 'on_hold'])
       .order('created_at', { ascending: true })
       .limit(100);

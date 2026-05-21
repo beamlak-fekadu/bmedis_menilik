@@ -46,6 +46,11 @@ type LowStockRow = Record<string, unknown>;
 type SpareTab = 'catalog' | 'lowstock' | 'blockers' | 'receipts' | 'issues';
 type SpareFilter = 'all' | 'low-stock' | 'stockout' | 'blockers' | 'recent-received' | 'recent-issued' | 'pending-procurement' | 'high-cost' | 'ready-to-issue' | 'no-procurement' | 'with-procurement';
 
+function firstRelation<T>(value: T | T[] | null | undefined): T | null {
+  if (Array.isArray(value)) return value[0] ?? null;
+  return value ?? null;
+}
+
 function normalizeSpareTab(value: string | null): SpareTab | '' {
   if (value === 'catalog' || value === 'receipts' || value === 'issues' || value === 'blockers') return value;
   if (value === 'lowstock' || value === 'low-stock') return 'lowstock';
@@ -124,7 +129,7 @@ function OperationalSparePartsPage() {
         getSpareParts(),
         supabase
           .from('stock_receipts')
-          .select('id, part_id, quantity, received_by, received_date, supplier_id, invoice_ref, unit_cost, notes, created_at, spare_parts(id, part_code, name)')
+          .select('id, part_id, quantity, procurement_id, received_by, received_date, supplier_id, invoice_ref, unit_cost, notes, created_at, spare_parts(id, part_code, name)')
           .order('received_date', { ascending: false }),
         supabase
           .from('stock_issues')
@@ -154,6 +159,11 @@ function OperationalSparePartsPage() {
       setRecPartId(partId);
       setIssPartId(partId);
     }
+    const quantity = searchParams.get('quantity') ?? searchParams.get('suggestedQuantity');
+    if (quantity) {
+      setRecQuantity(quantity);
+      setIssQuantity(quantity);
+    }
     if (searchParams.get('action') === 'issue') setIssueOpen(true);
     if (searchParams.get('action') === 'receive') setReceiptOpen(true);
     // R21: deep-link from a 'procurement.delivered_pending_receipt'
@@ -165,6 +175,24 @@ function OperationalSparePartsPage() {
       if (procurementId) setRecProcurementId(procurementId);
     }
   }, [searchParams]);
+
+  useEffect(() => {
+    if (!recProcurementId) return;
+    const row = procurementRows.find((procurement) => String(procurement.id ?? '') === recProcurementId);
+    if (!row) return;
+    const linkedPart = firstRelation(row.spare_parts as Record<string, unknown> | Record<string, unknown>[] | null);
+    const partId = typeof row.spare_part_id === 'string'
+      ? row.spare_part_id
+      : typeof linkedPart?.id === 'string'
+        ? linkedPart.id
+        : null;
+    if (partId && !recPartId) setRecPartId(partId);
+    const quantity = Number(row.requested_quantity ?? 0);
+    if (!recQuantity && Number.isFinite(quantity) && quantity > 0) setRecQuantity(String(quantity));
+    const requestNumber = typeof row.request_number === 'string' ? row.request_number : recProcurementId.slice(0, 8);
+    const title = typeof row.title === 'string' ? row.title : 'delivered procurement';
+    if (!recNotes) setRecNotes(`Receipt for ${requestNumber}: ${title}`);
+  }, [procurementRows, recPartId, recProcurementId, recQuantity, recNotes]);
 
   const handleAddPart = async () => {
     if (!partCode || !partName) {
@@ -326,6 +354,12 @@ function OperationalSparePartsPage() {
   }));
 
   function openProcurementForPart(row: Record<string, unknown>) {
+    const partId = String(row.id ?? '');
+    const exact = procurementRows.find((request) => {
+      if (['delivered', 'canceled'].includes(String(request.status ?? ''))) return false;
+      return typeof request.spare_part_id === 'string' && request.spare_part_id === partId;
+    });
+    if (exact) return exact;
     const haystack = `${row.part_code ?? ''} ${row.name ?? ''}`.toLowerCase();
     return procurementRows.find((request) => {
       if (['delivered', 'canceled'].includes(String(request.status ?? ''))) return false;
@@ -570,6 +604,9 @@ function OperationalSparePartsPage() {
         : lowStock;
   const filteredReceipts = selectedFilter === 'recent-received' ? recentReceipts : receipts;
   const filteredIssues = selectedFilter === 'recent-issued' ? recentIssues : issues;
+  const receiptProcurement = recProcurementId
+    ? procurementRows.find((row) => String(row.id ?? '') === recProcurementId) ?? null
+    : null;
 
   const tabs = [
     {
@@ -775,6 +812,11 @@ function OperationalSparePartsPage() {
         <div className="space-y-4">
           <OfflineSubmitBanner actionLabel="Stock receipt draft" />
           <OfflineActionResult result={receiptOfflineResult} />
+          {receiptProcurement && (
+            <div className="rounded-md border border-cyan-500/30 bg-cyan-500/5 px-3 py-2 text-xs text-cyan-200">
+              Prefilled from procurement {String(receiptProcurement.request_number ?? recProcurementId?.slice(0, 8) ?? 'delivered request')}: {String(receiptProcurement.title ?? 'delivered item')}.
+            </div>
+          )}
           <Select label="Part *" options={partOptions} placeholder="Select part" value={recPartId} onChange={(e) => setRecPartId(e.target.value)} />
           <Input label="Quantity *" type="number" value={recQuantity} onChange={(e) => setRecQuantity(e.target.value)} />
           <Input label="Invoice Reference" value={recInvoice} onChange={(e) => setRecInvoice(e.target.value)} />

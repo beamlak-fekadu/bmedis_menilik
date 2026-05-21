@@ -18,18 +18,14 @@
 //                                   surfaces stock blockers and acknowledged
 //                                   flags are excluded.
 //   - maintenance_requests        : status='approved' or status='pending' rows
-//                                   with reported_condition tracking parts
-//                                   needed; we treat work-order on_hold +
-//                                   active stock-related flag as a blocker.
-//   - v_open_work_orders          : open WO with status='on_hold' counted as
-//                                   potential parts-blocked work.
+//                                   for Store handoff visibility.
+//   - work_order_parts_needed     : canonical exact parts-blocker rows tied
+//                                   to work order + spare part + asset context.
 //
 // Notes:
-//   - "Delivered awaiting receipt" is approximated as
-//       procurement_requests where status='delivered'
-//     since the schema does not currently model an explicit
-//     procurement→stock_receipt linkage; the field name reflects this honest
-//     approximation. If a linkage column is added later, narrow this here.
+//   - "Delivered awaiting receipt" reads procurement_requests where
+//     status='delivered'. Receipt rows persist procurement_id, so downstream
+//     evidence can answer exactly what was received for a delivered request.
 //   - "Approved items to issue" is approximated as the count of approved
 //     maintenance requests whose work has not yet been completed (a downstream
 //     handoff that often requires the store to issue a part). The label is
@@ -79,7 +75,7 @@ export async function fetchStoreExecutiveMetrics(supabase: Supabase): Promise<St
     procRes,
     receiptsRes,
     issuesRes,
-    woRes,
+    partsNeededRes,
     pendingReqRes,
     approvedReqRes,
   ] = await Promise.all([
@@ -103,9 +99,9 @@ export async function fetchStoreExecutiveMetrics(supabase: Supabase): Promise<St
       .gte('issue_date', monthStart)
       .limit(5000),
     supabase
-      .from('v_open_work_orders')
+      .from('work_order_parts_needed')
       .select('id, status')
-      .eq('status', 'on_hold')
+      .eq('status', 'open')
       .limit(2000),
     supabase
       .from('maintenance_requests')
@@ -138,10 +134,7 @@ export async function fetchStoreExecutiveMetrics(supabase: Supabase): Promise<St
     if (isDeliveredProcurement(r.status)) deliveredItemsToReceive++;
   }
 
-  // Blocked work orders: count of open work orders currently on_hold. This is
-  // the canonical "waiting / unable to progress" signal; the schema does not
-  // include a strict 'blocked_by_part' field, so on_hold is the honest proxy.
-  const blockedWorkOrders = (woRes.data ?? []).length;
+  const blockedWorkOrders = (partsNeededRes.data ?? []).length;
 
   return {
     totalParts: parts.length,
@@ -184,7 +177,7 @@ export async function fetchStoreStockRisk(supabase: Supabase): Promise<StoreStoc
       .limit(2000),
     supabase
       .from('procurement_requests')
-      .select('id, status, title, created_at')
+      .select('id, status, title, spare_part_id, created_at')
       .in('status', ['requested', 'approved', 'ordered', 'in_transit', 'delayed'])
       .order('created_at', { ascending: false })
       .limit(2000),
@@ -194,9 +187,11 @@ export async function fetchStoreStockRisk(supabase: Supabase): Promise<StoreStoc
   // the current schema. We match by the part_code or part name appearing in
   // the procurement title (case-insensitive substring). This is a heuristic
   // that the UI must clearly label — it does not assert a verified linkage.
-  const proc = (procRes.data ?? []) as Array<{ id: string; status: string | null; title: string | null }>;
+  const proc = (procRes.data ?? []) as Array<{ id: string; status: string | null; title: string | null; spare_part_id?: string | null }>;
 
-  function findOpenProcurement(partCode: string, name: string): { id: string; status: string | null } | null {
+  function findOpenProcurement(partId: string, partCode: string, name: string): { id: string; status: string | null } | null {
+    const exact = proc.find((row) => row.spare_part_id === partId);
+    if (exact) return { id: exact.id, status: exact.status };
     const codeKey = partCode.toLowerCase();
     const nameKey = name.toLowerCase();
     for (const r of proc) {
@@ -211,7 +206,7 @@ export async function fetchStoreStockRisk(supabase: Supabase): Promise<StoreStoc
   return ((partsRes.data ?? []) as Array<PartRow & { part_code: string; name: string; category: string | null; unit_cost: number | null }>)
     .map((p) => {
       const state = classifyStock(p);
-      const open = state === 'healthy' ? null : findOpenProcurement(p.part_code, p.name);
+      const open = state === 'healthy' ? null : findOpenProcurement(p.id, p.part_code, p.name);
       return {
         id: p.id,
         partCode: p.part_code,
@@ -236,13 +231,15 @@ export interface StoreReceivingRow {
   status: string;
   priority: string;
   expectedDeliveryDate: string | null;
+  sparePartId: string | null;
+  requestedQuantity: number | null;
   createdAt: string | null;
 }
 
 export async function fetchStoreReceivingQueue(supabase: Supabase): Promise<StoreReceivingRow[]> {
   const { data } = await supabase
     .from('procurement_requests')
-    .select('id, request_number, title, status, priority, expected_delivery_date, created_at')
+    .select('id, request_number, title, status, priority, expected_delivery_date, spare_part_id, requested_quantity, created_at')
     .eq('status', 'delivered')
     .order('expected_delivery_date', { ascending: true })
     .limit(500);
@@ -253,6 +250,8 @@ export async function fetchStoreReceivingQueue(supabase: Supabase): Promise<Stor
     status: (r.status as string) ?? '',
     priority: (r.priority as string) ?? 'medium',
     expectedDeliveryDate: (r.expected_delivery_date as string | null) ?? null,
+    sparePartId: (r.spare_part_id as string | null) ?? null,
+    requestedQuantity: typeof r.requested_quantity === 'number' ? (r.requested_quantity as number) : null,
     createdAt: (r.created_at as string | null) ?? null,
   }));
 }
@@ -303,6 +302,7 @@ export async function fetchStoreIssueQueue(supabase: Supabase): Promise<StoreIss
 // Maintenance blockers: work orders on hold + related context.
 export interface StoreBlockerRow {
   id: string;
+  needId: string;
   workOrderNumber: string | null;
   assetId: string | null;
   assetName: string;
@@ -311,28 +311,47 @@ export interface StoreBlockerRow {
   priority: string | null;
   status: string;
   blockedSince: string | null;
+  partId: string | null;
+  partCode: string;
+  partName: string;
+  quantityNeeded: number;
+  currentStock: number | null;
+  reorderLevel: number | null;
 }
 
 export async function fetchStoreBlockers(supabase: Supabase): Promise<StoreBlockerRow[]> {
   const { data } = await supabase
-    .from('v_open_work_orders')
-    .select('id, work_order_number, asset_id, priority, status, created_at, scheduled_date, equipment_assets(asset_code, name, departments(name))')
-    .eq('status', 'on_hold')
+    .from('work_order_parts_needed')
+    .select(`
+      id, work_order_id, spare_part_id, quantity_needed, created_at, status,
+      spare_parts(id, part_code, name, current_stock, reorder_level),
+      work_orders(id, work_order_number, asset_id, priority, status, created_at, equipment_assets(asset_code, name, departments(name)))
+    `)
+    .eq('status', 'open')
     .order('created_at', { ascending: true })
     .limit(500);
   return ((data ?? []) as Array<Record<string, unknown>>).map((r) => {
-    const eq = firstRelation(r.equipment_assets as Record<string, unknown> | Record<string, unknown>[] | null);
+    const part = firstRelation(r.spare_parts as Record<string, unknown> | Record<string, unknown>[] | null);
+    const wo = firstRelation(r.work_orders as Record<string, unknown> | Record<string, unknown>[] | null);
+    const eq = firstRelation(wo?.equipment_assets as Record<string, unknown> | Record<string, unknown>[] | null);
     const dept = firstRelation(eq?.departments as Record<string, unknown> | Record<string, unknown>[] | null);
     return {
-      id: r.id as string,
-      workOrderNumber: (r.work_order_number as string | null) ?? null,
-      assetId: (r.asset_id as string | null) ?? null,
+      id: (wo?.id as string | undefined) ?? (r.work_order_id as string),
+      needId: r.id as string,
+      workOrderNumber: (wo?.work_order_number as string | null) ?? null,
+      assetId: (wo?.asset_id as string | null) ?? null,
       assetName: (eq?.name as string | undefined) ?? 'Unknown',
       assetCode: (eq?.asset_code as string | undefined) ?? '—',
       departmentName: (dept?.name as string | undefined) ?? 'Unknown',
-      priority: (r.priority as string | null) ?? null,
-      status: (r.status as string) ?? 'on_hold',
+      priority: (wo?.priority as string | null) ?? null,
+      status: (wo?.status as string | null) ?? 'open',
       blockedSince: (r.created_at as string | null) ?? null,
+      partId: (part?.id as string | null) ?? (r.spare_part_id as string | null) ?? null,
+      partCode: (part?.part_code as string | undefined) ?? '—',
+      partName: (part?.name as string | undefined) ?? 'Unknown part',
+      quantityNeeded: Number(r.quantity_needed ?? 1),
+      currentStock: typeof part?.current_stock === 'number' ? (part.current_stock as number) : null,
+      reorderLevel: typeof part?.reorder_level === 'number' ? (part.reorder_level as number) : null,
     };
   });
 }

@@ -10,6 +10,8 @@ import { formatRoleName } from '@/utils/roles';
 import SyncStatusIndicator from '@/components/offline/SyncStatusIndicator';
 import NotificationBell from '@/components/notifications/NotificationBell';
 import { transitions } from '@/lib/ui/motion-presets';
+import GlobalSearchPalette from '@/components/search/GlobalSearchPalette';
+import { useState } from 'react';
 
 interface TopbarProps {
   userName?: string;
@@ -28,6 +30,7 @@ export default function Topbar({
   onMenuToggle,
   onLogout,
 }: TopbarProps) {
+  const [searchOpen, setSearchOpen] = useState(false);
   // Top-right secondary line shows the user's job title (e.g. "Radiologist",
   // "ICU Head", "Clinical Engineer"). Job titles are FREE TEXT in
   // profiles.job_title and are display-only — they do not control
@@ -65,12 +68,17 @@ export default function Topbar({
           The desktop tile keeps the ⌘K hint but never dominates the topbar. */}
       <button
         type="button"
+        onClick={() => setSearchOpen(true)}
         aria-label="Search equipment, requests, work orders"
         className="ml-auto inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-1)] text-[var(--text-muted)] transition-colors hover:bg-[var(--surface-3)] hover:text-[var(--foreground)] md:hidden"
       >
         <Search className="h-4 w-4" />
       </button>
-      <div className="ml-auto hidden min-w-0 max-w-[280px] flex-1 items-center gap-2 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-1)] px-3 py-2 text-sm text-[var(--text-muted)] backdrop-blur md:flex lg:max-w-[360px] xl:max-w-[420px]">
+      <button
+        type="button"
+        onClick={() => setSearchOpen(true)}
+        className="ml-auto hidden min-w-0 max-w-[280px] flex-1 items-center gap-2 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-1)] px-3 py-2 text-left text-sm text-[var(--text-muted)] backdrop-blur transition-colors hover:bg-[var(--surface-3)] hover:text-[var(--foreground)] md:flex lg:max-w-[360px] xl:max-w-[420px]"
+      >
         <Search className="h-4 w-4 shrink-0" />
         <span className="min-w-0 flex-1 truncate">
           <span className="hidden lg:inline">Search equipment, requests, work orders…</span>
@@ -79,7 +87,7 @@ export default function Topbar({
         <span className="ml-auto hidden shrink-0 rounded border border-[var(--border-subtle)] bg-[var(--surface-2)] px-1.5 py-0.5 font-mono text-[10px] text-[var(--text-subtle)] lg:inline">
           ⌘K
         </span>
-      </div>
+      </button>
 
       <div className="flex shrink-0 items-center gap-1 sm:gap-2 md:ml-2">
         <SyncStatusIndicator userRoles={userRoles} />
@@ -107,6 +115,7 @@ export default function Topbar({
           ]}
         />
       </div>
+      <GlobalSearchPalette open={searchOpen} onOpenChange={setSearchOpen} />
     </motion.header>
   );
 }

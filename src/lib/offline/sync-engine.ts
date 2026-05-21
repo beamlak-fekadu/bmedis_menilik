@@ -8,6 +8,7 @@ import {
   markSynced,
   updateOfflineActionStatus,
 } from './queue';
+import { getOfflineActionRecord, putOfflineActionRecord } from './db';
 import { unsupportedActionConflict } from './validation';
 
 export const OFFLINE_SYNC_MAX_RETRIES = 3;
@@ -39,6 +40,11 @@ function isRetryableQueuedAction(action: OfflineQueueRecord) {
   return action.retry_count < OFFLINE_SYNC_MAX_RETRIES && action.metadata?.retryable === true;
 }
 
+// OFF-03 fix: every sync-evidence write returns its success/failure so the
+// local queue can mark "evidence_write_failed" instead of silently appearing
+// synced without a corresponding offline_sync_events row.
+type SyncEventOutcome = { ok: true } | { ok: false; error: string };
+
 async function recordSyncEvent(
   action: OfflineQueueRecord,
   status: 'pending' | 'synced' | 'failed' | 'conflict' | 'under_review' | 'resolved_discarded',
@@ -49,9 +55,9 @@ async function recordSyncEvent(
     resolutionStatus?: string | null;
     serverResult?: JsonSafeObject | null;
   } = {},
-) {
+): Promise<SyncEventOutcome> {
   try {
-    await recordOfflineSyncEventAction({
+    const result = await recordOfflineSyncEventAction({
       client_action_id: action.client_action_id,
       action_type: action.action_type,
       entity_type: action.entity_type,
@@ -75,11 +81,45 @@ async function recordSyncEvent(
         local_sync_status: action.sync_status,
       },
     });
+
+    if (!result || result.success !== true) {
+      const errorMessage =
+        (result && typeof result === 'object' && 'error' in result && typeof (result as { error?: unknown }).error === 'string'
+          ? (result as { error: string }).error
+          : null) ?? 'Failed to write offline_sync_events row';
+      if (process.env.NODE_ENV !== 'production') {
+        console.warn('[offline-sync] Sync evidence write returned failure', errorMessage);
+      }
+      return { ok: false, error: errorMessage };
+    }
+    return { ok: true };
   } catch (error) {
+    const message = error instanceof Error ? error.message : 'Sync evidence write threw';
     if (process.env.NODE_ENV !== 'production') {
       console.warn('[offline-sync] Failed to record server sync event', error);
     }
+    return { ok: false, error: message };
   }
+}
+
+async function annotateEvidenceFailure(
+  clientActionId: string,
+  evidence: SyncEventOutcome,
+) {
+  if (evidence.ok) return;
+  // Mark the local queue record so Sync Review Center / Developer Lab can
+  // surface that the action replayed but evidence didn't land server-side.
+  const current = await getOfflineActionRecord(clientActionId);
+  if (!current) return;
+  await putOfflineActionRecord({
+    ...current,
+    metadata: {
+      ...(current.metadata ?? {}),
+      evidence_write_failed: true,
+      evidence_write_error: evidence.error,
+      evidence_write_attempted_at: new Date().toISOString(),
+    },
+  });
 }
 
 async function markUnsupported(action: OfflineQueueRecord): Promise<Extract<OfflineActionHandlerResult, { status: 'conflict' }>> {
@@ -92,11 +132,12 @@ async function markUnsupported(action: OfflineQueueRecord): Promise<Extract<Offl
       pending_not_supported: true,
     },
   });
-  await recordSyncEvent(updated ?? conflict ?? action, 'conflict', {
+  const evidence = await recordSyncEvent(updated ?? conflict ?? action, 'conflict', {
     errorMessage: detail.conflict_reason,
     conflictReason: detail.conflict_reason,
     conflictDetail: detail,
   });
+  await annotateEvidenceFailure(action.client_action_id, evidence);
   return { status: 'conflict', reason: detail.conflict_reason, detail };
 }
 
@@ -138,17 +179,24 @@ export async function syncOfflineQueue(): Promise<OfflineSyncRunResult> {
       const handlerResult = await handler(action);
       if (handlerResult.status === 'synced') {
         const synced = await markSynced(action.client_action_id, handlerResult.serverResult);
-        await recordSyncEvent(synced ?? action, 'synced', { serverResult: handlerResult.serverResult ?? null });
+        const evidence = await recordSyncEvent(synced ?? action, 'synced', { serverResult: handlerResult.serverResult ?? null });
+        await annotateEvidenceFailure(action.client_action_id, evidence);
+        if (!evidence.ok) {
+          // OFF-03: replay succeeded but evidence didn't land — surface so
+          // the user / Sync Review Center knows the audit trail is incomplete.
+          result.lastError = `Action replayed but server evidence write failed: ${evidence.error}`;
+        }
         result.synced += 1;
         continue;
       }
 
       if (handlerResult.status === 'conflict') {
         const conflict = await markConflict(action.client_action_id, handlerResult.reason, handlerResult.detail ?? null);
-        await recordSyncEvent(conflict ?? action, 'conflict', {
+        const evidence = await recordSyncEvent(conflict ?? action, 'conflict', {
           conflictReason: handlerResult.reason,
           conflictDetail: handlerResult.detail ?? null,
         });
+        await annotateEvidenceFailure(action.client_action_id, evidence);
         result.conflicts += 1;
         result.lastError = handlerResult.reason;
         continue;
@@ -161,13 +209,15 @@ export async function syncOfflineQueue(): Promise<OfflineSyncRunResult> {
           retryable: handlerResult.retryable === true,
         },
       });
-      await recordSyncEvent(failed ?? action, 'failed', { errorMessage: handlerResult.error });
+      const evidence = await recordSyncEvent(failed ?? action, 'failed', { errorMessage: handlerResult.error });
+      await annotateEvidenceFailure(action.client_action_id, evidence);
       result.failed += 1;
       result.lastError = handlerResult.error;
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unexpected sync error';
       const failed = await incrementRetry(action.client_action_id, message);
-      await recordSyncEvent(failed ?? action, 'failed', { errorMessage: message });
+      const evidence = await recordSyncEvent(failed ?? action, 'failed', { errorMessage: message });
+      await annotateEvidenceFailure(action.client_action_id, evidence);
       result.failed += 1;
       result.lastError = message;
     }

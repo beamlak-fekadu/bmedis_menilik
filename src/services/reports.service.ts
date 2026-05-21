@@ -4,8 +4,9 @@
 // dedicated server-rendered routes using `@/lib/supabase/server` +
 // `requireRole`; do NOT route those through this file. Other admin-only
 // reports (QR scan evidence, QR coverage, audit-style data inside
-// `/reports/[type]`) are gated at the UI layer via reportConfigs.adminOnly
-// in `src/app/(dashboard)/reports/page.tsx` and at the DB layer via RLS.
+// `/reports/[type]`) are gated by the server page in
+// `src/app/(dashboard)/reports/[type]/page.tsx`, hidden in the reports hub
+// via reportConfigs.adminOnly, and still constrained at the DB layer by RLS.
 // A future pass MAY centralize all admin reports under server actions,
 // but doing so piecemeal would create a confusing two-pattern reports
 // service. Keep the entire file on the browser client OR migrate it all.
@@ -72,7 +73,7 @@ export async function getQrScanEvidenceReport(filters: ReportFilters = {}) {
       id, asset_id, scanned_by, role_name, scanned_at, scan_source,
       online_status, action_taken, metadata, created_at,
       equipment_assets(id, asset_code, name, department_id, departments(id, name)),
-      profiles(id, full_name, email)
+      profiles!equipment_qr_scans_scanned_by_fkey(id, full_name, email)
     `)
     .order('scanned_at', { ascending: false })
     .limit(2000);
@@ -81,11 +82,48 @@ export async function getQrScanEvidenceReport(filters: ReportFilters = {}) {
   if (filters.date_to) query = query.lte('scanned_at', filters.date_to);
   if (filters.status) query = query.eq('online_status', filters.status);
 
-  const result = await query;
-  if (filters.department_id && result.data) {
+  const [result, securityResult] = await Promise.all([
+    query,
+    supabase
+      .from('qr_security_events')
+      .select(`
+        id, asset_id, scanner_profile_id, auth_user_id, role_name, scan_source,
+        online_status, scan_status, masked_token, metadata, created_at,
+        equipment_assets(id, asset_code, name, department_id, departments(id, name)),
+        profiles!qr_security_events_scanner_profile_id_fkey(id, full_name, email)
+      `)
+      .order('created_at', { ascending: false })
+      .limit(500),
+  ]);
+
+  const securityRows = ((securityResult.data ?? []) as Array<Record<string, unknown>>).map((row) => ({
+    id: row.id,
+    asset_id: row.asset_id ?? null,
+    scanned_by: row.scanner_profile_id ?? null,
+    auth_user_id: row.auth_user_id ?? null,
+    role_name: row.role_name ?? null,
+    scanned_at: row.created_at,
+    scan_source: row.scan_source,
+    online_status: row.online_status,
+    action_taken: row.scan_status,
+    metadata: row.metadata,
+    created_at: row.created_at,
+    masked_token: row.masked_token,
+    equipment_assets: row.equipment_assets ?? null,
+    profiles: row.profiles ?? null,
+    evidence_kind: 'qr_security_event',
+  }));
+
+  const mergedData = [
+    ...((result.data ?? []) as Array<Record<string, unknown>>).map((row) => ({ ...row, evidence_kind: 'equipment_qr_scan' })),
+    ...securityRows,
+  ];
+
+  if (filters.department_id && mergedData) {
     return {
       ...result,
-      data: (result.data as Array<Record<string, unknown>>).filter((row) => {
+      data: mergedData.filter((rawRow) => {
+        const row = rawRow as Record<string, unknown>;
         const asset = Array.isArray(row.equipment_assets)
           ? row.equipment_assets[0] as { department_id?: string } | undefined
           : row.equipment_assets as { department_id?: string } | null;
@@ -94,7 +132,7 @@ export async function getQrScanEvidenceReport(filters: ReportFilters = {}) {
     };
   }
 
-  return result;
+  return { ...result, data: mergedData };
 }
 
 export async function getMaintenanceReport(filters: ReportFilters = {}) {
@@ -210,7 +248,7 @@ export async function getWorkOrderReport(filters: ReportFilters = {}) {
       started_at, completed_at, completion_outcome, final_equipment_condition,
       created_at,
       equipment_assets(id, asset_code, name, departments(id, name)),
-      profiles(id, full_name)
+      profiles!work_orders_assigned_to_fkey(id, full_name)
     `);
 
   if (filters.status) query = query.eq('status', filters.status);

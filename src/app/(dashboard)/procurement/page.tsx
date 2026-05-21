@@ -68,7 +68,7 @@ function OperationalProcurementPage() {
     const itemName = searchParams.get('itemName') ?? 'spare part';
     const currentStock = searchParams.get('currentStock');
     const reorderLevel = searchParams.get('reorderLevel');
-    const suggestedQuantity = searchParams.get('suggestedQuantity');
+    const suggestedQuantity = searchParams.get('suggestedQuantity') ?? searchParams.get('quantity');
     const reason = searchParams.get('reason') ?? 'Stock below reorder level';
     return {
       title: hasPrefill ? `Procure ${itemName}` : '',
@@ -148,7 +148,7 @@ function OperationalProcurementPage() {
     if (row.status === 'approved') return { label: 'Place Order', href: procurementDetail(row.id, 'mark-ordered') };
     if (row.status === 'ordered') return { label: 'Mark In Transit', href: procurementDetail(row.id, 'mark-in-transit') };
     if (row.status === 'in_transit') return { label: 'Mark Delivered', href: procurementDetail(row.id, 'mark-delivered') };
-    if (row.status === 'delivered') return { label: 'Receive Stock', href: `/spare-parts?action=receive&source=procurement&procurementId=${row.id}` };
+    if (row.status === 'delivered') return { label: 'Receive Stock', href: `/spare-parts?action=record-receipt&source=procurement&procurement_id=${row.id}` };
     return { label: 'View Procurement Evidence', href: procurementDetail(row.id) };
   }
 
@@ -414,6 +414,8 @@ function OperationalProcurementPage() {
                   priority: parsed.data.priority,
                   expected_delivery_date: parsed.data.expected_delivery_date || null,
                   source_replacement_score_id: sourceReplacementScoreId,
+                  spare_part_id: searchParams.get('partId') ?? searchParams.get('sparePartId') ?? null,
+                  requested_quantity: searchParams.get('suggestedQuantity') ?? searchParams.get('quantity'),
                 });
                 setSubmitting(false);
                 if (!result.success) {

@@ -17,7 +17,7 @@
 //     "Preview".
 
 import { z } from 'zod';
-import { getActionContextForCapability, logServerAuditEvent, revalidateMany, actionError, nullIfEmpty, type ActionResult } from './_shared';
+import { getActionContextForCapability, logServerAuditEvent, revalidateMany, actionError, nullIfEmpty, interpretMissingMutationResult, type ActionResult } from './_shared';
 
 const disposalPaths = ['/disposal', '/replacement', '/calendar', '/reports/disposal'];
 const disposalStatus = z.enum(['pending', 'approved', 'rejected', 'completed', 'canceled']);
@@ -65,8 +65,17 @@ export async function updateDisposalRequestStatusAction(id: string, status: stri
       updateData.approved_by = profile.id;
       updateData.approved_at = new Date().toISOString();
     }
-    const result = await supabase.from('disposal_requests').update(updateData as never).eq('id', id).select('*').single();
+    // SHAPE-01: maybeSingle handles RLS-filtered rows cleanly.
+    const result = await supabase.from('disposal_requests').update(updateData as never).eq('id', id).select('*').maybeSingle();
     if (result.error) return { success: false, error: result.error.message };
+    if (!result.data) {
+      return interpretMissingMutationResult({
+        entity: 'disposal request',
+        entityId: id,
+        attempted: `status=${parsedStatus}`,
+        profileId: profile.id,
+      });
+    }
     await logServerAuditEvent({ supabase, profileId: profile.id, action: 'disposal_request.status_update', entityType: 'disposal_requests', entityId: id, oldValues: oldRow.data as Record<string, unknown> | null, newValues: result.data as Record<string, unknown> });
     revalidateMany(disposalPaths);
     return { success: true, data: result.data };

@@ -8,8 +8,9 @@
 // NOTE: Server-only. Uses @/lib/supabase/server which cannot run in client
 // components. Do not import this module from client code.
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { createHash } from 'node:crypto';
 import { createClient } from '@/lib/supabase/server';
-import { generateQrToken, isValidQrTokenFormat } from '@/utils/qr/token';
+import { generateQrToken, isValidQrTokenFormat, maskQrToken } from '@/utils/qr/token';
 import { QR_SCAN_DEDUP_WINDOW_MINUTES } from '@/types/qr';
 import type {
   QrLabelStatus,
@@ -23,6 +24,8 @@ import type {
   QrScanCoverageStats,
   QrScanHistoryFilters,
   QrScanHistoryRow,
+  QrSecurityEventRow,
+  QrSecurityScanStatus,
 } from '@/types/qr';
 
 type AssetQrRow = {
@@ -329,12 +332,14 @@ export async function getQrCoverageStats(client?: Client): Promise<QrCoverageSta
 // Discriminated result so the /qr/a/[token] route can show distinct
 // invalid / not-found / revoked / ok states without conflating them through
 // a single string error. The "revoked" branch intentionally returns no asset
-// metadata — only the timestamp the label was retired.
+// metadata in the UI — only the timestamp the label was retired. The asset id
+// is kept in the service result so the route can write privileged security
+// evidence without exposing it publicly.
 
 export type QrLandingResolution =
   | { status: 'invalid' }
   | { status: 'not_found' }
-  | { status: 'revoked'; replacedAt: string | null }
+  | { status: 'revoked'; replacedAt: string | null; assetId: string | null; departmentId: string | null }
   | { status: 'ok'; asset: QrLandingAsset };
 
 export type QrLandingAsset = {
@@ -417,7 +422,12 @@ export async function resolveQrLandingAsset(
 
   const row = data as unknown as RawLandingRow;
   if (row.qr_label_status === 'revoked') {
-    return { status: 'revoked', replacedAt: row.qr_label_replaced_at };
+    return {
+      status: 'revoked',
+      replacedAt: row.qr_label_replaced_at,
+      assetId: row.id,
+      departmentId: row.department_id,
+    };
   }
 
   const dept = Array.isArray(row.departments) ? row.departments[0] : row.departments;
@@ -762,7 +772,7 @@ const QR_SCAN_SELECT = `
     qr_label_status,
     departments ( id, name )
   ),
-  profiles (
+  profiles!qr_security_events_scanner_profile_id_fkey (
     id,
     full_name,
     email
@@ -778,6 +788,9 @@ type RawQrScanRow = {
   scan_source: string | null;
   online_status: string | null;
   action_taken: string | null;
+  scan_status?: string | null;
+  auth_user_id?: string | null;
+  deduped_from_scan_id?: string | null;
   metadata: Record<string, unknown> | null;
   created_at: string | null;
   equipment_assets:
@@ -937,6 +950,142 @@ export async function shouldLogQrScan(
   return { shouldLog: true };
 }
 
+function tokenHash(token: string): string {
+  return createHash('sha256').update(token).digest('hex');
+}
+
+export type LogQrSecurityEventParams = {
+  token: string;
+  scanStatus: QrSecurityScanStatus;
+  assetId?: string | null;
+  scannerProfileId?: string | null;
+  authUserId?: string | null;
+  roleName?: string | null;
+  scanSource?: QrScanSource;
+  onlineStatus?: QrOnlineStatus;
+  userAgent?: string | null;
+  metadata?: Record<string, unknown>;
+};
+
+export async function logQrSecurityEvent(params: LogQrSecurityEventParams, client?: Client) {
+  try {
+    const supabase = await resolveClient(client);
+    const { data, error } = await supabase
+      .from('qr_security_events')
+      .insert({
+        token_hash: tokenHash(params.token),
+        masked_token: maskQrToken(params.token),
+        scan_status: params.scanStatus,
+        asset_id: params.assetId ?? null,
+        scanner_profile_id: params.scannerProfileId ?? null,
+        auth_user_id: params.authUserId ?? null,
+        role_name: params.roleName ?? null,
+        scan_source: params.scanSource ?? 'web',
+        online_status: params.onlineStatus ?? 'online',
+        user_agent: params.userAgent ?? null,
+        metadata: params.metadata ?? {},
+      } as never)
+      .select('id')
+      .maybeSingle();
+    if (error) {
+      console.error('[qr.logSecurityEvent] Failed to record security event:', error.message);
+      return { success: false, error: error.message };
+    }
+    return { success: true, eventId: (data as { id?: string } | null)?.id ?? null };
+  } catch (err) {
+    console.error('[qr.logSecurityEvent] Threw:', err);
+    return { success: false, error: 'Failed to record QR security event' };
+  }
+}
+
+const QR_SECURITY_SELECT = `
+  id,
+  token_hash,
+  masked_token,
+  scan_status,
+  asset_id,
+  scanner_profile_id,
+  auth_user_id,
+  role_name,
+  scan_source,
+  online_status,
+  user_agent,
+  metadata,
+  created_at,
+  equipment_assets (
+    id,
+    asset_code,
+    name
+  ),
+  profiles (
+    id,
+    full_name,
+    email
+  )
+`;
+
+type RawQrSecurityEventRow = {
+  id: string;
+  token_hash: string;
+  masked_token: string;
+  scan_status: string;
+  asset_id: string | null;
+  scanner_profile_id: string | null;
+  auth_user_id: string | null;
+  role_name: string | null;
+  scan_source: string | null;
+  online_status: string | null;
+  user_agent: string | null;
+  metadata: Record<string, unknown> | null;
+  created_at: string;
+  equipment_assets: { id: string; asset_code: string | null; name: string | null } | { id: string; asset_code: string | null; name: string | null }[] | null;
+  profiles: { id: string; full_name: string | null; email: string | null } | { id: string; full_name: string | null; email: string | null }[] | null;
+};
+
+function toSecurityEventRow(row: RawQrSecurityEventRow): QrSecurityEventRow {
+  const asset = pickOne(row.equipment_assets);
+  const profile = pickOne(row.profiles);
+  const metadata = row.metadata && typeof row.metadata === 'object' ? row.metadata : {};
+  return {
+    id: row.id,
+    token_hash: row.token_hash,
+    masked_token: row.masked_token,
+    scan_status: row.scan_status,
+    asset_id: row.asset_id,
+    asset_code: asset?.asset_code ?? null,
+    asset_name: asset?.name ?? null,
+    scanner_profile_id: row.scanner_profile_id,
+    scanner_name: profile?.full_name ?? null,
+    scanner_email: profile?.email ?? null,
+    auth_user_id: row.auth_user_id,
+    role_name: row.role_name,
+    scan_source: row.scan_source,
+    online_status: row.online_status,
+    user_agent: row.user_agent,
+    metadata_route: typeof metadata.route === 'string' ? metadata.route : null,
+    created_at: row.created_at,
+  };
+}
+
+export async function getQrSecurityEvents(
+  filters: { status?: string; limit?: number } = {},
+  client?: Client,
+): Promise<QrSecurityEventRow[]> {
+  const supabase = await resolveClient(client);
+  let query = supabase
+    .from('qr_security_events')
+    .select(QR_SECURITY_SELECT)
+    .order('created_at', { ascending: false })
+    .limit(clampScanLimit(filters.limit));
+  if (filters.status) query = query.eq('scan_status', filters.status);
+  const { data, error } = await query;
+  if (error) {
+    console.error('[qr.getQrSecurityEvents]', error.message);
+    return [];
+  }
+  return ((data ?? []) as unknown as RawQrSecurityEventRow[]).map(toSecurityEventRow);
+}
+
 export async function getQrAssetScanMetrics(
   client?: Client,
 ): Promise<Record<string, QrAssetScanMetric>> {
@@ -1052,12 +1201,14 @@ export async function getQrScanCoverageStats(client?: Client): Promise<QrScanCov
 export type LogQrScanParams = {
   assetId: string;
   scannedBy?: string | null;
+  authUserId?: string | null;
   roleName?: string | null;
   scanSource?: QrScanSource;
   onlineStatus?: QrOnlineStatus;
   userAgent?: string | null;
   actionTaken?: string | null;
   metadata?: Record<string, unknown>;
+  token?: string | null;
 };
 
 export async function logQrScan(params: LogQrScanParams, client?: Client) {
@@ -1073,12 +1224,35 @@ export async function logQrScan(params: LogQrScanParams, client?: Client) {
       supabase,
     );
     if (!dedup.shouldLog) {
+      if (params.token) {
+        await logQrSecurityEvent(
+          {
+            token: params.token,
+            scanStatus: 'deduped',
+            assetId: params.assetId,
+            scannerProfileId: params.scannedBy ?? null,
+            authUserId: params.authUserId ?? null,
+            roleName: params.roleName ?? null,
+            scanSource: params.scanSource ?? 'web',
+            onlineStatus: params.onlineStatus ?? 'online',
+            userAgent: params.userAgent ?? null,
+            metadata: {
+              ...(params.metadata ?? {}),
+              route: (params.metadata ?? {}).route ?? 'qr.landing.v2',
+              deduped_from_scan_id: dedup.existingScanId ?? null,
+            },
+          },
+          supabase,
+        );
+      }
       return { success: true, deduped: true, existingScanId: dedup.existingScanId ?? null };
     }
 
     const { data, error } = await supabase.from('equipment_qr_scans').insert({
       asset_id: params.assetId,
       scanned_by: params.scannedBy ?? null,
+      auth_user_id: params.authUserId ?? null,
+      scan_status: 'valid',
       role_name: params.roleName ?? null,
       scan_source: params.scanSource ?? 'web',
       online_status: params.onlineStatus ?? 'online',

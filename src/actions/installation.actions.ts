@@ -1,7 +1,7 @@
 'use server';
 
 import { z } from 'zod';
-import { getActionContext, logServerAuditEvent, revalidateMany, actionError, nullIfEmpty, type ActionResult } from './_shared';
+import { getActionContext, logServerAuditEvent, revalidateMany, actionError, nullIfEmpty, interpretMissingMutationResult, type ActionResult } from './_shared';
 
 const installationPaths = ['/installation', '/requests', '/calendar', '/command'];
 
@@ -65,8 +65,17 @@ export async function updateInstallationRequestStatusAction(id: string, status: 
     const parsedStatus = z.enum(['submitted', 'approved', 'scheduled', 'assigned', 'in_progress', 'completed', 'rejected', 'cancelled']).parse(status);
     const updateData: Record<string, unknown> = { status: parsedStatus };
     if (parsedStatus === 'completed') updateData.completed_at = new Date().toISOString();
-    const result = await supabase.from('installation_requests').update(updateData as never).eq('id', id).select('*').single();
+    // SHAPE-01: maybeSingle on RLS-filtered update.
+    const result = await supabase.from('installation_requests').update(updateData as never).eq('id', id).select('*').maybeSingle();
     if (result.error) return { success: false, error: result.error.message };
+    if (!result.data) {
+      return interpretMissingMutationResult({
+        entity: 'installation request',
+        entityId: id,
+        attempted: `status=${parsedStatus}`,
+        profileId: profile.id,
+      });
+    }
     await logServerAuditEvent({ supabase, profileId: profile.id, action: 'installation_request.status_update', entityType: 'installation_requests', entityId: id, newValues: result.data as Record<string, unknown> });
     revalidateMany([...installationPaths, `/installation/requests/${id}`]);
     return { success: true, data: result.data };

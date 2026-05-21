@@ -34,7 +34,7 @@ interface AlertRow {
   equipment_assets: AssetInfo;
 }
 
-// Management-significant flag types only — the Viewer Alerts inbox should not
+// Management-significant flag types only — the Viewer Notifications inbox should not
 // flood leadership with low-level technician signals.
 const MANAGEMENT_FLAG_TYPES = new Set<RecommendationFlagType>([
   'urgent_maintenance',
@@ -64,7 +64,7 @@ function flagCategory(flag: RecommendationFlagType): { label: string; icon: Reac
     case 'low_availability':
       return { label: 'Risk requiring management awareness', icon: <ShieldAlert className="h-4 w-4 text-rose-300" /> };
     default:
-      return { label: 'Management alert', icon: <Info className="h-4 w-4 text-cyan-300" /> };
+      return { label: 'Management notification', icon: <Info className="h-4 w-4 text-cyan-300" /> };
   }
 }
 
@@ -114,14 +114,14 @@ export default function ViewerManagementAlerts() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Management Alerts"
-        description="Read-only inbox of management-significant signals only. Low-level technical alerts are not shown."
-        breadcrumbs={[{ label: 'Command Center', href: '/command' }, { label: 'Management Alerts' }]}
+        title="Management Notifications"
+        description="Read-only inbox of management-significant signals only. Low-level technical notifications are not shown."
+        breadcrumbs={[{ label: 'Command Center', href: '/command' }, { label: 'Management Notifications' }]}
         actions={<Badge variant="default">Read-only view</Badge>}
       />
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <StatCard label="Total Management Alerts" value={counts.total} icon={<Bell className="h-5 w-5" />} />
+        <StatCard label="Total Management Notifications" value={counts.total} icon={<Bell className="h-5 w-5" />} />
         <StatCard label="Critical" value={counts.critical} icon={<ShieldAlert className="h-5 w-5" />} color="red" />
         <StatCard label="High" value={counts.high} icon={<AlertTriangle className="h-5 w-5" />} color="orange" />
         <StatCard label="Medium" value={counts.medium} icon={<Clock className="h-5 w-5" />} color="yellow" />
@@ -130,12 +130,12 @@ export default function ViewerManagementAlerts() {
       {alerts.length === 0 ? (
         <div className="panel-surface rounded-xl p-8 text-center">
           <Bell className="mx-auto mb-3 h-10 w-10 text-emerald-300" />
-          <p className="text-sm text-[var(--foreground)]">No management-level alerts require attention.</p>
+          <p className="text-sm text-[var(--foreground)]">No management-level notifications require attention.</p>
         </div>
       ) : (
         <div className="panel-surface rounded-xl">
           <div className="border-b border-[var(--border-subtle)]/60 p-4">
-            <h2 className="text-base font-semibold text-[var(--foreground)]">Active Alerts</h2>
+            <h2 className="text-base font-semibold text-[var(--foreground)]">Active Notifications</h2>
           </div>
           <ul className="divide-y divide-[var(--border-subtle)]/60">
             {alerts.map((a) => {

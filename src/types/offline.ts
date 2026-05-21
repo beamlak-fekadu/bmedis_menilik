@@ -163,8 +163,12 @@ export const OFFLINE_ACTION_DEFINITIONS: Record<OfflineActionType, OfflineAction
     syncHandler: 'phase2',
   },
   'work_order.complete_draft': {
+    // OFF-02: this action logs a maintenance event with the intended
+    // completion outcome — it does NOT close the work order. The user must
+    // reconnect online and call updateWorkOrderAction with `status: 'completed'`
+    // for the WO to actually become completed.
     actionType: 'work_order.complete_draft',
-    label: 'Draft work-order completion',
+    label: 'Offline completion note (work order stays open)',
     category: 'draft_requires_review',
     syncHandler: 'phase2',
   },

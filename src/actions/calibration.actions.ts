@@ -2,7 +2,7 @@
 
 import { z } from 'zod';
 import { recomputeAssetAnalytics } from './analytics.actions';
-import { getActionContextForCapability, getActionContextForAnyCapability, logServerAuditEvent, revalidateMany, actionError, nullIfEmpty, type ActionResult } from './_shared';
+import { getActionContextForCapability, getActionContextForAnyCapability, logServerAuditEvent, revalidateMany, actionError, nullIfEmpty, interpretMissingMutationResult, runAnalyticsRefreshOrWarn, type ActionResult } from './_shared';
 import { denialMessage } from '@/lib/rbac/department-scope';
 
 const calibrationPaths = ['/calibration', '/calendar', '/command', '/reports/calibration'];
@@ -25,13 +25,24 @@ export async function updateCalibrationRequestStatusAction(id: string, status: s
     if (error || !profile) return { success: false, error };
     const parsedStatus = z.enum(['pending', 'approved', 'in_progress', 'completed', 'rejected', 'canceled']).parse(status);
     const oldRow = await supabase.from('calibration_requests').select('*').eq('id', id).maybeSingle();
+    // SHAPE-01: .maybeSingle() so RLS-filtered or already-deleted rows return
+    // data=null instead of raising PGRST116. We translate that to a clear
+    // user-facing message and log the raw PostgREST error for developers.
     const result = await supabase
       .from('calibration_requests')
       .update({ status: parsedStatus } as never)
       .eq('id', id)
       .select('*')
-      .single();
+      .maybeSingle();
     if (result.error) return { success: false, error: result.error.message };
+    if (!result.data) {
+      return interpretMissingMutationResult({
+        entity: 'calibration request',
+        entityId: id,
+        attempted: `status=${parsedStatus}`,
+        profileId: profile.id,
+      });
+    }
     await logServerAuditEvent({
       supabase,
       profileId: profile.id,
@@ -42,12 +53,27 @@ export async function updateCalibrationRequestStatusAction(id: string, status: s
       newValues: result.data as Record<string, unknown>,
     });
     const assetId = (result.data as Record<string, unknown>).asset_id as string | undefined;
-    if (assetId && parsedStatus === 'completed') await recomputeAssetAnalytics(assetId).catch(() => undefined);
+    let analyticsWarning: string | null = null;
+    if (assetId && parsedStatus === 'completed') {
+      analyticsWarning = await runAnalyticsRefreshOrWarn({
+        refresh: () => recomputeAssetAnalytics(assetId),
+        label: 'Calibration analytics',
+        audit: {
+          supabase, profileId: profile.id,
+          action: 'calibration_request.analytics_refresh_failed',
+          entityType: 'calibration_requests', entityId: id,
+          details: { asset_id: assetId },
+        },
+      });
+    }
 
-    // R6: emit calibration.request_status_changed so BME Head + requester +
-    // assigned technician + department head all see the workflow move.
-    // Notification rules in notification-rules.ts already handle this event
-    // type — before R6 the rule was defined but never emitted.
+    // R6 + NOTIF-02: emit calibration.request_status_changed with the
+    // requester identity AND the request number, so the rule can:
+    //   1) resolve a requester notification (rule reads payload.requested_by)
+    //   2) build a deep link to /calibration/requests/[id] (links read
+    //      payload.request_id; we also pass source_id which links honor)
+    // Before this fix the payload omitted both — the requester would never
+    // see "your calibration request was rejected/approved".
     try {
       const { data: asset } = await supabase
         .from('equipment_assets')
@@ -55,6 +81,11 @@ export async function updateCalibrationRequestStatusAction(id: string, status: s
         .eq('id', assetId ?? '')
         .maybeSingle();
       const row = (asset ?? null) as { name?: string | null; asset_code?: string | null; department_id?: string | null } | null;
+      const oldRequest = (oldRow.data ?? null) as {
+        requested_by?: string | null;
+        request_number?: string | null;
+        urgency?: string | null;
+      } | null;
       const { emitNotificationEvent } = await import('@/services/notifications/notification-engine');
       await emitNotificationEvent({
         event_type: 'calibration.request_status_changed',
@@ -68,6 +99,14 @@ export async function updateCalibrationRequestStatusAction(id: string, status: s
           asset_name: row?.name ?? null,
           asset_code: row?.asset_code ?? null,
           status: parsedStatus,
+          // NOTIF-02 fix: requester id (profiles.id, NOT auth user id) so
+          // the rule can fire the requester-update notification.
+          requested_by: oldRequest?.requested_by ?? null,
+          // NOTIF-02 fix: request id + number drive the calibration deep link
+          // to /calibration/requests/[id] instead of /calibration generic.
+          request_id: id,
+          request_number: oldRequest?.request_number ?? null,
+          urgency: oldRequest?.urgency ?? null,
         },
       });
     } catch (e) {
@@ -75,7 +114,12 @@ export async function updateCalibrationRequestStatusAction(id: string, status: s
     }
 
     revalidateMany([...calibrationPaths, `/calibration/requests/${id}`, ...(assetId ? [`/equipment/${assetId}`] : [])]);
-    return { success: true, data: result.data };
+    // ANALYTICS-01: propagate analytics warning into the action result so
+    // the UI can surface "Action succeeded; metrics may be stale."
+    const responseData = analyticsWarning
+      ? { ...(result.data as Record<string, unknown>), analytics_refresh_warning: analyticsWarning }
+      : result.data;
+    return { success: true, data: responseData };
   } catch (err) {
     return actionError(err, 'Failed to update calibration request');
   }
@@ -141,7 +185,16 @@ export async function createCalibrationRequestAction(payload: Record<string, unk
       return { success: false, error: calibrationRequestInsertError(result.error.message) };
     }
     await logServerAuditEvent({ supabase, profileId: profile.id, action: 'calibration_request.create', entityType: 'calibration_requests', entityId: (result.data as { id?: string }).id ?? null, newValues: result.data as Record<string, unknown> });
-    await recomputeAssetAnalytics(parsed.asset_id).catch(() => undefined);
+    const createAnalyticsWarning = await runAnalyticsRefreshOrWarn({
+      refresh: () => recomputeAssetAnalytics(parsed.asset_id),
+      label: 'Calibration analytics',
+      audit: {
+        supabase, profileId: profile.id,
+        action: 'calibration_request.analytics_refresh_failed',
+        entityType: 'calibration_requests', entityId: (result.data as { id?: string }).id ?? null,
+        details: { asset_id: parsed.asset_id },
+      },
+    });
 
     try {
       const { data: asset } = await supabase
@@ -172,7 +225,10 @@ export async function createCalibrationRequestAction(payload: Record<string, unk
     }
 
     revalidateMany(calibrationPaths);
-    return { success: true, data: result.data };
+    const responseDataCreate = createAnalyticsWarning
+      ? { ...(result.data as Record<string, unknown>), analytics_refresh_warning: createAnalyticsWarning }
+      : result.data;
+    return { success: true, data: responseDataCreate };
   } catch (err) {
     return actionError(err, 'Failed to create calibration request');
   }
@@ -196,7 +252,17 @@ export async function createCalibrationRecordAction(payload: Record<string, unkn
     const result = await supabase.from('calibration_records').insert(data as never).select('*').single();
     if (result.error) return { success: false, error: result.error.message };
     await logServerAuditEvent({ supabase, profileId: profile.id, action: 'calibration_record.create', entityType: 'calibration_records', entityId: (result.data as { id?: string }).id ?? null, newValues: result.data as Record<string, unknown> });
-    await recomputeAssetAnalytics(parsed.asset_id).catch(() => undefined);
+    // ANALYTICS-01: surface refresh failure as warning.
+    const recordAnalyticsWarning = await runAnalyticsRefreshOrWarn({
+      refresh: () => recomputeAssetAnalytics(parsed.asset_id),
+      label: 'Calibration analytics',
+      audit: {
+        supabase, profileId: profile.id,
+        action: 'calibration_record.analytics_refresh_failed',
+        entityType: 'calibration_records', entityId: (result.data as { id?: string }).id ?? null,
+        details: { asset_id: parsed.asset_id },
+      },
+    });
 
     // R6: failed or adjusted calibration is a clinical-safety event.
     // Notification rules in notification-rules.ts wire this event to
@@ -228,6 +294,12 @@ export async function createCalibrationRecordAction(payload: Record<string, unkn
             result: parsed.result,
             calibration_date: parsed.calibration_date,
             next_due_date: parsed.next_due_date ?? null,
+            // NOTIF-02 fix: emit record_id so the notification deep link
+            // opens the exact calibration record (/calibration/records/[id])
+            // instead of the generic /calibration page. calibration_records
+            // has no formal FK to calibration_requests; the link builder
+            // honours record_id first, then asset_id as fallback.
+            record_id: inserted.id ?? null,
           },
         });
       } catch (e) {
@@ -236,7 +308,10 @@ export async function createCalibrationRecordAction(payload: Record<string, unkn
     }
 
     revalidateMany(calibrationPaths);
-    return { success: true, data: result.data };
+    const responseDataRecord = recordAnalyticsWarning
+      ? { ...(result.data as Record<string, unknown>), analytics_refresh_warning: recordAnalyticsWarning }
+      : result.data;
+    return { success: true, data: responseDataRecord };
   } catch (err) {
     return actionError(err, 'Failed to create calibration record');
   }

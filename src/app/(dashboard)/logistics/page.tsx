@@ -133,7 +133,7 @@ function OperationalLogisticsPage() {
               key: 'action', header: 'Next Action',
               render: (row: Record<string, unknown>) => (
                 <div className="flex flex-wrap gap-1.5">
-                  <Link href={`/spare-parts?action=receive&source=logistics&procurementId=${String(row.id)}`} className="rounded-lg bg-emerald-600 px-2 py-1 text-xs font-medium text-white hover:bg-emerald-500">
+                  <Link href={`/spare-parts?action=record-receipt&source=logistics&procurement_id=${String(row.id)}`} className="rounded-lg bg-emerald-600 px-2 py-1 text-xs font-medium text-white hover:bg-emerald-500">
                     Receive Into Stock
                   </Link>
                   <Link href={procurementDetail(String(row.id))} className="rounded-lg border border-[var(--border-subtle)] px-2 py-1 text-xs font-medium hover:bg-[var(--surface-2)]">
@@ -535,7 +535,7 @@ function OperationalLogisticsPage() {
           <div className="flex gap-2">
             <Badge variant="info">{activeWorkflow.replace(/-/g, ' ')}</Badge>
             {activeWorkflow === 'receiving' && canManageParts && (
-              <Link href="/spare-parts?action=receive&source=logistics" className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-500">
+              <Link href="/spare-parts?action=record-receipt&source=logistics" className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-500">
                 Receive Stock
               </Link>
             )}

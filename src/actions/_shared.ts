@@ -167,3 +167,93 @@ export function actionError(error: unknown, fallback = 'Action failed'): ActionR
 export function nullIfEmpty(value: unknown) {
   return value === '' ? null : value;
 }
+
+/**
+ * SHAPE-01: detect PostgREST's "single row required but 0 returned" error.
+ *
+ * When an UPDATE...select().single() targets a row that RLS filters out
+ * (or that no longer exists), PostgREST returns:
+ *   { code: 'PGRST116', message: 'Cannot coerce the result to a single JSON object' }
+ *
+ * This message leaks into the UI as a confusing string. Callers should use
+ * .maybeSingle() and then call interpretMissingMutationResult() to convert
+ * a null data result into a clean user-facing error.
+ */
+export function isPostgrestNoRowsError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false;
+  const row = error as { code?: unknown; message?: unknown };
+  if (row.code === 'PGRST116') return true;
+  return /Cannot coerce the result to a single JSON object/i.test(String(row.message ?? ''));
+}
+
+/**
+ * Translate a 0-row UPDATE/DELETE/INSERT-returning-maybeSingle into a
+ * structured user-facing error. The console.error preserves the raw cause
+ * for developers; the returned message is safe to show in the UI.
+ */
+export function interpretMissingMutationResult(params: {
+  entity: string;
+  entityId?: string | null;
+  attempted?: string;
+  profileId?: string | null;
+}): ActionResult {
+  console.error(`[shape-01] ${params.entity} mutation returned 0 rows; likely RLS or already deleted`, {
+    entityId: params.entityId ?? null,
+    attempted: params.attempted ?? null,
+    profileId: params.profileId ?? null,
+  });
+  return {
+    success: false,
+    error: `You do not have permission to change this ${params.entity}, or the ${params.entity} no longer exists.`,
+  };
+}
+
+/**
+ * ANALYTICS-01: run a best-effort analytics refresh and ALWAYS surface
+ * failures as a structured warning instead of swallowing them with
+ * `.catch(() => undefined)`.
+ *
+ * Callers should propagate the returned warning string into their action
+ * result so the UI can warn "Action completed; analytics refresh failed,
+ * metrics may be stale". The action's primary workflow MUST NOT be
+ * blocked by refresh failure — analytics is downstream of the truth.
+ *
+ * @returns null on success, error message string on failure
+ */
+export async function runAnalyticsRefreshOrWarn(params: {
+  refresh: () => Promise<unknown>;
+  label: string;
+  audit?: {
+    supabase: Awaited<ReturnType<typeof import('@/lib/supabase/server').createClient>>;
+    profileId: string;
+    action: string;
+    entityType: string;
+    entityId: string | null;
+    details?: Record<string, unknown>;
+  };
+}): Promise<string | null> {
+  try {
+    await params.refresh();
+    return null;
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'unknown';
+    const warning = `${params.label} refresh failed: ${message}. Metrics may be stale until the next scheduled refresh.`;
+    if (process.env.NODE_ENV !== 'production') {
+      console.warn(`[analytics-01] ${warning}`);
+    }
+    if (params.audit) {
+      try {
+        await params.audit.supabase.from('audit_logs').insert({
+          performed_by: params.audit.profileId,
+          action: params.audit.action,
+          entity_type: params.audit.entityType,
+          entity_id: params.audit.entityId,
+          details: { ...(params.audit.details ?? {}), error: message },
+        } as never);
+      } catch {
+        // Audit failure itself is best-effort. The warning still surfaces.
+      }
+    }
+    return warning;
+  }
+}

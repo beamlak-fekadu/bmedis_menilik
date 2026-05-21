@@ -1081,10 +1081,12 @@ New SQL functions must use SECURITY DEFINER if they touch analytics or decision 
 
 ### spare-parts.service.ts
 - getSpareParts(filters), createSparePart(data), updateSparePart(id, data)
-- getStockReceipts(partId), createStockReceipt(data) — manually increments current_stock
-- getStockIssues(partId), createStockIssue(data) — validates stock, manually decrements
+- getStockReceipts(partId), getStockIssues(partId) — read-only stock movement history
+- createStockReceipt(data), createStockIssue(data) — deprecated wrappers that throw; use
+  createStockReceiptAction / createStockIssueAction so stock movement goes through
+  record_stock_receipt / record_stock_issue RPC row locks
 - getLowStockParts() — queries v_low_stock_parts
-- KNOWN RACE CONDITION: stock updates use two separate queries (no transaction) — do not copy
+- Do not add service-level stock movement writers. Stock changes must use the transactional RPCs.
 
 ### training.service.ts
 - getTrainingSessions(filters), createTrainingSession(data)
@@ -1540,9 +1542,12 @@ One active corrective maintenance request per asset is the rule.
    which is not a valid enum value. Valid values: requested / approved / ordered /
    in_transit / delivered / canceled. Fixed — do not re-introduce 'under_review'.
 
-3. spare-parts.service.ts race condition: createStockReceipt and createStockIssue
-   manually increment/decrement current_stock with two separate queries (no transaction).
-   Known deferred issue — do not copy this pattern elsewhere.
+3. FIXED (Phase 3 STOCK-01): spare-parts.service.ts no longer contains the
+   legacy direct stock_receipts / stock_issues insert plus current_stock update
+   writers. createStockReceipt and createStockIssue are deprecated wrappers
+   that throw a developer-facing error. Canonical stock mutations are
+   createStockReceiptAction / createStockIssueAction → record_stock_receipt /
+   record_stock_issue RPCs.
 
 4. FIXED (migration 00023) — triage_action_queue accumulation resolved. DELETE now removes
    ALL rows WHERE status='open' before re-inserting. Table now holds exactly 80 open rows.

@@ -36,7 +36,7 @@ const WORK_ORDER_SELECT = `
   completion_outcome, final_equipment_condition,
   created_at, updated_at,
   equipment_assets(id, asset_code, name),
-  profiles(id, full_name, email)
+  profiles!work_orders_assigned_to_fkey(id, full_name, email)
 `;
 
 const EVENT_SELECT = `

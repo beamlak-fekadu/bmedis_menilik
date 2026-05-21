@@ -54,6 +54,8 @@ export async function recordReportExportAction(input: {
         report_type: input.reportType,
         format: input.format,
         row_count: Number.isFinite(input.rowCount) ? input.rowCount : 0,
+        actor_profile_id: profile.id,
+        exported_at: new Date().toISOString(),
       },
     });
     return { success: true };

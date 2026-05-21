@@ -84,7 +84,7 @@ export default function StoreOperationsCommandCenter({ metrics, stockRisk, recei
   const cards: MetricCard[] = [
     { label: 'Stockouts', value: metrics.stockoutParts, subtitle: 'Spare parts with current_stock ≤ 0.', icon: <AlertTriangle className="h-5 w-5" />, tone: metrics.stockoutParts > 0 ? 'critical' : 'success', href: '/spare-parts?filter=stockout', hrefLabel: 'Open Stockout Evidence' },
     { label: 'Low Stock Parts', value: metrics.lowStockParts, subtitle: '0 < current_stock ≤ reorder_level.', icon: <Boxes className="h-5 w-5" />, tone: metrics.lowStockParts > 0 ? 'warning' : 'success', href: '/spare-parts?filter=low-stock', hrefLabel: 'Open Low Stock' },
-    { label: 'Blocked Work Orders', value: metrics.blockedWorkOrders, subtitle: 'Open work orders currently on_hold.', icon: <Wrench className="h-5 w-5" />, tone: metrics.blockedWorkOrders > 0 ? 'warning' : 'success', href: '/maintenance', hrefLabel: 'View Blocked Work Orders' },
+    { label: 'Blocked Work Orders', value: metrics.blockedWorkOrders, subtitle: 'Open work_order_parts_needed rows with exact WO and part context.', icon: <Wrench className="h-5 w-5" />, tone: metrics.blockedWorkOrders > 0 ? 'warning' : 'success', href: '/maintenance', hrefLabel: 'View Blocked Work Orders' },
     { label: 'Pending Issue Requests', value: metrics.pendingIssueRequests, subtitle: 'Maintenance requests still in pending review.', icon: <ClipboardCheck className="h-5 w-5" />, tone: 'info', href: '/logistics?workflow=issue', hrefLabel: 'Open Issue Queue' },
     { label: 'Approved Items to Issue', value: metrics.approvedItemsToIssue, subtitle: 'Approved maintenance requests (handoff to store).', icon: <HandHelping className="h-5 w-5" />, tone: metrics.approvedItemsToIssue > 0 ? 'info' : 'success', href: '/logistics?workflow=issue', hrefLabel: 'Open Issue Queue' },
     { label: 'Delivered Items to Receive', value: metrics.deliveredItemsToReceive, subtitle: 'Procurement requests at status = delivered.', icon: <Warehouse className="h-5 w-5" />, tone: metrics.deliveredItemsToReceive > 0 ? 'warning' : 'success', href: storeReceiveLink(), hrefLabel: 'Open Receiving Queue' },
@@ -165,7 +165,7 @@ export default function StoreOperationsCommandCenter({ metrics, stockRisk, recei
               </Link>
               <Link href="/maintenance" className="flex flex-col gap-1 rounded-lg border border-[var(--border-subtle)] p-3 hover:border-[var(--brand)]/50">
                 <span className="inline-flex items-center gap-2 text-sm font-medium text-[var(--foreground)]"><Wrench className="h-4 w-4 text-orange-300" /> Trace Work-Order Blockers</span>
-                <span className="text-xs text-[var(--text-muted)]">{metrics.blockedWorkOrders} on-hold work order{metrics.blockedWorkOrders === 1 ? '' : 's'}.</span>
+                <span className="text-xs text-[var(--text-muted)]">{metrics.blockedWorkOrders} declared part blocker{metrics.blockedWorkOrders === 1 ? '' : 's'}.</span>
               </Link>
             </div>
           </CardContent>
@@ -257,6 +257,7 @@ export default function StoreOperationsCommandCenter({ metrics, stockRisk, recei
                       <th className="pb-2 pr-4 text-xs uppercase text-[var(--text-muted)]">Procurement</th>
                       <th className="pb-2 pr-4 text-xs uppercase text-[var(--text-muted)]">Title</th>
                       <th className="pb-2 pr-4 text-xs uppercase text-[var(--text-muted)]">Status</th>
+                      <th className="pb-2 pr-4 text-xs uppercase text-[var(--text-muted)]">Qty</th>
                       <th className="pb-2 pr-4 text-xs uppercase text-[var(--text-muted)]">Expected</th>
                       <th className="pb-2 pr-4 text-xs uppercase text-[var(--text-muted)]">Priority</th>
                       <th className="pb-2 text-xs uppercase text-[var(--text-muted)]">Action</th>
@@ -268,6 +269,7 @@ export default function StoreOperationsCommandCenter({ metrics, stockRisk, recei
                         <td className="py-3 pr-4 font-medium text-[var(--foreground)]">{r.requestNumber}</td>
                         <td className="py-3 pr-4 text-[var(--text-muted)]">{r.title}</td>
                         <td className="py-3 pr-4"><Badge variant="info">{r.status}</Badge></td>
+                        <td className="py-3 pr-4 text-[var(--text-muted)]">{r.requestedQuantity ?? '—'}</td>
                         <td className="py-3 pr-4 text-[var(--text-muted)]">{r.expectedDeliveryDate ?? '—'}</td>
                         <td className="py-3 pr-4 text-[var(--text-muted)]">{r.priority}</td>
                         <td className="py-3">
@@ -381,14 +383,16 @@ export default function StoreOperationsCommandCenter({ metrics, stockRisk, recei
           </CardHeader>
           <CardContent>
             {blockers.length === 0 ? (
-              <p className="py-4 text-center text-sm text-[var(--text-muted)]">No on-hold work orders currently flagged.</p>
+              <p className="py-4 text-center text-sm text-[var(--text-muted)]">No declared work_order_parts_needed blockers currently flagged.</p>
             ) : (
               <div className="overflow-x-auto">
-                <table className="min-w-[720px] w-full text-sm">
+                <table className="min-w-[1060px] w-full text-sm">
                   <thead>
                     <tr className="border-b border-[var(--border-subtle)]/60 text-left">
                       <th className="pb-2 pr-4 text-xs uppercase text-[var(--text-muted)]">Work Order</th>
                       <th className="pb-2 pr-4 text-xs uppercase text-[var(--text-muted)]">Asset</th>
+                      <th className="pb-2 pr-4 text-xs uppercase text-[var(--text-muted)]">Needed Part</th>
+                      <th className="pb-2 pr-4 text-xs uppercase text-[var(--text-muted)]">Qty / Stock</th>
                       <th className="pb-2 pr-4 text-xs uppercase text-[var(--text-muted)]">Department</th>
                       <th className="pb-2 pr-4 text-xs uppercase text-[var(--text-muted)]">Priority</th>
                       <th className="pb-2 pr-4 text-xs uppercase text-[var(--text-muted)]">Blocked since</th>
@@ -403,12 +407,38 @@ export default function StoreOperationsCommandCenter({ metrics, stockRisk, recei
                           <p className="text-[var(--foreground)]">{b.assetName}</p>
                           <p className="text-xs text-[var(--text-muted)]">{b.assetCode}</p>
                         </td>
+                        <td className="py-3 pr-4">
+                          {b.partId ? (
+                            <Link href={storePartDetail(b.partId)} className="text-[var(--foreground)] hover:text-violet-300">{b.partName}</Link>
+                          ) : (
+                            <span className="text-[var(--foreground)]">{b.partName}</span>
+                          )}
+                          <p className="text-xs text-[var(--text-muted)]">{b.partCode}</p>
+                        </td>
+                        <td className="py-3 pr-4 text-[var(--text-muted)]">
+                          <p>Need {b.quantityNeeded}</p>
+                          <p className="text-xs">Stock {b.currentStock ?? '—'} / reorder {b.reorderLevel ?? '—'}</p>
+                        </td>
                         <td className="py-3 pr-4 text-[var(--text-muted)]">{b.departmentName}</td>
                         <td className="py-3 pr-4 text-[var(--text-muted)]">{b.priority ?? '—'}</td>
                         <td className="py-3 pr-4 text-[var(--text-muted)]">{b.blockedSince?.slice(0, 10) ?? '—'}</td>
                         <td className="py-3">
                           <div className="flex flex-wrap gap-1.5">
-                            <Link href={storeWorkOrderEvidence(b.id)} className="rounded-md border border-[var(--border-subtle)] px-2 py-1 text-xs text-[var(--text-muted)] hover:text-[var(--foreground)]">View Work Evidence</Link>
+                            {b.partId && Number(b.currentStock ?? 0) > 0 && (
+                              <Link href={storeIssueLink(b.partId, { workOrderId: b.id, needId: b.needId })} className="rounded-md bg-[var(--brand)] px-2 py-1 text-xs text-white">Issue Stock</Link>
+                            )}
+                            {b.partId && (
+                              <Link
+                                href={storeCreateReorderLink(
+                                  { id: b.partId, name: b.partName, part_code: b.partCode, current_stock: b.currentStock, reorder_level: b.reorderLevel },
+                                  { workOrderId: b.id, assetId: b.assetId, needId: b.needId, quantityNeeded: b.quantityNeeded },
+                                )}
+                                className="rounded-md border border-[var(--border-subtle)] px-2 py-1 text-xs text-[var(--text-muted)] hover:text-[var(--foreground)]"
+                              >
+                                Create Reorder
+                              </Link>
+                            )}
+                            <Link href={storeWorkOrderEvidence(b.id)} className="rounded-md border border-[var(--border-subtle)] px-2 py-1 text-xs text-[var(--text-muted)] hover:text-[var(--foreground)]">Work Evidence</Link>
                             {b.assetId && (<Link href={storeEquipmentDetail(b.assetId)} className="rounded-md border border-[var(--border-subtle)] px-2 py-1 text-xs text-[var(--text-muted)] hover:text-[var(--foreground)]">Asset Profile</Link>)}
                           </div>
                         </td>

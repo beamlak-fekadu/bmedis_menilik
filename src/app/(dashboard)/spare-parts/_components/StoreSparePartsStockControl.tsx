@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { AlertTriangle, Boxes, Package, PackageCheck, PackageMinus, PackagePlus, TrendingUp } from 'lucide-react';
 import { PageHeader, Badge, Button } from '@/components/ui';
 import { PageLoader } from '@/components/ui/Spinner';
@@ -50,8 +51,11 @@ interface PartRow {
 
 interface ProcurementRow {
   id: string;
+  request_number?: string | null;
   status: string | null;
   title: string | null;
+  spare_part_id?: string | null;
+  requested_quantity?: number | null;
 }
 
 interface ReceiptRow { id: string; part_id: string; received_date: string }
@@ -90,9 +94,27 @@ type StoreDraftType = 'reorder' | 'receipt' | 'issue';
 
 export default function StoreSparePartsStockControl() {
   const { user } = useAuth();
+  const searchParams = useSearchParams();
   const { profile } = useProfile(user?.id);
   const { roles, primaryRole } = useRole();
   const online = useOnlineStatus();
+  const deepLink = useMemo(() => {
+    const action = searchParams.get('action');
+    const workOrderId = searchParams.get('work_order_id') ?? searchParams.get('workOrderId');
+    const needId = searchParams.get('need_id') ?? searchParams.get('needId');
+    return {
+      action,
+      partId: searchParams.get('partId') ?? searchParams.get('sparePartId') ?? '',
+      quantity: searchParams.get('quantity') ?? searchParams.get('suggestedQuantity') ?? '1',
+      procurementId: searchParams.get('procurement_id') ?? searchParams.get('procurementId'),
+      issueNote: action === 'issue' && (workOrderId || needId)
+        ? [
+            workOrderId ? `Issue linked to work order ${workOrderId}` : null,
+            needId ? `Parts-needed row ${needId}` : null,
+          ].filter(Boolean).join(' · ')
+        : '',
+    };
+  }, [searchParams]);
   const [loading, setLoading] = useState(true);
   const [parts, setParts] = useState<PartRow[]>([]);
   const [procurement, setProcurement] = useState<ProcurementRow[]>([]);
@@ -103,10 +125,13 @@ export default function StoreSparePartsStockControl() {
   const [filterCategory, setFilterCategory] = useState('');
   const [filter, setFilter] = useState<StockFilter>('all');
   const [page, setPage] = useState(1);
-  const [draftType, setDraftType] = useState<StoreDraftType>('reorder');
-  const [draftPartId, setDraftPartId] = useState('');
-  const [draftQuantity, setDraftQuantity] = useState('1');
-  const [draftNote, setDraftNote] = useState('');
+  const [draftType, setDraftType] = useState<StoreDraftType>(
+    deepLink.action === 'record-receipt' ? 'receipt' : deepLink.action === 'issue' ? 'issue' : 'reorder',
+  );
+  const [draftPartId, setDraftPartId] = useState(deepLink.partId);
+  const [draftQuantity, setDraftQuantity] = useState(deepLink.quantity);
+  const [draftNote, setDraftNote] = useState(deepLink.issueNote);
+  const [draftProcurementId, setDraftProcurementId] = useState<string | null>(deepLink.procurementId);
   const [draftSubmitting, setDraftSubmitting] = useState(false);
   const [draftResult, setDraftResult] = useState<OfflineActionRunResult | null>(null);
   const [localDrafts, setLocalDrafts] = useState<OfflineQueueRecord[]>([]);
@@ -132,9 +157,19 @@ export default function StoreSparePartsStockControl() {
         if (cancelled) return;
         const partsData = (partsRes.data ?? []) as unknown as PartRow[];
         setParts(partsData);
-        setProcurement((procRes.data ?? []) as unknown as ProcurementRow[]);
+        const procurementData = (procRes.data ?? []) as unknown as ProcurementRow[];
+        setProcurement(procurementData);
         setReceipts((receiptsRes.data ?? []) as unknown as ReceiptRow[]);
         setIssues((issuesRes.data ?? []) as unknown as IssueRow[]);
+        if (deepLink.procurementId) {
+          const row = procurementData.find((item) => item.id === deepLink.procurementId);
+          if (row?.spare_part_id && !deepLink.partId) setDraftPartId(row.spare_part_id);
+          const quantity = Number(row?.requested_quantity ?? 0);
+          if (row && deepLink.quantity === '1' && Number.isFinite(quantity) && quantity > 0) setDraftQuantity(String(quantity));
+          if (row && !deepLink.issueNote) {
+            setDraftNote(`Receipt for ${row.request_number ?? deepLink.procurementId.slice(0, 8)}: ${row.title ?? 'delivered procurement'}`);
+          }
+        }
         setLoading(false);
         if (storeScope) {
           void saveOfflineReadCache('store.stock_list', partsData, storeScope, { sourceRoute: '/spare-parts' });
@@ -159,7 +194,7 @@ export default function StoreSparePartsStockControl() {
     }
     void load();
     return () => { cancelled = true; };
-  }, [storeScope]);
+  }, [deepLink, storeScope]);
 
   useEffect(() => {
     let active = true;
@@ -180,6 +215,10 @@ export default function StoreSparePartsStockControl() {
     const map = new Map<string, ProcurementRow>();
     for (const p of procurement) {
       if (!isOpenProcurement(p.status)) continue;
+      if (p.spare_part_id && !map.has(p.spare_part_id)) {
+        map.set(p.spare_part_id, p);
+        continue;
+      }
       const title = (p.title ?? '').toLowerCase();
       for (const part of parts) {
         const codeKey = part.part_code.toLowerCase();
@@ -256,6 +295,9 @@ export default function StoreSparePartsStockControl() {
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const pageRows = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
   const selectedDraftPart = parts.find((part) => part.id === draftPartId) ?? null;
+  const selectedDraftProcurement = draftProcurementId
+    ? procurement.find((row) => row.id === draftProcurementId) ?? null
+    : null;
 
   async function submitStoreDraft() {
     if (!selectedDraftPart) return;
@@ -306,6 +348,8 @@ export default function StoreSparePartsStockControl() {
             status: 'requested',
             priority: classifyStock(selectedDraftPart) === 'stockout' ? 'critical' : 'high',
             expected_delivery_date: null,
+            spare_part_id: selectedDraftPart.id,
+            requested_quantity: quantity,
           }),
           metadata: { form: 'store_stock_control_draft' },
         })
@@ -325,6 +369,7 @@ export default function StoreSparePartsStockControl() {
               invoice_ref: null,
               unit_cost: null,
               notes: draftNote || null,
+              procurement_id: draftProcurementId,
             },
             createdByProfileId: profile?.id ?? null,
             roleName: primaryRole,
@@ -339,6 +384,7 @@ export default function StoreSparePartsStockControl() {
               invoice_ref: null,
               unit_cost: null,
               notes: draftNote || null,
+              procurement_id: draftProcurementId,
             }),
             metadata: { form: 'store_stock_control_draft' },
           })
@@ -379,6 +425,7 @@ export default function StoreSparePartsStockControl() {
     if (result.status === 'queued' || result.status === 'success') {
       setDraftNote('');
       setDraftQuantity('1');
+      setDraftProcurementId(null);
     }
   }
 
@@ -422,6 +469,11 @@ export default function StoreSparePartsStockControl() {
         </div>
         <OfflineSubmitBanner actionLabel="Store stock draft" />
         <OfflineActionResult result={draftResult} />
+        {selectedDraftProcurement && (
+          <div className="mt-3 rounded-md border border-cyan-500/30 bg-cyan-500/5 px-3 py-2 text-xs text-cyan-200">
+            Receipt context: {selectedDraftProcurement.request_number ?? draftProcurementId?.slice(0, 8)} · {selectedDraftProcurement.title ?? 'delivered procurement'}.
+          </div>
+        )}
         <div className="mt-4 grid gap-3 md:grid-cols-[160px_1fr_120px_1fr_auto] md:items-end">
           <label className="text-xs font-medium text-[var(--text-muted)]">
             Draft type

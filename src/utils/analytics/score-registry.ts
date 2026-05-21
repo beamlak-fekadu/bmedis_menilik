@@ -266,8 +266,8 @@ export const SCORE_REGISTRY: ScoreRegistryEntry[] = [
     displayName: 'Stock Blocker Priority',
     category: 'Inventory',
     dataMode: 'Live',
-    sourceOfTruth: 'fetchStockBlockers() from spare_parts, maintenance_parts_used, maintenance_events, and open work_orders.',
-    sourceTables: ['spare_parts', 'maintenance_parts_used', 'maintenance_events', 'work_orders'],
+    sourceOfTruth: 'fetchStockBlockers() from open work_order_parts_needed rows plus spare_parts stock state.',
+    sourceTables: ['work_order_parts_needed', 'spare_parts', 'work_orders'],
     refreshMode: 'Live view',
     operationalConsumers: ['Command Center', 'Spare Parts', 'Logistics', 'Store role dashboard'],
     affectsLiveDecisions: 'Yes',
@@ -285,10 +285,10 @@ export const SCORE_REGISTRY: ScoreRegistryEntry[] = [
     criteria: [
       { label: 'Current stock', source: 'spare_parts.current_stock', explanation: 'Quantity on hand.' },
       { label: 'Reorder level', source: 'spare_parts.reorder_level', explanation: 'Minimum expected stock.' },
-      { label: 'Open work linkage', source: 'maintenance_parts_used -> work_orders', explanation: 'Distinguishes confirmed blockers from low-stock risk.' },
+      { label: 'Open work linkage', source: 'work_order_parts_needed -> work_orders', explanation: 'Distinguishes declared work blockers from generic low-stock risk.' },
     ],
     formulaSummary: 'Priority = 100 if linked to active work, else 90 for stockout, else 60 + reorder deficit ratio x 30.',
-    limitations: 'Work linkage depends on maintenance_parts_used evidence; no fuzzy matching is used.',
+    limitations: 'Work linkage depends on declared work_order_parts_needed rows; no fuzzy matching is used.',
     sandboxMessage: 'Operational stock priority uses live stock, issue, maintenance, and work-order data. This sandbox only simulates alternative weighting.',
   },
   {

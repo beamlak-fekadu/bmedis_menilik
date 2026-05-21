@@ -384,7 +384,9 @@ async function replayMaintenanceEvent(params: {
     ? JSON.stringify(payload.parts_needed)
     : nullableString(payload, 'parts_needed');
   const prefix = params.mode === 'completion_draft'
-    ? 'Offline completion draft'
+    // OFF-02: replay leaves the work order OPEN — only an event is logged
+    // with the intended outcome. Make that explicit in the audit trail.
+    ? 'Offline completion intent (work order remains open until online confirm)'
     : params.mode === 'qr_note'
       ? 'Offline QR note'
       : partsNeeded

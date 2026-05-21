@@ -18,6 +18,7 @@ interface ProcRow {
   priority: string;
   justification?: string | null;
   expected_delivery_date: string | null;
+  requested_quantity?: number | null;
   created_at: string;
 }
 
@@ -118,6 +119,7 @@ export default function StoreProcurementTracking({ source }: { source?: string |
               <th className="px-4 py-3 text-xs uppercase text-[var(--text-muted)]">Item / Title</th>
               <th className="px-4 py-3 text-xs uppercase text-[var(--text-muted)]">Status</th>
               <th className="px-4 py-3 text-xs uppercase text-[var(--text-muted)]">Priority</th>
+              <th className="px-4 py-3 text-xs uppercase text-[var(--text-muted)]">Qty</th>
               <th className="px-4 py-3 text-xs uppercase text-[var(--text-muted)]">Expected Delivery</th>
               <th className="px-4 py-3 text-xs uppercase text-[var(--text-muted)]">Created</th>
               <th className="px-4 py-3 text-xs uppercase text-[var(--text-muted)]">Next Store Action</th>
@@ -125,13 +127,14 @@ export default function StoreProcurementTracking({ source }: { source?: string |
           </thead>
           <tbody className="divide-y divide-[var(--border-subtle)]/60">
             {filtered.length === 0 ? (
-              <tr><td colSpan={7} className="px-4 py-6 text-center text-sm text-[var(--text-muted)]">No procurement records match this filter.</td></tr>
+              <tr><td colSpan={8} className="px-4 py-6 text-center text-sm text-[var(--text-muted)]">No procurement records match this filter.</td></tr>
             ) : filtered.slice(0, 100).map((r) => (
               <tr key={r.id}>
                 <td className="px-4 py-3 font-medium text-[var(--foreground)]">{r.request_number}</td>
                 <td className="px-4 py-3 text-[var(--text-muted)]">{r.title}</td>
                 <td className="px-4 py-3"><Badge variant="info">{STATUS_LABEL[r.status] ?? r.status}</Badge></td>
                 <td className="px-4 py-3"><Badge variant={priorityVariant(r.priority)}>{r.priority}</Badge></td>
+                <td className="px-4 py-3 text-[var(--text-muted)]">{r.requested_quantity ?? '—'}</td>
                 <td className="px-4 py-3 text-[var(--text-muted)]">{r.expected_delivery_date ?? '—'}</td>
                 <td className="px-4 py-3 text-[var(--text-muted)]">{r.created_at?.slice(0, 10) ?? '—'}</td>
                 <td className="px-4 py-3">

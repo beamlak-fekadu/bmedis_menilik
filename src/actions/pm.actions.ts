@@ -2,7 +2,7 @@
 
 import { z } from 'zod';
 import { recomputeAssetAnalytics } from './analytics.actions';
-import { getActionContextForCapability, logServerAuditEvent, revalidateMany, actionError, nullIfEmpty, type ActionResult } from './_shared';
+import { getActionContextForCapability, logServerAuditEvent, revalidateMany, actionError, nullIfEmpty, interpretMissingMutationResult, type ActionResult } from './_shared';
 import { OPEN_MAINTENANCE_REQUEST_STATUSES } from '@/utils/maintenance/request-status';
 import { datePlusDays } from '@/utils/pm/semantics';
 import { createNotificationEvent, emitNotificationEvent } from '@/services/notifications/notification-engine';
@@ -131,11 +131,33 @@ export async function updateScheduleStatusAction(id: string, status: string): Pr
     if (error || !profile) return { success: false, error };
     const parsedStatus = z.enum(['scheduled', 'completed', 'overdue', 'skipped', 'deferred', 'in_progress', 'canceled']).parse(status);
     const oldRow = await supabase.from('pm_schedules').select('*').eq('id', id).maybeSingle();
-    const result = await supabase.from('pm_schedules').update({ status: parsedStatus } as never).eq('id', id).select('*').single();
+    // SHAPE-01: maybeSingle handles RLS-filtered rows cleanly.
+    const result = await supabase.from('pm_schedules').update({ status: parsedStatus } as never).eq('id', id).select('*').maybeSingle();
     if (result.error) return { success: false, error: result.error.message };
+    if (!result.data) {
+      return interpretMissingMutationResult({
+        entity: 'PM schedule',
+        entityId: id,
+        attempted: `status=${parsedStatus}`,
+        profileId: profile.id,
+      });
+    }
     await logServerAuditEvent({ supabase, profileId: profile.id, action: 'pm_schedule.status_update', entityType: 'pm_schedules', entityId: id, oldValues: oldRow.data as Record<string, unknown> | null, newValues: result.data as Record<string, unknown> });
     const assetId = (result.data as Record<string, unknown>).asset_id as string | undefined;
-    if (parsedStatus === 'completed' && assetId) await recomputeAssetAnalytics(assetId).catch(() => undefined);
+    if (parsedStatus === 'completed' && assetId) {
+      try {
+        await recomputeAssetAnalytics(assetId);
+      } catch (refreshErr) {
+        // ANALYTICS-01: surface refresh failure (was silently swallowed).
+        const message = refreshErr instanceof Error ? refreshErr.message : 'unknown';
+        await logServerAuditEvent({
+          supabase, profileId: profile.id,
+          action: 'pm_schedule.analytics_refresh_failed',
+          entityType: 'pm_schedules', entityId: id,
+          details: { asset_id: assetId, error: message },
+        });
+      }
+    }
     revalidateMany([...pmPaths, `/pm/schedules/${id}`]);
     return { success: true, data: result.data };
   } catch (err) {
@@ -169,9 +191,29 @@ export async function createPMCompletionAction(payload: Record<string, unknown>)
       notes: nullIfEmpty(parsed.notes),
       checklist_results: parsed.checklist_results ?? [],
     };
+    // PM-01: completion must be transactionally safe or fail loud.
+    // The legacy sequence (insert pm_completions → update pm_schedules →
+    // update pm_plans → update equipment_assets) left orphan completion
+    // rows behind whenever any subsequent step failed (RLS, constraint,
+    // FK). We now:
+    //   1) Insert pm_completions.
+    //   2) Update pm_schedules. If this fails, COMPENSATE by deleting the
+    //      pm_completions row we just inserted, then return error.
+    //   3) Update pm_plans / equipment_assets. Each failure is captured
+    //      as a structured warning. The completion stays — it represents
+    //      true work done — but the caller sees what didn't update.
+    //   4) Notification + analytics refresh failures also surface as
+    //      warnings rather than swallowed errors.
+    const warnings: string[] = [];
     const result = await supabase.from('pm_completions').insert(data as never).select('*').single();
     if (result.error) return { success: false, error: result.error.message };
 
+    const completionId = (result.data as { id?: string }).id ?? null;
+
+    // SHAPE-01: maybeSingle handles RLS-filtered rows cleanly (PGRST116 was
+    // possible here; PM-01 already rolls back on hard error but the 0-row
+    // case should also trigger rollback rather than leak a coerce-to-single
+    // error string).
     const scheduleUpdate = await supabase
       .from('pm_schedules')
       .update({
@@ -186,22 +228,72 @@ export async function createPMCompletionAction(payload: Record<string, unknown>)
       } as never)
       .eq('id', parsed.schedule_id)
       .select('*')
-      .single();
-    if (scheduleUpdate.error) return { success: false, error: scheduleUpdate.error.message };
+      .maybeSingle();
+    if (scheduleUpdate.error || !scheduleUpdate.data) {
+      // PM-01 compensating action: roll back the completion row so the
+      // database is not left with evidence-of-work that the schedule
+      // doesn't reflect. Audit both the failure AND the rollback.
+      if (completionId) {
+        await supabase.from('pm_completions').delete().eq('id', completionId);
+      }
+      const errMsg = scheduleUpdate.error?.message ?? 'PM schedule was not updated (0 rows; likely RLS or already deleted).';
+      await logServerAuditEvent({
+        supabase,
+        profileId: profile.id,
+        action: 'pm_completion.rolled_back',
+        entityType: 'pm_schedules',
+        entityId: parsed.schedule_id,
+        details: {
+          reason: 'pm_schedule_update_failed',
+          db_error: errMsg,
+          rolled_back_completion_id: completionId,
+        },
+      });
+      return {
+        success: false,
+        error: `PM schedule update failed and the completion row was rolled back. Cause: ${errMsg}`,
+      };
+    }
 
     const nextDueDate = plan?.frequency_days ? datePlusDays(parsed.completion_date, plan.frequency_days) : null;
-    await supabase
+    const planUpdate = await supabase
       .from('pm_plans')
       .update({
         last_completed_date: parsed.completion_date,
         next_due_date: nextDueDate,
       } as never)
       .eq('id', planId);
+    if (planUpdate.error) {
+      warnings.push(`PM plan next_due_date could not be updated: ${planUpdate.error.message}`);
+      await logServerAuditEvent({
+        supabase,
+        profileId: profile.id,
+        action: 'pm_completion.plan_update_failed',
+        entityType: 'pm_plans',
+        entityId: planId,
+        details: { schedule_id: parsed.schedule_id, db_error: planUpdate.error.message },
+      });
+    }
 
-    await supabase
+    // PM-01: equipment condition update was previously swallowed via
+    // `.catch(() => undefined)` / fire-and-forget. Now we surface failures.
+    const conditionUpdate = await supabase
       .from('equipment_assets')
       .update({ condition: finalCondition } as never)
       .eq('id', assetId);
+    if (conditionUpdate.error) {
+      warnings.push(
+        `Equipment condition could not be updated to '${finalCondition}': ${conditionUpdate.error.message}`,
+      );
+      await logServerAuditEvent({
+        supabase,
+        profileId: profile.id,
+        action: 'pm_completion.condition_update_failed',
+        entityType: 'equipment_assets',
+        entityId: assetId,
+        details: { schedule_id: parsed.schedule_id, db_error: conditionUpdate.error.message },
+      });
+    }
 
     let correctiveRequestId: string | null = null;
     if (parsed.create_corrective_request && correctiveNeeded) {
@@ -238,7 +330,25 @@ export async function createPMCompletionAction(payload: Record<string, unknown>)
     }
 
     await logServerAuditEvent({ supabase, profileId: profile.id, action: 'pm_completion.create', entityType: 'pm_completions', entityId: (result.data as { id?: string }).id ?? null, newValues: result.data as Record<string, unknown> });
-    if (assetId) await recomputeAssetAnalytics(assetId).catch(() => undefined);
+    // PM-01 + ANALYTICS-01: stop swallowing analytics refresh failures.
+    // PM compliance/reliability metrics that don't refresh will silently
+    // diverge from dashboards otherwise.
+    if (assetId) {
+      try {
+        await recomputeAssetAnalytics(assetId);
+      } catch (refreshErr) {
+        const message = refreshErr instanceof Error ? refreshErr.message : 'unknown';
+        warnings.push(`Analytics recompute failed for asset ${assetId}: ${message}. PM compliance and reliability metrics may be stale until the next scheduled refresh.`);
+        await logServerAuditEvent({
+          supabase,
+          profileId: profile.id,
+          action: 'pm_completion.analytics_refresh_failed',
+          entityType: 'equipment_assets',
+          entityId: assetId,
+          details: { schedule_id: parsed.schedule_id, error: message },
+        });
+      }
+    }
 
     try {
       await emitNotificationEvent({
@@ -260,7 +370,20 @@ export async function createPMCompletionAction(payload: Record<string, unknown>)
     }
 
     revalidateMany([...pmPaths, `/pm/schedules/${parsed.schedule_id}`, '/equipment', `/equipment/${assetId}`, '/maintenance']);
-    return { success: true, data: { completion: result.data, schedule: scheduleUpdate.data, correctiveRequestId } };
+    return {
+      success: true,
+      data: {
+        completion: result.data,
+        schedule: scheduleUpdate.data,
+        correctiveRequestId,
+        // PM-01 truth: callers can detect partial-success conditions and
+        // surface them as toasts. UI MUST NOT claim "PM completed" if
+        // warnings is non-empty; surface it as "PM completed with
+        // <n> warning(s)" so the user knows analytics/condition didn't fully
+        // sync.
+        warnings: warnings.length > 0 ? warnings : undefined,
+      },
+    };
   } catch (err) {
     return actionError(err, 'Failed to create PM completion');
   }
@@ -415,13 +538,22 @@ export async function startPMScheduleAction(id: string): Promise<ActionResult> {
     const { supabase, profile, error } = await getActionContextForCapability('pm.complete');
     if (error || !profile) return { success: false, error };
     const oldRow = await supabase.from('pm_schedules').select('*').eq('id', id).maybeSingle();
+    // SHAPE-01: maybeSingle handles RLS-filtered rows cleanly.
     const result = await supabase
       .from('pm_schedules')
       .update({ status: 'in_progress', started_at: new Date().toISOString() } as never)
       .eq('id', id)
       .select('*')
-      .single();
+      .maybeSingle();
     if (result.error) return { success: false, error: result.error.message };
+    if (!result.data) {
+      return interpretMissingMutationResult({
+        entity: 'PM schedule',
+        entityId: id,
+        attempted: 'start (in_progress)',
+        profileId: profile.id,
+      });
+    }
     await logServerAuditEvent({ supabase, profileId: profile.id, action: 'pm_schedule.start', entityType: 'pm_schedules', entityId: id, oldValues: oldRow.data as Record<string, unknown> | null, newValues: result.data as Record<string, unknown> });
     const assetId = (result.data as Record<string, unknown>).asset_id as string | undefined;
     revalidateMany([...pmPaths, `/pm/schedules/${id}`, assetId ? `/equipment/${assetId}` : '/equipment']);
@@ -447,18 +579,47 @@ export async function deferOrSkipPMScheduleAction(payload: Record<string, unknow
       updatePayload.deferred_until = nullIfEmpty(parsed.new_scheduled_date);
       if (parsed.new_scheduled_date) updatePayload.scheduled_date = parsed.new_scheduled_date;
     }
+    // SHAPE-01: maybeSingle handles RLS-filtered rows cleanly.
     const result = await supabase
       .from('pm_schedules')
       .update(updatePayload as never)
       .eq('id', parsed.schedule_id)
       .select('*')
-      .single();
+      .maybeSingle();
     if (result.error) return { success: false, error: result.error.message };
+    if (!result.data) {
+      return interpretMissingMutationResult({
+        entity: 'PM schedule',
+        entityId: parsed.schedule_id,
+        attempted: parsed.action_type,
+        profileId: profile.id,
+      });
+    }
     await logServerAuditEvent({ supabase, profileId: profile.id, action: `pm_schedule.${parsed.action_type}`, entityType: 'pm_schedules', entityId: parsed.schedule_id, oldValues: oldRow.data as Record<string, unknown> | null, newValues: result.data as Record<string, unknown> });
     const assetId = (result.data as Record<string, unknown>).asset_id as string | undefined;
-    if (assetId) await recomputeAssetAnalytics(assetId).catch(() => undefined);
+    // ANALYTICS-01: surface refresh failure as warning.
+    let deferAnalyticsWarning: string | null = null;
+    if (assetId) {
+      try {
+        await recomputeAssetAnalytics(assetId);
+      } catch (refreshErr) {
+        const message = refreshErr instanceof Error ? refreshErr.message : 'unknown';
+        deferAnalyticsWarning = `PM analytics refresh failed: ${message}. PM compliance may be stale until the next scheduled refresh.`;
+        await logServerAuditEvent({
+          supabase, profileId: profile.id,
+          action: 'pm_schedule.analytics_refresh_failed',
+          entityType: 'pm_schedules', entityId: parsed.schedule_id,
+          details: { asset_id: assetId, action_type: parsed.action_type, error: message },
+        });
+      }
+    }
     revalidateMany([...pmPaths, `/pm/schedules/${parsed.schedule_id}`, assetId ? `/equipment/${assetId}` : '/equipment']);
-    return { success: true, data: result.data };
+    return {
+      success: true,
+      data: deferAnalyticsWarning
+        ? { ...(result.data as Record<string, unknown>), analytics_refresh_warning: deferAnalyticsWarning }
+        : result.data,
+    };
   } catch (err) {
     return actionError(err, 'Failed to defer or skip PM schedule');
   }
@@ -469,8 +630,17 @@ export async function updatePMPlanStatusAction(id: string, isActive: boolean): P
     const { supabase, profile, error } = await getActionContextForCapability('pm.plan.create');
     if (error || !profile) return { success: false, error };
     const oldRow = await supabase.from('pm_plans').select('*').eq('id', id).maybeSingle();
-    const result = await supabase.from('pm_plans').update({ is_active: isActive } as never).eq('id', id).select('*').single();
+    // SHAPE-01: maybeSingle handles RLS-filtered rows cleanly.
+    const result = await supabase.from('pm_plans').update({ is_active: isActive } as never).eq('id', id).select('*').maybeSingle();
     if (result.error) return { success: false, error: result.error.message };
+    if (!result.data) {
+      return interpretMissingMutationResult({
+        entity: 'PM plan',
+        entityId: id,
+        attempted: `is_active=${isActive}`,
+        profileId: profile.id,
+      });
+    }
     await logServerAuditEvent({ supabase, profileId: profile.id, action: isActive ? 'pm_plan.activate' : 'pm_plan.pause', entityType: 'pm_plans', entityId: id, oldValues: oldRow.data as Record<string, unknown> | null, newValues: result.data as Record<string, unknown> });
     revalidateMany(pmPaths);
     return { success: true, data: result.data };
@@ -486,8 +656,17 @@ export async function pausePMPlanAction(id: string, reason?: string | null): Pro
     const oldRow = await supabase.from('pm_plans').select('*').eq('id', id).maybeSingle();
     if (oldRow.error) return { success: false, error: oldRow.error.message };
     if (!oldRow.data) return { success: false, error: 'PM plan not found' };
-    const result = await supabase.from('pm_plans').update({ is_active: false } as never).eq('id', id).select('*').single();
+    // SHAPE-01: maybeSingle handles RLS-filtered rows cleanly.
+    const result = await supabase.from('pm_plans').update({ is_active: false } as never).eq('id', id).select('*').maybeSingle();
     if (result.error) return { success: false, error: result.error.message };
+    if (!result.data) {
+      return interpretMissingMutationResult({
+        entity: 'PM plan',
+        entityId: id,
+        attempted: 'pause (is_active=false)',
+        profileId: profile.id,
+      });
+    }
     const assetId = (result.data as Record<string, unknown>).asset_id as string | undefined;
     await logServerAuditEvent({
       supabase,
@@ -513,8 +692,17 @@ export async function resumePMPlanAction(id: string): Promise<ActionResult> {
     const oldRow = await supabase.from('pm_plans').select('*').eq('id', id).maybeSingle();
     if (oldRow.error) return { success: false, error: oldRow.error.message };
     if (!oldRow.data) return { success: false, error: 'PM plan not found' };
-    const result = await supabase.from('pm_plans').update({ is_active: true } as never).eq('id', id).select('*').single();
+    // SHAPE-01: maybeSingle handles RLS-filtered rows cleanly.
+    const result = await supabase.from('pm_plans').update({ is_active: true } as never).eq('id', id).select('*').maybeSingle();
     if (result.error) return { success: false, error: result.error.message };
+    if (!result.data) {
+      return interpretMissingMutationResult({
+        entity: 'PM plan',
+        entityId: id,
+        attempted: 'resume (is_active=true)',
+        profileId: profile.id,
+      });
+    }
     const assetId = (result.data as Record<string, unknown>).asset_id as string | undefined;
     await logServerAuditEvent({
       supabase,

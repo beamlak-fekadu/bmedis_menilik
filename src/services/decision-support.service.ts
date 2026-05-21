@@ -80,7 +80,7 @@ async function computeFromOperationalData(): Promise<DecisionSupportSnapshot> {
       .limit(500),
     supabase
       .from('work_orders')
-      .select('id, assigned_to, status, priority, estimated_hours, profiles(full_name)')
+      .select('id, assigned_to, status, priority, estimated_hours, profiles!work_orders_assigned_to_fkey(full_name)')
       .in('status', ['open', 'assigned', 'in_progress', 'on_hold']),
   ]);
 
@@ -254,7 +254,7 @@ export async function getDecisionSupportSnapshot(): Promise<DecisionSupportSnaps
       .order('readiness_score', { ascending: false }),
     supabase
       .from('workload_capacity_snapshots')
-      .select('assignee_id, open_assignments, overdue_assignments, estimated_hours, profiles(full_name)')
+      .select('assignee_id, open_assignments, overdue_assignments, estimated_hours, profiles!workload_capacity_snapshots_assignee_id_fkey(full_name)')
       .eq('snapshot_date', snapshotDate)
       .order('open_assignments', { ascending: false }),
   ]);

@@ -32,7 +32,7 @@ const STORE_FLAG_TYPES = new Set<RecommendationFlagType>([
   'part_shortage',
 ]);
 
-// We additionally surface stock-related alerts:
+// We additionally surface stock-related notification signals:
 //   - delivered procurement awaiting receipt (computed elsewhere)
 //   - critical work order blocked (proxied via 'recurring_failure' or
 //     'urgent_maintenance' with linked stock signal — kept out of this
@@ -88,14 +88,14 @@ export default function StoreLogisticsAlerts() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Logistics Alerts"
+        title="Logistics Notifications"
         description="Read-only inbox of stock and procurement signals affecting the store. Acknowledge is not a store action."
-        breadcrumbs={[{ label: 'Store Operations', href: '/command' }, { label: 'Logistics Alerts' }]}
+        breadcrumbs={[{ label: 'Store Operations', href: '/command' }, { label: 'Logistics Notifications' }]}
         actions={<Badge variant="info">Store / logistics view</Badge>}
       />
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <StatCard label="Total Logistics Alerts" value={counts.total} icon={<Bell className="h-5 w-5" />} />
+        <StatCard label="Total Logistics Notifications" value={counts.total} icon={<Bell className="h-5 w-5" />} />
         <StatCard label="Critical" value={counts.critical} icon={<AlertTriangle className="h-5 w-5" />} color="red" />
         <StatCard label="Low Stock" value={counts.lowStock} icon={<Boxes className="h-5 w-5" />} color="yellow" />
         <StatCard label="Part Shortage" value={counts.partShortage} icon={<Package className="h-5 w-5" />} color="red" />
@@ -104,12 +104,12 @@ export default function StoreLogisticsAlerts() {
       {alerts.length === 0 ? (
         <div className="panel-surface rounded-xl p-8 text-center">
           <Bell className="mx-auto mb-3 h-10 w-10 text-emerald-300" />
-          <p className="text-sm text-[var(--foreground)]">No logistics alerts require attention.</p>
+          <p className="text-sm text-[var(--foreground)]">No logistics notifications require attention.</p>
         </div>
       ) : (
         <div className="panel-surface rounded-xl">
           <div className="border-b border-[var(--border-subtle)]/60 p-4">
-            <h2 className="text-base font-semibold text-[var(--foreground)]">Active alerts</h2>
+            <h2 className="text-base font-semibold text-[var(--foreground)]">Active notifications</h2>
           </div>
           <ul className="divide-y divide-[var(--border-subtle)]/60">
             {alerts.map((a) => {
@@ -151,7 +151,7 @@ export default function StoreLogisticsAlerts() {
       )}
 
       <p className="text-xs text-[var(--text-muted)]">
-        Acknowledge / Snooze / Resolve alerts is not a store action. Export a snapshot from{' '}
+        Acknowledge / Snooze / Resolve notifications is not a store action. Export a snapshot from{' '}
         <Link href={storeReport('spare-parts-stock')} className="text-violet-300 hover:text-violet-200">Stock report</Link>{' '}or{' '}
         <Link href={storeReport('procurement-pipeline')} className="text-violet-300 hover:text-violet-200">Procurement report</Link>.
       </p>

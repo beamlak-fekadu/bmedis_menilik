@@ -1,7 +1,7 @@
 'use server';
 
 import { z } from 'zod';
-import { getActionContextForCapability, logServerAuditEvent, refreshDecisionSupportSnapshotsBestEffort, revalidateMany, actionError, nullIfEmpty, type ActionResult } from './_shared';
+import { getActionContextForCapability, logServerAuditEvent, refreshDecisionSupportSnapshotsBestEffort, revalidateMany, actionError, nullIfEmpty, interpretMissingMutationResult, type ActionResult } from './_shared';
 
 const sparePaths = ['/spare-parts', '/logistics', '/command'];
 
@@ -37,8 +37,16 @@ export async function updateSparePartAction(id: string, payload: Record<string, 
     const { supabase, profile, error } = await getActionContextForCapability('spare_parts.manage');
     if (error || !profile) return { success: false, error };
     const oldRow = await supabase.from('spare_parts').select('*').eq('id', id).maybeSingle();
-    const result = await supabase.from('spare_parts').update(payload as never).eq('id', id).select('*').single();
+    // SHAPE-01: maybeSingle handles RLS-filtered rows cleanly.
+    const result = await supabase.from('spare_parts').update(payload as never).eq('id', id).select('*').maybeSingle();
     if (result.error) return { success: false, error: result.error.message };
+    if (!result.data) {
+      return interpretMissingMutationResult({
+        entity: 'spare part',
+        entityId: id,
+        profileId: profile.id,
+      });
+    }
     await logServerAuditEvent({ supabase, profileId: profile.id, action: 'spare_part.update', entityType: 'spare_parts', entityId: id, oldValues: oldRow.data as Record<string, unknown> | null, newValues: result.data as Record<string, unknown> });
     revalidateMany(sparePaths);
     return { success: true, data: result.data };

@@ -34,6 +34,137 @@ function normalizeRpcDemoRow(row: RpcDemoRoleRow): DemoRoleValidationInput {
   };
 }
 
+/**
+ * Phase 1 invariants: high-level checks the developer can run from
+ * /developer-lab to verify the live database has the migrations and
+ * helpers Phase 1 depends on. Cannot replace true E2E browser validation
+ * but rules out the most common "migrations not applied" footgun before
+ * the evaluator hits an obscure RLS denial in the UI.
+ */
+export interface Phase1Invariant {
+  id: string;
+  label: string;
+  status: 'ok' | 'warn' | 'fail';
+  detail?: string;
+}
+
+export async function getPhase1RlsInvariants(
+  supabase: SupabaseServerClient,
+): Promise<Phase1Invariant[]> {
+  const results: Phase1Invariant[] = [];
+
+  // Migration 00073 — viewer self-test notification RLS.
+  try {
+    const { error } = await (supabase.rpc as never as (fn: string) => Promise<{ error: { message: string } | null }>)(
+      'auth_profile_department_id',
+    );
+    // The helper from 00060 must exist as a sanity precondition for 00071/00073.
+    results.push({
+      id: 'helper_auth_profile_department_id',
+      label: 'auth_profile_department_id() helper exists (migration 00060)',
+      status: error ? 'fail' : 'ok',
+      detail: error?.message,
+    });
+  } catch (err) {
+    results.push({
+      id: 'helper_auth_profile_department_id',
+      label: 'auth_profile_department_id() helper exists (migration 00060)',
+      status: 'fail',
+      detail: err instanceof Error ? err.message : 'rpc call threw',
+    });
+  }
+
+  // Calibration request INSERT helper (00072).
+  try {
+    // We can't INSERT here (we don't know an asset_id), but we can probe
+    // for the helper's existence by calling it with a known NULL.
+    const { error } = await (supabase.rpc as never as (
+      fn: string,
+      args: Record<string, unknown>,
+    ) => Promise<{ error: { message: string } | null }>)(
+      'can_create_calibration_request_for_asset',
+      { p_asset_id: null },
+    );
+    results.push({
+      id: 'helper_can_create_calibration_request',
+      label: 'can_create_calibration_request_for_asset() helper exists (00072)',
+      status: error && !/null/i.test(error.message) ? 'fail' : 'ok',
+      detail: error?.message,
+    });
+  } catch (err) {
+    results.push({
+      id: 'helper_can_create_calibration_request',
+      label: 'can_create_calibration_request_for_asset() helper exists (00072)',
+      status: 'fail',
+      detail: err instanceof Error ? err.message : 'rpc call threw',
+    });
+  }
+
+  // offline_sync_events has the Phase 3 columns (00046).
+  try {
+    const { error } = await supabase
+      .from('offline_sync_events')
+      .select('reported_status, resolution_status, conflict_type, conflict_reason, role_name, source_route, asset_id, retry_count, resolved_by, resolved_at')
+      .limit(1);
+    results.push({
+      id: 'offline_sync_events_phase3_columns',
+      label: 'offline_sync_events has Phase 3 columns (migration 00046)',
+      status: error ? 'fail' : 'ok',
+      detail: error?.message,
+    });
+  } catch (err) {
+    results.push({
+      id: 'offline_sync_events_phase3_columns',
+      label: 'offline_sync_events has Phase 3 columns (migration 00046)',
+      status: 'fail',
+      detail: err instanceof Error ? err.message : 'select threw',
+    });
+  }
+
+  // notifications.recipient_profile_id column exists.
+  try {
+    const { error } = await supabase
+      .from('notifications')
+      .select('recipient_profile_id, dedupe_key, source_type, action_href')
+      .limit(1);
+    results.push({
+      id: 'notifications_schema',
+      label: 'notifications table is the expected shape (migration 00055)',
+      status: error ? 'fail' : 'ok',
+      detail: error?.message,
+    });
+  } catch (err) {
+    results.push({
+      id: 'notifications_schema',
+      label: 'notifications table is the expected shape (migration 00055)',
+      status: 'fail',
+      detail: err instanceof Error ? err.message : 'select threw',
+    });
+  }
+
+  // Department scope helper (00060).
+  try {
+    const { error } = await (supabase.rpc as never as (fn: string) => Promise<{ error: { message: string } | null }>)(
+      'is_dept_scoped_role',
+    );
+    results.push({
+      id: 'helper_is_dept_scoped_role',
+      label: 'is_dept_scoped_role() helper exists (migration 00060)',
+      status: error ? 'fail' : 'ok',
+      detail: error?.message,
+    });
+  } catch (err) {
+    results.push({
+      id: 'helper_is_dept_scoped_role',
+      label: 'is_dept_scoped_role() helper exists (migration 00060)',
+      status: 'fail',
+      detail: err instanceof Error ? err.message : 'rpc call threw',
+    });
+  }
+
+  return results;
+}
+
 export async function getDemoRoleIntegrityDiagnostics(supabase: SupabaseServerClient): Promise<{
   rows: DemoRoleValidationResult[];
   source: 'validate_demo_role_integrity_rpc' | 'profiles_fallback';
@@ -215,7 +346,7 @@ export async function getNotificationRoleDependencyDiagnostics(supabase: Supabas
   let telegramConnectionsWithMissingProfile: number | null = null;
   const orphanRes = await supabase
     .from('telegram_connections')
-    .select('id, profile_id, profiles(id)')
+    .select('id, profile_id, profiles!telegram_connections_profile_id_fkey(id)')
     .limit(1000);
   if (!orphanRes.error) {
     telegramConnectionsWithMissingProfile = ((orphanRes.data ?? []) as Array<Record<string, unknown>>)

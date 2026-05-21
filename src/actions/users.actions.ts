@@ -1,6 +1,6 @@
 'use server';
 
-import { getActionContextForCapability, logServerAuditEvent, revalidateMany, actionError, type ActionResult } from './_shared';
+import { getActionContextForCapability, logServerAuditEvent, revalidateMany, actionError, interpretMissingMutationResult, type ActionResult } from './_shared';
 
 const userPaths = ['/settings', '/audit'];
 
@@ -9,8 +9,16 @@ export async function updateProfileAction(id: string, payload: Record<string, un
     const { supabase, profile, error } = await getActionContextForCapability('users.manage');
     if (error || !profile) return { success: false, error };
     const oldRow = await supabase.from('profiles').select('*').eq('id', id).maybeSingle();
-    const result = await supabase.from('profiles').update(payload as never).eq('id', id).select('*').single();
+    // SHAPE-01: maybeSingle handles RLS-filtered rows cleanly.
+    const result = await supabase.from('profiles').update(payload as never).eq('id', id).select('*').maybeSingle();
     if (result.error) return { success: false, error: result.error.message };
+    if (!result.data) {
+      return interpretMissingMutationResult({
+        entity: 'user profile',
+        entityId: id,
+        profileId: profile.id,
+      });
+    }
     await logServerAuditEvent({ supabase, profileId: profile.id, action: 'profile.update', entityType: 'profiles', entityId: id, oldValues: oldRow.data as Record<string, unknown> | null, newValues: result.data as Record<string, unknown> });
     revalidateMany(userPaths);
     return { success: true, data: result.data };

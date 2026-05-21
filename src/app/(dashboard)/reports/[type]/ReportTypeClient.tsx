@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Download, ArrowLeft, RefreshCw, AlertTriangle, CheckCircle, Info } from 'lucide-react';
+import { Download, ArrowLeft, RefreshCw, AlertTriangle, CheckCircle, Info, FileText } from 'lucide-react';
 import PageHeader from '@/components/ui/PageHeader';
 import AssistantPageContextBridge from '@/components/assistant/AssistantPageContextBridge';
 import InfoPopover from '@/components/ui/InfoPopover';
@@ -17,7 +17,7 @@ import { cardItem, cardStagger } from '@/lib/ui/motion-presets';
 import * as reportsService from '@/services/reports.service';
 import * as settingsService from '@/services/settings.service';
 import type { ReportFilters } from '@/services/reports.service';
-import { exportToPDF, captureChartImages } from '@/utils/export';
+import { exportToPDF, exportToCSV, captureChartImages } from '@/utils/export';
 import { prepareReportSnapshotAction, recordReportExportAction } from '@/actions/reports.actions';
 import { useRole } from '@/hooks/useRole';
 import {
@@ -1051,7 +1051,7 @@ function buildExecutiveSummary(type: string, rows: Row[]): string {
     const missing = rows.filter((r) => !r.qr_token || r.qr_label_status === 'not_generated').length;
     const needsReplacement = rows.filter((r) => r.qr_label_status === 'needs_replacement').length;
     const revoked = rows.filter((r) => r.qr_label_status === 'revoked').length;
-    return `This QR coverage snapshot covers ${rows.length} active equipment assets. ${attached} are physically ready to scan, ${missing} need token generation, ${needsReplacement} need label replacement, and ${revoked} have revoked QR status. These are label-readiness states only; scan history and deduplication are not part of this Phase 5 report.`;
+    return `This QR coverage snapshot covers ${rows.length} active equipment assets. ${attached} are physically ready to scan, ${missing} need token generation, ${needsReplacement} need label replacement, and ${revoked} have revoked QR status. These are label-readiness states only; scan activity is covered by the separate QR Scan Evidence report.`;
   }
 
   if (type === 'qr-scan-evidence') {
@@ -1116,7 +1116,7 @@ function buildExecutiveSummary(type: string, rows: Row[]): string {
 /* ── methodology ──────────────────────────────────────────────────────────── */
 
 function methodologyFor(type: string): string {
-  if (['qr-coverage'].includes(type)) return 'QR coverage evidence comes from equipment_assets QR lifecycle fields only: qr_token, qr_label_status, qr_generated_at, qr_label_printed_at, qr_label_attached_at, qr_label_replaced_at, and qr_token_regenerated_at. Ready to Scan requires a token, qr_label_status = attached, and not revoked. Scan history, trends, and deduplication are intentionally excluded until Phase 6.';
+  if (['qr-coverage'].includes(type)) return 'QR coverage evidence comes from equipment_assets QR lifecycle fields only: qr_token, qr_label_status, qr_generated_at, qr_label_printed_at, qr_label_attached_at, qr_label_replaced_at, and qr_token_regenerated_at. Ready to Scan requires a token, qr_label_status = attached, and not revoked. Scan history belongs in the separate QR Scan Evidence report.';
   if (['qr-scan-evidence'].includes(type)) return 'QR scan evidence comes from equipment_qr_scans joined to equipment_assets and profiles. Phase 6 deduplicates only open_qr_landing page-render scans from the same profile on the same asset within five minutes. User agent strings are not shown in the standard report table. Offline/PWA, background sync, browser notifications, and action-click analytics are outside this QR implementation.';
   if (['pm-compliance'].includes(type)) return 'PM compliance evidence comes from generated pm_schedule rows. Completed schedules count as completed evidence. Skipped, deferred, and overdue rows remain visible for audit. PM Compliance = completed ÷ total scheduled × 100.';
   if (['calibration-compliance'].includes(type)) return 'Calibration compliance uses calibration_records, result status, and next_due_date. Failed and adjusted results remain as evidence for follow-up work. Overdue detection compares next_due_date to the snapshot generation time.';
@@ -1736,6 +1736,23 @@ export default function ReportTypeClient() {
     }).catch(() => undefined);
   };
 
+  const handleExportCSV = () => {
+    const result = exportToCSV(data, config.columns, reportType, {
+      reportTitle: config.title,
+      generatedAt,
+    });
+    if (!result.success) {
+      toast('warning', result.error ?? 'Nothing to export');
+      return;
+    }
+    toast('success', 'Report exported as CSV');
+    recordReportExportAction({
+      reportType,
+      format: 'csv',
+      rowCount: data.length,
+    }).catch(() => undefined);
+  };
+
   const snapshotTs = new Date(generatedAt).toLocaleString();
 
   return (
@@ -1780,6 +1797,9 @@ export default function ReportTypeClient() {
         <div className="ml-auto flex flex-wrap items-center gap-2">
           <Button variant="outline" size="sm" onClick={handleExportPDF} disabled={loading || data.length === 0}>
             <Download className="h-4 w-4" /> Export PDF
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleExportCSV} disabled={loading || data.length === 0}>
+            <FileText className="h-4 w-4" /> Export CSV
           </Button>
           <Button variant="ghost" size="sm" onClick={loadData} disabled={loading}>
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} /> Refresh

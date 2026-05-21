@@ -21,10 +21,10 @@ export default function LegacyAlertsRedirectPage() {
     <div className="mx-auto max-w-xl rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-1)] p-6">
       <div className="mb-3 flex items-center gap-2">
         <Bell className="h-5 w-5 text-[var(--brand)]" />
-        <p className="text-lg font-semibold text-[var(--foreground)]">Alerts moved to Notifications</p>
+        <p className="text-lg font-semibold text-[var(--foreground)]">Notifications are now unified</p>
       </div>
       <p className="text-sm text-[var(--text-muted)]">
-        The Alerts page has been consolidated into the unified Notification Center.
+        This legacy route now opens the unified Notification Center.
         You are being redirected now.
       </p>
       <Link

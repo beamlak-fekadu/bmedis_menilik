@@ -2,9 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
-import { AlertTriangle, Bot, ClipboardCopy, MessageSquareText, Send, Trash2, UserCircle2 } from 'lucide-react';
+import { Bot, MessageSquareText, Plus, Send, Trash2 } from 'lucide-react';
 import {
-  Badge,
   Button,
   Card,
   CardContent,
@@ -34,8 +33,8 @@ import type { AssistantContent, ChatContextRefs } from '@/types/chatbot';
 import { normalizeAssistantPayloadForUi } from '@/services/chatbot/chat-response-normalizer';
 import { buildAiUnavailableAssistant } from '@/services/chatbot/providers/normalize-provider-output';
 import { CHATBOT_NAME, ASSISTANT_NAME } from '@/constants';
-import { buildAssistantCopyText, displayableAssistantSummary } from '@/components/assistant/assistant-ui-display';
-import { useRole } from '@/hooks/useRole';
+import { AssistantMessageCard } from '@/components/assistant/AssistantMessageCard';
+import type { AssistantUiMessage } from '@/components/assistant/AssistantProvider';
 
 type UIMessage = {
   id: string;
@@ -53,19 +52,6 @@ const QUICK_PROMPTS = [
   'Show overdue PM concerns and likely operational impact.',
 ];
 
-const BASIS_BADGE_VARIANT: Record<string, 'default' | 'info' | 'purple' | 'warning'> = {
-  system_data: 'info',
-  manual_or_sop: 'purple',
-  general_safe_guidance: 'default',
-  insufficient_data: 'warning',
-};
-
-const CONFIDENCE_BADGE_VARIANT: Record<string, 'success' | 'warning' | 'error'> = {
-  high: 'success',
-  medium: 'warning',
-  low: 'error',
-};
-
 function mapPersistedMessage(row: PersistedChatMessage): UIMessage {
   const assistant = row.role === 'assistant'
     ? normalizeAssistantPayloadForUi(row.metadata?.assistant, row.content)
@@ -82,7 +68,6 @@ function mapPersistedMessage(row: PersistedChatMessage): UIMessage {
 
 export default function ChatbotPage() {
   const { toast } = useToast();
-  const { isDeveloper } = useRole();
   const pathname = usePathname();
   const [sessions, setSessions] = useState<ChatSessionListItem[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | undefined>();
@@ -286,15 +271,26 @@ export default function ChatbotPage() {
     await sendMessage();
   };
 
+  const startFresh = () => {
+    setActiveSessionId(undefined);
+    setMessages([]);
+  };
+
   return (
-    <div className="space-y-6">
+    <div className="mx-auto flex min-h-[calc(100dvh-8rem)] max-w-7xl flex-col gap-4">
       <PageHeader
         title={CHATBOT_NAME}
-        description="Ask about equipment status, maintenance, troubleshooting, PM, work orders, calibration, logistics, and replacement priorities."
+        description="Ask a grounded role-aware assistant about equipment, maintenance, PM, calibration, stock, procurement, reports, and safe next steps."
+        actions={
+          <Button variant="outline" size="sm" onClick={startFresh}>
+            <Plus className="h-4 w-4" />
+            New chat
+          </Button>
+        }
       />
 
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[280px,1fr,340px]">
-        <Card className="h-[calc(100vh-220px)] overflow-hidden" padding={false}>
+      <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 xl:grid-cols-[280px_minmax(0,1fr)]">
+        <Card className="hidden min-h-0 overflow-hidden xl:flex xl:flex-col" padding={false}>
           <CardHeader className="border-b border-[var(--border-subtle)] p-4">
             <div className="flex items-center justify-between gap-2">
               <CardTitle className="text-base">Recent Sessions</CardTitle>
@@ -310,7 +306,7 @@ export default function ChatbotPage() {
               </Button>
             </div>
           </CardHeader>
-          <CardContent className="h-full overflow-y-auto p-2">
+          <CardContent className="min-h-0 flex-1 overflow-y-auto p-2">
             {loadingSessions ? (
               <div className="flex justify-center py-8">
                 <Spinner />
@@ -365,15 +361,40 @@ export default function ChatbotPage() {
           </CardContent>
         </Card>
 
-        <Card className="flex h-[calc(100vh-220px)] flex-col overflow-hidden" padding={false}>
+        <Card className="flex min-h-[calc(100dvh-12rem)] flex-col overflow-hidden xl:min-h-0" padding={false}>
           <CardHeader className="border-b border-[var(--border-subtle)] p-4">
-            <CardTitle className="inline-flex items-center gap-2 text-base">
-              <MessageSquareText className="h-4 w-4" />
-              {ASSISTANT_NAME}
-            </CardTitle>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <CardTitle className="inline-flex items-center gap-2 text-base">
+                <MessageSquareText className="h-4 w-4" />
+                {ASSISTANT_NAME}
+              </CardTitle>
+              <div className="flex min-w-0 flex-wrap gap-2">
+                <Select
+                  label=""
+                  options={equipmentOptions}
+                  placeholder="Equipment context"
+                  value={selectedEquipmentId}
+                  onChange={(event) => setSelectedEquipmentId(event.target.value)}
+                />
+                <Select
+                  label=""
+                  options={workOrderOptions}
+                  placeholder="Work order"
+                  value={selectedWorkOrderId}
+                  onChange={(event) => setSelectedWorkOrderId(event.target.value)}
+                />
+                <Select
+                  label=""
+                  options={departmentOptions}
+                  placeholder="Department"
+                  value={selectedDepartmentId}
+                  onChange={(event) => setSelectedDepartmentId(event.target.value)}
+                />
+              </div>
+            </div>
           </CardHeader>
-          <CardContent className="flex min-h-0 flex-1 flex-col gap-4 p-4">
-            <div ref={messagesContainerRef} className="min-h-0 flex-1 space-y-4 overflow-y-auto pr-1">
+          <CardContent className="flex min-h-0 flex-1 flex-col p-0">
+            <div ref={messagesContainerRef} className="min-h-0 flex-1 space-y-4 overflow-y-auto px-3 py-4 sm:px-5">
               {loadingMessages ? (
                 <div className="flex justify-center py-8">
                   <Spinner />
@@ -386,160 +407,7 @@ export default function ChatbotPage() {
                 />
               ) : (
                 messages.map((message) => (
-                  <div key={message.id} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                    <div
-                      className={`max-w-[85%] rounded-2xl border border-[var(--border-subtle)] p-4 ${
-                        message.role === 'user' ? 'bg-[var(--surface-2)]' : 'panel-surface-muted'
-                      }`}
-                    >
-                      <div className="mb-2 inline-flex items-center gap-2 text-xs text-[var(--text-muted)]">
-                        {message.role === 'user' ? <UserCircle2 className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
-                        {message.role === 'user' ? 'You' : 'Assistant'}
-                      </div>
-
-                      {message.assistant ? (
-                        <div className="space-y-3 text-sm">
-                          {message.assistant.title && <p className="font-semibold">{message.assistant.title}</p>}
-                          <p>{displayableAssistantSummary(message.assistant.summary) || message.content || 'No summary available.'}</p>
-
-                          {message.assistant.intelligence_mode && (
-                            <Badge variant="info" className="text-xs capitalize">
-                              Mode: {message.assistant.intelligence_mode.replace(/_/g, ' ')}
-                            </Badge>
-                          )}
-
-                          {(message.assistant.proactive_signals?.length ?? 0) > 0 && (
-                            <div>
-                              <p className="mb-1 font-semibold">Operational signals</p>
-                              <ul className="list-disc space-y-1 pl-5 text-[var(--text-muted)]">
-                                {message.assistant.proactive_signals!.map((item) => (
-                                  <li key={item}>{item}</li>
-                                ))}
-                              </ul>
-                            </div>
-                          )}
-
-                          {isDeveloper && (message.assistant.routing_explanation?.length ?? 0) > 0 && (
-                            <div className="rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-1)] p-3 text-xs text-[var(--text-muted)]">
-                              <p className="mb-1 font-semibold text-[var(--text-primary)]">Routing</p>
-                              <ul className="list-disc space-y-1 pl-4">
-                                {message.assistant.routing_explanation!.map((item) => (
-                                  <li key={item}>{item}</li>
-                                ))}
-                              </ul>
-                            </div>
-                          )}
-
-                          {(message.assistant.key_findings ?? []).length > 0 && (
-                            <div>
-                              <p className="mb-1 font-semibold">Key findings</p>
-                              <ul className="list-disc space-y-1 pl-5 text-[var(--text-muted)]">
-                                {(message.assistant.key_findings ?? []).map((item) => (
-                                  <li key={item}>{item}</li>
-                                ))}
-                              </ul>
-                            </div>
-                          )}
-
-                          {(message.assistant.recommended_actions ?? []).length > 0 && (
-                            <div>
-                              <p className="mb-1 font-semibold">Recommended actions</p>
-                              <ol className="list-decimal space-y-1 pl-5 text-[var(--text-muted)]">
-                                {(message.assistant.recommended_actions ?? []).map((item) => (
-                                  <li key={item}>{item}</li>
-                                ))}
-                              </ol>
-                            </div>
-                          )}
-
-                          {(message.assistant.likely_causes ?? []).length > 0 && (
-                            <div>
-                              <p className="mb-1 font-semibold">Likely causes</p>
-                              <ul className="list-disc space-y-1 pl-5 text-[var(--text-muted)]">
-                                {(message.assistant.likely_causes ?? []).map((item) => (
-                                  <li key={item}>{item}</li>
-                                ))}
-                              </ul>
-                            </div>
-                          )}
-
-                          {(message.assistant.troubleshooting_steps ?? []).length > 0 && (
-                            <div>
-                              <p className="mb-1 font-semibold">Troubleshooting steps</p>
-                              <ol className="list-decimal space-y-1 pl-5 text-[var(--text-muted)]">
-                                {(message.assistant.troubleshooting_steps ?? []).map((item) => (
-                                  <li key={item}>{item}</li>
-                                ))}
-                              </ol>
-                            </div>
-                          )}
-
-                          {(message.assistant.maintenance_tips ?? []).length > 0 && (
-                            <div>
-                              <p className="mb-1 font-semibold">Maintenance tips</p>
-                              <ul className="list-disc space-y-1 pl-5 text-[var(--text-muted)]">
-                                {(message.assistant.maintenance_tips ?? []).map((item) => (
-                                  <li key={item}>{item}</li>
-                                ))}
-                              </ul>
-                            </div>
-                          )}
-
-                          {(message.assistant.required_tools_or_parts ?? []).length > 0 && (
-                            <div>
-                              <p className="mb-1 font-semibold">Required tools or parts</p>
-                              <ul className="list-disc space-y-1 pl-5 text-[var(--text-muted)]">
-                                {(message.assistant.required_tools_or_parts ?? []).map((item) => (
-                                  <li key={item}>{item}</li>
-                                ))}
-                              </ul>
-                            </div>
-                          )}
-
-                          {message.assistant.escalation_required && (
-                            <div className="assistant-warning rounded-xl p-3">
-                              <div className="assistant-warning-strong mb-1 inline-flex items-center gap-2 text-sm font-medium">
-                                <AlertTriangle className="h-4 w-4" />
-                                Escalation Recommended
-                              </div>
-                              <p className="text-sm">
-                                {message.assistant.escalation_recommendation || 'Escalate to a qualified biomedical engineer or vendor.'}
-                              </p>
-                            </div>
-                          )}
-
-                          <div className="flex flex-wrap items-center gap-2 pt-1">
-                            {isDeveloper && (
-                              <>
-                                <Badge
-                                  variant={BASIS_BADGE_VARIANT[message.assistant.answer_basis ?? 'insufficient_data'] ?? 'default'}
-                                >
-                                  Basis: {(message.assistant.answer_basis ?? 'insufficient_data').replace(/_/g, ' ')}
-                                </Badge>
-                                <Badge variant={CONFIDENCE_BADGE_VARIANT[message.assistant.confidence ?? 'low'] ?? 'warning'}>
-                                  Confidence: {message.assistant.confidence ?? 'low'}
-                                </Badge>
-                              </>
-                            )}
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={async () => {
-                                if (!message.assistant) return;
-                                await navigator.clipboard.writeText(buildAssistantCopyText(message.assistant));
-                                toast('success', 'Response copied');
-                              }}
-                            >
-                              <ClipboardCopy className="h-4 w-4" />
-                              Copy
-                            </Button>
-                          </div>
-                        </div>
-                      ) : (
-                        <p className="text-sm">{message.content}</p>
-                      )}
-                    </div>
-                  </div>
+                  <AssistantMessageCard key={message.id} message={message as AssistantUiMessage} />
                 ))
               )}
 
@@ -559,39 +427,15 @@ export default function ChatbotPage() {
               )}
             </div>
 
-            <div className="mt-auto space-y-3 border-t border-[var(--border-subtle)] bg-[var(--surface-1)] pt-4">
-              <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-                <Select
-                  label="Equipment"
-                  options={equipmentOptions}
-                  placeholder="Attach equipment context"
-                  value={selectedEquipmentId}
-                  onChange={(event) => setSelectedEquipmentId(event.target.value)}
-                />
-                <Select
-                  label="Work Order"
-                  options={workOrderOptions}
-                  placeholder="Attach work order"
-                  value={selectedWorkOrderId}
-                  onChange={(event) => setSelectedWorkOrderId(event.target.value)}
-                />
-                <Select
-                  label="Department"
-                  options={departmentOptions}
-                  placeholder="Attach department"
-                  value={selectedDepartmentId}
-                  onChange={(event) => setSelectedDepartmentId(event.target.value)}
-                />
-              </div>
-
-              <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-2)] p-2">
-                <div className="mb-2 flex flex-wrap gap-2">
+            <div className="mt-auto space-y-3 border-t border-[var(--border-subtle)] bg-[var(--background)]/95 px-3 py-3 sm:px-5">
+              <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-1)] p-2">
+                <div className="mb-2 flex gap-2 overflow-x-auto pb-1">
                   {QUICK_PROMPTS.map((prompt) => (
                     <button
                       key={prompt}
                       onClick={() => setInput(prompt)}
                       disabled={sending}
-                      className="rounded-full border border-[var(--border-subtle)] px-3 py-1 text-xs text-[var(--text-muted)] transition-colors hover:bg-[var(--surface-3)] hover:text-[var(--foreground)]"
+                      className="shrink-0 rounded-full border border-[var(--border-subtle)] px-3 py-1 text-xs text-[var(--text-muted)] transition-colors hover:bg-[var(--surface-3)] hover:text-[var(--foreground)]"
                     >
                       {prompt}
                     </button>
@@ -602,9 +446,9 @@ export default function ChatbotPage() {
                   onChange={(event) => setInput(event.target.value)}
                   onKeyDown={handleInputKeyDown}
                   placeholder="Ask about equipment status, maintenance, troubleshooting, PM, work orders, calibration, logistics, and replacement priorities."
-                  rows={3}
+                  rows={2}
                   disabled={sending}
-                  className="border-[var(--border-subtle)] bg-[var(--surface-1)] text-[var(--foreground)] placeholder:text-[var(--text-muted)]"
+                  className="min-h-[84px] border-0 bg-transparent text-[var(--foreground)] shadow-none placeholder:text-[var(--text-muted)] focus:ring-0"
                 />
                 <div className="mt-2 flex justify-end">
                   <Button
@@ -618,26 +462,6 @@ export default function ChatbotPage() {
                   </Button>
                 </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="h-[calc(100vh-220px)] overflow-hidden" padding={false}>
-          <CardHeader className="border-b border-[var(--border-subtle)] p-4">
-            <CardTitle className="text-base">Scope Guidance</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3 overflow-y-auto p-4 text-sm text-[var(--text-muted)]">
-            <p className="font-medium text-[var(--foreground)]">This assistant is open in input but restricted in behavior.</p>
-            <p>It prioritizes grounded system data, available manual/SOP context, and safe first-line guidance.</p>
-            <p>If enough support is not available, it will return check-manual or escalation guidance instead of guessing.</p>
-            <div className="panel-surface-muted rounded-xl border border-[var(--border-subtle)] p-3">
-              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--foreground)]">Supported domains</p>
-              <ul className="list-disc space-y-1 pl-5">
-                <li>Maintenance and PM support</li>
-                <li>Safe troubleshooting guidance</li>
-                <li>Work-order summary and drafting support</li>
-                <li>Equipment, risk, and reliability explanations</li>
-              </ul>
             </div>
           </CardContent>
         </Card>

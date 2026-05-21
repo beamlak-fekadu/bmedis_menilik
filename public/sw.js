@@ -1,12 +1,36 @@
-const APP_SHELL_CACHE = 'bmedis-app-shell-v1';
-const STATIC_CACHE = 'bmedis-static-v1';
-const CURRENT_CACHES = [APP_SHELL_CACHE, STATIC_CACHE];
+/**
+ * BMEDIS Service Worker
+ *
+ * Phase 1 fix (OFF-01):
+ *   - Successful GET navigations are now cached so the same route can load
+ *     while offline.
+ *   - Network-first for navigations with stale-cache fallback, then
+ *     last-resort `/offline` shell.
+ *   - Auth/Supabase/API responses are explicitly not cached.
+ *   - Bumped cache version to invalidate old (broken) caches.
+ *   - Skips opaque/redirected responses.
+ */
+
+const CACHE_VERSION = 'v2';
+const APP_SHELL_CACHE = `bmedis-app-shell-${CACHE_VERSION}`;
+const STATIC_CACHE = `bmedis-static-${CACHE_VERSION}`;
+const PAGES_CACHE = `bmedis-pages-${CACHE_VERSION}`;
+const CURRENT_CACHES = [APP_SHELL_CACHE, STATIC_CACHE, PAGES_CACHE];
 
 const APP_SHELL_URLS = [
   '/offline',
   '/manifest.webmanifest',
   '/icons/bmedis-icon.svg',
   '/offline-health.txt',
+];
+
+// Routes that must never be cached even if their navigation succeeds.
+// Auth pages return user-specific tokens/cookies — caching them across
+// users is a security risk.
+const NEVER_CACHE_NAV_PATHS = [
+  '/login',
+  '/auth',
+  '/api',
 ];
 
 function offlineHtml() {
@@ -52,7 +76,9 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches
       .keys()
-      .then((keys) => Promise.all(keys.filter((key) => !CURRENT_CACHES.includes(key)).map((key) => caches.delete(key))))
+      .then((keys) =>
+        Promise.all(keys.filter((key) => !CURRENT_CACHES.includes(key)).map((key) => caches.delete(key))),
+      )
       .then(() => self.clients.claim()),
   );
 });
@@ -61,33 +87,78 @@ function isSameOrigin(url) {
   return url.origin === self.location.origin;
 }
 
+function shouldCacheNavigation(url) {
+  if (!isSameOrigin(url)) return false;
+  for (const prefix of NEVER_CACHE_NAV_PATHS) {
+    if (url.pathname === prefix || url.pathname.startsWith(`${prefix}/`)) {
+      return false;
+    }
+  }
+  return true;
+}
+
 function shouldCacheStatic(request, url) {
   if (!isSameOrigin(url)) return false;
   if (url.pathname.startsWith('/_next/static/')) return true;
+  if (url.pathname.startsWith('/_next/data/')) return false; // user-specific
   if (url.pathname.startsWith('/icons/')) return true;
   if (url.pathname === '/manifest.webmanifest') return true;
+  if (url.pathname.startsWith('/lottie/')) return true;
   return ['style', 'script', 'font', 'image'].includes(request.destination);
+}
+
+function isCacheableResponse(response) {
+  // Skip opaque (CORS), redirected, error responses, partial responses.
+  if (!response) return false;
+  if (!response.ok) return false;
+  if (response.status !== 200) return false;
+  if (response.type !== 'basic' && response.type !== 'default') return false;
+  if (response.redirected) return false;
+  return true;
 }
 
 async function cacheFirst(request) {
   const cached = await caches.match(request);
   if (cached) return cached;
-  const response = await fetch(request);
-  if (response && response.ok && response.type === 'basic') {
-    const cache = await caches.open(STATIC_CACHE);
-    cache.put(request, response.clone());
+  try {
+    const response = await fetch(request);
+    if (isCacheableResponse(response)) {
+      const cache = await caches.open(STATIC_CACHE);
+      cache.put(request, response.clone()).catch(() => undefined);
+    }
+    return response;
+  } catch (error) {
+    // Static asset offline — propagate failure (browser shows broken asset).
+    throw error;
   }
-  return response;
 }
 
-async function navigationFallback(request) {
+async function networkFirstNavigation(request) {
+  const url = new URL(request.url);
+
   try {
-    return await fetch(request);
+    const response = await fetch(request);
+
+    if (isCacheableResponse(response) && shouldCacheNavigation(url)) {
+      const cache = await caches.open(PAGES_CACHE);
+      // Clone before consuming — the response stream can only be read once.
+      cache.put(request, response.clone()).catch(() => undefined);
+    }
+
+    return response;
   } catch {
-    const cachedRequest = await caches.match(request);
-    if (cachedRequest) return cachedRequest;
+    // Network failed; serve from cache if we have it.
+    const cachedExact = await caches.match(request);
+    if (cachedExact) return cachedExact;
+
+    // Try ignoring search (different query params for same route still serve).
+    const cachedIgnoreSearch = await caches.match(request, { ignoreSearch: true });
+    if (cachedIgnoreSearch) return cachedIgnoreSearch;
+
+    // Final fallback — cached /offline shell.
     const cachedOffline = await caches.match('/offline');
     if (cachedOffline) return cachedOffline;
+
     return new Response(offlineHtml(), {
       headers: { 'content-type': 'text/html; charset=utf-8' },
       status: 200,
@@ -101,17 +172,38 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(request.url);
 
+  // Skip cross-origin (Supabase, Sentry, etc.) — let the network handle it.
+  if (!isSameOrigin(url)) return;
+
+  // Health probe — always hit network.
   if (url.pathname === '/offline-health.txt') {
     event.respondWith(fetch(request));
     return;
   }
 
+  // Never intercept API routes — they need authoritative data.
+  if (url.pathname.startsWith('/api/')) return;
+  // Never intercept Server Actions / RSC payloads either.
+  if (url.searchParams.has('_rsc')) return;
+
+  // Navigation requests (HTML documents).
   if (request.mode === 'navigate' || request.destination === 'document') {
-    event.respondWith(navigationFallback(request));
+    event.respondWith(networkFirstNavigation(request));
     return;
   }
 
+  // Static assets — cache-first.
   if (shouldCacheStatic(request, url)) {
     event.respondWith(cacheFirst(request));
+  }
+});
+
+self.addEventListener('message', (event) => {
+  if (!event.data) return;
+  if (event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
+  if (event.data.type === 'CLEAR_PAGE_CACHE') {
+    caches.delete(PAGES_CACHE).catch(() => undefined);
   }
 });

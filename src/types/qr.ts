@@ -237,3 +237,30 @@ export type QrAssetScanMetric = {
   lastScannedByRole: string | null;
   scansLast30Days: number;
 };
+
+export type QrSecurityScanStatus =
+  | 'invalid'
+  | 'not_found'
+  | 'revoked'
+  | 'auth_required'
+  | 'deduped';
+
+export type QrSecurityEventRow = {
+  id: string;
+  token_hash: string;
+  masked_token: string;
+  scan_status: QrSecurityScanStatus | string;
+  asset_id: string | null;
+  asset_code: string | null;
+  asset_name: string | null;
+  scanner_profile_id: string | null;
+  scanner_name: string | null;
+  scanner_email: string | null;
+  auth_user_id: string | null;
+  role_name: string | null;
+  scan_source: QrScanSource | string | null;
+  online_status: QrOnlineStatus | string | null;
+  user_agent: string | null;
+  metadata_route: string | null;
+  created_at: string;
+};

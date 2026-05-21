@@ -257,7 +257,12 @@ async function rule_workOrderAssigned(
   const rows: CreateNotificationInput[] = [];
   const asset = describeAsset(event);
   const woNumber = describeWorkOrder(event);
-  const technicianId = pickPayloadString(event.payload ?? {}, 'technician_profile_id');
+  // NOTIF-01: accept either canonical key. `technician_profile_id` is the
+  // canonical assignment field; `assigned_to` is what some emit sites used
+  // historically. Both must resolve to the same notification recipient.
+  const technicianId =
+    pickPayloadString(event.payload ?? {}, 'technician_profile_id') ??
+    pickPayloadString(event.payload ?? {}, 'assigned_to');
   const priority = pickPayloadString(event.payload ?? {}, 'priority') ?? 'medium';
   const isCritical = priority === 'critical' || priority === 'high';
 

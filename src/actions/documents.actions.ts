@@ -1,7 +1,7 @@
 'use server';
 
 import { z } from 'zod';
-import { getActionContext, logServerAuditEvent, revalidateMany, actionError, nullIfEmpty, type ActionResult } from './_shared';
+import { getActionContext, logServerAuditEvent, revalidateMany, actionError, nullIfEmpty, interpretMissingMutationResult, type ActionResult } from './_shared';
 
 const documentPaths = ['/documents', '/calendar', '/equipment', '/inventory'];
 const specRequestPaths = ['/documents', '/requests', '/calendar'];
@@ -60,8 +60,17 @@ export async function updateSpecificationRequestStatusAction(id: string, status:
     const parsedStatus = z.enum(['submitted', 'in_review', 'in_progress', 'completed', 'rejected', 'cancelled']).parse(status);
     const updateData: Record<string, unknown> = { status: parsedStatus };
     if (parsedStatus === 'completed') updateData.completed_at = new Date().toISOString();
-    const result = await supabase.from('specification_requests').update(updateData as never).eq('id', id).select('*').single();
+    // SHAPE-01: maybeSingle handles RLS-filtered rows cleanly.
+    const result = await supabase.from('specification_requests').update(updateData as never).eq('id', id).select('*').maybeSingle();
     if (result.error) return { success: false, error: result.error.message };
+    if (!result.data) {
+      return interpretMissingMutationResult({
+        entity: 'specification request',
+        entityId: id,
+        attempted: `status=${parsedStatus}`,
+        profileId: profile.id,
+      });
+    }
     await logServerAuditEvent({ supabase, profileId: profile.id, action: 'specification_request.status_update', entityType: 'specification_requests', entityId: id, newValues: result.data as Record<string, unknown> });
     revalidateMany([...specRequestPaths, `/documents/specification-requests/${id}`]);
     return { success: true, data: result.data };

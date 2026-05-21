@@ -174,14 +174,19 @@ export function AssistantPanel() {
         role="dialog"
         aria-modal="true"
         aria-label="Assistant"
-        className={`assistant-panel fixed bottom-0 right-0 top-0 z-[82] w-full max-w-xl transform border-l border-[var(--border-subtle)] transition-transform duration-200 ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}
+        className={`assistant-panel fixed bottom-0 right-0 top-0 z-[82] w-full transform border-l border-[var(--border-subtle)] transition-transform duration-200 sm:w-[min(92vw,520px)] lg:w-[500px] ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}
         style={{ height: '100dvh' }}
       >
         <div className="assistant-panel-surface flex h-full min-h-0 flex-col text-[var(--foreground)]">
-          <div className="flex items-center justify-between gap-2 border-b border-[var(--assistant-accent-soft)] px-3 py-3 sm:px-4">
-            <div className="inline-flex min-w-0 items-center gap-2">
-              <MessageSquareText className="h-4 w-4 text-[var(--assistant-accent)]" />
-              <p className="truncate text-sm font-semibold">{ASSISTANT_NAME}</p>
+          <div className="flex items-center justify-between gap-2 border-b border-[var(--assistant-accent-soft)] px-4 py-3">
+            <div className="inline-flex min-w-0 items-center gap-3">
+              <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[var(--assistant-accent-soft)] bg-[var(--assistant-surface-elev)]">
+                <MessageSquareText className="h-4 w-4 text-[var(--assistant-accent)]" />
+              </span>
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold">{ASSISTANT_NAME}</p>
+                <p className="truncate text-xs text-[var(--text-muted)]">{moduleLabel}</p>
+              </div>
             </div>
             <div className="flex shrink-0 items-center gap-1 sm:gap-2">
               <Button variant="ghost" size="sm" onClick={startNewSession} className="px-2">
@@ -194,7 +199,7 @@ export function AssistantPanel() {
             </div>
           </div>
 
-          <div className="border-b border-[var(--border-subtle)] px-3 py-3 sm:px-4">
+          <div className="border-b border-[var(--border-subtle)] px-4 py-2.5">
             <AssistantContextChips moduleLabel={moduleLabel} contextRefs={contextRefs} onClear={clearContextRefs} />
             {(selectedEntityContext || registeredPageContext?.pageSummary) && (
               <p className="mt-2 line-clamp-2 break-words text-xs text-[var(--text-muted)]">
@@ -203,7 +208,7 @@ export function AssistantPanel() {
             )}
           </div>
 
-          <div ref={messagesRef} className="min-h-0 flex-1 space-y-4 overflow-y-auto px-3 py-4 sm:px-4">
+          <div ref={messagesRef} className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-4">
             {messages.length === 0 ? (
               <EmptyState
                 title="Ask for maintenance, PM, analytics, or troubleshooting help"
@@ -249,7 +254,7 @@ export function AssistantPanel() {
             </AnimatePresence>
           </div>
 
-          <div className="shrink-0 space-y-3 border-t border-[var(--assistant-accent-soft)] px-3 py-3 pb-[max(env(safe-area-inset-bottom),0.75rem)] sm:px-4">
+          <div className="shrink-0 space-y-3 border-t border-[var(--assistant-accent-soft)] bg-[var(--background)]/96 px-4 py-3 pb-[max(env(safe-area-inset-bottom),0.75rem)]">
             {usageStatus && (
               <div className={`rounded-md border px-2 py-1 text-xs ${
                 usageStatus.hardLimited
@@ -277,33 +282,35 @@ export function AssistantPanel() {
               variants={cardStagger}
               initial="initial"
               animate="animate"
-              className="-mx-3 flex gap-2 overflow-x-auto px-3 pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0"
+              className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1"
             >
-              {quickPrompts.map((prompt) => (
+              {quickPrompts.slice(0, messages.length === 0 ? 6 : 4).map((prompt) => (
                 <motion.button
                   key={prompt}
                   variants={cardItem}
                   onClick={() => setDraftInput(prompt)}
-                  className="max-w-[78vw] shrink-0 rounded-full border border-[var(--assistant-accent-soft)] px-3 py-1.5 text-left text-xs text-[var(--text-muted)] transition-colors hover:bg-[var(--surface-2)] hover:text-[var(--foreground)] sm:max-w-none sm:shrink"
+                  className="max-w-[78vw] shrink-0 rounded-full border border-[var(--assistant-accent-soft)] px-3 py-1.5 text-left text-xs text-[var(--text-muted)] transition-colors hover:bg-[var(--surface-2)] hover:text-[var(--foreground)]"
                 >
                   {prompt}
                 </motion.button>
               ))}
             </motion.div>
-            <Textarea
-              rows={3}
-              value={draftInput}
-              onChange={(event) => setDraftInput(event.target.value)}
-              onKeyDown={onInputKeyDown}
-              placeholder="Ask anything about equipment, work orders, PM, calibration, stock, or troubleshooting..."
-              className="border-[var(--border-subtle)] bg-[var(--assistant-surface-elev)]"
-              disabled={sending}
-            />
-            <div className="flex justify-end">
-              <Button onClick={() => void sendMessage()} loading={sending} disabled={!draftInput.trim() || sending}>
-                <Send className="h-4 w-4" />
-                Send
-              </Button>
+            <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--assistant-surface-elev)] p-2">
+              <Textarea
+                rows={2}
+                value={draftInput}
+                onChange={(event) => setDraftInput(event.target.value)}
+                onKeyDown={onInputKeyDown}
+                placeholder="Ask about equipment, work orders, PM, calibration, stock, or troubleshooting..."
+                className="min-h-[76px] border-0 bg-transparent shadow-none focus:ring-0"
+                disabled={sending}
+              />
+              <div className="flex justify-end">
+                <Button onClick={() => void sendMessage()} loading={sending} disabled={!draftInput.trim() || sending}>
+                  <Send className="h-4 w-4" />
+                  Send
+                </Button>
+              </div>
             </div>
           </div>
         </div>

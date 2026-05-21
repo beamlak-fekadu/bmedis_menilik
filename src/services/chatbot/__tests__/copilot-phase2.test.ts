@@ -13,6 +13,8 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 
 import {
   buildWorkflowExplainerAnswer,
@@ -25,6 +27,11 @@ import { copilotRoutes } from '@/services/chatbot/route-link-builder';
 import { buildDeterministicAnswerCandidate } from '@/services/chatbot/deterministic-answer-builders';
 import { classifyChatRequest } from '@/services/chatbot/classifier-service';
 import type { ChatEvidence, UserChatProfile } from '@/types/chatbot';
+
+const repoRoot = process.cwd();
+function readSource(rel: string): string {
+  return readFileSync(path.resolve(repoRoot, rel), 'utf8');
+}
 
 const BASE_EVIDENCE: ChatEvidence = {
   equipment: null,
@@ -77,6 +84,30 @@ const DEV: UserChatProfile = {
   roleNames: ['developer'],
   departmentId: null,
 };
+
+test('COPILOT-01: assistant page uses shared message cards and a bottom composer', () => {
+  const page = readSource('src/app/(dashboard)/chatbot/page.tsx');
+  assert.match(page, /AssistantMessageCard/);
+  assert.match(page, /100dvh/);
+  assert.match(page, /mt-auto space-y-3 border-t/);
+  assert.match(page, /Textarea/);
+  assert.doesNotMatch(page, /JSON\.stringify/);
+});
+
+test('COPILOT-01: floating panel uses mobile full-screen and scroll-contained messages', () => {
+  const panel = readSource('src/components/assistant/AssistantPanel.tsx');
+  assert.match(panel, /fixed inset-0/);
+  assert.match(panel, /sm:w-\[min\(92vw,520px\)\]/);
+  assert.match(panel, /overflow-y-auto/);
+  assert.match(panel, /Textarea/);
+});
+
+test('COPILOT-01: normal roles get collapsed evidence while developer can expand diagnostics', () => {
+  const card = readSource('src/components/assistant/AssistantMessageCard.tsx');
+  assert.match(card, /useState\(isDeveloper\)/);
+  assert.match(card, /Evidence & links/);
+  assert.match(card, /Developer trace/);
+});
 
 function candidate(profile: UserChatProfile, message: string, opts: Partial<Parameters<typeof buildDeterministicAnswerCandidate>[0]> = {}) {
   const classified = classifyChatRequest(message);

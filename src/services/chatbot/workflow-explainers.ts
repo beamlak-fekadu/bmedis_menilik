@@ -433,7 +433,7 @@ function buildWorkOrderLifecycle(): WorkflowExplainerAnswer {
       key_findings: [
         'open → assigned: work_order.assign capability (technician/BME Head/admin/developer).',
         'assigned → in_progress: work_order.start. Sets started_at and updates the linked asset to under_maintenance.',
-        'in_progress → completed: work_order.complete. Requires completion_outcome + final_equipment_condition. Optionally writes a maintenance_events row with repair_duration_hours, downtime_start/end, failure_date (R2).',
+        'in_progress → completed: work_order.complete. Requires completion_outcome + final_equipment_condition. Corrective work orders always write one linked maintenance_events completion row; missing reliability fields are derived server-side where possible (R2).',
         '→ on_hold: work_order.hold. Used when blocked by parts or vendor.',
         'Stock blocker: declaring a work_order_parts_needed row marks the WO as a stock blocker without changing status.',
         'Notifications: work_order.assigned, work_order.stock_blocked, work_order.completed events fire to requester + BME Head + technician.',
@@ -454,17 +454,17 @@ function buildWorkOrderCompletionReliability(): WorkflowExplainerAnswer {
   return answer(
     'work_order_completion_reliability',
     'Work order completion → reliability evidence chain',
-    'Completing a corrective work order can update MTTR, MTBF, and availability, but only if reliability evidence fields are filled. Without them, the WO closes cleanly but reliability metrics stay unchanged and an audit warning is recorded.',
+    'Completing a corrective work order writes linked maintenance_events completion evidence for MTTR, MTBF, and availability. User-entered reliability fields improve precision, and missing values are derived server-side from the work order/request timestamps where possible.',
     {
       key_findings: [
         'Required at completion: completion_outcome (resolved | partially_resolved | not_resolved | awaiting_parts_or_vendor) and final_equipment_condition.',
-        'Optional reliability fields: repair_duration_hours, downtime_start, downtime_end, failure_date. When ANY of these is supplied, the action inserts a maintenance_events row linked to the WO + asset.',
+        'Optional user-entered reliability fields: repair_duration_hours, downtime_start, downtime_end, failure_date. The action still inserts or updates one completion-marked maintenance_events row for every corrective completion.',
         'A DB trigger (migration 00061) then derives a downtime_logs row keyed by event_id whenever both downtime_start and downtime_end are present.',
         'MTBF = operational_time / failure_count, MTTR = repair_time / repair_count, Availability = MTBF / (MTBF + MTTR) — all rely on the maintenance_events + downtime_logs rows.',
-        'If reliability fields are NOT supplied, audit_logs records work_order.completed_without_reliability_evidence, completion still succeeds, but MTTR / MTBF / availability for that asset will not move.',
+        'A reliability_evidence_warning is emitted only when the maintenance_events write itself fails, not merely because the user left optional fields blank.',
       ],
       recommended_actions: [
-        'Fill repair_duration_hours, downtime_start, downtime_end, failure_date in the completion modal.',
+        'Fill repair_duration_hours, downtime_start, downtime_end, failure_date when known; otherwise review the server-derived evidence on the work order detail page.',
         'Use the work-order detail page (Reliability evidence subsection) before clicking Complete.',
         'Run analytics refresh from Developer Lab if you expect KPIs to update immediately.',
       ],

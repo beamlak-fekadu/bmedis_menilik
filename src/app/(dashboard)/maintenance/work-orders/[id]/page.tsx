@@ -479,15 +479,24 @@ export default function WorkOrderDetailPage() {
     setActionLoading(false);
     setCompletionDraftResult(result);
     await refreshQueuedActions();
+    // OFF-02 fix: the draft path NEVER completes the work order. It only
+    // logs a maintenance event with the proposed outcome. The user must
+    // reconnect and click "Confirm Completion" to actually close the WO.
     if (result.status === 'queued') {
-      toast('success', 'Saved offline — will sync when connection returns.');
+      toast(
+        'success',
+        'Completion intent saved offline. Work order remains open until you reconnect and confirm completion.',
+      );
       return;
     }
     if (result.status === 'failed' || result.status === 'conflict') {
       toast('error', result.error ?? 'Failed to save completion draft');
       return;
     }
-    toast('success', 'Completion draft saved');
+    toast(
+      'success',
+      'Completion note logged. Work order remains open — use Confirm Completion to close it.',
+    );
     setCompletionModalOpen(false);
     await loadEvents(wo.id);
   }
@@ -1032,6 +1041,13 @@ export default function WorkOrderDetailPage() {
         <div className="space-y-4">
           <OfflineSubmitBanner actionLabel="Completion draft" />
           <OfflineActionResult result={completionDraftResult} />
+          {/* OFF-02 honesty banner: explain what "Save Draft" actually does. */}
+          <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
+            <strong>Save Draft</strong> logs a maintenance note with your intended outcome. It does
+            NOT close the work order. To formally complete the work order (update reliability
+            evidence, equipment condition, analytics) you must reconnect and click{' '}
+            <strong>Confirm Completion</strong>.
+          </div>
           <p className="text-sm text-[var(--text-muted)]">
             Select the resolution outcome and the equipment&apos;s final condition. This is used to update the equipment record and analytics.
           </p>

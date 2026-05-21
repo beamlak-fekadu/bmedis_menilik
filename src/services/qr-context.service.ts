@@ -466,7 +466,9 @@ export async function getQrRoleContext({
   const workRows = await runQuery(health, 'work_orders', async () => {
     const { data, error } = await supabase
       .from('work_orders')
-      .select('id, work_order_number, status, priority, work_type, assigned_to, request_id, created_at, updated_at, started_at, completed_at, profiles(full_name, email)')
+      // EMBED-01: explicit FK hint — work_orders has only one profiles FK
+      // (assigned_to). Hint is defensive against future FK additions.
+      .select('id, work_order_number, status, priority, work_type, assigned_to, request_id, created_at, updated_at, started_at, completed_at, profiles!work_orders_assigned_to_fkey(full_name, email)')
       .eq('asset_id', asset.id)
       .order('created_at', { ascending: false })
       .limit(35);

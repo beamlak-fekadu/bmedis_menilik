@@ -40,7 +40,7 @@ function flagCategory(flag: RecommendationFlagType): { label: string; icon: Reac
     case 'replacement_candidate': return { label: 'Replacement attention recommended', icon: <Bell className="h-4 w-4 text-violet-300" /> };
     case 'high_risk':
     case 'low_availability': return { label: 'Risk affecting department equipment', icon: <ShieldAlert className="h-4 w-4 text-rose-300" /> };
-    default: return { label: 'Department alert', icon: <Wrench className="h-4 w-4 text-cyan-300" /> };
+    default: return { label: 'Department notification', icon: <Wrench className="h-4 w-4 text-cyan-300" /> };
   }
 }
 
@@ -97,7 +97,7 @@ export default function DepartmentAlerts() {
   if (!departmentId) {
     return (
       <div className="space-y-6">
-        <PageHeader title="Department Alerts" description="" />
+        <PageHeader title="Department Notifications" description="" />
         <div className="rounded-lg border border-rose-500/40 bg-rose-500/5 p-6">
           <p className="font-medium text-[var(--foreground)]">No department linked</p>
           <p className="mt-1 text-sm text-[var(--text-muted)]">{MISSING_DEPARTMENT_MESSAGE}</p>
@@ -109,14 +109,14 @@ export default function DepartmentAlerts() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Department Alerts"
+        title="Department Notifications"
         description="Read-only signals affecting your department. Acknowledge is not a department-role action."
-        breadcrumbs={[{ label: 'Department Dashboard', href: '/command' }, { label: 'Department Alerts' }]}
+        breadcrumbs={[{ label: 'Department Dashboard', href: '/command' }, { label: 'Department Notifications' }]}
         actions={<Badge variant="info">Department view</Badge>}
       />
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-6">
-        <StatCard label="Total Alerts" value={counts.total} icon={<Bell className="h-5 w-5" />} />
+        <StatCard label="Total Notifications" value={counts.total} icon={<Bell className="h-5 w-5" />} />
         <StatCard label="Critical" value={counts.critical} icon={<ShieldAlert className="h-5 w-5" />} color="red" />
         <StatCard label="High" value={counts.high} icon={<AlertTriangle className="h-5 w-5" />} color="orange" />
         <StatCard label="Equipment risk" value={counts.equipmentDown} icon={<ShieldAlert className="h-5 w-5" />} color="red" />
@@ -127,12 +127,12 @@ export default function DepartmentAlerts() {
       {alerts.length === 0 ? (
         <div className="panel-surface rounded-xl p-8 text-center">
           <Bell className="mx-auto mb-3 h-10 w-10 text-emerald-300" />
-          <p className="text-sm text-[var(--foreground)]">No department alerts require attention.</p>
+          <p className="text-sm text-[var(--foreground)]">No department notifications require attention.</p>
         </div>
       ) : (
         <div className="panel-surface rounded-xl">
           <div className="border-b border-[var(--border-subtle)]/60 p-4">
-            <h2 className="text-base font-semibold text-[var(--foreground)]">Active alerts</h2>
+            <h2 className="text-base font-semibold text-[var(--foreground)]">Active notifications</h2>
           </div>
           <ul className="divide-y divide-[var(--border-subtle)]/60">
             {alerts.map((a) => {

@@ -14,6 +14,7 @@ import { getOfflineSyncServerSummary } from '@/services/offline-sync.service';
 import {
   getDemoRoleIntegrityDiagnostics,
   getNotificationRoleDependencyDiagnostics,
+  getPhase1RlsInvariants,
   getScoreSnapshotTimestamps,
 } from '@/services/developer-lab.service';
 import {
@@ -434,6 +435,7 @@ export default async function DeveloperLabPage({ searchParams }: { searchParams:
     qrScanStats,
     offlineSyncSummary,
     validationFixtures,
+    phase1Invariants,
   ] = await Promise.all([
     supabase.auth.getUser(),
     getDemoRoleIntegrityDiagnostics(supabase),
@@ -444,6 +446,8 @@ export default async function DeveloperLabPage({ searchParams }: { searchParams:
     getOfflineSyncServerSummary(),
     // R34: validation dataset readiness probes.
     (await import('@/services/validation-readiness.service')).getValidationFixtureReadiness(supabase),
+    // PART 10: Phase 1 RLS / helper invariants — fail-fast for missing migrations.
+    getPhase1RlsInvariants(supabase),
   ]);
   const authUser = authUserRes.data.user;
   const demoSummary = demoRoleIntegritySummary(demoRoleDiagnostics.rows);
@@ -478,6 +482,12 @@ export default async function DeveloperLabPage({ searchParams }: { searchParams:
     ...validationFixtures
       .filter((f) => f.status === 'unknown')
       .map((f) => `Validation fixture probe failed: ${f.label}. Error: ${f.error}`),
+    // PART 10: any Phase 1 invariant failure (missing migration / helper /
+    // column) becomes a top-line warning so the evaluator notices BEFORE
+    // hitting a confusing RLS denial in the live UI.
+    ...phase1Invariants
+      .filter((inv) => inv.status !== 'ok')
+      .map((inv) => `Phase 1 invariant ${inv.status === 'fail' ? 'FAILED' : 'warning'}: ${inv.label}${inv.detail ? ` — ${inv.detail}` : ''}`),
   ].filter(Boolean) as string[];
 
   return (

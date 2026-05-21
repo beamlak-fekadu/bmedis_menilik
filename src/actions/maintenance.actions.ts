@@ -3,7 +3,7 @@
 import { z } from 'zod';
 import { recomputeAssetAnalytics } from './analytics.actions';
 import { updateEquipmentConditionAction } from './equipment.actions';
-import { getActionContextForCapability, getActionContextForAnyCapability, logServerAuditEvent, revalidateMany, actionError, nullIfEmpty, type ActionResult } from './_shared';
+import { getActionContextForCapability, getActionContextForAnyCapability, logServerAuditEvent, revalidateMany, actionError, nullIfEmpty, interpretMissingMutationResult, type ActionResult } from './_shared';
 import { OPEN_MAINTENANCE_REQUEST_STATUSES } from '@/utils/maintenance/request-status';
 import { requiredCapabilityForWorkOrderTransition } from '@/utils/maintenance/work-order-transitions';
 import {
@@ -367,15 +367,13 @@ export async function updateRequestStatusAction(id: string, status: string): Pro
       .maybeSingle();
     if (result.error) return { success: false, error: result.error.message };
     if (!result.data) {
-      console.error('[maintenance] status update returned 0 rows; likely RLS UPDATE policy excludes role', {
-        requestId: id,
-        attemptedStatus: parsedStatus,
+      // SHAPE-01: centralized translation of 0-row mutation result.
+      return interpretMissingMutationResult({
+        entity: 'maintenance request',
+        entityId: id,
+        attempted: `status=${parsedStatus}`,
         profileId: profile.id,
       });
-      return {
-        success: false,
-        error: 'You do not have permission to change this request, or the request no longer exists.',
-      };
     }
     await logServerAuditEvent({ supabase, profileId: profile.id, action: 'maintenance_request.status_update', entityType: 'maintenance_requests', entityId: id, oldValues: oldRow.data as Record<string, unknown> | null, newValues: result.data as Record<string, unknown> });
 
@@ -559,6 +557,11 @@ export async function createWorkOrderAction(payload: Record<string, unknown>): P
           asset_code: assetSummary.asset_code,
           work_order_number: woRow.work_order_number ?? null,
           priority: woRow.priority ?? null,
+          // NOTIF-01: rule_workOrderAssigned reads `technician_profile_id`.
+          // Emit both keys so both the assignment rule and the status rule
+          // can locate the assignee — they look at different fields by
+          // historical accident.
+          technician_profile_id: woRow.assigned_to ?? null,
           assigned_to: woRow.assigned_to ?? null,
           source_request_id: woRow.request_id ?? null,
         },
@@ -641,8 +644,17 @@ export async function updateWorkOrderAction(id: string, payload: Record<string, 
     }
 
     const oldRow = await supabase.from('work_orders').select('*').eq('id', id).maybeSingle();
-    const result = await supabase.from('work_orders').update(updatePayload as never).eq('id', id).select('*').single();
+    // SHAPE-01: maybeSingle handles RLS-filtered rows cleanly.
+    const result = await supabase.from('work_orders').update(updatePayload as never).eq('id', id).select('*').maybeSingle();
     if (result.error) return { success: false, error: result.error.message };
+    if (!result.data) {
+      return interpretMissingMutationResult({
+        entity: 'work order',
+        entityId: id,
+        attempted: data.status ? `status=${data.status}` : 'update',
+        profileId: profile.id,
+      });
+    }
     await logServerAuditEvent({ supabase, profileId: profile.id, action: data.status ? 'work_order.status_update' : 'work_order.update', entityType: 'work_orders', entityId: id, oldValues: oldRow.data as Record<string, unknown> | null, newValues: result.data as Record<string, unknown> });
 
     const assetId = (result.data as Record<string, unknown>).asset_id as string | undefined;
@@ -776,7 +788,18 @@ export async function updateWorkOrderAction(id: string, payload: Record<string, 
           });
         }
 
-        await recomputeAssetAnalytics(assetId).catch(() => undefined);
+        // ANALYTICS-01: surface refresh failure (was silently swallowed).
+        try {
+          await recomputeAssetAnalytics(assetId);
+        } catch (refreshErr) {
+          const message = refreshErr instanceof Error ? refreshErr.message : 'unknown';
+          await logServerAuditEvent({
+            supabase, profileId: profile.id,
+            action: 'work_order.analytics_refresh_failed',
+            entityType: 'work_orders', entityId: id,
+            details: { asset_id: assetId, error: message },
+          });
+        }
       }
       // on_hold: do not change condition — equipment remains under_maintenance or needs_repair
 
@@ -867,8 +890,17 @@ async function setWorkOrderAssignee(id: string, technicianProfileId: string, act
     const updateData: Record<string, unknown> = { assigned_to: parsedId };
     if (currentStatus === 'open' || !currentStatus) updateData.status = 'assigned';
 
-    const result = await supabase.from('work_orders').update(updateData as never).eq('id', id).select('*').single();
+    // SHAPE-01: maybeSingle handles RLS-filtered rows cleanly.
+    const result = await supabase.from('work_orders').update(updateData as never).eq('id', id).select('*').maybeSingle();
     if (result.error) return { success: false, error: result.error.message };
+    if (!result.data) {
+      return interpretMissingMutationResult({
+        entity: 'work order',
+        entityId: id,
+        attempted: `assigned_to=${parsedId}`,
+        profileId: profile.id,
+      });
+    }
 
     await logServerAuditEvent({
       supabase,
@@ -929,9 +961,27 @@ export async function createMaintenanceEventAction(payload: Record<string, unkno
     const result = await supabase.from('maintenance_events').insert(data as never).select('*').single();
     if (result.error) return { success: false, error: result.error.message };
     await logServerAuditEvent({ supabase, profileId: profile.id, action: 'maintenance_event.create', entityType: 'maintenance_events', entityId: (result.data as { id?: string }).id ?? null, newValues: result.data as Record<string, unknown> });
-    await recomputeAssetAnalytics(parsed.asset_id).catch(() => undefined);
+    // ANALYTICS-01: surface refresh failure (was silently swallowed).
+    let eventAnalyticsWarning: string | null = null;
+    try {
+      await recomputeAssetAnalytics(parsed.asset_id);
+    } catch (refreshErr) {
+      const message = refreshErr instanceof Error ? refreshErr.message : 'unknown';
+      eventAnalyticsWarning = `Maintenance event recorded but reliability analytics refresh failed: ${message}.`;
+      await logServerAuditEvent({
+        supabase, profileId: profile.id,
+        action: 'maintenance_event.analytics_refresh_failed',
+        entityType: 'maintenance_events', entityId: (result.data as { id?: string }).id ?? null,
+        details: { asset_id: parsed.asset_id, error: message },
+      });
+    }
     revalidateMany(maintenancePaths);
-    return { success: true, data: result.data };
+    return {
+      success: true,
+      data: eventAnalyticsWarning
+        ? { ...(result.data as Record<string, unknown>), analytics_refresh_warning: eventAnalyticsWarning }
+        : result.data,
+    };
   } catch (err) {
     return actionError(err, 'Failed to create maintenance event');
   }

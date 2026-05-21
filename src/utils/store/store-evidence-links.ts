@@ -22,15 +22,20 @@ export function storeEquipmentDetail(assetId: string): string {
 }
 
 export function storeReceiveLink(procurementId?: string | null): string {
-  const params = new URLSearchParams({ source: 'store-console' });
-  if (procurementId) params.set('procurementId', procurementId);
-  return `/logistics?workflow=receiving&${params.toString()}`;
+  const params = new URLSearchParams({
+    action: 'record-receipt',
+    source: 'store-console',
+  });
+  if (procurementId) params.set('procurement_id', procurementId);
+  return `/spare-parts?${params.toString()}`;
 }
 
-export function storeIssueLink(partId?: string | null): string {
-  const params = new URLSearchParams({ source: 'store-console' });
+export function storeIssueLink(partId?: string | null, options: { workOrderId?: string | null; needId?: string | null } = {}): string {
+  const params = new URLSearchParams({ action: 'issue', source: 'store-console' });
   if (partId) params.set('partId', partId);
-  return `/logistics?workflow=issue&${params.toString()}`;
+  if (options.workOrderId) params.set('work_order_id', options.workOrderId);
+  if (options.needId) params.set('need_id', options.needId);
+  return `/spare-parts?${params.toString()}`;
 }
 
 export function storeBinCardLink(partId?: string | null): string {
@@ -42,10 +47,13 @@ export function storeBinCardLink(partId?: string | null): string {
 // Reorder request prefill — Store User's primary mutation. Carries enough
 // context for the procurement-request creation flow to populate item, reason,
 // linked part, and desired quantity from canonical stock data.
-export function storeCreateReorderLink(part: { id: string; name?: string | null; part_code?: string | null; reorder_level?: number | null; current_stock?: number | null }): string {
+export function storeCreateReorderLink(
+  part: { id: string; name?: string | null; part_code?: string | null; reorder_level?: number | null; current_stock?: number | null },
+  options: { workOrderId?: string | null; assetId?: string | null; needId?: string | null; quantityNeeded?: number | null } = {},
+): string {
   const reorderLevel = Number(part.reorder_level ?? 0);
   const current = Number(part.current_stock ?? 0);
-  const desired = Math.max(reorderLevel - current, reorderLevel, 1);
+  const desired = Math.max(Number(options.quantityNeeded ?? 0), reorderLevel - current, reorderLevel, 1);
   const itemName = part.part_code && part.name ? `${part.part_code} ${part.name}` : part.name ?? part.part_code ?? 'spare part';
   const reason = current <= 0
     ? `Stockout for ${itemName}. Reorder to restore stock to reorder_level.`
@@ -57,6 +65,12 @@ export function storeCreateReorderLink(part: { id: string; name?: string | null;
     quantity: String(desired),
     reason,
   });
+  params.set('suggestedQuantity', String(desired));
+  params.set('currentStock', String(current));
+  params.set('reorderLevel', String(reorderLevel));
+  if (options.workOrderId) params.set('workOrderId', options.workOrderId);
+  if (options.assetId) params.set('assetId', options.assetId);
+  if (options.needId) params.set('needId', options.needId);
   return `/procurement/requests/new?${params.toString()}`;
 }
 

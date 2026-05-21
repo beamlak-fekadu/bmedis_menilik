@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { requireRole } from '@/lib/auth/helpers';
 import { createClient } from '@/lib/supabase/server';
 import QrScanHistoryTable from '@/components/qr/QrScanHistoryTable';
-import { getQrScanHistory } from '@/services/qr.service';
+import { getQrScanHistory, getQrSecurityEvents } from '@/services/qr.service';
 import { QR_ONLINE_STATUSES, QR_SCAN_SOURCES, type QrScanHistoryFilters } from '@/types/qr';
 import { Button, PageHeader } from '@/components/ui';
 import AssistantPageContextBridge from '@/components/assistant/AssistantPageContextBridge';
@@ -38,6 +38,7 @@ export default async function QrScansPage({ searchParams }: { searchParams: Sear
     supabase.from('departments').select('id, name').order('name', { ascending: true }).limit(500),
     supabase.from('equipment_qr_scans').select('role_name').not('role_name', 'is', null).limit(1000),
   ]);
+  const securityEvents = await getQrSecurityEvents({ limit: 200 });
 
   const roles = Array.from(new Set(((rolesRes.data ?? []) as Array<{ role_name: string | null }>).map((row) => row.role_name).filter(Boolean) as string[])).sort();
   const departments = ((departmentsRes.data ?? []) as Array<{ id: string; name: string }>).map((dept) => ({
@@ -69,7 +70,7 @@ export default async function QrScansPage({ searchParams }: { searchParams: Sear
       />
       <PageHeader
         title="QR Scan History"
-        description="Admin-only online QR scan activity from authenticated QR page renders. Raw user agents are not shown in this table."
+        description="Admin-only QR evidence: valid authenticated scan rows plus security events for revoked, invalid, auth-required, and deduped attempts. Raw user agents are not shown in standard tables."
         breadcrumbs={[{ label: 'Equipment', href: '/equipment' }, { label: 'QR Scan History' }]}
         actions={
           <div className="flex flex-wrap gap-2">
@@ -138,6 +139,43 @@ export default async function QrScansPage({ searchParams }: { searchParams: Sear
       </form>
 
       <QrScanHistoryTable scans={scans} emptyMessage="No QR scans recorded for these filters." />
+
+      <section className="space-y-3">
+        <div>
+          <h2 className="text-base font-semibold text-[var(--foreground)]">QR Security Events</h2>
+          <p className="text-sm text-[var(--text-muted)]">Revoked, invalid, unknown-token, login-required, and deduped scan attempts. Public QR pages do not reveal asset identity from these rows.</p>
+        </div>
+        <div className="overflow-x-auto rounded-md border border-[var(--border-subtle)]">
+          <table className="min-w-[980px] w-full text-left text-sm">
+            <thead className="border-b border-[var(--border-subtle)] bg-[var(--surface-1)] text-xs uppercase tracking-wide text-[var(--text-muted)]">
+              <tr>
+                <th className="px-3 py-2">Time</th>
+                <th className="px-3 py-2">Status</th>
+                <th className="px-3 py-2">Token</th>
+                <th className="px-3 py-2">Asset</th>
+                <th className="px-3 py-2">Scanner</th>
+                <th className="px-3 py-2">Role</th>
+                <th className="px-3 py-2">Route</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[var(--border-subtle)]/60">
+              {securityEvents.length === 0 ? (
+                <tr><td colSpan={7} className="px-3 py-8 text-center text-sm text-[var(--text-muted)]">No QR security events recorded.</td></tr>
+              ) : securityEvents.map((event) => (
+                <tr key={event.id}>
+                  <td className="px-3 py-2 text-xs text-[var(--text-muted)]">{new Date(event.created_at).toLocaleString()}</td>
+                  <td className="px-3 py-2">{event.scan_status.replace(/_/g, ' ')}</td>
+                  <td className="px-3 py-2 font-mono text-xs">{event.masked_token}</td>
+                  <td className="px-3 py-2 text-[var(--text-muted)]">{event.asset_code ? `${event.asset_code} · ${event.asset_name ?? ''}` : 'Not exposed'}</td>
+                  <td className="px-3 py-2 text-[var(--text-muted)]">{event.scanner_name ?? event.scanner_email ?? 'Unauthenticated / unknown'}</td>
+                  <td className="px-3 py-2 text-[var(--text-muted)]">{event.role_name ?? '-'}</td>
+                  <td className="px-3 py-2 text-xs text-[var(--text-muted)]">{event.metadata_route ?? '-'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
     </div>
   );
 }

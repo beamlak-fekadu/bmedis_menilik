@@ -29,7 +29,7 @@ export default function NewProcurementRequestPage() {
     const itemName = searchParams.get('itemName') ?? 'spare part';
     const currentStock = searchParams.get('currentStock');
     const reorderLevel = searchParams.get('reorderLevel');
-    const suggestedQuantity = searchParams.get('suggestedQuantity');
+    const suggestedQuantity = searchParams.get('suggestedQuantity') ?? searchParams.get('quantity');
     const reason = searchParams.get('reason') ?? 'Stock below reorder level';
     const source = searchParams.get('source');
     const hasPrefill = Boolean(source);
@@ -74,9 +74,10 @@ export default function NewProcurementRequestPage() {
       priority: parsed.data.priority,
       expected_delivery_date: parsed.data.expected_delivery_date || null,
       part_id: searchParams.get('partId') ?? searchParams.get('sparePartId') ?? null,
+      spare_part_id: searchParams.get('partId') ?? searchParams.get('sparePartId') ?? null,
       current_stock_snapshot: searchParams.get('currentStock'),
       reorder_level_snapshot: searchParams.get('reorderLevel'),
-      requested_quantity: searchParams.get('suggestedQuantity'),
+      requested_quantity: searchParams.get('suggestedQuantity') ?? searchParams.get('quantity'),
       created_by_profile_id: profile?.id ?? null,
       source: searchParams.get('source') ?? 'manual',
     };

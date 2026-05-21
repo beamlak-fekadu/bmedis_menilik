@@ -374,8 +374,27 @@ export default function PMScheduleDetailPage() {
       return;
     }
 
-    const correctiveRequestId = (result.data as { correctiveRequestId?: string | null } | undefined)?.correctiveRequestId;
-    toast('success', correctiveRequestId ? 'PM completed and corrective request opened' : 'PM completion evidence recorded');
+    const completionData = result.data as
+      | { correctiveRequestId?: string | null; warnings?: string[] }
+      | undefined;
+    const correctiveRequestId = completionData?.correctiveRequestId;
+    const warnings = completionData?.warnings ?? [];
+
+    // PM-01 truth: if any post-insert step (plan update, condition sync,
+    // analytics recompute) failed, surface those as warnings instead of
+    // showing an uncomplicated "PM completed" success.
+    if (warnings.length > 0) {
+      // Primary success toast — completion + schedule update succeeded.
+      toast('success', correctiveRequestId
+        ? `PM completion recorded with ${warnings.length} warning${warnings.length === 1 ? '' : 's'}; corrective request opened.`
+        : `PM completion recorded with ${warnings.length} warning${warnings.length === 1 ? '' : 's'}.`);
+      // Each warning as its own toast so the user sees what didn't sync.
+      for (const w of warnings) {
+        toast('warning', w);
+      }
+    } else {
+      toast('success', correctiveRequestId ? 'PM completed and corrective request opened' : 'PM completion evidence recorded');
+    }
     setCompletionModalOpen(false);
     if (correctiveRequestId) {
       router.push(`/maintenance/requests/${correctiveRequestId}`);
