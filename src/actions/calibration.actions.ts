@@ -7,6 +7,13 @@ import { denialMessage } from '@/lib/rbac/department-scope';
 
 const calibrationPaths = ['/calibration', '/calendar', '/command', '/reports/calibration'];
 
+function calibrationRequestInsertError(message: string) {
+  if (/row-level security|new row violates/i.test(message)) {
+    return 'Calibration request could not be created because the database policy blocked the write. Apply migrations 00071 and 00072 so department users can create calibration requests for assets in their own department.';
+  }
+  return message;
+}
+
 export async function updateCalibrationRequestStatusAction(id: string, status: string): Promise<ActionResult> {
   try {
     // Status update covers approve/reject/schedule transitions; allow approve
@@ -113,7 +120,26 @@ export async function createCalibrationRequestAction(payload: Record<string, unk
 
     const data = { ...parsed, request_number: `CAL-${Date.now().toString(36).toUpperCase()}`, requested_by: nullIfEmpty(parsed.requested_by) ?? profile.id, calibration_type_id: nullIfEmpty(parsed.calibration_type_id), status: 'pending', notes: nullIfEmpty(parsed.notes) };
     const result = await supabase.from('calibration_requests').insert(data as never).select('*').single();
-    if (result.error) return { success: false, error: result.error.message };
+    if (result.error) {
+      await logServerAuditEvent({
+        supabase,
+        profileId: profile.id,
+        action: 'calibration_request.create_blocked',
+        entityType: 'calibration_requests',
+        entityId: null,
+        details: {
+          asset_id: parsed.asset_id,
+          required_migrations: ['00071_calibration_request_department_rls', '00072_calibration_request_insert_policy_helper'],
+          postgrest_error: {
+            message: result.error.message,
+            code: result.error.code,
+            details: result.error.details,
+            hint: result.error.hint,
+          },
+        },
+      });
+      return { success: false, error: calibrationRequestInsertError(result.error.message) };
+    }
     await logServerAuditEvent({ supabase, profileId: profile.id, action: 'calibration_request.create', entityType: 'calibration_requests', entityId: (result.data as { id?: string }).id ?? null, newValues: result.data as Record<string, unknown> });
     await recomputeAssetAnalytics(parsed.asset_id).catch(() => undefined);
 
