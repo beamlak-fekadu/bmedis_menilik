@@ -195,6 +195,8 @@ export default function PMScheduleDetailPage() {
   const [events, setEvents] = useState<MaintenanceEventRow[]>([]);
   const [lastCorrective, setLastCorrective] = useState<WorkOrderRow | null>(null);
   const [loading, setLoading] = useState(true);
+  const [techniciansLoading, setTechniciansLoading] = useState(false);
+  const [techniciansLoadError, setTechniciansLoadError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [assignmentModalOpen, setAssignmentModalOpen] = useState(false);
   const [completionModalOpen, setCompletionModalOpen] = useState(false);
@@ -230,6 +232,8 @@ export default function PMScheduleDetailPage() {
     const loaded = scheduleRes.data as unknown as ScheduleDetail;
     setSchedule(loaded);
     setAssignment(loaded.assigned_to ?? '');
+    setTechniciansLoading(true);
+    setTechniciansLoadError(null);
 
     const [historyRes, techRes, riskRes, eventRes, workOrderRes] = await Promise.all([
       getPMScheduleHistory({ asset_id: loaded.asset_id, plan_id: loaded.plan_id }),
@@ -240,7 +244,17 @@ export default function PMScheduleDetailPage() {
     ]);
 
     setHistory(((historyRes.data ?? []) as unknown as ScheduleDetail[]).filter((item) => item.id !== id));
-    setTechnicians((techRes.data ?? []) as unknown as ProfileLite[]);
+    if (techRes.error) {
+      const message = techRes.error.message ?? 'Unable to load technician profiles.';
+      console.error('[pm] Failed to load active technicians:', techRes.error);
+      toast('error', 'Unable to load technician profiles for assignment.');
+      setTechnicians([]);
+      setTechniciansLoadError(message);
+    } else {
+      setTechnicians((techRes.data ?? []) as unknown as ProfileLite[]);
+      setTechniciansLoadError(null);
+    }
+    setTechniciansLoading(false);
     setRisk(((riskRes.data ?? []) as unknown as RiskRow[])[0] ?? null);
     setEvents((eventRes.data ?? []) as unknown as MaintenanceEventRow[]);
     const workOrders = (workOrderRes.data ?? []) as unknown as WorkOrderRow[];
@@ -314,7 +328,14 @@ export default function PMScheduleDetailPage() {
       toast('error', result.error ?? 'Failed to assign PM');
       return;
     }
-    toast('success', assignment ? 'PM assignment updated' : 'PM assignment cleared');
+    const warnings = (result.data as { warnings?: string[] } | undefined)?.warnings ?? [];
+    if (warnings.includes('notification_queue_failed')) {
+      toast('warning', 'Assignment succeeded, but notification delivery could not be queued.');
+    } else if (warnings.includes('audit_log_failed')) {
+      toast('warning', 'Assignment succeeded, but audit logging could not be recorded.');
+    } else {
+      toast('success', assignment ? 'PM assignment updated' : 'PM assignment cleared');
+    }
     setAssignmentModalOpen(false);
     await load();
   }
@@ -638,12 +659,16 @@ export default function PMScheduleDetailPage() {
           label="Technician"
           value={assignment}
           onChange={(e) => setAssignment(e.target.value)}
+          disabled={techniciansLoading || Boolean(techniciansLoadError)}
           options={[
-            { value: '', label: 'Unassigned' },
+            { value: '', label: techniciansLoading ? 'Loading technicians...' : 'Unassigned' },
             ...technicians.map((tech) => ({ value: tech.id, label: tech.full_name ?? tech.email ?? tech.id })),
           ]}
         />
-        {technicians.length === 0 && (
+        {techniciansLoadError && (
+          <p className="mt-2 text-xs text-rose-300">Technician profiles could not be loaded. Try refreshing this PM task.</p>
+        )}
+        {!techniciansLoading && !techniciansLoadError && technicians.length === 0 && (
           <p className="mt-2 text-xs text-amber-300">{ASSIGNABLE_TECHNICIANS_EMPTY_STATE}</p>
         )}
       </Modal>

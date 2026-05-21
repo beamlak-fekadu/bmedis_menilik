@@ -56,6 +56,8 @@ function assertNoBareUserRolesEmbed(path: string) {
 const GUARDED_FILES = [
   'src/services/users.service.ts',
   'src/actions/maintenance.actions.ts',
+  'src/actions/pm.actions.ts',
+  'src/services/pm.service.ts',
   'src/services/metrics/workload.service.ts',
   'src/services/notifications/recipient-resolver.ts',
   'src/services/developer-lab.service.ts',
@@ -78,9 +80,56 @@ test('users.service.ts getActiveTechnicians carries the FK hint with !inner', ()
   assert.match(src, /getActiveTechnicians[\s\S]{0,400}user_roles!user_roles_user_id_fkey!inner\(/);
 });
 
+test('users.service.ts getActiveTechnicians uses only the technician role', () => {
+  const src = fileText('src/services/users.service.ts');
+  assert.match(src, /getActiveTechnicians[\s\S]{0,600}\.eq\('user_roles\.roles\.name', 'technician'\)/);
+  assert.doesNotMatch(src, /getActiveTechnicians[\s\S]{0,800}\bin\('user_roles\.roles\.name', \['technician', 'bme_head'\]\)/);
+  assert.doesNotMatch(src, /getActiveTechnicians[\s\S]{0,800}engineer/);
+});
+
 test('maintenance.actions.ts technician validation carries the FK hint', () => {
   const src = fileText('src/actions/maintenance.actions.ts');
   assert.match(src, /user_roles!user_roles_user_id_fkey!inner\(roles!inner\(name\)\)/);
+});
+
+test('pm.actions.ts PM assignment validates technician role through profile id', () => {
+  const src = fileText('src/actions/pm.actions.ts');
+  assert.match(src, /getAssignableTechnicianForPM[\s\S]{0,500}user_roles!user_roles_user_id_fkey!inner\(roles!inner\(name\)\)/);
+  assert.match(src, /getAssignableTechnicianForPM[\s\S]{0,700}\.eq\('id', profileId\)/);
+  assert.match(src, /getAssignableTechnicianForPM[\s\S]{0,900}\.eq\('user_roles\.roles\.name', 'technician'\)/);
+});
+
+test('pm.actions.ts assignment update avoids singular JSON coercion', () => {
+  const src = fileText('src/actions/pm.actions.ts');
+  const action = src.match(/export async function assignPMScheduleAction[\s\S]*?export async function startPMScheduleAction/)?.[0] ?? '';
+  assert.ok(action, 'assignPMScheduleAction block should be present');
+  assert.match(action, /\.select\(PM_ASSIGNMENT_SELECT\)\s*\n\s*\.maybeSingle\(\)/);
+  assert.doesNotMatch(action, /\.select\(PM_ASSIGNMENT_SELECT\)\s*\n\s*\.single\(\)/);
+  assert.match(action, /PM task could not be assigned because it was not found\./);
+  assert.match(action, /Selected technician profile is not available\./);
+  assert.match(action, /You do not have permission to assign PM tasks\./);
+  assert.match(action, /notification_queue_failed/);
+});
+
+test('PM schedule detail surfaces technician loading, empty, and error states', () => {
+  const src = fileText('src/app/(dashboard)/pm/schedules/[id]/page.tsx');
+  assert.match(src, /console\.error\('\[pm\] Failed to load active technicians:'/);
+  assert.match(src, /Unable to load technician profiles for assignment\./);
+  assert.match(src, /ASSIGNABLE_TECHNICIANS_EMPTY_STATE/);
+  assert.match(src, /disabled=\{techniciansLoading \|\| Boolean\(techniciansLoadError\)\}/);
+  assert.match(src, /value: tech\.id/);
+});
+
+test('pm.service.ts pm_schedules profile embeds carry FK hints', () => {
+  const src = fileText('src/services/pm.service.ts');
+  assert.match(src, /assigned_to_profile:profiles!pm_schedules_assigned_to_fkey/);
+  assert.match(src, /completed_by_profile:profiles!pm_schedules_completed_by_fkey/);
+  assert.match(src, /completed_by_profile:profiles!pm_completions_completed_by_fkey/);
+});
+
+test('workload service work-order assignee embed carries FK hint', () => {
+  const src = fileText('src/services/metrics/workload.service.ts');
+  assert.match(src, /profiles!work_orders_assigned_to_fkey\(full_name\)/);
 });
 
 // audit_logs → profiles has TWO FKs (performed_by, user_id). Embeds must
@@ -105,4 +154,17 @@ test('disposal.service.ts REQUEST_SELECT carries the FK hint', () => {
 test('qr-context.service.ts pm_schedules embed carries the FK hint', () => {
   const src = fileText('src/services/qr-context.service.ts');
   assert.match(src, /profiles!pm_schedules_assigned_to_fkey/);
+});
+
+test('migration 00070 grants bme_head PM schedule write without broadening department/store/viewer', () => {
+  const src = fileText('supabase/migrations/00070_pm_schedule_assignment_bme_head_rls.sql');
+  assert.match(src, /CREATE POLICY update_pm_schedules ON pm_schedules/);
+  assert.match(src, /auth_user_has_role\('bme_head'\)/);
+  assert.match(src, /prevent_unauthorized_pm_schedule_assignment/);
+  assert.match(src, /BEFORE UPDATE OF assigned_to ON pm_schedules/);
+  assert.match(src, /NEW\.assigned_to IS DISTINCT FROM OLD\.assigned_to/);
+  assert.doesNotMatch(src, /auth_user_has_role\('department_user'\)/);
+  assert.doesNotMatch(src, /auth_user_has_role\('department_head'\)/);
+  assert.doesNotMatch(src, /auth_user_has_role\('store_user'\)/);
+  assert.doesNotMatch(src, /auth_user_has_role\('viewer'\)/);
 });

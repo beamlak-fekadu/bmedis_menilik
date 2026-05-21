@@ -5,10 +5,41 @@ import { recomputeAssetAnalytics } from './analytics.actions';
 import { getActionContextForCapability, logServerAuditEvent, revalidateMany, actionError, nullIfEmpty, type ActionResult } from './_shared';
 import { OPEN_MAINTENANCE_REQUEST_STATUSES } from '@/utils/maintenance/request-status';
 import { datePlusDays } from '@/utils/pm/semantics';
-import { emitNotificationEvent } from '@/services/notifications/notification-engine';
+import { createNotificationEvent, emitNotificationEvent } from '@/services/notifications/notification-engine';
 
 const pmPaths = ['/pm', '/calendar', '/command', '/reports/pm'];
 const ACTIVE_PM_SCHEDULE_STATUSES = ['scheduled', 'in_progress', 'overdue', 'deferred'] as const;
+
+const PM_ASSIGNMENT_SELECT = `
+  id, plan_id, asset_id, scheduled_date, status, assigned_to, notes,
+  result, completion_checklist, completion_notes, final_equipment_condition,
+  corrective_action_needed, skipped_reason, deferred_until, deferred_reason,
+  completed_by, completed_at, started_at, created_at, updated_at,
+  assigned_to_profile:profiles!pm_schedules_assigned_to_fkey(id, full_name, email)
+`;
+
+type PMAssignmentWarning =
+  | 'audit_log_failed'
+  | 'notification_queue_failed';
+
+type PMAssignmentResult = {
+  schedule: Record<string, unknown>;
+  assignedTechnician: {
+    id: string;
+    full_name: string | null;
+    email: string | null;
+  } | null;
+  warnings: PMAssignmentWarning[];
+  notificationStatus?: {
+    rule_status: 'matched' | 'skipped' | 'failed';
+    notification_count: number;
+    error?: string;
+  };
+  auditStatus?: {
+    success: boolean;
+    error?: string;
+  };
+};
 
 const pmResultToCondition = {
   pass: 'functional',
@@ -48,6 +79,25 @@ async function getScheduleContext(supabase: Awaited<ReturnType<typeof import('@/
     .select('*, pm_plans(id, name, frequency_days), equipment_assets(id, name, asset_code, department_id)')
     .eq('id', id)
     .maybeSingle();
+}
+
+async function getAssignableTechnicianForPM(
+  supabase: Awaited<ReturnType<typeof import('@/lib/supabase/server').createClient>>,
+  profileId: string,
+) {
+  return supabase
+    .from('profiles')
+    .select('id, full_name, email, is_active, user_roles!user_roles_user_id_fkey!inner(roles!inner(name))')
+    .eq('id', profileId)
+    .eq('is_active', true)
+    .eq('user_roles.roles.name', 'technician')
+    .maybeSingle();
+}
+
+function isPostgrestSingularCoercionError(error: unknown) {
+  if (!error || typeof error !== 'object') return false;
+  const row = error as { code?: unknown; message?: unknown };
+  return row.code === 'PGRST116' || String(row.message ?? '').includes('Cannot coerce the result to a single JSON object');
 }
 
 export async function createPMPlanAction(payload: Record<string, unknown>): Promise<ActionResult> {
@@ -216,21 +266,85 @@ export async function createPMCompletionAction(payload: Record<string, unknown>)
   }
 }
 
-export async function assignPMScheduleAction(id: string, assignedTo: string | null): Promise<ActionResult> {
+export async function assignPMScheduleAction(id: string, assignedTo: string | null): Promise<ActionResult<PMAssignmentResult>> {
   try {
     const { supabase, profile, error } = await getActionContextForCapability('pm.assign');
-    if (error || !profile) return { success: false, error };
-    const assignee = nullIfEmpty(assignedTo);
-    const oldRow = await supabase.from('pm_schedules').select('*').eq('id', id).maybeSingle();
+    if (error || !profile) {
+      return {
+        success: false,
+        error: error === 'Insufficient permissions' ? 'You do not have permission to assign PM tasks.' : (error ?? 'Not authenticated'),
+      };
+    }
+    const assignee = nullIfEmpty(assignedTo) as string | null;
+    const oldRow = await supabase
+      .from('pm_schedules')
+      .select('id, asset_id, assigned_to, status, scheduled_date, notes')
+      .eq('id', id)
+      .maybeSingle();
+    if (oldRow.error) {
+      if (isPostgrestSingularCoercionError(oldRow.error)) {
+        return { success: false, error: 'PM task could not be assigned because the task lookup returned an unexpected shape.' };
+      }
+      return { success: false, error: oldRow.error.message };
+    }
+    if (!oldRow.data) {
+      return { success: false, error: 'PM task could not be assigned because it was not found.' };
+    }
+
+    let assignedTechnician: PMAssignmentResult['assignedTechnician'] = null;
+    if (assignee) {
+      const technicianRes = await getAssignableTechnicianForPM(supabase, assignee);
+      if (technicianRes.error) return { success: false, error: technicianRes.error.message };
+      if (!technicianRes.data) return { success: false, error: 'Selected technician profile is not available.' };
+      const technicianRow = technicianRes.data as { id: string; full_name: string | null; email: string | null };
+      assignedTechnician = {
+        id: technicianRow.id,
+        full_name: technicianRow.full_name,
+        email: technicianRow.email,
+      };
+    }
+
     const result = await supabase
       .from('pm_schedules')
       .update({ assigned_to: assignee } as never)
       .eq('id', id)
-      .select('*')
-      .single();
-    if (result.error) return { success: false, error: result.error.message };
-    await logServerAuditEvent({ supabase, profileId: profile.id, action: 'pm_schedule.assign', entityType: 'pm_schedules', entityId: id, oldValues: oldRow.data as Record<string, unknown> | null, newValues: result.data as Record<string, unknown> });
+      .select(PM_ASSIGNMENT_SELECT)
+      .maybeSingle();
+    if (result.error) {
+      if (isPostgrestSingularCoercionError(result.error)) {
+        return { success: false, error: 'PM task could not be assigned because the update did not return exactly one task.' };
+      }
+      return { success: false, error: result.error.message };
+    }
+    if (!result.data) {
+      return {
+        success: false,
+        error: 'PM task could not be assigned because database policy blocked the update. Apply migration 00070 to grant PM schedule assignment to BME Head.',
+      };
+    }
+
+    const warnings: PMAssignmentWarning[] = [];
+    let auditStatus: PMAssignmentResult['auditStatus'] = { success: true };
+    const audit = await supabase.from('audit_logs').insert({
+      user_id: profile.id,
+      performed_by: profile.id,
+      action: 'pm_schedule.assign',
+      entity_type: 'pm_schedules',
+      entity_id: id,
+      old_values: oldRow.data as Record<string, unknown>,
+      new_values: result.data as Record<string, unknown>,
+      details: {
+        assigned_technician_profile_id: assignee,
+        assigned_technician_name: assignedTechnician?.full_name ?? null,
+      },
+    });
+    if (audit.error) {
+      warnings.push('audit_log_failed');
+      auditStatus = { success: false, error: audit.error.message };
+      console.error('[audit] PM assignment audit write failed:', audit.error.message);
+    }
     const assetId = (result.data as Record<string, unknown>).asset_id as string | undefined;
+    let notificationStatus: PMAssignmentResult['notificationStatus'];
     if (assignee && assetId) {
       try {
         const { data: asset } = await supabase
@@ -239,7 +353,7 @@ export async function assignPMScheduleAction(id: string, assignedTo: string | nu
           .eq('id', assetId)
           .maybeSingle();
         const assetRow = (asset ?? null) as { name?: string | null; asset_code?: string | null; department_id?: string | null } | null;
-        await emitNotificationEvent({
+        const notification = await createNotificationEvent({
           event_type: 'pm.assigned',
           source_table: 'pm_schedules',
           source_id: id,
@@ -251,15 +365,48 @@ export async function assignPMScheduleAction(id: string, assignedTo: string | nu
             asset_code: assetRow?.asset_code ?? null,
             assigned_to: assignee,
           },
-        });
+        }, { client: supabase, createdBy: profile.id });
+        notificationStatus = {
+          rule_status: notification.rule_status,
+          notification_count: notification.notifications.length,
+          error: notification.error,
+        };
+        if (notification.rule_status === 'failed') {
+          warnings.push('notification_queue_failed');
+        }
       } catch (e) {
+        warnings.push('notification_queue_failed');
+        notificationStatus = {
+          rule_status: 'failed',
+          notification_count: 0,
+          error: e instanceof Error ? e.message : 'unknown_notification_error',
+        };
         console.error('[notifications] pm.assigned emit failed:', e);
       }
     }
+    if (warnings.includes('notification_queue_failed')) {
+      await logServerAuditEvent({
+        supabase,
+        profileId: profile.id,
+        action: 'pm_schedule.assignment_notification_failed',
+        entityType: 'pm_schedules',
+        entityId: id,
+        details: notificationStatus?.error ? { error: notificationStatus.error } : null,
+      });
+    }
     revalidateMany([...pmPaths, `/pm/schedules/${id}`, assetId ? `/equipment/${assetId}` : '/equipment']);
-    return { success: true, data: result.data };
+    return {
+      success: true,
+      data: {
+        schedule: result.data as Record<string, unknown>,
+        assignedTechnician,
+        warnings,
+        notificationStatus,
+        auditStatus,
+      },
+    };
   } catch (err) {
-    return actionError(err, 'Failed to assign PM schedule');
+    return actionError(err, 'Failed to assign PM schedule') as ActionResult<PMAssignmentResult>;
   }
 }
 

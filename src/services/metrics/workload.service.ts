@@ -63,7 +63,7 @@ export async function fetchCurrentTechnicianWorkload(
       .limit(500),
     supabase
       .from('work_orders')
-      .select('id, status, priority, estimated_hours, assigned_to, profiles(full_name)')
+      .select('id, status, priority, estimated_hours, assigned_to, profiles!work_orders_assigned_to_fkey(full_name)')
       .in('status', ['open', 'assigned', 'in_progress', 'on_hold'])
       .not('assigned_to', 'is', null)
       .limit(500),
