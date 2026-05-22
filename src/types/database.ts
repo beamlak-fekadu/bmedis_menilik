@@ -1527,12 +1527,15 @@ export type Database = {
         Row: {
           action_taken: string | null
           asset_id: string
+          auth_user_id: string | null
           created_at: string
+          deduped_from_scan_id: string | null
           id: string
           metadata: Json
           online_status: string
           role_name: string | null
           scan_source: string
+          scan_status: string
           scanned_at: string
           scanned_by: string | null
           user_agent: string | null
@@ -1540,12 +1543,15 @@ export type Database = {
         Insert: {
           action_taken?: string | null
           asset_id: string
+          auth_user_id?: string | null
           created_at?: string
+          deduped_from_scan_id?: string | null
           id?: string
           metadata?: Json
           online_status?: string
           role_name?: string | null
           scan_source?: string
+          scan_status?: string
           scanned_at?: string
           scanned_by?: string | null
           user_agent?: string | null
@@ -1553,12 +1559,15 @@ export type Database = {
         Update: {
           action_taken?: string | null
           asset_id?: string
+          auth_user_id?: string | null
           created_at?: string
+          deduped_from_scan_id?: string | null
           id?: string
           metadata?: Json
           online_status?: string
           role_name?: string | null
           scan_source?: string
+          scan_status?: string
           scanned_at?: string
           scanned_by?: string | null
           user_agent?: string | null
@@ -1584,6 +1593,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_maintenance_risk_context"
             referencedColumns: ["asset_id"]
+          },
+          {
+            foreignKeyName: "equipment_qr_scans_deduped_from_scan_id_fkey"
+            columns: ["deduped_from_scan_id"]
+            isOneToOne: false
+            referencedRelation: "equipment_qr_scans"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "equipment_qr_scans_scanned_by_fkey"
@@ -2746,7 +2762,7 @@ export type Database = {
           action_url: string | null
           aggregate_key: string | null
           asset_id: string | null
-          category: string
+          category: string | null
           created_at: string
           created_by: string | null
           dedupe_key: string | null
@@ -2755,26 +2771,26 @@ export type Database = {
           entity_type: string
           event_type: string
           id: string
-          message: string
+          message: string | null
           payload: Json
           priority: string | null
           processed_at: string | null
           processing_error: string | null
           processing_status: string
           requires_acknowledgement: boolean
-          severity: string
+          severity: string | null
           source_id: string | null
           source_record_id: string | null
           source_table: string | null
           summary: string | null
-          title: string
+          title: string | null
           urgency_score: number
         }
         Insert: {
           action_url?: string | null
           aggregate_key?: string | null
           asset_id?: string | null
-          category: string
+          category?: string | null
           created_at?: string
           created_by?: string | null
           dedupe_key?: string | null
@@ -2783,26 +2799,26 @@ export type Database = {
           entity_type: string
           event_type: string
           id?: string
-          message: string
+          message?: string | null
           payload?: Json
           priority?: string | null
           processed_at?: string | null
           processing_error?: string | null
           processing_status?: string
           requires_acknowledgement?: boolean
-          severity?: string
+          severity?: string | null
           source_id?: string | null
           source_record_id?: string | null
           source_table?: string | null
           summary?: string | null
-          title: string
+          title?: string | null
           urgency_score?: number
         }
         Update: {
           action_url?: string | null
           aggregate_key?: string | null
           asset_id?: string | null
-          category?: string
+          category?: string | null
           created_at?: string
           created_by?: string | null
           dedupe_key?: string | null
@@ -2811,19 +2827,19 @@ export type Database = {
           entity_type?: string
           event_type?: string
           id?: string
-          message?: string
+          message?: string | null
           payload?: Json
           priority?: string | null
           processed_at?: string | null
           processing_error?: string | null
           processing_status?: string
           requires_acknowledgement?: boolean
-          severity?: string
+          severity?: string | null
           source_id?: string | null
           source_record_id?: string | null
           source_table?: string | null
           summary?: string | null
-          title?: string
+          title?: string | null
           urgency_score?: number
         }
         Relationships: [
@@ -3621,7 +3637,9 @@ export type Database = {
           priority: string
           request_number: string
           requested_by: string | null
+          requested_quantity: number | null
           source_replacement_score_id: string | null
+          spare_part_id: string | null
           status: string
           title: string
           updated_at: string
@@ -3635,7 +3653,9 @@ export type Database = {
           priority?: string
           request_number: string
           requested_by?: string | null
+          requested_quantity?: number | null
           source_replacement_score_id?: string | null
+          spare_part_id?: string | null
           status?: string
           title: string
           updated_at?: string
@@ -3649,7 +3669,9 @@ export type Database = {
           priority?: string
           request_number?: string
           requested_by?: string | null
+          requested_quantity?: number | null
           source_replacement_score_id?: string | null
+          spare_part_id?: string | null
           status?: string
           title?: string
           updated_at?: string
@@ -3674,6 +3696,20 @@ export type Database = {
             columns: ["source_replacement_score_id"]
             isOneToOne: false
             referencedRelation: "replacement_priority_scores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "procurement_requests_spare_part_id_fkey"
+            columns: ["spare_part_id"]
+            isOneToOne: false
+            referencedRelation: "spare_parts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "procurement_requests_spare_part_id_fkey"
+            columns: ["spare_part_id"]
+            isOneToOne: false
+            referencedRelation: "v_low_stock_parts"
             referencedColumns: ["id"]
           },
         ]
@@ -3724,6 +3760,86 @@ export type Database = {
             columns: ["department_id"]
             isOneToOne: false
             referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      qr_security_events: {
+        Row: {
+          asset_id: string | null
+          auth_user_id: string | null
+          created_at: string
+          id: string
+          ip_address: unknown
+          masked_token: string
+          metadata: Json
+          online_status: string
+          role_name: string | null
+          scan_source: string
+          scan_status: string
+          scanner_profile_id: string | null
+          token_hash: string
+          user_agent: string | null
+        }
+        Insert: {
+          asset_id?: string | null
+          auth_user_id?: string | null
+          created_at?: string
+          id?: string
+          ip_address?: unknown
+          masked_token: string
+          metadata?: Json
+          online_status?: string
+          role_name?: string | null
+          scan_source?: string
+          scan_status: string
+          scanner_profile_id?: string | null
+          token_hash: string
+          user_agent?: string | null
+        }
+        Update: {
+          asset_id?: string | null
+          auth_user_id?: string | null
+          created_at?: string
+          id?: string
+          ip_address?: unknown
+          masked_token?: string
+          metadata?: Json
+          online_status?: string
+          role_name?: string | null
+          scan_source?: string
+          scan_status?: string
+          scanner_profile_id?: string | null
+          token_hash?: string
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "qr_security_events_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "equipment_assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "qr_security_events_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "v_equipment_summary"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "qr_security_events_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "v_maintenance_risk_context"
+            referencedColumns: ["asset_id"]
+          },
+          {
+            foreignKeyName: "qr_security_events_scanner_profile_id_fkey"
+            columns: ["scanner_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -5487,6 +5603,10 @@ export type Database = {
       }
       auth_profile_department_id: { Args: never; Returns: string }
       auth_user_has_role: { Args: { required_role: string }; Returns: boolean }
+      can_create_calibration_request_for_asset: {
+        Args: { p_asset_id: string }
+        Returns: boolean
+      }
       cleanup_cron_job_log: { Args: never; Returns: number }
       cleanup_net_http_response: { Args: never; Returns: number }
       compute_replacement_priority_scores_all: {
