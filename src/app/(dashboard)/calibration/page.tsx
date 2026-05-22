@@ -277,7 +277,17 @@ export default function CalibrationPage() {
         notes: recNotes || null,
       });
       if (!result.success) throw new Error(result.error ?? 'Failed to create calibration record');
-      toast('success', 'Calibration record created');
+      const notificationData = result.data as {
+        notification_warning?: string;
+        notification_result?: { detail?: string | null };
+      } | undefined;
+      if (notificationData?.notification_warning) {
+        toast('warning', notificationData.notification_result?.detail
+          ? `Calibration record created. Notification delivery needs review: ${notificationData.notification_result.detail}`
+          : 'Calibration record created, but notification delivery needs review.');
+      } else {
+        toast('success', 'Calibration record created');
+      }
       setRecordModalOpen(false);
       resetRecordForm();
       loadData();

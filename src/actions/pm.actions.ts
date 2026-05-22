@@ -10,6 +10,7 @@ import {
   createNotificationEvent,
   emitNotificationEvent,
   notificationDeliveryNeedsReview,
+  notificationReviewDetail,
 } from '@/services/notifications/notification-engine';
 
 const pmPaths = ['/pm', '/calendar', '/command', '/reports/pm'];
@@ -42,6 +43,7 @@ type PMAssignmentResult = {
     warnings?: string[];
     errors?: string[];
     error?: string;
+    detail?: string | null;
   };
   auditStatus?: {
     success: boolean;
@@ -95,7 +97,7 @@ async function getAssignableTechnicianForPM(
 ) {
   return supabase
     .from('profiles')
-    .select('id, full_name, email, is_active, user_roles!user_roles_user_id_fkey!inner(roles!inner(name))')
+    .select('id, user_id, full_name, email, is_active, user_roles!user_roles_user_id_fkey!inner(roles!inner(name))')
     .eq('id', profileId)
     .eq('is_active', true)
     .eq('user_roles.roles.name', 'technician')
@@ -423,16 +425,18 @@ export async function assignPMScheduleAction(id: string, assignedTo: string | nu
     }
 
     let assignedTechnician: PMAssignmentResult['assignedTechnician'] = null;
+    let assignedTechnicianHasAuthLink = false;
     if (assignee) {
       const technicianRes = await getAssignableTechnicianForPM(supabase, assignee);
       if (technicianRes.error) return { success: false, error: technicianRes.error.message };
       if (!technicianRes.data) return { success: false, error: 'Selected technician profile is not available.' };
-      const technicianRow = technicianRes.data as { id: string; full_name: string | null; email: string | null };
+      const technicianRow = technicianRes.data as { id: string; user_id?: string | null; full_name: string | null; email: string | null };
       assignedTechnician = {
         id: technicianRow.id,
         full_name: technicianRow.full_name,
         email: technicianRow.email,
       };
+      assignedTechnicianHasAuthLink = !!technicianRow.user_id;
     }
 
     const result = await supabase
@@ -495,6 +499,7 @@ export async function assignPMScheduleAction(id: string, assignedTo: string | nu
             asset_name: assetRow?.name ?? null,
             asset_code: assetRow?.asset_code ?? null,
             assigned_to: assignee,
+            technician_user_id_present: assignedTechnicianHasAuthLink,
           },
         }, { createdBy: profile.id });
         notificationStatus = {
@@ -504,6 +509,7 @@ export async function assignPMScheduleAction(id: string, assignedTo: string | nu
           warnings: notification.warnings,
           errors: notification.errors,
           error: notification.error,
+          detail: notificationReviewDetail(notification),
         };
         if (notificationDeliveryNeedsReview(notification)) {
           warnings.push('notification_delivery_needs_review');
@@ -517,6 +523,7 @@ export async function assignPMScheduleAction(id: string, assignedTo: string | nu
           warnings: [NOTIFICATION_DELIVERY_REVIEW_WARNING],
           errors: [e instanceof Error ? e.message : 'unknown_notification_error'],
           error: e instanceof Error ? e.message : 'unknown_notification_error',
+          detail: e instanceof Error ? e.message : 'unknown_notification_error',
         };
         console.error('[notifications] pm.assigned emit failed:', e);
       }

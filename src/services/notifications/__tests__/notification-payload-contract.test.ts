@@ -25,6 +25,16 @@ test('NOTIF-01: createWorkOrderAction emits technician_profile_id for assignment
   assert.match(block, /assigned_to:\s*woRow\.assigned_to/);
 });
 
+test('NOTIF-01: assign/reassign work order emits both assignee payload keys', () => {
+  const src = readSource('src/actions/maintenance.actions.ts');
+  const idx = src.indexOf('assignment_kind: action');
+  assert.ok(idx > 0, 'assignment notification block must exist');
+  const block = src.slice(idx - 700, idx + 700);
+  assert.match(block, /technician_profile_id:\s*parsedId/);
+  assert.match(block, /assigned_to:\s*parsedId/);
+  assert.match(block, /technician_user_id_present/);
+});
+
 // NOTIF-01: rule_workOrderAssigned must accept either payload key.
 test('NOTIF-01: rule_workOrderAssigned reads either technician_profile_id or assigned_to', () => {
   const src = readSource('src/services/notifications/notification-rules.ts');
@@ -150,6 +160,14 @@ test('PART 4: recipient resolver does NOT confuse auth uid with profile id', () 
   assert.match(src, /recipientProfileId.*profiles\.id/);
 });
 
+test('PART 4: recipient resolver requires auth-linked profiles for deliverable recipients', () => {
+  const src = readSource('src/services/notifications/recipient-resolver.ts');
+  assert.match(src, /authLink.*profiles\.user_id = auth\.users\.id/);
+  assert.match(src, /if \(!row\.user_id\) return null/);
+  assert.match(src, /missing_auth_link/);
+  assert.match(src, /getProfileRecipientReadiness/);
+});
+
 test('INSTANT-01: notification engine uses trusted server fan-out and records no-recipient states', () => {
   const src = readSource('src/services/notifications/notification-engine.ts');
   assert.match(src, /createAdminClient/);
@@ -157,6 +175,17 @@ test('INSTANT-01: notification engine uses trusted server fan-out and records no
   assert.match(src, /no_recipients/);
   assert.match(src, /no_rule/);
   assert.match(src, /notificationDeliveryNeedsReview/);
+  assert.match(src, /expected_recipient_profile_ids/);
+  assert.match(src, /active auth-linked recipients/);
+});
+
+test('INSTANT-01: rule diagnostics record expected roles and profile auth readiness', () => {
+  const rules = readSource('src/services/notifications/notification-rules.ts');
+  const actions = readSource('src/actions/notifications.actions.ts');
+  assert.match(rules, /expected_profile_recipients/);
+  assert.match(rules, /expected_recipient_roles/);
+  assert.match(rules, /getProfileRecipientReadiness/);
+  assert.match(actions, /\.not\('user_id', 'is', null\)/);
 });
 
 test('INSTANT-02: migration 00076 enables rule diagnostics and realtime notifications', () => {

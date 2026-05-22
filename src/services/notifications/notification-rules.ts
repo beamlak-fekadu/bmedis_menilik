@@ -10,6 +10,7 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import {
+  NOTIFICATION_RECIPIENT_IDENTITY_CONTRACT,
   dedupeRecipients,
   getAdmins,
   getAssetDepartmentId,
@@ -19,6 +20,7 @@ import {
   getDevelopers,
   getLeadershipRecipients,
   getProfileById,
+  getProfileRecipientReadiness,
   getStoreUsers,
   getViewers,
 } from './recipient-resolver';
@@ -123,6 +125,180 @@ async function getRelevantAssetDepartment(
   if (event.department_id) return event.department_id;
   if (event.asset_id) return await getAssetDepartmentId(client, event.asset_id);
   return null;
+}
+
+interface ExpectedProfileRecipient {
+  label: string;
+  profileId: string | null;
+  expectedRole?: string | null;
+  sourceFields: string[];
+}
+
+function pickFirstPayloadString(
+  payload: Record<string, unknown> | undefined | null,
+  keys: string[],
+): { value: string | null; sourceFields: string[] } {
+  const presentFields = keys.filter((key) => typeof payload?.[key] === 'string' && String(payload?.[key]).length > 0);
+  return {
+    value: presentFields.length > 0 ? String(payload?.[presentFields[0]]) : null,
+    sourceFields: keys,
+  };
+}
+
+function expectedDirectProfiles(event: NotificationEventRow): ExpectedProfileRecipient[] {
+  const payload = event.payload ?? {};
+  const eventType = event.event_type as NotificationEventType;
+  switch (eventType) {
+    case 'work_order.assigned': {
+      const picked = pickFirstPayloadString(payload, ['technician_profile_id', 'assigned_to']);
+      return [{
+        label: 'assigned_technician',
+        profileId: picked.value,
+        expectedRole: 'technician',
+        sourceFields: picked.sourceFields,
+      }];
+    }
+    case 'work_order.created':
+    case 'work_order.status_changed':
+    case 'work_order.on_hold':
+    case 'work_order.completed':
+    case 'work_order.aging_or_overdue':
+    case 'pm.overdue':
+    case 'pm.assigned':
+    case 'pm.completed': {
+      const picked = pickFirstPayloadString(payload, ['assigned_to']);
+      return [{
+        label: 'assigned_technician',
+        profileId: picked.value,
+        expectedRole: 'technician',
+        sourceFields: picked.sourceFields,
+      }];
+    }
+    case 'maintenance_request.created':
+    case 'maintenance_request.status_changed':
+    case 'calibration.request_status_changed': {
+      const picked = pickFirstPayloadString(payload, ['requested_by']);
+      return [{
+        label: 'requester',
+        profileId: picked.value,
+        expectedRole: null,
+        sourceFields: picked.sourceFields,
+      }];
+    }
+    case 'offline_sync.conflict':
+    case 'offline_sync.failed': {
+      const picked = pickFirstPayloadString(payload, ['actor_profile_id']);
+      return [{
+        label: 'actor',
+        profileId: picked.value,
+        expectedRole: null,
+        sourceFields: picked.sourceFields,
+      }];
+    }
+    case 'system.test_notification': {
+      const picked = pickFirstPayloadString(payload, ['target_profile_id']);
+      return picked.value
+        ? [{
+          label: 'test_target',
+          profileId: picked.value,
+          expectedRole: null,
+          sourceFields: picked.sourceFields,
+        }]
+        : [];
+    }
+    default:
+      return [];
+  }
+}
+
+function expectedRoleRecipients(event: NotificationEventRow): string[] {
+  const eventType = event.event_type as NotificationEventType;
+  const priority = pickPayloadString(event.payload ?? {}, 'priority') ?? event.priority;
+  const highOrCritical = priority === 'critical' || priority === 'high';
+  switch (eventType) {
+    case 'maintenance_request.created':
+      return ['bme_head', 'admin', 'department_head'];
+    case 'maintenance_request.status_changed':
+      return ['department_head'];
+    case 'work_order.assigned':
+      return highOrCritical ? ['technician', 'bme_head', 'admin'] : ['technician'];
+    case 'work_order.on_hold':
+      return ['technician', 'bme_head', 'admin'];
+    case 'work_order.completed':
+      return ['technician', 'bme_head', 'admin', 'department_head'];
+    case 'pm.overdue':
+      return ['bme_head', 'admin', 'technician'];
+    case 'pm.assigned':
+      return ['technician'];
+    case 'pm.completed':
+    case 'calibration.overdue':
+    case 'calibration.failed_or_adjusted':
+    case 'calibration.request_created':
+    case 'qr.label_needs_replacement':
+    case 'qr.revoked_scanned':
+      return ['bme_head', 'admin'];
+    case 'spare_part.stockout':
+    case 'work_order.stock_blocked':
+    case 'reorder.requested':
+    case 'procurement.delayed':
+      return ['store_user', 'bme_head', 'admin'];
+    case 'spare_part.low_stock':
+    case 'spare_part.restocked':
+    case 'procurement.delivered':
+    case 'procurement.delivered_pending_receipt':
+      return ['store_user'];
+    case 'replacement.review_candidate':
+    case 'replacement.strong_candidate':
+    case 'risk.critical_asset_risk':
+      return ['bme_head', 'admin', 'viewer'];
+    case 'department.readiness_risk':
+      return ['department_head', 'department_user', 'bme_head', 'admin', 'viewer'];
+    case 'department.critical_asset_down':
+      return ['department_head', 'bme_head', 'admin', 'viewer'];
+    case 'offline_sync.conflict':
+      return ['bme_head', 'admin'];
+    case 'copilot.provider_failure':
+    case 'notification.rule_failed':
+      return ['developer'];
+    case 'system.test_notification':
+      return pickPayloadString(event.payload ?? {}, 'target_profile_id') ? [] : ['developer'];
+    default:
+      return [];
+  }
+}
+
+async function buildRuleDiagnostics(
+  client: DbClient,
+  event: NotificationEventRow,
+): Promise<Record<string, unknown>> {
+  const expectedProfiles = expectedDirectProfiles(event);
+  const expectedProfileDiagnostics = await Promise.all(
+    expectedProfiles.map(async (expected) => ({
+      label: expected.label,
+      source_fields: expected.sourceFields,
+      ...(await getProfileRecipientReadiness(client, expected.profileId, expected.expectedRole ?? null)),
+    })),
+  );
+  return {
+    auth_link_required: true,
+    recipient_contract: NOTIFICATION_RECIPIENT_IDENTITY_CONTRACT,
+    expected_recipient_roles: Array.from(new Set(expectedRoleRecipients(event))).sort(),
+    expected_profile_recipients: expectedProfileDiagnostics,
+  };
+}
+
+async function matchedRule(
+  client: DbClient,
+  event: NotificationEventRow,
+  ruleName: string,
+  rows: CreateNotificationInput[],
+): Promise<RuleResult> {
+  return {
+    rule_name: ruleName,
+    rows,
+    status: 'matched',
+    diagnostics: await buildRuleDiagnostics(client, event),
+  };
 }
 
 // ─── Rule implementations ───────────────────────────────────────────────────
@@ -907,6 +1083,7 @@ export interface RuleResult {
   rows: CreateNotificationInput[];
   status: 'matched' | 'skipped' | 'failed';
   error?: string;
+  diagnostics?: Record<string, unknown>;
 }
 
 export async function applyNotificationRules(
@@ -917,115 +1094,55 @@ export async function applyNotificationRules(
   try {
     switch (eventType) {
       case 'maintenance_request.created':
-        return {
-          rule_name: 'maintenance_request_created',
-          rows: await rule_maintenanceRequestCreated(client, event),
-          status: 'matched',
-        };
+        return await matchedRule(client, event, 'maintenance_request_created', await rule_maintenanceRequestCreated(client, event));
       case 'maintenance_request.status_changed':
-        return {
-          rule_name: 'maintenance_request_status_changed',
-          rows: await rule_maintenanceRequestStatusChanged(client, event),
-          status: 'matched',
-        };
+        return await matchedRule(client, event, 'maintenance_request_status_changed', await rule_maintenanceRequestStatusChanged(client, event));
       case 'work_order.assigned':
-        return {
-          rule_name: 'work_order_assigned',
-          rows: await rule_workOrderAssigned(client, event),
-          status: 'matched',
-        };
+        return await matchedRule(client, event, 'work_order_assigned', await rule_workOrderAssigned(client, event));
       case 'work_order.created':
       case 'work_order.status_changed':
       case 'work_order.on_hold':
       case 'work_order.completed':
       case 'work_order.aging_or_overdue':
-        return {
-          rule_name: 'work_order_status',
-          rows: await rule_workOrderStatus(client, event),
-          status: 'matched',
-        };
+        return await matchedRule(client, event, 'work_order_status', await rule_workOrderStatus(client, event));
       case 'pm.overdue':
-        return {
-          rule_name: 'pm_overdue',
-          rows: await rule_pmOverdue(client, event),
-          status: 'matched',
-        };
+        return await matchedRule(client, event, 'pm_overdue', await rule_pmOverdue(client, event));
       case 'pm.assigned':
       case 'pm.completed':
-        return {
-          rule_name: 'pm_assigned_or_completed',
-          rows: await rule_pmAssignedOrCompleted(client, event),
-          status: 'matched',
-        };
+        return await matchedRule(client, event, 'pm_assigned_or_completed', await rule_pmAssignedOrCompleted(client, event));
       case 'calibration.overdue':
       case 'calibration.failed_or_adjusted':
       case 'calibration.request_created':
       case 'calibration.request_status_changed':
-        return {
-          rule_name: 'calibration',
-          rows: await rule_calibration(client, event),
-          status: 'matched',
-        };
+        return await matchedRule(client, event, 'calibration', await rule_calibration(client, event));
       case 'spare_part.stockout':
       case 'spare_part.low_stock':
       case 'spare_part.restocked':
       case 'work_order.stock_blocked':
       case 'reorder.requested':
-        return {
-          rule_name: 'stock',
-          rows: await rule_stock(client, event),
-          status: 'matched',
-        };
+        return await matchedRule(client, event, 'stock', await rule_stock(client, event));
       case 'procurement.delayed':
       case 'procurement.delivered':
       case 'procurement.delivered_pending_receipt':
-        return {
-          rule_name: 'procurement',
-          rows: await rule_procurement(client, event),
-          status: 'matched',
-        };
+        return await matchedRule(client, event, 'procurement', await rule_procurement(client, event));
       case 'replacement.review_candidate':
       case 'replacement.strong_candidate':
-        return {
-          rule_name: 'replacement',
-          rows: await rule_replacement(client, event),
-          status: 'matched',
-        };
+        return await matchedRule(client, event, 'replacement', await rule_replacement(client, event));
       case 'risk.critical_asset_risk':
-        return {
-          rule_name: 'risk_critical',
-          rows: await rule_riskCritical(client, event),
-          status: 'matched',
-        };
+        return await matchedRule(client, event, 'risk_critical', await rule_riskCritical(client, event));
       case 'department.readiness_risk':
       case 'department.critical_asset_down':
-        return {
-          rule_name: 'department_readiness',
-          rows: await rule_departmentReadiness(client, event),
-          status: 'matched',
-        };
+        return await matchedRule(client, event, 'department_readiness', await rule_departmentReadiness(client, event));
       case 'offline_sync.conflict':
       case 'offline_sync.failed':
-        return {
-          rule_name: 'offline',
-          rows: await rule_offline(client, event),
-          status: 'matched',
-        };
+        return await matchedRule(client, event, 'offline', await rule_offline(client, event));
       case 'qr.label_needs_replacement':
       case 'qr.revoked_scanned':
-        return {
-          rule_name: 'qr',
-          rows: await rule_qr(client, event),
-          status: 'matched',
-        };
+        return await matchedRule(client, event, 'qr', await rule_qr(client, event));
       case 'copilot.provider_failure':
       case 'notification.rule_failed':
       case 'system.test_notification':
-        return {
-          rule_name: 'system',
-          rows: await rule_system(client, event),
-          status: 'matched',
-        };
+        return await matchedRule(client, event, 'system', await rule_system(client, event));
       default:
         return {
           rule_name: 'unhandled',

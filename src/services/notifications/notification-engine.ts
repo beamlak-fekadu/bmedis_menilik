@@ -50,6 +50,32 @@ export function notificationDeliveryNeedsReview(
   return !result.ok || result.notificationCount === 0 || result.recipientsResolved === 0 || result.errors.length > 0;
 }
 
+export function notificationReviewDetail(
+  result: Pick<NotificationProcessResult, 'eventType' | 'notificationCount' | 'recipientsResolved' | 'warnings' | 'errors'> | null | undefined,
+): string | null {
+  if (!result) return 'notification engine did not return a processing result';
+  const reason = result.errors[0] ?? result.warnings[0] ?? null;
+  if (reason) return `${result.eventType}: ${reason}`;
+  if (result.recipientsResolved === 0) return `${result.eventType}: no deliverable recipients were resolved`;
+  if (result.notificationCount === 0) return `${result.eventType}: no in-app notification row was created`;
+  return null;
+}
+
+export function notificationProcessSnapshot(
+  result: NotificationProcessResult,
+): Record<string, unknown> {
+  return {
+    event_id: result.eventId ?? null,
+    event_type: result.eventType,
+    notification_count: result.notificationCount,
+    recipients_resolved: result.recipientsResolved,
+    delivery: result.delivery,
+    warnings: result.warnings,
+    errors: result.errors,
+    rule_logs: result.ruleLogs,
+  };
+}
+
 function emptyDeliverySummary(): NotificationDeliverySummary {
   return {
     inAppCreated: 0,
@@ -102,6 +128,15 @@ function isInsertFailure(error: unknown): boolean {
   if (!error || typeof error !== 'object') return false;
   const message = String((error as { message?: unknown }).message ?? '');
   return /row-level security|violates|permission|policy|duplicate|constraint|insert/i.test(message);
+}
+
+function expectedRecipientProfileIdsFromPayload(payload: Record<string, unknown> | null | undefined): string[] {
+  const ids = new Set<string>();
+  for (const key of ['technician_profile_id', 'assigned_to', 'requested_by', 'actor_profile_id', 'target_profile_id']) {
+    const value = payload?.[key];
+    if (typeof value === 'string' && value.length > 0) ids.add(value);
+  }
+  return Array.from(ids);
 }
 
 export async function createNotificationEvent(
@@ -213,7 +248,7 @@ export async function processNotificationEvent(
   } else if (ruleResult.status === 'matched' && ruleResult.rows.length === 0) {
     ruleLogStatus = 'no_recipients';
     processingStatus = 'failed';
-    const warning = `Notification rule "${ruleResult.rule_name}" matched but resolved zero recipients.`;
+    const warning = `Notification rule "${ruleResult.rule_name}" matched but resolved zero active auth-linked recipients. Check profile role assignment and profiles.user_id linkage.`;
     warnings.push(warning);
     processingError = warning;
   }
@@ -227,8 +262,13 @@ export async function processNotificationEvent(
     error_message: processingError,
     metadata: {
       event_type: event.event_type,
+      source_table: event.source_table,
+      source_id: event.source_id,
       priority: event.priority,
+      auth_link_required: true,
+      expected_recipient_profile_ids: expectedRecipientProfileIdsFromPayload(event.payload ?? {}),
       recipient_profile_ids: ruleResult.rows.map((row) => row.recipient_profile_id),
+      diagnostics: ruleResult.diagnostics ?? null,
     },
   });
   const ruleLogs = ruleLog ? [ruleLog] : [];

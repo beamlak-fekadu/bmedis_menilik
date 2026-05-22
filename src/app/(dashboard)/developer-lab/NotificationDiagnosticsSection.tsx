@@ -81,9 +81,31 @@ function StatusBadge({ value }: { value: string }) {
   let variant: 'success' | 'warning' | 'error' | 'info' | 'default' = 'default';
   if (value === 'sent' || value === 'matched') variant = 'success';
   else if (value === 'failed') variant = 'error';
-  else if (value === 'skipped') variant = 'warning';
+  else if (value === 'skipped' || value === 'no_recipients' || value === 'no_rule') variant = 'warning';
   else if (value === 'pending') variant = 'info';
   return <Badge variant={variant}>{value}</Badge>;
+}
+
+function summarizeRuleLogMetadata(metadata: Record<string, unknown> | null | undefined): string[] {
+  const diagnostics = metadata?.diagnostics as Record<string, unknown> | null | undefined;
+  const profiles = diagnostics?.expected_profile_recipients as Array<Record<string, unknown>> | undefined;
+  const lines: string[] = [];
+  for (const profile of profiles ?? []) {
+    if (profile.deliverable === true) continue;
+    const label = String(profile.label ?? 'profile');
+    const reason = String(profile.reason ?? 'not_deliverable');
+    const profileId = typeof profile.profile_id === 'string' ? profile.profile_id : 'missing profile id';
+    lines.push(`${label}: ${reason} (${profileId})`);
+  }
+  const expectedRoles = diagnostics?.expected_recipient_roles as string[] | undefined;
+  if (expectedRoles && expectedRoles.length > 0) {
+    lines.push(`expected roles: ${expectedRoles.join(', ')}`);
+  }
+  const recipientIds = metadata?.recipient_profile_ids as string[] | undefined;
+  if (recipientIds && recipientIds.length > 0) {
+    lines.push(`recipient rows: ${recipientIds.join(', ')}`);
+  }
+  return lines;
 }
 
 export default function NotificationDiagnosticsSection() {
@@ -569,6 +591,9 @@ export default function NotificationDiagnosticsSection() {
                   {r.error_message && (
                     <p className="text-[11px] text-red-500">Error: {r.error_message}</p>
                   )}
+                  {summarizeRuleLogMetadata(r.metadata).map((line) => (
+                    <p key={line} className="text-[11px] text-[var(--text-subtle)]">{line}</p>
+                  ))}
                 </div>
               ))}
             </div>

@@ -109,8 +109,12 @@ export default function RequestDetailPage() {
     if (!result.success) {
       toast('error', result.error ?? `Failed to update request`);
     } else {
-      const warning = (result.data as { notification_warning?: string } | undefined)?.notification_warning;
-      if (warning) toast('warning', `Request ${status}, but notification delivery needs review.`);
+      const notificationData = result.data as { notification_warning?: string; notification_warning_detail?: string | null } | undefined;
+      if (notificationData?.notification_warning) {
+        toast('warning', notificationData.notification_warning_detail
+          ? `Request ${status}. Notification delivery needs review: ${notificationData.notification_warning_detail}`
+          : `Request ${status}, but notification delivery needs review.`);
+      }
       else toast('success', `Request ${status}`);
       publishNotificationsUpdated('maintenance-request-status');
       refresh();

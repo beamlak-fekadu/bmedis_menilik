@@ -14,6 +14,8 @@ import {
   NOTIFICATION_DELIVERY_REVIEW_WARNING,
   createNotificationEvent,
   notificationDeliveryNeedsReview,
+  notificationProcessSnapshot,
+  notificationReviewDetail,
 } from '@/services/notifications/notification-engine';
 import type { NotificationProcessResult } from '@/types/notifications';
 
@@ -23,16 +25,8 @@ function notificationReviewData(
   if (!notificationDeliveryNeedsReview(result)) return {};
   return {
     notification_warning: NOTIFICATION_DELIVERY_REVIEW_WARNING,
-    notification_result: result
-      ? {
-        event_id: result.eventId ?? null,
-        event_type: result.eventType,
-        notification_count: result.notificationCount,
-        recipients_resolved: result.recipientsResolved,
-        warnings: result.warnings,
-        errors: result.errors,
-      }
-      : null,
+    notification_warning_detail: notificationReviewDetail(result),
+    notification_result: result ? notificationProcessSnapshot(result) : null,
   };
 }
 
@@ -494,6 +488,7 @@ export async function createWorkOrderAction(payload: Record<string, unknown>): P
       priority?: string | null;
     };
     const notificationResults: NotificationProcessResult[] = [];
+    let primaryWorkOrderNotification: NotificationProcessResult | null = null;
     let requestStatusSyncWarning: string | null = null;
     if (woRow.request_id) {
       const requestRow = await supabase
@@ -583,7 +578,7 @@ export async function createWorkOrderAction(payload: Record<string, unknown>): P
         : woRow.priority === 'high'
           ? 'high'
           : 'medium';
-      notificationResults.push(await createNotificationEvent({
+      primaryWorkOrderNotification = await createNotificationEvent({
         event_type: woRow.assigned_to ? 'work_order.assigned' : 'work_order.created',
         source_table: 'work_orders',
         source_id: woRow.id ?? null,
@@ -603,7 +598,8 @@ export async function createWorkOrderAction(payload: Record<string, unknown>): P
           assigned_to: woRow.assigned_to ?? null,
           source_request_id: woRow.request_id ?? null,
         },
-      }));
+      });
+      notificationResults.push(primaryWorkOrderNotification);
     } catch (e) {
       console.error('[notifications] work_order.created emit failed:', e);
     }
@@ -616,7 +612,9 @@ export async function createWorkOrderAction(payload: Record<string, unknown>): P
       success: true,
       data: {
         ...(result.data as Record<string, unknown>),
-        ...firstNotificationReviewData(notificationResults),
+        ...(notificationDeliveryNeedsReview(primaryWorkOrderNotification)
+          ? notificationReviewData(primaryWorkOrderNotification)
+          : firstNotificationReviewData(notificationResults)),
         ...(requestStatusSyncWarning ? { request_status_sync_warning: requestStatusSyncWarning } : {}),
       },
     };
@@ -915,7 +913,7 @@ async function setWorkOrderAssignee(id: string, technicianProfileId: string, act
       // PostgREST disambiguation: user_roles has two FKs to profiles
       // (user_id, assigned_by). Without the FK hint PostgREST raises PGRST201
       // and this validation silently rejects every selected technician.
-      .select('id, full_name, is_active, user_roles!user_roles_user_id_fkey!inner(roles!inner(name))')
+      .select('id, user_id, full_name, is_active, user_roles!user_roles_user_id_fkey!inner(roles!inner(name))')
       .eq('id', parsedId)
       .eq('is_active', true)
       .eq('user_roles.roles.name', 'technician')
@@ -960,6 +958,7 @@ async function setWorkOrderAssignee(id: string, technicianProfileId: string, act
       const row = result.data as { id?: string; asset_id?: string; work_order_number?: string; priority?: string };
       const assetSummary = await loadAssetSummaryForNotification(supabase, row.asset_id ?? null);
       const isCritical = row.priority === 'critical' || row.priority === 'high';
+      const technicianRow = technician.data as { user_id?: string | null } | null;
       notificationResult = await createNotificationEvent({
         event_type: 'work_order.assigned',
         source_table: 'work_orders',
@@ -973,7 +972,9 @@ async function setWorkOrderAssignee(id: string, technicianProfileId: string, act
           work_order_number: row.work_order_number ?? null,
           priority: row.priority ?? null,
           technician_profile_id: parsedId,
+          assigned_to: parsedId,
           assignment_kind: action,
+          technician_user_id_present: !!technicianRow?.user_id,
         },
       });
     } catch (e) {

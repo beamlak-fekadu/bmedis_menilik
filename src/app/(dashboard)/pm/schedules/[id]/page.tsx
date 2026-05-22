@@ -59,7 +59,7 @@ const REASON_OPTIONS = [
   { value: 'other', label: 'Other' },
 ];
 
-type ProfileLite = { id: string; full_name: string | null; email?: string | null };
+type ProfileLite = { id: string; user_id?: string | null; full_name: string | null; email?: string | null };
 type MaybeArray<T> = T | T[] | null | undefined;
 
 function firstRelation<T>(value: MaybeArray<T>) {
@@ -331,7 +331,10 @@ export default function PMScheduleDetailPage() {
     }
     const warnings = (result.data as { warnings?: string[] } | undefined)?.warnings ?? [];
     if (warnings.includes('notification_delivery_needs_review')) {
-      toast('warning', 'Assignment completed, but notification delivery needs review.');
+      const notificationStatus = (result.data as { notificationStatus?: { detail?: string | null } } | undefined)?.notificationStatus;
+      toast('warning', notificationStatus?.detail
+        ? `Assignment completed. Notification delivery needs review: ${notificationStatus.detail}`
+        : 'Assignment completed, but notification delivery needs review.');
     } else if (warnings.includes('audit_log_failed')) {
       toast('warning', 'Assignment succeeded, but audit logging could not be recorded.');
     } else {
@@ -341,6 +344,8 @@ export default function PMScheduleDetailPage() {
     setAssignmentModalOpen(false);
     await load();
   }
+
+  const selectedAssignmentProfile = technicians.find((tech) => tech.id === assignment) ?? null;
 
   async function handleStart() {
     if (!schedule) return;
@@ -683,9 +688,17 @@ export default function PMScheduleDetailPage() {
           disabled={techniciansLoading || Boolean(techniciansLoadError)}
           options={[
             { value: '', label: techniciansLoading ? 'Loading technicians...' : 'Unassigned' },
-            ...technicians.map((tech) => ({ value: tech.id, label: tech.full_name ?? tech.email ?? tech.id })),
+            ...technicians.map((tech) => ({
+              value: tech.id,
+              label: `${tech.full_name ?? tech.email ?? tech.id}${!tech.user_id ? ' · no login linked' : ''}`,
+            })),
           ]}
         />
+        {selectedAssignmentProfile && !selectedAssignmentProfile.user_id && (
+          <p className="mt-2 text-xs text-amber-300">
+            This technician profile has no login linked, so notification delivery will be skipped until `profiles.user_id` is set.
+          </p>
+        )}
         {techniciansLoadError && (
           <p className="mt-2 text-xs text-rose-300">Technician profiles could not be loaded. Try refreshing this PM task.</p>
         )}

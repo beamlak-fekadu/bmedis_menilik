@@ -8,6 +8,8 @@ import {
   NOTIFICATION_DELIVERY_REVIEW_WARNING,
   createNotificationEvent,
   notificationDeliveryNeedsReview,
+  notificationProcessSnapshot,
+  notificationReviewDetail,
 } from '@/services/notifications/notification-engine';
 
 const calibrationPaths = ['/calibration', '/calendar', '/command', '/reports/calibration'];
@@ -311,18 +313,17 @@ export async function createCalibrationRecordAction(payload: Record<string, unkn
         if (notificationDeliveryNeedsReview(notification)) {
           notificationWarning = NOTIFICATION_DELIVERY_REVIEW_WARNING;
           notificationResult = {
-            event_id: notification.eventId ?? null,
-            event_type: notification.eventType,
-            notification_count: notification.notificationCount,
-            recipients_resolved: notification.recipientsResolved,
-            warnings: notification.warnings,
-            errors: notification.errors,
+            ...notificationProcessSnapshot(notification),
+            detail: notificationReviewDetail(notification),
           };
         }
       } catch (e) {
         console.error('[notifications] calibration.failed_or_adjusted emit failed:', e);
         notificationWarning = NOTIFICATION_DELIVERY_REVIEW_WARNING;
-        notificationResult = { error: e instanceof Error ? e.message : 'unknown_notification_error' };
+        notificationResult = {
+          error: e instanceof Error ? e.message : 'unknown_notification_error',
+          detail: e instanceof Error ? e.message : 'unknown_notification_error',
+        };
       }
     }
 

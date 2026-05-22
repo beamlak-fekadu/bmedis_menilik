@@ -419,8 +419,9 @@ export async function sendSampleRoleNotificationAction(variant: string): Promise
     const findRoleProfile = async (role: string): Promise<string | null> => {
       const { data } = (await supabase
         .from('profiles')
-        .select('id, user_roles!user_roles_user_id_fkey!inner(roles!inner(name))')
+        .select('id, user_id, user_roles!user_roles_user_id_fkey!inner(roles!inner(name))')
         .eq('is_active', true)
+        .not('user_id', 'is', null)
         .eq('user_roles.roles.name', role)
         .limit(1)
         .maybeSingle()) as { data: { id: string } | null };

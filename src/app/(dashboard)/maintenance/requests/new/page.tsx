@@ -181,7 +181,14 @@ export default function NewMaintenanceRequestPage() {
     }
 
     if (result.status === 'success') {
-      const created = result.data as { data?: { id?: string; condition_sync_warning?: string; notification_warning?: string } };
+      const created = result.data as {
+        data?: {
+          id?: string;
+          condition_sync_warning?: string;
+          notification_warning?: string;
+          notification_warning_detail?: string | null;
+        };
+      };
       const id = created.data?.id;
       const warning = created.data?.condition_sync_warning;
       if (warning) {
@@ -190,7 +197,9 @@ export default function NewMaintenanceRequestPage() {
         // disagree with the request's reported_condition.
         toast('warning', `Request created. Equipment condition could not be updated: ${warning}`);
       } else if (created.data?.notification_warning) {
-        toast('warning', 'Request created, but notification delivery needs review.');
+        toast('warning', created.data.notification_warning_detail
+          ? `Request created. Notification delivery needs review: ${created.data.notification_warning_detail}`
+          : 'Request created, but notification delivery needs review.');
       } else {
         toast('success', 'Maintenance request created');
       }

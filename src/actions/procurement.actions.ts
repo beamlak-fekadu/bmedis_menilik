@@ -6,6 +6,8 @@ import {
   NOTIFICATION_DELIVERY_REVIEW_WARNING,
   createNotificationEvent,
   notificationDeliveryNeedsReview,
+  notificationProcessSnapshot,
+  notificationReviewDetail,
 } from '@/services/notifications/notification-engine';
 
 const procurementPaths = ['/procurement', '/logistics', '/calendar', '/command'];
@@ -127,12 +129,8 @@ export async function updateProcurementStatusAction(id: string, status: string):
         if (notificationDeliveryNeedsReview(pendingReceiptNotification)) {
           notificationWarning = NOTIFICATION_DELIVERY_REVIEW_WARNING;
           notificationResult = {
-            event_id: pendingReceiptNotification.eventId ?? null,
-            event_type: pendingReceiptNotification.eventType,
-            notification_count: pendingReceiptNotification.notificationCount,
-            recipients_resolved: pendingReceiptNotification.recipientsResolved,
-            warnings: pendingReceiptNotification.warnings,
-            errors: pendingReceiptNotification.errors,
+            ...notificationProcessSnapshot(pendingReceiptNotification),
+            detail: notificationReviewDetail(pendingReceiptNotification),
           };
         }
 
@@ -152,7 +150,10 @@ export async function updateProcurementStatusAction(id: string, status: string):
       } catch (e) {
         console.error('[notifications] procurement.delivered emit failed:', e);
         notificationWarning = NOTIFICATION_DELIVERY_REVIEW_WARNING;
-        notificationResult = { error: e instanceof Error ? e.message : 'unknown_notification_error' };
+        notificationResult = {
+          error: e instanceof Error ? e.message : 'unknown_notification_error',
+          detail: e instanceof Error ? e.message : 'unknown_notification_error',
+        };
       }
     }
 

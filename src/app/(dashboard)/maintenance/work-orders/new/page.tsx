@@ -79,17 +79,26 @@ export default function NewWorkOrderPage() {
     }
     // R17: surface request-status-sync failure if the WO was created from a
     // request but the request's status couldn't be flipped.
-    const created = result.data as { id?: string; request_status_sync_warning?: string; notification_warning?: string };
+    const created = result.data as {
+      id?: string;
+      request_status_sync_warning?: string;
+      notification_warning?: string;
+      notification_warning_detail?: string | null;
+    };
     if (created.request_status_sync_warning) {
       toast('warning', `Work order created. Originating request status could not be updated: ${created.request_status_sync_warning}`);
     } else if (created.notification_warning) {
-      toast('warning', 'Work order created, but notification delivery needs review.');
+      toast('warning', created.notification_warning_detail
+        ? `Work order created. Notification delivery needs review: ${created.notification_warning_detail}`
+        : 'Work order created, but notification delivery needs review.');
     } else {
       toast('success', 'Work order created');
     }
     publishNotificationsUpdated('work-order-created');
     router.push(`/maintenance/work-orders/${created.id ?? ''}`);
   }
+
+  const selectedTechnicianProfile = technicians.find((tech) => tech.id === form.assigned_to) ?? null;
 
   if (loading) {
     return (
@@ -139,8 +148,16 @@ export default function NewWorkOrderPage() {
                   placeholder="Unassigned"
                   value={form.assigned_to}
                   onChange={(e) => setForm({ ...form, assigned_to: e.target.value })}
-                  options={technicians.map((t) => ({ value: t.id, label: `${t.full_name}${t.email ? ` · ${t.email}` : ''}` }))}
+                  options={technicians.map((t) => ({
+                    value: t.id,
+                    label: `${t.full_name}${t.email ? ` · ${t.email}` : ''}${!t.user_id ? ' · no login linked' : ''}`,
+                  }))}
                 />
+                {selectedTechnicianProfile && !selectedTechnicianProfile.user_id && (
+                  <p className="mt-1 text-xs text-amber-300">
+                    This technician profile has no login linked, so notification delivery will be skipped until `profiles.user_id` is set.
+                  </p>
+                )}
                 {technicians.length === 0 && (
                   <p className="mt-1 text-xs text-amber-300">{ASSIGNABLE_TECHNICIANS_EMPTY_STATE}</p>
                 )}

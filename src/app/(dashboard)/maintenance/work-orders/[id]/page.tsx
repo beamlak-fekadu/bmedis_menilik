@@ -205,12 +205,14 @@ export default function WorkOrderDetailPage() {
     if (!result.success) {
       toast('error', result.error ?? `Failed to update work order`);
     } else {
-      const data = result.data as { condition_sync_warning?: string; notification_warning?: string } | undefined;
+      const data = result.data as { condition_sync_warning?: string; notification_warning?: string; notification_warning_detail?: string | null } | undefined;
       if (data?.condition_sync_warning) {
         // R5: work order status changed but equipment condition didn't sync.
         toast('warning', `Work order updated. Equipment condition could not be updated: ${data.condition_sync_warning}`);
       } else if (data?.notification_warning) {
-        toast('warning', 'Work order updated, but notification delivery needs review.');
+        toast('warning', data.notification_warning_detail
+          ? `Work order updated. Notification delivery needs review: ${data.notification_warning_detail}`
+          : 'Work order updated, but notification delivery needs review.');
       } else {
         toast('success', `Work order ${status.replace(/_/g, ' ')}`);
       }
@@ -269,7 +271,7 @@ export default function WorkOrderDetailPage() {
     if (!result.success) {
       toast('error', result.error ?? 'Failed to complete work order');
     } else {
-      const data = result.data as { condition_sync_warning?: string; reliability_evidence_warning?: string; notification_warning?: string } | undefined;
+      const data = result.data as { condition_sync_warning?: string; reliability_evidence_warning?: string; notification_warning?: string; notification_warning_detail?: string | null } | undefined;
       if (data?.condition_sync_warning) {
         // R5: completion succeeded but final equipment condition could not be recorded.
         toast('warning', `Work order completed. Final equipment condition could not be recorded: ${data.condition_sync_warning}`);
@@ -279,7 +281,9 @@ export default function WorkOrderDetailPage() {
         // succeeded.
         toast('warning', `Work order completed. ${data.reliability_evidence_warning}`);
       } else if (data?.notification_warning) {
-        toast('warning', 'Work order completed, but notification delivery needs review.');
+        toast('warning', data.notification_warning_detail
+          ? `Work order completed. Notification delivery needs review: ${data.notification_warning_detail}`
+          : 'Work order completed, but notification delivery needs review.');
       } else {
         toast('success', 'Work order completed');
       }
@@ -368,6 +372,8 @@ export default function WorkOrderDetailPage() {
     setAssignModalOpen(true);
   }, [canManageAssignment, technicians.length, toast, wo?.assigned_to]);
 
+  const selectedTechnicianProfile = technicians.find((tech) => tech.id === selectedTechnician) ?? null;
+
   useEffect(() => {
     const requestedAction = searchParams.get('action');
     if (!wo || !canManageAssignment || (requestedAction !== 'assign' && requestedAction !== 'reassign')) return;
@@ -387,9 +393,11 @@ export default function WorkOrderDetailPage() {
     if (!result.success) {
       toast('error', result.error ?? `Failed to ${wo.assigned_to ? 'reassign' : 'assign'} work order`);
     } else {
-      const warning = (result.data as { notification_warning?: string } | undefined)?.notification_warning;
-      if (warning) {
-        toast('warning', `Work order ${wo.assigned_to ? 'reassigned' : 'assigned'}, but notification delivery needs review.`);
+      const notificationData = result.data as { notification_warning?: string; notification_warning_detail?: string | null } | undefined;
+      if (notificationData?.notification_warning) {
+        toast('warning', notificationData.notification_warning_detail
+          ? `Work order ${wo.assigned_to ? 'reassigned' : 'assigned'}. Notification delivery needs review: ${notificationData.notification_warning_detail}`
+          : `Work order ${wo.assigned_to ? 'reassigned' : 'assigned'}, but notification delivery needs review.`);
       } else {
         toast('success', `Work order ${wo.assigned_to ? 'reassigned' : 'assigned'}`);
       }
@@ -1171,8 +1179,16 @@ export default function WorkOrderDetailPage() {
           placeholder="Select a technician"
           value={selectedTechnician}
           onChange={(e) => setSelectedTechnician(e.target.value)}
-          options={technicians.map((t) => ({ value: t.id, label: `${t.full_name}${t.email ? ` · ${t.email}` : ''}` }))}
+          options={technicians.map((t) => ({
+            value: t.id,
+            label: `${t.full_name}${t.email ? ` · ${t.email}` : ''}${!t.user_id ? ' · no login linked' : ''}`,
+          }))}
         />
+        {selectedTechnicianProfile && !selectedTechnicianProfile.user_id && (
+          <p className="mt-2 text-xs text-amber-300">
+            This technician profile has no login linked, so in-app and Telegram notification delivery will be skipped until `profiles.user_id` is set.
+          </p>
+        )}
         {technicians.length === 0 && (
           <p className="mt-2 text-xs text-amber-300">{ASSIGNABLE_TECHNICIANS_EMPTY_STATE}</p>
         )}

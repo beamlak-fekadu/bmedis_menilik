@@ -209,7 +209,7 @@ export async function getNotificationDiagnostics(): Promise<NotificationDiagnost
     client.from('notification_rule_logs').select('*').order('created_at', { ascending: false }).limit(20),
     client.from('notifications').select('*').order('created_at', { ascending: false }).limit(20),
     client.from('notification_deliveries').select('*').order('created_at', { ascending: false }).limit(20),
-    client.from('notification_events').select('*').eq('processing_status', 'failed').ilike('processing_error', '%zero recipients%').order('created_at', { ascending: false }).limit(1),
+    client.from('notification_events').select('*').eq('processing_status', 'failed').ilike('processing_error', '%zero%recipients%').order('created_at', { ascending: false }).limit(1),
     client.from('notification_events').select('*').eq('processing_status', 'failed').ilike('processing_error', '%Notification insert failed%').order('created_at', { ascending: false }).limit(1),
     client.from('notification_deliveries').select('*').in('status', ['skipped', 'failed']).order('created_at', { ascending: false }).limit(1),
     client.from('profiles').select('id, full_name, email, user_id, department_id, is_active').eq('is_active', true).limit(500),

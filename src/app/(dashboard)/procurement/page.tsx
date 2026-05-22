@@ -165,7 +165,17 @@ function OperationalProcurementPage() {
       return;
     }
     setRows((current) => current.map((item) => item.id === row.id ? { ...item, status } : item));
-    toast('success', status === 'delivered' ? 'Marked delivered. Receive into stock to update balances.' : 'Procurement status updated');
+    const notificationData = result.data as {
+      notification_warning?: string;
+      notification_result?: { detail?: string | null };
+    } | undefined;
+    if (notificationData?.notification_warning) {
+      toast('warning', notificationData.notification_result?.detail
+        ? `Procurement status updated. Notification delivery needs review: ${notificationData.notification_result.detail}`
+        : 'Procurement status updated, but notification delivery needs review.');
+    } else {
+      toast('success', status === 'delivered' ? 'Marked delivered. Receive into stock to update balances.' : 'Procurement status updated');
+    }
   }
 
   const summary = {

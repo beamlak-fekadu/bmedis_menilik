@@ -46,7 +46,8 @@ export async function getAllProfiles() {
 //   - is_active = true.
 //   - profile.user_id may be NULL: profile-only staff are still assignable.
 //     They simply can't log in until linked to an auth.users row via
-//     supabase/seed/99_link_auth_users.sql.
+//     supabase/seed/99_link_auth_users.sql. Notification fan-out treats those
+//     profiles as non-deliverable and reports missing_auth_link diagnostics.
 //
 // Exclusion rules:
 //   - 'developer' and 'bme_head' are intentionally excluded — they can assign
