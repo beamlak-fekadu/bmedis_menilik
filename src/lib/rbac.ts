@@ -170,7 +170,7 @@ export const CAPABILITY_MATRIX: Matrix = {
   // server level — no all-hospital fallback.
   department_head: caps(
     'nav.command', 'nav.calendar', 'nav.equipment', 'nav.maintenance', 'nav.requests',
-    'nav.compliance', 'nav.alerts', 'nav.reports',
+    'nav.calibration', 'nav.compliance', 'nav.alerts', 'nav.reports',
     'maintenance.request.create',
     'calibration.request.create',
     'training.request.create',
@@ -181,7 +181,7 @@ export const CAPABILITY_MATRIX: Matrix = {
 
   department_user: caps(
     'nav.command', 'nav.calendar', 'nav.equipment', 'nav.maintenance', 'nav.requests',
-    'nav.compliance', 'nav.alerts', 'nav.reports',
+    'nav.calibration', 'nav.compliance', 'nav.alerts', 'nav.reports',
     'maintenance.request.create',
     'calibration.request.create',
     'training.request.create',

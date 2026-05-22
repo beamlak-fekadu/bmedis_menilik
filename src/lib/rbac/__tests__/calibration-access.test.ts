@@ -101,3 +101,31 @@ test('PART 9: error message helps user recover from RLS denial', () => {
   assert.match(src, /00071/);
   assert.match(src, /00072/);
 });
+
+test('PART 9: department roles have nav.calibration capability so route guard passes', () => {
+  // Root-cause regression: the layout route guard (DashboardRootLayout) derives
+  // allowedRoles from NAV_SECTIONS. The Calibration nav entry previously listed
+  // only developer/admin/bme_head/technician, so department roles received
+  // "Access restricted" when navigating to /calibration.
+  // Fix: nav.calibration added to department_head and department_user in RBAC.
+  assert.equal(hasCapability(['department_head'], 'nav.calibration'), true,
+    'department_head must have nav.calibration to pass the layout route guard');
+  assert.equal(hasCapability(['department_user'], 'nav.calibration'), true,
+    'department_user must have nav.calibration to pass the layout route guard');
+  // Viewer remains excluded — read-only users should not access the calibration
+  // control page.
+  assert.equal(hasCapability(['viewer'], 'nav.calibration'), false,
+    'viewer must NOT have nav.calibration');
+  // Store user remains excluded.
+  assert.equal(hasCapability(['store_user'], 'nav.calibration'), false,
+    'store_user must NOT have nav.calibration');
+});
+
+test('PART 9: Calibration nav entry includes department roles', () => {
+  // The nav entry is what the layout reads for the route rule.
+  const src = readSource('src/constants/index.ts');
+  // The calibration route entry must include department roles.
+  const calLine = src.match(/href: ROUTES\.CALIBRATION[\s\S]*?roles: \[([^\]]+)\]/)?.[0] ?? '';
+  assert.ok(calLine.includes('department_head'), 'calibration nav entry must include department_head');
+  assert.ok(calLine.includes('department_user'), 'calibration nav entry must include department_user');
+});

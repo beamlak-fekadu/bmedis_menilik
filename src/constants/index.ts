@@ -94,7 +94,7 @@ export const NAV_SECTIONS = [
       { label: 'Maintenance', href: ROUTES.MAINTENANCE, icon: 'Wrench', capability: 'nav.maintenance', roles: ['developer', 'admin', 'bme_head', 'technician', 'department_head', 'department_user', 'viewer', 'store_user'] },
       { label: 'Requests', href: ROUTES.REQUESTS, icon: 'ClipboardList', capability: 'nav.requests', roles: ['developer', 'admin', 'bme_head', 'technician', 'department_head', 'department_user'] },
       { label: 'Preventive Maintenance', href: ROUTES.PM, icon: 'CalendarCheck', capability: 'nav.pm', roles: ['developer', 'admin', 'bme_head', 'technician'] },
-      { label: 'Calibration', href: ROUTES.CALIBRATION, icon: 'Gauge', capability: 'nav.calibration', roles: ['developer', 'admin', 'bme_head', 'technician'] },
+      { label: 'Calibration', href: ROUTES.CALIBRATION, icon: 'Gauge', capability: 'nav.calibration', roles: ['developer', 'admin', 'bme_head', 'technician', 'department_head', 'department_user'] },
       // Department Head historically had work-orders nav access but should
       // now use the department-scoped Work Status under /maintenance. Keep
       // operational Work Orders for BME/technician only.
