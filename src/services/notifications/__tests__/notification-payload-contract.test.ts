@@ -196,6 +196,39 @@ test('INSTANT-02: migration 00076 enables rule diagnostics and realtime notifica
   assert.match(src, /ALTER PUBLICATION supabase_realtime ADD TABLE notifications/);
 });
 
+// EVENT-INSERT-01: the engine writes a fixed set of columns to
+// `notification_events`. Some legacy deployments shipped extra columns
+// (category, status, severity, channel, type, title, body, message) as
+// NOT NULL, which causes every emit to fail with
+// "null value in column 'category' of relation 'notification_events'"
+// across maintenance_request.created / status_changed, work_order.*,
+// pm.*, calibration.*, procurement.*, spare_part.*, qr.*, offline_sync.*,
+// system.test_notification, and notification.rule_failed.
+// Migration 00077 unconditionally drops those legacy NOT NULL constraints.
+test('EVENT-INSERT-01: engine insert payload does NOT include legacy event columns', () => {
+  const src = readSource('src/services/notifications/notification-engine.ts');
+  // Locate the createNotificationEvent insertPayload literal.
+  const idx = src.indexOf('const insertPayload =');
+  assert.ok(idx > 0, 'createNotificationEvent insertPayload must exist');
+  const block = src.slice(idx, idx + 800);
+  // None of these legacy column names should appear as object keys in the
+  // insert payload — the engine intentionally writes only the canonical
+  // event columns.
+  for (const legacy of ['category', 'severity', 'channel', 'title', 'body', 'message']) {
+    assert.doesNotMatch(block, new RegExp(`\\b${legacy}\\s*:`), `payload must not write ${legacy}`);
+  }
+});
+
+test('EVENT-INSERT-01: migration 00077 relaxes legacy NOT NULL on notification_events', () => {
+  const src = readSource('supabase/migrations/00077_notification_events_legacy_not_null.sql');
+  assert.match(src, /notification_events/);
+  for (const col of ['category', 'status', 'severity', 'channel', 'type', 'title', 'body', 'message']) {
+    assert.match(src, new RegExp(`'${col}'`));
+  }
+  assert.match(src, /DROP NOT NULL/);
+  assert.match(src, /is_nullable = 'NO'/);
+});
+
 test('INSTANT-03: bell and notifications page use realtime/event refresh, not 45-second polling only', () => {
   const bell = readSource('src/components/notifications/NotificationBell.tsx');
   const page = readSource('src/app/(dashboard)/notifications/page.tsx');
