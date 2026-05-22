@@ -2,20 +2,30 @@
 
 import { AlertTriangle, WifiOff } from 'lucide-react';
 import { useOfflineSync } from './SyncEngineProvider';
+import { formatOfflineRole, formatOfflineVerifiedAt } from '@/lib/offline/session-snapshot';
 
-export default function OfflineStatusBanner() {
+type Props = {
+  userName?: string | null;
+  userRole?: string | null;
+  verifiedAt?: string | null;
+};
+
+export default function OfflineStatusBanner({ userName, userRole, verifiedAt }: Props) {
   const sync = useOfflineSync();
 
   if (sync.isOnline && sync.summary.failed === 0 && sync.summary.conflict === 0) return null;
 
   if (!sync.isOnline) {
+    const identity = userName && userRole
+      ? `continuing as ${userName}, ${formatOfflineRole(userRole)}. Permissions and data were last verified ${formatOfflineVerifiedAt(verifiedAt)}.`
+      : 'using cached pages from the last verified session.';
     return (
       <div className="no-print border-b border-amber-500/30 bg-amber-500/10 px-4 py-2 text-xs text-amber-900 dark:text-amber-100 lg:px-6">
         <div className="flex flex-wrap items-center gap-2">
           <WifiOff className="h-4 w-4" />
-          <span className="font-semibold">Offline</span>
+          <span className="font-semibold">Offline mode</span>
           <span>
-            Cached pages and queued actions may still be available. Reconnect to sync changes.
+            {identity} Showing cached workspace data; some information may be outdated.
             {sync.summary.queued > 0 ? ` ${sync.summary.queued} action${sync.summary.queued === 1 ? '' : 's'} queued on this device.` : ''}
           </span>
         </div>

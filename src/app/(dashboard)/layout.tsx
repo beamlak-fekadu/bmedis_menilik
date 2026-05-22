@@ -3,6 +3,7 @@
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
+import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { PageLoader } from '@/components/ui/Spinner';
 import { ToastProvider } from '@/components/ui/Toast';
@@ -74,14 +75,40 @@ export default function DashboardRootLayout({ children }: { children: React.Reac
   const pathname = usePathname();
   const { user, loading: authLoading, signOut } = useAuth();
   const { profile, loading: profileLoading } = useProfile(user?.id);
+  const online = useOnlineStatus();
 
   const loading = authLoading || profileLoading;
 
   if (loading) return <PageLoader />;
 
   if (!user) {
+    if (!online.isOnline) {
+      return (
+        <div className="grid min-h-screen place-items-center bg-[var(--background)] px-4 text-[var(--foreground)]">
+          <div className="max-w-md rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-1)] p-6 text-center">
+            <p className="text-lg font-semibold">Online login required.</p>
+            <p className="mt-2 text-sm leading-relaxed text-[var(--text-muted)]">
+              This device has no previously verified BMEDIS session. Connect to the internet and sign in once before using offline mode.
+            </p>
+          </div>
+        </div>
+      );
+    }
     router.push('/login');
     return <PageLoader />;
+  }
+
+  if (!profile && !online.isOnline) {
+    return (
+      <div className="grid min-h-screen place-items-center bg-[var(--background)] px-4 text-[var(--foreground)]">
+        <div className="max-w-md rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-1)] p-6 text-center">
+          <p className="text-lg font-semibold">Online login required.</p>
+          <p className="mt-2 text-sm leading-relaxed text-[var(--text-muted)]">
+            This device has a browser session but no previously verified BMEDIS profile snapshot. Connect to the internet and sign in once before using offline mode.
+          </p>
+        </div>
+      </div>
+    );
   }
 
   const handleLogout = async () => {
@@ -94,6 +121,8 @@ export default function DashboardRootLayout({ children }: { children: React.Reac
           departmentId: profile.department_id ?? null,
         });
       }
+      const session = await import('@/lib/offline/session-snapshot');
+      session.clearOfflineSessionSnapshot(user.id);
     } catch {
       // best-effort cache clear; offline cache may not be initialized
     }
@@ -115,6 +144,7 @@ export default function DashboardRootLayout({ children }: { children: React.Reac
             userRole={profile?.primaryRole || 'user'}
             userJobTitle={profile?.job_title}
             userRoles={userRoles}
+            offlineVerifiedAt={profile?.offlineVerifiedAt ?? null}
             onLogout={handleLogout}
           >
             {hasRouteAccess ? (

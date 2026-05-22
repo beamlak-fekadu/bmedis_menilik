@@ -25,6 +25,11 @@ export const maintenanceOfflineHandlers = {
   'maintenance_request.create': replay,
   'maintenance_event.log': replay,
   'qr_note.create': replay,
+  'qr_scan.record': replay,
+  'work_order.start': replay,
+  'work_order.complete': replay,
   'work_order.start_intent': replay,
   'work_order.complete_draft': replay,
+  'pm.complete': replay,
+  'calibration_result.create': replay,
 } satisfies Partial<Record<string, OfflineActionHandler>>;

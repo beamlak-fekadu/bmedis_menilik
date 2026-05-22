@@ -38,6 +38,12 @@ import type { EquipmentCondition, PMChecklistItem, PMScheduleStatus, RiskLevel }
 import { ScoreExplanation } from '../../../command/_components/ScoreExplanation';
 import { getPMScheduleStatusExplanation } from '@/utils/pm/semantics';
 import AssistantPageContextBridge from '@/components/assistant/AssistantPageContextBridge';
+import OfflineSubmitBanner from '@/components/offline/OfflineSubmitBanner';
+import { OfflineActionResult } from '@/components/offline/OfflineActionResult';
+import { runOfflineCapableAction } from '@/lib/offline/queue';
+import { useAuth } from '@/hooks/useAuth';
+import { useProfile } from '@/hooks/useProfile';
+import type { JsonSafeObject, OfflineActionRunResult } from '@/types/offline';
 
 const DEFAULT_CHECKLIST: PMChecklistItem[] = [
   { task: 'Visual inspection completed', required: true, completed: false },
@@ -187,7 +193,9 @@ export default function PMScheduleDetailPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
-  const { canManageMaintenance } = useRole();
+  const { user } = useAuth();
+  const { profile } = useProfile(user?.id);
+  const { canManageMaintenance, roles, primaryRole } = useRole();
 
   const [schedule, setSchedule] = useState<ScheduleDetail | null>(null);
   const [history, setHistory] = useState<ScheduleDetail[]>([]);
@@ -220,6 +228,7 @@ export default function PMScheduleDetailPage() {
     new_scheduled_date: '',
     notes: '',
   });
+  const [completionOfflineResult, setCompletionOfflineResult] = useState<OfflineActionRunResult | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -363,27 +372,58 @@ export default function PMScheduleDetailPage() {
   async function handleComplete() {
     if (!schedule) return;
     setActionLoading(true);
-    const result = await createPMCompletionAction({
+    const payload: JsonSafeObject = {
       schedule_id: schedule.id,
       completed_by: completionForm.completed_by || null,
       completion_date: completionForm.completion_date,
+      completed_at: new Date(`${completionForm.completion_date}T12:00:00`).toISOString(),
       duration_hours: completionForm.duration_hours ? Number(completionForm.duration_hours) : null,
       result: completionForm.result,
-      checklist_results: checklist,
+      checklist_results: checklist.map((item) => ({
+        task: item.task,
+        required: item.required ?? false,
+        completed: item.completed ?? false,
+        notes: item.notes ?? null,
+      })),
       notes: completionForm.notes || null,
       final_equipment_condition: completionForm.final_equipment_condition,
       corrective_action_needed: completionForm.corrective_action_needed,
       create_corrective_request: completionForm.create_corrective_request,
+      performed_by_profile_id: profile?.id ?? null,
+      last_known_server_updated_at: schedule.updated_at,
+    };
+    const result = await runOfflineCapableAction({
+      actionType: 'pm.complete',
+      entityType: 'pm_schedules',
+      entityId: schedule.id,
+      assetId: schedule.asset_id,
+      payload,
+      createdByProfileId: profile?.id ?? null,
+      roleName: primaryRole,
+      roleNames: roles,
+      sourceRoute: typeof window !== 'undefined' ? window.location.pathname + window.location.search : `/pm/schedules/${schedule.id}`,
+      executeOnline: () => createPMCompletionAction(payload),
+      lastKnownServerState: {
+        status: schedule.status,
+        assigned_to: schedule.assigned_to,
+        updated_at: schedule.updated_at,
+      },
+      metadata: { form: 'pm_schedule_completion' },
     });
     setActionLoading(false);
-    if (!result.success) {
+    setCompletionOfflineResult(result);
+    if (result.status === 'queued') {
+      toast('success', 'PM completion queued locally. It will update the PM schedule after sync.');
+      setCompletionModalOpen(false);
+      return;
+    }
+    if (result.status === 'failed' || result.status === 'conflict') {
       toast('error', result.error ?? 'Failed to record completion');
       return;
     }
 
-    const completionData = result.data as
-      | { correctiveRequestId?: string | null; warnings?: string[] }
-      | undefined;
+    const actionResult = result.data as { data?: { correctiveRequestId?: string | null; warnings?: string[] } };
+    const completionData = actionResult.data;
     const correctiveRequestId = completionData?.correctiveRequestId;
     const warnings = completionData?.warnings ?? [];
 
@@ -723,6 +763,8 @@ export default function PMScheduleDetailPage() {
         }
       >
         <div className="space-y-4">
+          <OfflineSubmitBanner actionLabel="PM completion" />
+          <OfflineActionResult result={completionOfflineResult} />
           <div className="grid gap-4 sm:grid-cols-3">
             <Input
               label="Completion Date"

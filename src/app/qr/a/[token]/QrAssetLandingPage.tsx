@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import type { ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { motion } from 'framer-motion';
 import { pageFade } from '@/lib/ui/motion-presets';
 import {
@@ -43,6 +43,14 @@ import type {
 } from '@/services/qr-context.service';
 import QrRoleActions, { type QrAction } from './components/QrRoleActions';
 import QrOfflineActions from './components/QrOfflineActions';
+import { useOnlineStatus } from '@/hooks/useOnlineStatus';
+import { savePendingQrScan } from '@/lib/offline/pending-qr-scans';
+import {
+  buildQrAssetCacheScope,
+  getQrAssetOfflineCache,
+  saveQrAssetOfflineCache,
+  type CachedQrAssetContext,
+} from '@/lib/offline/qr-cache';
 
 type Props = {
   asset: QrLandingAsset;
@@ -754,13 +762,71 @@ function DecisionSupportStrip({ context }: { context: QrRoleContext }) {
 }
 
 export default function QrAssetLandingPage({ asset, profile, context }: Props) {
-  const actions = buildActions(asset, context);
+  const online = useOnlineStatus();
+  const actions = useMemo(() => buildActions(asset, context), [asset, context]);
+  const [cachedQrSnapshot, setCachedQrSnapshot] = useState<{
+    cachedAt: string;
+    isStale: boolean;
+    ageMinutes: number;
+    data: CachedQrAssetContext;
+  } | null>(null);
   const showQrInfo = context.roleCategory === 'developer' || context.roleCategory === 'bme_head';
   const canSeeDecisionSupport = ['developer', 'bme_head', 'viewer'].includes(context.roleCategory);
   const displayName = profile.full_name ?? profile.email ?? 'Authenticated user';
   const conditionIsValid = asset.condition && VALID_CONDITIONS.includes(asset.condition);
   const assignedWork = context.workOrders.assignedToMe[0] ?? context.workOrders.open[0] ?? null;
   const firstStockIssue = context.parts.stockIssues[0] ?? null;
+
+  useEffect(() => {
+    if (!asset.qr_token) return;
+    const sourceRoute = `/qr/a/${asset.qr_token}`;
+    const scope = buildQrAssetCacheScope(profile, context.roleCategory);
+
+    if (online.isOnline) {
+      void saveQrAssetOfflineCache({
+        token: asset.qr_token,
+        asset,
+        profile,
+        context,
+        actions,
+        sourceRoute,
+      })
+        .then((snapshot) => {
+          if (!snapshot) return;
+          setCachedQrSnapshot({
+            cachedAt: snapshot.cachedAt,
+            isStale: snapshot.isStale,
+            ageMinutes: snapshot.ageMinutes,
+            data: snapshot.data,
+          });
+        })
+        .catch(() => undefined);
+      return;
+    }
+
+    void getQrAssetOfflineCache(asset.qr_token, scope)
+      .then((snapshot) => {
+        if (!snapshot) return;
+        setCachedQrSnapshot({
+          cachedAt: snapshot.cachedAt,
+          isStale: snapshot.isStale,
+          ageMinutes: snapshot.ageMinutes,
+          data: snapshot.data,
+        });
+      })
+      .catch(() => undefined);
+  }, [actions, asset, context, online.isOnline, profile]);
+
+  useEffect(() => {
+    if (online.isOnline || !asset.qr_token) return;
+    savePendingQrScan({
+      token: asset.qr_token,
+      scanned_at: new Date().toISOString(),
+      source_route: `/qr/a/${asset.qr_token}`,
+      reason: 'cached_offline',
+      user_agent: typeof navigator === 'undefined' ? null : navigator.userAgent,
+    });
+  }, [asset.qr_token, online.isOnline]);
 
   const tabs = [
     {
@@ -826,8 +892,17 @@ export default function QrAssetLandingPage({ asset, profile, context }: Props) {
         </header>
 
         <section className="mt-4 rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-1)] p-3 text-xs text-[var(--text-muted)]">
-          <p className="font-medium text-[var(--foreground)]">Online QR experience</p>
-          <p className="mt-1">QR identifies the asset. Access and actions depend on your role.</p>
+          <p className="font-medium text-[var(--foreground)]">{online.isOnline ? 'Online QR experience' : 'Offline mode — showing cached QR asset data'}</p>
+          <p className="mt-1">
+            {online.isOnline
+              ? 'QR identifies the asset. Access and actions depend on your role. This role-specific QR context is cached on this device for later offline use.'
+              : `Asset ${asset.asset_code} was previously verified on this device. Last synced: ${formatDateTime(cachedQrSnapshot?.cachedAt)}. The scan is recorded locally and will sync when connection returns.`}
+          </p>
+          {!online.isOnline && cachedQrSnapshot?.isStale ? (
+            <p className="mt-1 text-amber-200">
+              Cached QR context is stale. Assigned work, PM, calibration, and role actions may have changed on the server.
+            </p>
+          ) : null}
         </section>
 
         {context.restricted ? (
@@ -932,7 +1007,7 @@ export default function QrAssetLandingPage({ asset, profile, context }: Props) {
 
         <footer className="mt-10 border-t border-[var(--border-subtle)] pt-4 text-[10px] text-[var(--text-muted)]">
           <p>
-            QR asset context is live when online. Phase 2 offline capture queues selected notes and request drafts only; QR scan logging remains online-only.
+            QR asset context is live when online and cached per verified profile for offline QR scans. Offline actions are local promises until replay succeeds.
           </p>
         </footer>
       </motion.div>

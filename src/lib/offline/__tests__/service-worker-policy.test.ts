@@ -42,6 +42,27 @@ test('OFF-01: cache version bumped so old broken caches are evicted', () => {
   assert.ok(version >= 2, `CACHE_VERSION must be >= 2 (was v${version})`);
 });
 
+test('OFF-QR: unknown QR navigations save a pending scan instead of revealing asset data', () => {
+  assert.match(swSource, /unknownQrOfflineHtml/);
+  assert.match(swSource, /This QR code has not been verified on this device/);
+  assert.match(swSource, /cannot confirm whether this token is valid, revoked, expired, or linked to an asset/);
+  assert.match(swSource, /bmedis\.offline\.pending_qr_scans\.v1/);
+  assert.match(swSource, /url\.pathname\.startsWith\('\/qr\/a\/'\)/);
+});
+
+test('OFF-QR: cached verified QR navigations render rich offline context before unknown fallback', () => {
+  assert.match(swSource, /QR_ASSET_CACHE_PREFIX\s*=\s*'qr\.asset\.'/);
+  assert.match(swSource, /getCachedQrOfflineRecord/);
+  assert.match(swSource, /cachedQrOfflineHtml/);
+  assert.match(swSource, /Offline mode — showing cached QR asset data/);
+  assert.match(swSource, /Cached Assigned Work/);
+  assert.match(swSource, /Cached PM Context/);
+  assert.match(swSource, /Cached Calibration Context/);
+  assert.match(swSource, /Role-Specific QR Actions/);
+  assert.match(swSource, /cachedQrRecord/);
+  assert.match(swSource, /unknownQrOfflineHtml\(token\)/);
+});
+
 test('OFF-01: skips opaque / redirected / error responses', () => {
   assert.match(swSource, /isCacheableResponse/);
   // Must check response.ok and response.type.

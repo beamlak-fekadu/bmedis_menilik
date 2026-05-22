@@ -12,6 +12,7 @@ import {
 } from 'react';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 import { OFFLINE_QUEUE_CHANGED_EVENT } from '@/lib/offline/db';
+import { flushPendingQrScansToQueue } from '@/lib/offline/pending-qr-scans';
 import { getOfflineQueueSummary } from '@/lib/offline/queue';
 import { syncOfflineQueue, type OfflineSyncRunResult } from '@/lib/offline/sync-engine';
 import type { OfflineQueueSummary } from '@/types/offline';
@@ -72,6 +73,7 @@ export function SyncEngineProvider({ children }: { children: ReactNode }) {
     const attemptedAt = new Date().toISOString();
     setLastSyncAttemptAt(attemptedAt);
     try {
+      await flushPendingQrScansToQueue().catch(() => undefined);
       const result = await syncOfflineQueue();
       setLastSyncResult(result);
       setLastSyncError(result.lastError ?? null);
@@ -107,6 +109,15 @@ export function SyncEngineProvider({ children }: { children: ReactNode }) {
     if (!online.isOnline || summary.queued === 0) return;
     void startSync();
   }, [online.isOnline, startSync, summary.queued]);
+
+  useEffect(() => {
+    if (!online.isOnline) return;
+    void flushPendingQrScansToQueue()
+      .then((result) => {
+        if (result.enqueued > 0) void refreshSummary();
+      })
+      .catch(() => undefined);
+  }, [online.isOnline, refreshSummary]);
 
   const value = useMemo<SyncEngineContextValue>(() => ({
     isOnline: online.isOnline,

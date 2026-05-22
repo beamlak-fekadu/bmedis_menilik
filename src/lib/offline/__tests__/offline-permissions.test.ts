@@ -17,8 +17,13 @@ test('viewer cannot queue any offline action', () => {
     'maintenance_request.create',
     'maintenance_event.log',
     'qr_note.create',
+    'qr_scan.record',
+    'work_order.start',
+    'work_order.complete',
     'work_order.start_intent',
     'work_order.complete_draft',
+    'pm.complete',
+    'calibration_result.create',
     'stock_receipt.draft',
     'stock_issue.draft',
     'store_reorder.create',
@@ -35,13 +40,18 @@ test('viewer cannot queue any offline action', () => {
   }
 });
 
-test('technician can queue maintenance + start_intent + complete_draft + qr_note', () => {
+test('technician can queue cached maintenance execution, PM/calibration results, and QR evidence', () => {
   const allowed = [
     'maintenance_event.log',
     'qr_note.create',
+    'qr_scan.record',
+    'work_order.start',
+    'work_order.complete',
     'maintenance_request.create',
     'work_order.start_intent',
     'work_order.complete_draft',
+    'pm.complete',
+    'calibration_result.create',
   ] as const;
   for (const t of allowed) {
     assert.equal(canQueueOfflineAction(['technician'], t), true, `Technician should queue ${t}`);
@@ -56,6 +66,7 @@ test('store_user can queue stock drafts + reorder; cannot queue maintenance', ()
   for (const t of ['store_reorder.create', 'stock_receipt.draft', 'stock_issue.draft'] as const) {
     assert.equal(canQueueOfflineAction(['store_user'], t), true, `Store user should queue ${t}`);
   }
+  assert.equal(canQueueOfflineAction(['store_user'], 'qr_scan.record'), true);
   assert.equal(canQueueOfflineAction(['store_user'], 'maintenance_event.log'), false);
   assert.equal(canQueueOfflineAction(['store_user'], 'work_order.start_intent'), false);
 });
@@ -70,9 +81,12 @@ test('department_head can queue requests + issue reports; cannot queue execution
     assert.equal(canQueueOfflineAction(['department_head'], t), true, `Dept head should queue ${t}`);
   }
   assert.equal(canQueueOfflineAction(['department_head'], 'work_order.start_intent'), false);
+  assert.equal(canQueueOfflineAction(['department_head'], 'work_order.start'), false);
+  assert.equal(canQueueOfflineAction(['department_head'], 'work_order.complete'), false);
   assert.equal(canQueueOfflineAction(['department_head'], 'work_order.complete_draft'), false);
   assert.equal(canQueueOfflineAction(['department_head'], 'maintenance_event.log'), false);
   assert.equal(canQueueOfflineAction(['department_head'], 'stock_receipt.draft'), false);
+  assert.equal(canQueueOfflineAction(['department_head'], 'qr_scan.record'), true);
 });
 
 test('canManageOfflineQueue follows the developer/admin/bme_head pattern', () => {

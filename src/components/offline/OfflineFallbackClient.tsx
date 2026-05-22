@@ -69,7 +69,7 @@ export default function OfflineFallbackClient() {
       <p className="text-xs text-[var(--text-muted)]">
         {status.isOnline
           ? 'Connection looks available. Retry to load fresh server data.'
-          : 'This device must open BMEDIS once online before the app shell can load during an outage.'}
+          : 'Online login required. This device has no previously verified BMEDIS session. Connect to the internet and sign in once before using offline mode.'}
       </p>
     </div>
   );

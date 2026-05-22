@@ -177,6 +177,7 @@ export default function CalibrationPage() {
   const [requestModalOpen, setRequestModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [requestOfflineResult, setRequestOfflineResult] = useState<OfflineActionRunResult | null>(null);
+  const [recordOfflineResult, setRecordOfflineResult] = useState<OfflineActionRunResult | null>(null);
 
   // Record form
   const [recAssetId, setRecAssetId] = useState('');
@@ -265,37 +266,58 @@ export default function CalibrationPage() {
       return;
     }
     setSubmitting(true);
-    try {
-      const result = await createCalibrationRecordAction({
-        asset_id: recAssetId,
-        calibration_type_id: recTypeId || null,
-        calibrated_by: recCalibratedBy || null,
-        calibration_date: recDate,
-        next_due_date: recNextDue || null,
-        result: recResult,
-        certificate_path: null,
-        notes: recNotes || null,
-      });
-      if (!result.success) throw new Error(result.error ?? 'Failed to create calibration record');
-      const notificationData = result.data as {
-        notification_warning?: string;
-        notification_result?: { detail?: string | null };
-      } | undefined;
-      if (notificationData?.notification_warning) {
-        toast('warning', notificationData.notification_result?.detail
-          ? `Calibration record created. Notification delivery needs review: ${notificationData.notification_result.detail}`
-          : 'Calibration record created, but notification delivery needs review.');
-      } else {
-        toast('success', 'Calibration record created');
-      }
+    const payload = {
+      asset_id: recAssetId,
+      calibration_type_id: recTypeId || null,
+      calibrated_by: recCalibratedBy || null,
+      calibration_date: recDate,
+      completed_at: new Date(`${recDate}T12:00:00`).toISOString(),
+      next_due_date: recNextDue || null,
+      result: recResult,
+      certificate_path: null,
+      notes: recNotes || null,
+      performed_by_profile_id: profile?.id ?? null,
+    };
+    const result = await runOfflineCapableAction({
+      actionType: 'calibration_result.create',
+      entityType: 'calibration_records',
+      assetId: recAssetId,
+      payload,
+      createdByProfileId: profile?.id ?? null,
+      roleName: primaryRole,
+      roleNames: roles,
+      sourceRoute: typeof window !== 'undefined' ? window.location.pathname + window.location.search : '/calibration',
+      executeOnline: () => createCalibrationRecordAction(payload),
+      metadata: { form: 'calibration_record_modal' },
+    });
+    setSubmitting(false);
+    setRecordOfflineResult(result);
+
+    if (result.status === 'queued') {
+      toast('success', 'Calibration result queued locally. It will become official after sync.');
       setRecordModalOpen(false);
-      resetRecordForm();
-      loadData();
-    } catch {
-      toast('error', 'Failed to create calibration record');
-    } finally {
-      setSubmitting(false);
+      return;
     }
+    if (result.status === 'failed' || result.status === 'conflict') {
+      toast('error', result.error ?? 'Failed to create calibration record');
+      return;
+    }
+
+    const actionResult = result.data as { data?: {
+      notification_warning?: string;
+      notification_result?: { detail?: string | null };
+    } };
+    const notificationData = actionResult.data;
+    if (notificationData?.notification_warning) {
+      toast('warning', notificationData.notification_result?.detail
+        ? `Calibration record created. Notification delivery needs review: ${notificationData.notification_result.detail}`
+        : 'Calibration record created, but notification delivery needs review.');
+    } else {
+      toast('success', 'Calibration record created');
+    }
+    setRecordModalOpen(false);
+    resetRecordForm();
+    loadData();
   };
 
   const handleCreateRequest = async () => {
@@ -920,6 +942,8 @@ export default function CalibrationPage() {
         }
       >
         <div className="space-y-4">
+          <OfflineSubmitBanner actionLabel="Calibration result" />
+          <OfflineActionResult result={recordOfflineResult} />
           <Select label="Asset *" options={assets} placeholder="Select asset" value={recAssetId} onChange={(e) => setRecAssetId(e.target.value)} />
           <Select label="Calibration Type" options={calTypes} placeholder="Select type" value={recTypeId} onChange={(e) => setRecTypeId(e.target.value)} />
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

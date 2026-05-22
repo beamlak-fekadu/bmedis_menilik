@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { Database, CloudOff } from 'lucide-react';
 import { formatCacheAge, getCacheSummary, type CacheSummary } from '@/lib/offline/cache';
 import { OFFLINE_CACHE_CHANGED_EVENT } from '@/lib/offline/db';
+import { QR_ASSET_CACHE_PREFIX } from '@/lib/offline/qr-cache';
 
 const CACHE_KEY_LABELS: Record<string, { label: string; href: string; description: string }> = {
   'department.equipment': {
@@ -33,6 +34,22 @@ const CACHE_KEY_LABELS: Record<string, { label: string; href: string; descriptio
     description: 'BME Head operational overview snapshot.',
   },
 };
+
+function cacheEntryMeta(cacheKey: string) {
+  if (cacheKey.startsWith(QR_ASSET_CACHE_PREFIX)) {
+    const token = cacheKey.slice(QR_ASSET_CACHE_PREFIX.length);
+    return {
+      label: 'QR Asset Snapshot',
+      href: `/qr/a/${token}`,
+      description: 'Cached role-specific QR asset summary, assigned work, PM/calibration context, and QR actions.',
+    };
+  }
+  return CACHE_KEY_LABELS[cacheKey] ?? {
+    label: cacheKey,
+    href: '/command',
+    description: 'Cached snapshot.',
+  };
+}
 
 export default function CachedSnapshotList() {
   const [summary, setSummary] = useState<CacheSummary | null>(null);
@@ -73,11 +90,7 @@ export default function CachedSnapshotList() {
       </div>
       <div className="grid gap-2">
         {summary.entries.map((entry) => {
-          const meta = CACHE_KEY_LABELS[entry.cacheKey] ?? {
-            label: entry.cacheKey,
-            href: '/command',
-            description: 'Cached snapshot.',
-          };
+          const meta = cacheEntryMeta(entry.cacheKey);
           return (
             <Link
               key={entry.cacheKey + entry.profileId + (entry.departmentId ?? 'no-dept')}

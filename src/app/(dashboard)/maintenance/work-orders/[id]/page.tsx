@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import {
   ArrowLeft, Play, Pause, CheckCircle, XCircle, UserPlus, Plus, WifiOff, RefreshCcw,
@@ -21,6 +21,7 @@ import { formatEquipmentCondition, getConditionBadgeClass } from '@/utils/equipm
 import { assignWorkOrder, createMaintenanceEventAction, reassignWorkOrder, updateWorkOrderAction } from '@/actions/maintenance.actions';
 import WorkOrderPartsNeededPanel from './WorkOrderPartsNeededPanel';
 import { getOfflineQueue, runOfflineCapableAction } from '@/lib/offline/queue';
+import { getOfflineReadCache, saveOfflineReadCache, type OfflineCacheScope } from '@/lib/offline/cache';
 import { getAll } from '@/services/settings.service';
 import { getActiveTechnicians, ASSIGNABLE_TECHNICIANS_EMPTY_STATE } from '@/services/users.service';
 import { useToast } from '@/components/ui/Toast';
@@ -85,7 +86,7 @@ export default function WorkOrderDetailPage() {
   const { user } = useAuth();
   const { profile } = useProfile(user?.id);
   const { isDeveloper, isAdmin, isBmeHead, roles, primaryRole } = useRole();
-  const { startSync } = useOfflineSync();
+  const { startSync, isOnline } = useOfflineSync();
   const canManageAssignment = isDeveloper || isAdmin || isBmeHead;
 
   const [wo, setWO] = useState<WOWithJoins | null>(null);
@@ -122,6 +123,21 @@ export default function WorkOrderDetailPage() {
   const [startIntentResult, setStartIntentResult] = useState<OfflineActionRunResult | null>(null);
   const [completionDraftResult, setCompletionDraftResult] = useState<OfflineActionRunResult | null>(null);
   const [eventOfflineResult, setEventOfflineResult] = useState<OfflineActionRunResult | null>(null);
+  const [showingCachedWorkOrder, setShowingCachedWorkOrder] = useState(false);
+
+  const workOrderCacheScope: OfflineCacheScope | null = useMemo(() => (
+    profile?.id
+      ? { profileId: profile.id, roleName: primaryRole, departmentId: profile.department_id ?? null }
+      : null
+  ), [primaryRole, profile]);
+  const workOrderCacheKey = `work_order.detail.${id}`;
+
+  const cacheWorkOrder = useCallback(async (row: WOWithJoins) => {
+    if (!workOrderCacheScope) return;
+    await saveOfflineReadCache(workOrderCacheKey, row, workOrderCacheScope, {
+      sourceRoute: `/maintenance/work-orders/${id}`,
+    }).catch(() => undefined);
+  }, [id, workOrderCacheKey, workOrderCacheScope]);
 
   const refreshQueuedActions = useCallback(async () => {
     const queue = await getOfflineQueue();
@@ -134,8 +150,11 @@ export default function WorkOrderDetailPage() {
       toast('error', 'Failed to load work order');
       return;
     }
-    setWO(data as unknown as WOWithJoins);
-  }, [id, toast]);
+    const row = data as unknown as WOWithJoins;
+    setWO(row);
+    setShowingCachedWorkOrder(false);
+    await cacheWorkOrder(row);
+  }, [cacheWorkOrder, id, toast]);
 
   // WO-completion truth fix: query maintenance_events directly linked to the
   // current work order, not the asset's full history. This ensures the
@@ -153,12 +172,27 @@ export default function WorkOrderDetailPage() {
       setLoading(true);
       const { data, error } = await getWorkOrderById(id);
       if (error || !data) {
+        if (workOrderCacheScope) {
+          const cached = await getOfflineReadCache<WOWithJoins>(workOrderCacheKey, workOrderCacheScope).catch(() => null);
+          if (cached) {
+            setWO(cached.data);
+            setEvents([]);
+            setOriginatingRequest(null);
+            setEquipmentCondition(null);
+            setShowingCachedWorkOrder(true);
+            await refreshQueuedActions();
+            setLoading(false);
+            return;
+          }
+        }
         toast('error', 'Failed to load work order');
         setLoading(false);
         return;
       }
       const woData = data as unknown as WOWithJoins;
       setWO(woData);
+      setShowingCachedWorkOrder(false);
+      await cacheWorkOrder(woData);
 
       // Load events, originating request, and current equipment condition in parallel
       const requestId = (woData as { request_id?: string | null }).request_id;
@@ -192,7 +226,7 @@ export default function WorkOrderDetailPage() {
       setLoading(false);
     }
     init();
-  }, [id, toast, loadEvents, refreshQueuedActions]);
+  }, [cacheWorkOrder, id, loadEvents, refreshQueuedActions, toast, workOrderCacheKey, workOrderCacheScope]);
 
   async function handleStatusUpdate(status: WorkOrderStatus) {
     if (!wo) return;
@@ -253,9 +287,13 @@ export default function WorkOrderDetailPage() {
   async function handleCompleteWorkOrder() {
     if (!wo) return;
     setActionLoading(true);
-    const result = await updateWorkOrderAction(id, {
+    const completedAt = new Date().toISOString();
+    const payload = {
+      work_order_id: id,
+      asset_id: wo.asset_id,
       status: 'completed',
-      completed_at: new Date().toISOString(),
+      started_at: wo.started_at,
+      completed_at: completedAt,
       completion_outcome: completionOutcome,
       final_equipment_condition: finalCondition,
       // R2: reliability evidence. Empty values are derived server-side from
@@ -265,13 +303,59 @@ export default function WorkOrderDetailPage() {
       downtime_start: downtimeStart ? new Date(downtimeStart).toISOString() : null,
       downtime_end: downtimeEnd ? new Date(downtimeEnd).toISOString() : null,
       failure_date: failureDate || null,
+      action_taken: completionActionTaken.trim() || null,
       action_taken_on_completion: completionActionTaken.trim() || null,
+      performed_by_profile_id: profile?.id ?? null,
+      last_known_server_updated_at: wo.updated_at,
+    };
+    const result = await runOfflineCapableAction({
+      actionType: 'work_order.complete',
+      entityType: 'work_orders',
+      entityId: id,
+      assetId: wo.asset_id,
+      payload,
+      createdByProfileId: profile?.id ?? null,
+      roleName: primaryRole,
+      roleNames: roles,
+      sourceRoute: typeof window !== 'undefined' ? window.location.pathname + window.location.search : `/maintenance/work-orders/${id}`,
+      executeOnline: () => updateWorkOrderAction(id, {
+        status: 'completed',
+        completed_at: completedAt,
+        completion_outcome: completionOutcome,
+        final_equipment_condition: finalCondition,
+        repair_duration_hours: repairDurationHours || null,
+        downtime_start: downtimeStart ? new Date(downtimeStart).toISOString() : null,
+        downtime_end: downtimeEnd ? new Date(downtimeEnd).toISOString() : null,
+        failure_date: failureDate || null,
+        action_taken_on_completion: completionActionTaken.trim() || null,
+      }),
+      lastKnownServerState: {
+        status: wo.status,
+        assigned_to: wo.assigned_to,
+        started_at: wo.started_at,
+        updated_at: wo.updated_at,
+      },
+      metadata: { form: 'work_order_completion_package' },
     });
     setActionLoading(false);
-    if (!result.success) {
+    setCompletionDraftResult(result);
+    await refreshQueuedActions();
+    if (result.status === 'queued') {
+      toast(
+        'success',
+        'Work-order completion queued locally. It will become official after sync. Maintenance evidence, downtime logs, analytics, reports, and notifications will update after the queued action syncs.',
+      );
+      setCompletionModalOpen(false);
+      return;
+    }
+    if (result.status === 'failed' || result.status === 'conflict') {
       toast('error', result.error ?? 'Failed to complete work order');
-    } else {
-      const data = result.data as { condition_sync_warning?: string; reliability_evidence_warning?: string; notification_warning?: string; notification_warning_detail?: string | null } | undefined;
+      return;
+    }
+
+    if (result.status === 'success') {
+      const actionResult = result.data as { data?: { condition_sync_warning?: string; reliability_evidence_warning?: string; notification_warning?: string; notification_warning_detail?: string | null } };
+      const data = actionResult.data;
       if (data?.condition_sync_warning) {
         // R5: completion succeeded but final equipment condition could not be recorded.
         toast('warning', `Work order completed. Final equipment condition could not be recorded: ${data.condition_sync_warning}`);
@@ -305,9 +389,10 @@ export default function WorkOrderDetailPage() {
       status: 'in_progress',
       started_at: new Date().toISOString(),
       note: 'Technician recorded intent to start work from offline-capable work order page.',
+      last_known_server_updated_at: wo.updated_at,
     };
     const result = await runOfflineCapableAction({
-      actionType: 'work_order.start_intent',
+      actionType: 'work_order.start',
       entityType: 'work_orders',
       entityId: id,
       assetId: wo.asset_id,
@@ -320,13 +405,18 @@ export default function WorkOrderDetailPage() {
         status: 'in_progress',
         started_at: payload.started_at,
       }),
-      metadata: { form: 'work_order_detail_start_intent' },
+      lastKnownServerState: {
+        status: wo.status,
+        assigned_to: wo.assigned_to,
+        updated_at: wo.updated_at,
+      },
+      metadata: { form: 'work_order_detail_start' },
     });
     setActionLoading(false);
     setStartIntentResult(result);
     await refreshQueuedActions();
     if (result.status === 'queued') {
-      toast('success', 'Saved offline — will sync when connection returns.');
+      toast('success', 'Work start queued locally. It will sync when connection returns.');
       return;
     }
     if (result.status === 'failed' || result.status === 'conflict') {
@@ -466,62 +556,6 @@ export default function WorkOrderDetailPage() {
     setActionLoading(false);
   }
 
-  async function saveCompletionDraft() {
-    if (!wo) return;
-    setActionLoading(true);
-    const payload = {
-      work_order_id: id,
-      asset_id: wo.asset_id,
-      completion_outcome: completionOutcome,
-      final_equipment_condition: finalCondition,
-      note: `Completion draft: ${completionOutcome.replace(/_/g, ' ')}; final condition ${finalCondition.replace(/_/g, ' ')}.`,
-      created_at: new Date().toISOString(),
-    };
-    const result = await runOfflineCapableAction({
-      actionType: 'work_order.complete_draft',
-      entityType: 'work_orders',
-      entityId: id,
-      assetId: wo.asset_id,
-      payload,
-      createdByProfileId: profile?.id ?? null,
-      roleName: primaryRole,
-      roleNames: roles,
-      sourceRoute: typeof window !== 'undefined' ? window.location.pathname + window.location.search : `/maintenance/work-orders/${id}`,
-      executeOnline: () => createMaintenanceEventAction({
-        work_order_id: id,
-        asset_id: wo.asset_id,
-        event_type: 'corrective',
-        action_taken: 'Completion draft saved for online validation',
-        notes: payload.note,
-        completion_date: null,
-      }),
-      metadata: { form: 'work_order_completion_draft' },
-    });
-    setActionLoading(false);
-    setCompletionDraftResult(result);
-    await refreshQueuedActions();
-    // OFF-02 fix: the draft path NEVER completes the work order. It only
-    // logs a maintenance event with the proposed outcome. The user must
-    // reconnect and click "Confirm Completion" to actually close the WO.
-    if (result.status === 'queued') {
-      toast(
-        'success',
-        'Completion intent saved offline. Work order remains open until you reconnect and confirm completion.',
-      );
-      return;
-    }
-    if (result.status === 'failed' || result.status === 'conflict') {
-      toast('error', result.error ?? 'Failed to save completion draft');
-      return;
-    }
-    toast(
-      'success',
-      'Completion note logged. Work order remains open — use Confirm Completion to close it.',
-    );
-    setCompletionModalOpen(false);
-    await loadEvents(wo.id);
-  }
-
   if (loading || !wo) {
     return (
       <div className="flex min-h-[400px] items-center justify-center">
@@ -644,6 +678,13 @@ export default function WorkOrderDetailPage() {
         animate="animate"
         className="space-y-6"
       >
+        {showingCachedWorkOrder && (
+          <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-800 dark:text-amber-200">
+            Offline mode — showing cached work-order data. Last known status: {wo.status.replace(/_/g, ' ')}.
+            Queue actions only if this work was cached and assigned to you; replay will validate before anything becomes official.
+          </div>
+        )}
+
         <Card>
           <CardHeader>
             <CardTitle>Work Order Details</CardTitle>
@@ -762,9 +803,9 @@ export default function WorkOrderDetailPage() {
                   </Button>
                 )}
                 {(wo.status === 'assigned' || wo.status === 'on_hold') && (
-                  <Button size="sm" onClick={() => handleStatusUpdate('in_progress')} loading={actionLoading}>
+                  <Button size="sm" onClick={saveWorkStartIntent} loading={actionLoading}>
                     <Play className="h-4 w-4" />
-                    Start Work
+                    {isOnline ? 'Start Work' : 'Queue Start'}
                   </Button>
                 )}
                 {wo.status === 'in_progress' && (
@@ -781,7 +822,7 @@ export default function WorkOrderDetailPage() {
                 )}
                 <Button size="sm" variant="secondary" onClick={saveWorkStartIntent} loading={actionLoading}>
                   <WifiOff className="h-4 w-4" />
-                  Save Start Intent
+                  Queue Start
                 </Button>
                 <Button size="sm" variant="outline" onClick={syncQueuedActions} loading={actionLoading}>
                   <RefreshCcw className="h-4 w-4" />
@@ -1048,27 +1089,22 @@ export default function WorkOrderDetailPage() {
         footer={
           <>
             <Button variant="outline" onClick={() => setCompletionModalOpen(false)}>Cancel</Button>
-            <Button variant="secondary" onClick={saveCompletionDraft} loading={actionLoading}>
-              <WifiOff className="h-4 w-4" />
-              Save Draft
-            </Button>
             <Button onClick={handleCompleteWorkOrder} loading={actionLoading}>
               <CheckCircle className="h-4 w-4" />
-              Confirm Completion
+              {isOnline ? 'Confirm Completion' : 'Queue Completion'}
             </Button>
           </>
         }
       >
         <div className="space-y-4">
-          <OfflineSubmitBanner actionLabel="Completion draft" />
+          <OfflineSubmitBanner actionLabel="Work-order completion" />
           <OfflineActionResult result={completionDraftResult} />
-          {/* OFF-02 honesty banner: explain what "Save Draft" actually does. */}
-          <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
-            <strong>Save Draft</strong> logs a maintenance note with your intended outcome. It does
-            NOT close the work order. To formally complete the work order (update reliability
-            evidence, equipment condition, analytics) you must reconnect and click{' '}
-            <strong>Confirm Completion</strong>.
-          </div>
+          {!isOnline && (
+            <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
+              Offline actions are local promises, not official server facts. This completion will stay
+              queued locally until replay validates the work order, assignment, and last known server state.
+            </div>
+          )}
           <p className="text-sm text-[var(--text-muted)]">
             Select the resolution outcome and the equipment&apos;s final condition. This is used to update the equipment record and analytics.
           </p>

@@ -5,10 +5,12 @@ import { getActionContextForAnyCapability, logServerAuditEvent, actionError, typ
 import { createClient } from '@/lib/supabase/server';
 import { maskQrToken } from '@/utils/qr/token';
 import { createMaintenanceRequestAction, createMaintenanceEventAction, updateWorkOrderAction } from './maintenance.actions';
-import { createCalibrationRequestAction } from './calibration.actions';
+import { createCalibrationRecordAction, createCalibrationRequestAction, updateCalibrationRequestStatusAction } from './calibration.actions';
 import { createTrainingRequestAction } from './training.actions';
 import { createProcurementRequestAction } from './procurement.actions';
 import { createStockIssueAction, createStockReceiptAction } from './spare-parts.actions';
+import { createPMCompletionAction } from './pm.actions';
+import { logQrScan, logQrSecurityEvent, resolveQrLandingAsset } from '@/services/qr.service';
 import { canQueueOfflineAction } from '@/lib/offline/offline-permissions';
 import {
   OFFLINE_ACTION_TYPES,
@@ -146,6 +148,7 @@ async function loadReplayProfile(supabase: Awaited<ReturnType<typeof createClien
   return {
     profile: {
       id: profileRow.id as string,
+      authUserId: user.id,
       department_id: (profileRow.department_id as string | null) ?? null,
       roleNames,
     },
@@ -257,6 +260,43 @@ function offlineSourceNote(action: z.infer<typeof offlineQueueRecordSchema>) {
 
 function mergeNotes(...values: Array<string | null | undefined>) {
   return values.map((value) => value?.trim()).filter(Boolean).join('\n\n') || null;
+}
+
+function hasPrivilegedOperationalRole(roleNames: string[]) {
+  return roleNames.some((role) => role === 'developer' || role === 'admin' || role === 'bme_head');
+}
+
+function lastKnownUpdatedAt(action: z.infer<typeof offlineQueueRecordSchema>) {
+  const fromState = action.last_known_server_state?.updated_at;
+  if (typeof fromState === 'string' && fromState.trim()) return fromState;
+  const fromPayload = action.payload.last_known_server_updated_at;
+  return typeof fromPayload === 'string' && fromPayload.trim() ? fromPayload : null;
+}
+
+function staleStateConflict(params: {
+  action: z.infer<typeof offlineQueueRecordSchema>;
+  entityLabel: string;
+  serverState: Record<string, unknown> | null;
+}): OfflineConflictDetail | null {
+  const expectedUpdatedAt = lastKnownUpdatedAt(params.action);
+  const actualUpdatedAt = params.serverState?.updated_at;
+  if (!expectedUpdatedAt || typeof actualUpdatedAt !== 'string') return null;
+  if (expectedUpdatedAt === actualUpdatedAt) return null;
+  return buildConflictDetail({
+    conflict_type: 'stale_server_state',
+    conflict_reason: `${params.entityLabel} changed while this device was offline`,
+    server_state_summary: params.serverState
+      ? {
+          id: typeof params.serverState.id === 'string' ? params.serverState.id : null,
+          status: typeof params.serverState.status === 'string' ? params.serverState.status : null,
+          updated_at: actualUpdatedAt,
+        }
+      : null,
+    local_payload_summary: {
+      last_known_server_updated_at: expectedUpdatedAt,
+      client_action_id: params.action.client_action_id,
+    },
+  });
 }
 
 async function replayMaintenanceRequest(params: {
@@ -424,26 +464,226 @@ async function replayMaintenanceEvent(params: {
 async function replayWorkStartIntent(params: {
   action: z.infer<typeof offlineQueueRecordSchema>;
   supabase: Awaited<ReturnType<typeof createClient>>;
+  profile: { id: string; roleNames: string[] };
 }) {
   const workOrderId = params.action.entity_id ?? nullableString(params.action.payload, 'work_order_id');
   if (!workOrderId) return replayConflictDetail(workOrderStatusChangedConflict('Work start intent is missing a work order', null));
   const { data: workOrder } = await params.supabase
     .from('work_orders')
-    .select('id, status, started_at, assigned_to')
+    .select('id, status, started_at, assigned_to, updated_at')
     .eq('id', workOrderId)
     .maybeSingle();
   if (!workOrder) return replayConflictDetail(workOrderStatusChangedConflict('Work order no longer exists', null));
   const wo = workOrder as Record<string, unknown>;
   const status = wo.status as string | null | undefined;
   if (status === 'completed' || status === 'canceled') return replayConflictDetail(workOrderTerminalConflict(wo));
-  if (status === 'in_progress') return replayConflictDetail(workOrderStatusChangedConflict('Work order was already started before sync', wo));
+  if (wo.assigned_to && wo.assigned_to !== params.profile.id && !hasPrivilegedOperationalRole(params.profile.roleNames)) {
+    return replayConflictDetail(workOrderStatusChangedConflict('Work order is no longer assigned to this technician', wo));
+  }
+  const stale = staleStateConflict({ action: params.action, entityLabel: 'Work order', serverState: wo });
+  if (stale && status !== 'in_progress') return replayConflictDetail(stale);
+  if (status === 'in_progress') {
+    return replaySynced({ id: workOrderId, status: 'in_progress', already_applied: true });
+  }
 
   const result = await updateWorkOrderAction(workOrderId, {
     status: 'in_progress',
-    started_at: new Date().toISOString(),
+    started_at: nullableString(params.action.payload, 'started_at') ?? new Date().toISOString(),
     action_taken: mergeNotes(nullableString(params.action.payload, 'note'), offlineSourceNote(params.action)),
   });
   return result.success ? replaySynced(safeServerResult(result.data)) : replayFailed(result.error ?? 'Work start intent sync failed');
+}
+
+async function replayWorkOrderCompletion(params: {
+  action: z.infer<typeof offlineQueueRecordSchema>;
+  supabase: Awaited<ReturnType<typeof createClient>>;
+  profile: { id: string; roleNames: string[] };
+}) {
+  const payload = params.action.payload;
+  const workOrderId = params.action.entity_id ?? nullableString(payload, 'work_order_id');
+  if (!workOrderId) return replayConflictDetail(workOrderStatusChangedConflict('Work-order completion is missing a work order', null));
+  const { data: workOrder } = await params.supabase
+    .from('work_orders')
+    .select('id, status, asset_id, assigned_to, started_at, completed_at, completion_outcome, final_equipment_condition, updated_at')
+    .eq('id', workOrderId)
+    .maybeSingle();
+  if (!workOrder) return replayConflictDetail(workOrderStatusChangedConflict('Work order no longer exists', null));
+
+  const wo = workOrder as Record<string, unknown>;
+  const status = wo.status as string | null | undefined;
+  if (wo.assigned_to && wo.assigned_to !== params.profile.id && !hasPrivilegedOperationalRole(params.profile.roleNames)) {
+    return replayConflictDetail(workOrderStatusChangedConflict('Work order was reassigned while this device was offline', wo));
+  }
+  if (status === 'canceled') return replayConflictDetail(workOrderTerminalConflict(wo));
+  if (status === 'completed') {
+    const sameOutcome = nullableString(payload, 'completion_outcome') === wo.completion_outcome;
+    const sameCondition = nullableString(payload, 'final_equipment_condition') === wo.final_equipment_condition;
+    if (sameOutcome && sameCondition) {
+      return replaySynced({ id: workOrderId, status: 'completed', already_applied: true });
+    }
+    return replayConflictDetail(workOrderTerminalConflict(wo));
+  }
+  if (status !== 'assigned' && status !== 'in_progress') {
+    return replayConflictDetail(workOrderStatusChangedConflict('Work order is not in a completable state at sync time', wo));
+  }
+  const stale = staleStateConflict({ action: params.action, entityLabel: 'Work order', serverState: wo });
+  if (stale) return replayConflictDetail(stale);
+
+  const completedAt = nullableString(payload, 'completed_at') ?? new Date().toISOString();
+  const result = await updateWorkOrderAction(workOrderId, {
+    status: 'completed',
+    completed_at: completedAt,
+    completion_outcome: stringValue(payload, 'completion_outcome', 'resolved'),
+    final_equipment_condition: stringValue(payload, 'final_equipment_condition', 'functional'),
+    repair_duration_hours: payload.repair_duration_hours ?? null,
+    downtime_start: nullableString(payload, 'downtime_start'),
+    downtime_end: nullableString(payload, 'downtime_end'),
+    failure_date: nullableString(payload, 'failure_date'),
+    action_taken_on_completion: nullableString(payload, 'action_taken') ?? nullableString(payload, 'action_taken_on_completion'),
+  });
+  return result.success ? replaySynced(safeServerResult(result.data)) : replayFailed(result.error ?? 'Work-order completion sync failed');
+}
+
+async function replayPMCompletion(params: {
+  action: z.infer<typeof offlineQueueRecordSchema>;
+  supabase: Awaited<ReturnType<typeof createClient>>;
+  profile: { id: string; roleNames: string[] };
+}) {
+  const payload = params.action.payload;
+  const scheduleId = params.action.entity_id ?? nullableString(payload, 'schedule_id') ?? nullableString(payload, 'pm_schedule_id');
+  if (!scheduleId) return replayConflictDetail(buildConflictDetail({
+    conflict_type: 'invalid_payload',
+    conflict_reason: 'PM completion is missing schedule_id',
+  }));
+
+  const { data: schedule } = await params.supabase
+    .from('pm_schedules')
+    .select('id, status, assigned_to, asset_id, updated_at')
+    .eq('id', scheduleId)
+    .maybeSingle();
+  if (!schedule) return replayConflictDetail(buildConflictDetail({
+    conflict_type: 'asset_missing',
+    conflict_reason: 'PM schedule no longer exists',
+  }));
+  const row = schedule as Record<string, unknown>;
+  const status = String(row.status ?? '');
+  if (status === 'completed' || status === 'canceled' || status === 'skipped') {
+    return replayConflictDetail(buildConflictDetail({
+      conflict_type: 'work_order_completed',
+      conflict_reason: 'PM schedule is already terminal; offline completion needs review',
+      server_state_summary: { id: scheduleId, status },
+    }));
+  }
+  if (row.assigned_to && row.assigned_to !== params.profile.id && !hasPrivilegedOperationalRole(params.profile.roleNames)) {
+    return replayConflictDetail(permissionDeniedConflict(params.action.action_type, params.profile.roleNames[0]));
+  }
+  const stale = staleStateConflict({ action: params.action, entityLabel: 'PM schedule', serverState: row });
+  if (stale) return replayConflictDetail(stale);
+
+  const result = await createPMCompletionAction({
+    ...payload,
+    schedule_id: scheduleId,
+    completed_by: nullableString(payload, 'completed_by') ?? params.profile.id,
+    completion_date: nullableString(payload, 'completion_date') ?? nullableString(payload, 'completed_at')?.slice(0, 10) ?? new Date().toISOString().slice(0, 10),
+  });
+  return result.success ? replaySynced(safeServerResult((result.data as { schedule?: unknown } | undefined)?.schedule ?? result.data)) : replayFailed(result.error ?? 'PM completion sync failed');
+}
+
+async function replayCalibrationResult(params: {
+  action: z.infer<typeof offlineQueueRecordSchema>;
+  supabase: Awaited<ReturnType<typeof createClient>>;
+  profile: { id: string; roleNames: string[] };
+}) {
+  const payload = params.action.payload;
+  const requestId = nullableString(payload, 'calibration_request_id');
+  if (requestId) {
+    const { data: request } = await params.supabase
+      .from('calibration_requests')
+      .select('id, asset_id, status, updated_at')
+      .eq('id', requestId)
+      .maybeSingle();
+    if (!request) return replayConflictDetail(buildConflictDetail({
+      conflict_type: 'asset_missing',
+      conflict_reason: 'Calibration request no longer exists',
+    }));
+    const row = request as Record<string, unknown>;
+    if (row.asset_id && row.asset_id !== params.action.asset_id && row.asset_id !== payload.asset_id) {
+      return replayConflictDetail(workOrderStatusChangedConflict('Calibration request no longer belongs to the cached asset', row));
+    }
+    if (row.status === 'completed' || row.status === 'rejected' || row.status === 'canceled') {
+      return replayConflictDetail(buildConflictDetail({
+        conflict_type: 'work_order_completed',
+        conflict_reason: 'Calibration request is already terminal; offline result needs review',
+        server_state_summary: { id: requestId, status: String(row.status ?? '') },
+      }));
+    }
+    const stale = staleStateConflict({ action: params.action, entityLabel: 'Calibration request', serverState: row });
+    if (stale) return replayConflictDetail(stale);
+  }
+
+  const result = await createCalibrationRecordAction({
+    ...payload,
+    calibrated_by: nullableString(payload, 'calibrated_by') ?? params.profile.id,
+    calibration_date: nullableString(payload, 'calibration_date') ?? nullableString(payload, 'completed_at')?.slice(0, 10) ?? new Date().toISOString().slice(0, 10),
+  });
+  if (!result.success) return replayFailed(result.error ?? 'Calibration result sync failed');
+
+  if (requestId) {
+    const statusResult = await updateCalibrationRequestStatusAction(requestId, 'completed');
+    if (!statusResult.success) {
+      return replayConflictDetail(buildConflictDetail({
+        conflict_type: 'stale_server_state',
+        conflict_reason: statusResult.error ?? 'Calibration record synced, but linked request status could not be completed',
+        local_payload_summary: { calibration_request_id: requestId },
+      }));
+    }
+  }
+  return replaySynced(safeServerResult(result.data));
+}
+
+async function replayQrScan(params: {
+  action: z.infer<typeof offlineQueueRecordSchema>;
+  supabase: Awaited<ReturnType<typeof createClient>>;
+  profile: { id: string; authUserId: string; roleNames: string[] };
+}) {
+  const token = params.action.qr_token ?? nullableString(params.action.payload, 'qr_token') ?? nullableString(params.action.payload, 'token');
+  if (!token) return replayConflictDetail(buildConflictDetail({
+    conflict_type: 'invalid_payload',
+    conflict_reason: 'Offline QR scan is missing a token',
+  }));
+
+  const resolution = await resolveQrLandingAsset(token, params.supabase as never);
+  if (resolution.status === 'ok') {
+    await logQrScan({
+      assetId: resolution.asset.id,
+      scannedBy: params.profile.id,
+      authUserId: params.profile.authUserId,
+      roleName: params.profile.roleNames.join(',') || null,
+      scanSource: 'web',
+      onlineStatus: 'synced_later',
+      userAgent: nullableString(params.action.payload, 'user_agent'),
+      actionTaken: 'offline_qr_scan',
+      token,
+      metadata: {
+        route: 'qr.offline.pending_scan_replay',
+        scanned_offline_at: nullableString(params.action.payload, 'scanned_at') ?? params.action.created_at,
+      },
+    }, params.supabase as never);
+    return replaySynced({ asset_id: resolution.asset.id, qr_status: 'valid' });
+  }
+
+  await logQrSecurityEvent({
+    token,
+    scanStatus: resolution.status,
+    authUserId: params.profile.authUserId,
+    scannerProfileId: params.profile.id,
+    roleName: params.profile.roleNames.join(',') || null,
+    metadata: {
+      route: 'qr.offline.pending_scan_replay',
+      scanned_offline_at: nullableString(params.action.payload, 'scanned_at') ?? params.action.created_at,
+    },
+  }, params.supabase as never);
+  return replaySynced({ qr_status: resolution.status });
 }
 
 async function replayStoreReorder(params: {
@@ -626,11 +866,34 @@ export async function syncOfflineQueuedActionAction(input: unknown): Promise<Act
     const { profile, error } = await loadReplayProfile(supabase);
     if (error || !profile) return { success: false, error };
 
+    const existingSynced = await supabase
+      .from('offline_sync_events')
+      .select('id, sync_status, reported_status')
+      .eq('client_action_id', action.client_action_id)
+      .or('sync_status.eq.synced,reported_status.eq.synced')
+      .limit(1)
+      .maybeSingle();
+    if (existingSynced.data) {
+      return replaySynced({
+        already_applied: true,
+        offline_sync_event_id: (existingSynced.data as { id?: string }).id ?? null,
+      });
+    }
+
     if (!canQueueOfflineAction(profile.roleNames, action.action_type)) {
       return replayConflictDetail(permissionDeniedConflict(action.action_type, profile.roleNames[0]));
     }
 
-    const needsAsset = !['store_reorder.create', 'stock_receipt.draft', 'stock_issue.draft', 'training_request.create'].includes(action.action_type);
+    const needsAsset = ![
+      'store_reorder.create',
+      'stock_receipt.draft',
+      'stock_issue.draft',
+      'training_request.create',
+      'qr_scan.record',
+      'work_order.start',
+      'work_order.start_intent',
+      'pm.complete',
+    ].includes(action.action_type);
     let resolvedAsset: { id: string; department_id: string | null } | null = null;
     if (needsAsset || action.asset_id || action.qr_token) {
       const validated = await validateAssetAndDepartment({
@@ -663,10 +926,19 @@ export async function syncOfflineQueuedActionAction(input: unknown): Promise<Act
         return replayMaintenanceEvent({ action, assetId: resolvedAsset!.id, supabase });
       case 'qr_note.create':
         return replayMaintenanceEvent({ action, assetId: resolvedAsset!.id, supabase, mode: 'qr_note' });
+      case 'qr_scan.record':
+        return replayQrScan({ action, supabase, profile });
+      case 'work_order.start':
       case 'work_order.start_intent':
-        return replayWorkStartIntent({ action, supabase });
+        return replayWorkStartIntent({ action, supabase, profile });
+      case 'work_order.complete':
+        return replayWorkOrderCompletion({ action, supabase, profile });
       case 'work_order.complete_draft':
         return replayMaintenanceEvent({ action, assetId: resolvedAsset!.id, supabase, mode: 'completion_draft' });
+      case 'pm.complete':
+        return replayPMCompletion({ action, supabase, profile });
+      case 'calibration_result.create':
+        return replayCalibrationResult({ action, supabase, profile });
       case 'store_reorder.create':
         return replayStoreReorder({ action, supabase });
       case 'stock_receipt.draft':

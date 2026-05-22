@@ -62,7 +62,13 @@ function exactRouteForRecord(record: OfflineQueueRecord): string | null {
     if (record.asset_id) return `/equipment/${record.asset_id}`;
     return null;
   }
-  if (record.action_type === 'maintenance_event.log' || record.action_type === 'work_order.complete_draft' || record.action_type === 'work_order.start_intent') {
+  if (
+    record.action_type === 'maintenance_event.log'
+    || record.action_type === 'work_order.complete_draft'
+    || record.action_type === 'work_order.start_intent'
+    || record.action_type === 'work_order.start'
+    || record.action_type === 'work_order.complete'
+  ) {
     const workOrderId = (record.payload?.work_order_id as string | undefined) ?? record.entity_id ?? null;
     if (workOrderId) return `/maintenance/work-orders/${workOrderId}`;
     if (record.asset_id) return `/equipment/${record.asset_id}`;
@@ -72,7 +78,15 @@ function exactRouteForRecord(record: OfflineQueueRecord): string | null {
     if (record.asset_id) return `/equipment/${record.asset_id}`;
     return null;
   }
+  if (record.action_type === 'qr_scan.record') {
+    return record.qr_token ? `/qr/a/${record.qr_token}` : null;
+  }
+  if (record.action_type === 'pm.complete') {
+    const scheduleId = (record.payload?.schedule_id as string | undefined) ?? record.entity_id ?? null;
+    return scheduleId ? `/pm/schedules/${scheduleId}` : '/pm';
+  }
   if (record.action_type === 'calibration_request.create') return '/calibration';
+  if (record.action_type === 'calibration_result.create') return '/calibration';
   if (record.action_type === 'training_request.create') return '/training';
   if (record.action_type === 'store_reorder.create') return '/procurement';
   if (record.action_type === 'stock_receipt.draft' || record.action_type === 'stock_issue.draft') return '/spare-parts';

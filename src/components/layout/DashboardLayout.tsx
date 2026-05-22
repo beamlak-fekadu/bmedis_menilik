@@ -18,10 +18,11 @@ interface DashboardLayoutProps {
   userRole?: string;
   userJobTitle?: string | null;
   userRoles?: string[];
+  offlineVerifiedAt?: string | null;
   onLogout?: () => void;
 }
 
-export default function DashboardLayout({ children, userName, userRole, userJobTitle, userRoles, onLogout }: DashboardLayoutProps) {
+export default function DashboardLayout({ children, userName, userRole, userJobTitle, userRoles, offlineVerifiedAt, onLogout }: DashboardLayoutProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const pathname = usePathname();
   const { closeAssistant } = useAssistantContext();
@@ -100,7 +101,11 @@ export default function DashboardLayout({ children, userName, userRole, userJobT
             onMenuToggle={openMobileMenu}
             onLogout={onLogout}
           />
-          <OfflineStatusBanner />
+          <OfflineStatusBanner
+            userName={userName}
+            userRole={userRole}
+            verifiedAt={offlineVerifiedAt}
+          />
         </div>
         <main className="min-w-0 flex-1 overflow-y-auto overflow-x-hidden px-3 py-4 pb-[calc(env(safe-area-inset-bottom)+1.5rem)] sm:px-4 lg:p-6 lg:pb-8">
           <AnimatePresence mode="wait" initial={false}>
