@@ -20,6 +20,7 @@ import { updateRequestStatusAction } from '@/actions/maintenance.actions';
 import { useToast } from '@/components/ui/Toast';
 import { useRole } from '@/hooks/useRole';
 import { formatEquipmentCondition, getConditionBadgeClass } from '@/utils/equipment/condition-labels';
+import { publishNotificationsUpdated } from '@/lib/notifications/client-events';
 import type { MaintenanceRequest, MaintenanceRequestStatus, WorkOrder } from '@/types/domain';
 
 type RequestWithJoins = MaintenanceRequest & {
@@ -108,7 +109,10 @@ export default function RequestDetailPage() {
     if (!result.success) {
       toast('error', result.error ?? `Failed to update request`);
     } else {
-      toast('success', `Request ${status}`);
+      const warning = (result.data as { notification_warning?: string } | undefined)?.notification_warning;
+      if (warning) toast('warning', `Request ${status}, but notification delivery needs review.`);
+      else toast('success', `Request ${status}`);
+      publishNotificationsUpdated('maintenance-request-status');
       refresh();
     }
     setActionLoading(false);

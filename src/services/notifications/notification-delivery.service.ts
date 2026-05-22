@@ -133,6 +133,15 @@ export async function deliverTelegramIfEligible(
       skip_reason: 'telegram_disabled_or_missing_token',
     });
     result.telegram = { status: 'skipped', skipReason: 'telegram_disabled_or_missing_token' };
+    await insertDeliveryLog(client, {
+      notification_id: notification.id,
+      channel: 'telegram_monitor',
+      recipient_profile_id: notification.recipient_profile_id,
+      recipient_role: notification.recipient_role,
+      status: 'skipped',
+      skip_reason: 'telegram_disabled_or_missing_token',
+    });
+    result.monitor = { status: 'skipped', skipReason: 'telegram_disabled_or_missing_token' };
     return result;
   }
 
@@ -146,6 +155,15 @@ export async function deliverTelegramIfEligible(
       skip_reason: 'not_eligible_priority_or_category',
     });
     result.telegram = { status: 'skipped', skipReason: 'not_eligible_priority_or_category' };
+    await insertDeliveryLog(client, {
+      notification_id: notification.id,
+      channel: 'telegram_monitor',
+      recipient_profile_id: notification.recipient_profile_id,
+      recipient_role: notification.recipient_role,
+      status: 'skipped',
+      skip_reason: 'not_eligible_priority_or_category',
+    });
+    result.monitor = { status: 'skipped', skipReason: 'not_eligible_priority_or_category' };
     return result;
   }
 
@@ -288,6 +306,16 @@ export async function deliverTelegramIfEligible(
         result.monitor = { status: 'failed', error: sendResult.error ?? 'monitor_send_failed' };
       }
     }
+  } else {
+    await insertDeliveryLog(client, {
+      notification_id: notification.id,
+      channel: 'telegram_monitor',
+      recipient_profile_id: notification.recipient_profile_id,
+      recipient_role: notification.recipient_role,
+      status: 'skipped',
+      skip_reason: 'monitor_not_configured',
+    });
+    result.monitor = { status: 'skipped', skipReason: 'monitor_not_configured' };
   }
 
   return result;

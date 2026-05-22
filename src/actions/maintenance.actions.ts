@@ -10,7 +10,35 @@ import {
   deriveReliabilityEvidence,
   shouldAlwaysWriteCompletionEvent,
 } from '@/utils/maintenance/completion-evidence';
-import { emitNotificationEvent } from '@/services/notifications/notification-engine';
+import {
+  NOTIFICATION_DELIVERY_REVIEW_WARNING,
+  createNotificationEvent,
+  notificationDeliveryNeedsReview,
+} from '@/services/notifications/notification-engine';
+import type { NotificationProcessResult } from '@/types/notifications';
+
+function notificationReviewData(
+  result: NotificationProcessResult | null | undefined,
+): Record<string, unknown> {
+  if (!notificationDeliveryNeedsReview(result)) return {};
+  return {
+    notification_warning: NOTIFICATION_DELIVERY_REVIEW_WARNING,
+    notification_result: result
+      ? {
+        event_id: result.eventId ?? null,
+        event_type: result.eventType,
+        notification_count: result.notificationCount,
+        recipients_resolved: result.recipientsResolved,
+        warnings: result.warnings,
+        errors: result.errors,
+      }
+      : null,
+  };
+}
+
+function firstNotificationReviewData(results: NotificationProcessResult[]): Record<string, unknown> {
+  return notificationReviewData(results.find((result) => notificationDeliveryNeedsReview(result)));
+}
 
 async function loadAssetSummaryForNotification(
   supabase: Awaited<ReturnType<typeof import('@/lib/supabase/server').createClient>>,
@@ -289,8 +317,7 @@ export async function createMaintenanceRequestAction(payload: Record<string, unk
       }
     }
 
-    // Fire-and-forget notification emission. Notification failures never block
-    // the primary workflow; engine logs internally.
+    let notificationResult: NotificationProcessResult | null = null;
     try {
       const assetSummary = await loadAssetSummaryForNotification(supabase, parsed.asset_id);
       const inserted = result.data as { id?: string; request_number?: string };
@@ -306,7 +333,7 @@ export async function createMaintenanceRequestAction(payload: Record<string, unk
         ? data.department_id
         : assetSummary.department_id ?? null;
       const requestedBy = typeof data.requested_by === 'string' ? data.requested_by : null;
-      await emitNotificationEvent({
+      notificationResult = await createNotificationEvent({
         event_type: 'maintenance_request.created',
         source_table: 'maintenance_requests',
         source_id: inserted.id ?? null,
@@ -326,11 +353,14 @@ export async function createMaintenanceRequestAction(payload: Record<string, unk
     }
 
     revalidateMany([...maintenancePaths, `/equipment/${parsed.asset_id}`]);
+    const notificationData = notificationReviewData(notificationResult);
     return {
       success: true,
-      data: conditionSyncWarning
-        ? { ...(result.data as Record<string, unknown>), condition_sync_warning: conditionSyncWarning }
-        : result.data,
+      data: {
+        ...(result.data as Record<string, unknown>),
+        ...notificationData,
+        ...(conditionSyncWarning ? { condition_sync_warning: conditionSyncWarning } : {}),
+      },
     };
   } catch (err) {
     return actionError(err, 'Failed to create maintenance request');
@@ -377,10 +407,11 @@ export async function updateRequestStatusAction(id: string, status: string): Pro
     }
     await logServerAuditEvent({ supabase, profileId: profile.id, action: 'maintenance_request.status_update', entityType: 'maintenance_requests', entityId: id, oldValues: oldRow.data as Record<string, unknown> | null, newValues: result.data as Record<string, unknown> });
 
+    let notificationResult: NotificationProcessResult | null = null;
     try {
       const row = result.data as { id?: string; asset_id?: string; request_number?: string; requested_by?: string; department_id?: string | null };
       const assetSummary = await loadAssetSummaryForNotification(supabase, row.asset_id ?? null);
-      await emitNotificationEvent({
+      notificationResult = await createNotificationEvent({
         event_type: 'maintenance_request.status_changed',
         source_table: 'maintenance_requests',
         source_id: row.id ?? null,
@@ -400,7 +431,13 @@ export async function updateRequestStatusAction(id: string, status: string): Pro
     }
 
     revalidateMany([...maintenancePaths, `/maintenance/requests/${id}`]);
-    return { success: true, data: result.data };
+    return {
+      success: true,
+      data: {
+        ...(result.data as Record<string, unknown>),
+        ...notificationReviewData(notificationResult),
+      },
+    };
   } catch (err) {
     return actionError(err, 'Failed to update maintenance request');
   }
@@ -456,6 +493,7 @@ export async function createWorkOrderAction(payload: Record<string, unknown>): P
       assigned_to?: string | null;
       priority?: string | null;
     };
+    const notificationResults: NotificationProcessResult[] = [];
     let requestStatusSyncWarning: string | null = null;
     if (woRow.request_id) {
       const requestRow = await supabase
@@ -512,7 +550,7 @@ export async function createWorkOrderAction(payload: Record<string, unknown>): P
                 supabase,
                 current.asset_id ?? woRow.asset_id ?? null,
               );
-              await emitNotificationEvent({
+              notificationResults.push(await createNotificationEvent({
                 event_type: 'maintenance_request.status_changed',
                 source_table: 'maintenance_requests',
                 source_id: current.id ?? null,
@@ -528,7 +566,7 @@ export async function createWorkOrderAction(payload: Record<string, unknown>): P
                   triggered_by_work_order_id: woRow.id ?? null,
                   triggered_by_work_order_number: woRow.work_order_number ?? null,
                 },
-              });
+              }));
             } catch (e) {
               console.error('[notifications] maintenance_request.status_changed (R17) emit failed:', e);
             }
@@ -545,7 +583,7 @@ export async function createWorkOrderAction(payload: Record<string, unknown>): P
         : woRow.priority === 'high'
           ? 'high'
           : 'medium';
-      await emitNotificationEvent({
+      notificationResults.push(await createNotificationEvent({
         event_type: woRow.assigned_to ? 'work_order.assigned' : 'work_order.created',
         source_table: 'work_orders',
         source_id: woRow.id ?? null,
@@ -565,7 +603,7 @@ export async function createWorkOrderAction(payload: Record<string, unknown>): P
           assigned_to: woRow.assigned_to ?? null,
           source_request_id: woRow.request_id ?? null,
         },
-      });
+      }));
     } catch (e) {
       console.error('[notifications] work_order.created emit failed:', e);
     }
@@ -576,9 +614,11 @@ export async function createWorkOrderAction(payload: Record<string, unknown>): P
     ]);
     return {
       success: true,
-      data: requestStatusSyncWarning
-        ? { ...(result.data as Record<string, unknown>), request_status_sync_warning: requestStatusSyncWarning }
-        : result.data,
+      data: {
+        ...(result.data as Record<string, unknown>),
+        ...firstNotificationReviewData(notificationResults),
+        ...(requestStatusSyncWarning ? { request_status_sync_warning: requestStatusSyncWarning } : {}),
+      },
     };
   } catch (err) {
     return actionError(err, 'Failed to create work order');
@@ -817,6 +857,7 @@ export async function updateWorkOrderAction(id: string, payload: Record<string, 
       }
     }
 
+    let notificationResult: NotificationProcessResult | null = null;
     try {
       const row = result.data as { id?: string; asset_id?: string; work_order_number?: string; status?: string; priority?: string; assigned_to?: string | null };
       const assetSummary = await loadAssetSummaryForNotification(supabase, row.asset_id ?? null);
@@ -831,7 +872,7 @@ export async function updateWorkOrderAction(id: string, payload: Record<string, 
       } else if (row.priority === 'critical') {
         priority = 'high';
       }
-      await emitNotificationEvent({
+      notificationResult = await createNotificationEvent({
         event_type: eventType,
         source_table: 'work_orders',
         source_id: row.id ?? null,
@@ -854,6 +895,7 @@ export async function updateWorkOrderAction(id: string, payload: Record<string, 
     revalidateMany([...maintenancePaths, `/maintenance/work-orders/${id}`, ...(assetId ? [`/equipment/${assetId}`] : [])]);
     const baseData = result.data as Record<string, unknown>;
     const enriched: Record<string, unknown> = { ...baseData };
+    Object.assign(enriched, notificationReviewData(notificationResult));
     if (conditionSyncWarning) enriched.condition_sync_warning = conditionSyncWarning;
     if (reliabilityEvidenceWarning) enriched.reliability_evidence_warning = reliabilityEvidenceWarning;
     return { success: true, data: enriched };
@@ -913,11 +955,12 @@ async function setWorkOrderAssignee(id: string, technicianProfileId: string, act
       details: { technician_profile_id: parsedId },
     });
 
+    let notificationResult: NotificationProcessResult | null = null;
     try {
       const row = result.data as { id?: string; asset_id?: string; work_order_number?: string; priority?: string };
       const assetSummary = await loadAssetSummaryForNotification(supabase, row.asset_id ?? null);
       const isCritical = row.priority === 'critical' || row.priority === 'high';
-      await emitNotificationEvent({
+      notificationResult = await createNotificationEvent({
         event_type: 'work_order.assigned',
         source_table: 'work_orders',
         source_id: row.id ?? null,
@@ -938,7 +981,13 @@ async function setWorkOrderAssignee(id: string, technicianProfileId: string, act
     }
 
     revalidateMany([...maintenancePaths, `/maintenance/work-orders/${id}`]);
-    return { success: true, data: result.data };
+    return {
+      success: true,
+      data: {
+        ...(result.data as Record<string, unknown>),
+        ...notificationReviewData(notificationResult),
+      },
+    };
   } catch (err) {
     return actionError(err, action === 'assign' ? 'Failed to assign work order' : 'Failed to reassign work order');
   }

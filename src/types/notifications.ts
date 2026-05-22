@@ -159,12 +159,19 @@ export interface NotificationRuleLogRow {
   id: string;
   event_id: string | null;
   rule_name: string;
-  status: 'matched' | 'skipped' | 'failed';
+  status: NotificationRuleLogStatus;
   recipient_count: number;
   error_message: string | null;
   metadata: Record<string, unknown>;
   created_at: string;
 }
+
+export type NotificationRuleLogStatus =
+  | 'matched'
+  | 'skipped'
+  | 'failed'
+  | 'no_recipients'
+  | 'no_rule';
 
 export interface NotificationDeliveryRow {
   id: string;
@@ -199,8 +206,42 @@ export interface RecipientProfile {
   full_name: string | null;
   email: string | null;
   department_id: string | null;
+  user_id?: string | null;
+  is_active?: boolean | null;
   primaryRole: string;
   roleNames: string[];
+}
+
+export interface NotificationProcessRuleLog {
+  id?: string | null;
+  event_id: string | null;
+  rule_name: string;
+  status: NotificationRuleLogStatus;
+  recipient_count: number;
+  error_message: string | null;
+  metadata: Record<string, unknown>;
+}
+
+export interface NotificationDeliverySummary {
+  inAppCreated: number;
+  telegramSent: number;
+  telegramSkipped: number;
+  telegramFailed: number;
+  monitorSent: number;
+  monitorSkipped: number;
+  monitorFailed: number;
+}
+
+export interface NotificationProcessResult {
+  ok: boolean;
+  eventId?: string;
+  eventType: string;
+  notificationCount: number;
+  recipientsResolved: number;
+  ruleLogs: NotificationProcessRuleLog[];
+  delivery: NotificationDeliverySummary;
+  warnings: string[];
+  errors: string[];
 }
 
 export interface NotificationSummary {
@@ -230,5 +271,30 @@ export interface NotificationDiagnostics {
   telegram_monitor_chat_id_masked: string | null;
   recent_events: NotificationEventRow[];
   recent_rule_failures: NotificationRuleLogRow[];
+  recent_rule_logs: NotificationRuleLogRow[];
+  recent_notifications: NotificationRow[];
   recent_deliveries: NotificationDeliveryRow[];
+  recent_zero_recipient_event: NotificationEventRow | null;
+  recent_in_app_insert_failure: NotificationEventRow | null;
+  recent_telegram_issue: NotificationDeliveryRow | null;
+  instant_delivery_health: 'healthy' | 'warning' | 'critical';
+  instant_delivery_message: string;
+  latest_event_to_notification_ms: number | null;
+  latest_notification_to_delivery_ms: number | null;
+  role_recipient_counts: Array<{
+    role: string;
+    active_profiles: number;
+    auth_linked_profiles: number;
+    telegram_connected_profiles: number;
+  }>;
+  recipient_profiles: Array<{
+    id: string;
+    full_name: string | null;
+    email: string | null;
+    user_id: string | null;
+    department_id: string | null;
+    is_active: boolean | null;
+    roleNames: string[];
+    telegramConnected: boolean;
+  }>;
 }

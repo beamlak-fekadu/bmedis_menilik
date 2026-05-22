@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft, Save, AlertTriangle } from 'lucide-react';
 import { PageHeader, Card, CardHeader, CardTitle, CardContent, Button, Select, Textarea } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
+import { publishNotificationsUpdated } from '@/lib/notifications/client-events';
 import { OfflineActionResult } from '@/components/offline/OfflineActionResult';
 import OfflineSubmitBanner from '@/components/offline/OfflineSubmitBanner';
 import { getEquipmentList } from '@/services/equipment.service';
@@ -180,7 +181,7 @@ export default function NewMaintenanceRequestPage() {
     }
 
     if (result.status === 'success') {
-      const created = result.data as { data?: { id?: string; condition_sync_warning?: string } };
+      const created = result.data as { data?: { id?: string; condition_sync_warning?: string; notification_warning?: string } };
       const id = created.data?.id;
       const warning = created.data?.condition_sync_warning;
       if (warning) {
@@ -188,9 +189,12 @@ export default function NewMaintenanceRequestPage() {
         // Show this honestly instead of letting the asset's condition silently
         // disagree with the request's reported_condition.
         toast('warning', `Request created. Equipment condition could not be updated: ${warning}`);
+      } else if (created.data?.notification_warning) {
+        toast('warning', 'Request created, but notification delivery needs review.');
       } else {
         toast('success', 'Maintenance request created');
       }
+      publishNotificationsUpdated('maintenance-request-created');
       router.push(id ? `/maintenance/requests/${id}` : '/requests');
     }
   }

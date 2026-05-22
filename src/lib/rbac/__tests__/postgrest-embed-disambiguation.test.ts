@@ -108,7 +108,7 @@ test('pm.actions.ts assignment update avoids singular JSON coercion', () => {
   assert.match(action, /PM task could not be assigned because it was not found\./);
   assert.match(action, /Selected technician profile is not available\./);
   assert.match(action, /You do not have permission to assign PM tasks\./);
-  assert.match(action, /notification_queue_failed/);
+  assert.match(action, /notification_delivery_needs_review/);
 });
 
 test('PM schedule detail surfaces technician loading, empty, and error states', () => {

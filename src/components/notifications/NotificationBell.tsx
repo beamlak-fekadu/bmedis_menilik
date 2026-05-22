@@ -7,6 +7,8 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { attentionPulse, slideUp, transitions } from '@/lib/ui/motion-presets';
 import { useDrawerA11y } from '@/hooks/useDrawerA11y';
 import { useAssistantContext } from '@/components/assistant/AssistantProvider';
+import { useNotificationRealtime } from '@/hooks/useNotificationRealtime';
+import { publishNotificationsUpdated } from '@/lib/notifications/client-events';
 import {
   getMyNotificationsAction,
   getMyNotificationSummaryAction,
@@ -19,7 +21,7 @@ import type {
   NotificationSummary,
 } from '@/types/notifications';
 
-const POLL_INTERVAL_MS = 45_000;
+const POLL_INTERVAL_MS = 15_000;
 
 function priorityClass(priority: NotificationPriority): string {
   switch (priority) {
@@ -62,6 +64,7 @@ export default function NotificationBell() {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
+  const openRef = useRef(false);
 
   const loadSummary = useCallback(async () => {
     const res = await getMyNotificationSummaryAction();
@@ -81,12 +84,23 @@ export default function NotificationBell() {
   }, []);
 
   useEffect(() => {
-    void loadSummary();
+    openRef.current = open;
+  }, [open]);
+
+  const refreshNotifications = useCallback(async () => {
+    await loadSummary();
+    if (openRef.current) await loadList();
+  }, [loadList, loadSummary]);
+
+  useNotificationRealtime(refreshNotifications);
+
+  useEffect(() => {
+    void refreshNotifications();
     const interval = setInterval(() => {
-      void loadSummary();
+      void refreshNotifications();
     }, POLL_INTERVAL_MS);
     return () => clearInterval(interval);
-  }, [loadSummary]);
+  }, [refreshNotifications]);
 
   useEffect(() => {
     if (!open) return;
@@ -122,6 +136,7 @@ export default function NotificationBell() {
   const handleMarkRead = useCallback(
     async (id: string) => {
       await markNotificationStatusAction(id, 'read');
+      publishNotificationsUpdated('mark-read');
       await Promise.all([loadList(), loadSummary()]);
     },
     [loadList, loadSummary],
@@ -130,6 +145,7 @@ export default function NotificationBell() {
   const handleDismiss = useCallback(
     async (id: string) => {
       await markNotificationStatusAction(id, 'dismissed');
+      publishNotificationsUpdated('dismiss');
       await Promise.all([loadList(), loadSummary()]);
     },
     [loadList, loadSummary],
@@ -137,6 +153,7 @@ export default function NotificationBell() {
 
   const handleMarkAllRead = useCallback(async () => {
     await markAllNotificationsReadAction();
+    publishNotificationsUpdated('mark-all-read');
     await Promise.all([loadList(), loadSummary()]);
   }, [loadList, loadSummary]);
 

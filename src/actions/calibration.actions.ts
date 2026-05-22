@@ -4,6 +4,11 @@ import { z } from 'zod';
 import { recomputeAssetAnalytics } from './analytics.actions';
 import { getActionContextForCapability, getActionContextForAnyCapability, logServerAuditEvent, revalidateMany, actionError, nullIfEmpty, interpretMissingMutationResult, runAnalyticsRefreshOrWarn, type ActionResult } from './_shared';
 import { denialMessage } from '@/lib/rbac/department-scope';
+import {
+  NOTIFICATION_DELIVERY_REVIEW_WARNING,
+  createNotificationEvent,
+  notificationDeliveryNeedsReview,
+} from '@/services/notifications/notification-engine';
 
 const calibrationPaths = ['/calibration', '/calendar', '/command', '/reports/calibration'];
 
@@ -269,6 +274,8 @@ export async function createCalibrationRecordAction(payload: Record<string, unkn
     // BME Head + technicians + department head with HIGH priority — but
     // before R6 the action never emitted the event, so the rule was dead
     // code. A passed result is intentionally NOT emitted (no spam).
+    let notificationWarning: string | null = null;
+    let notificationResult: Record<string, unknown> | null = null;
     if (parsed.result === 'fail' || parsed.result === 'adjusted') {
       try {
         const { data: asset } = await supabase
@@ -278,8 +285,7 @@ export async function createCalibrationRecordAction(payload: Record<string, unkn
           .maybeSingle();
         const row = (asset ?? null) as { name?: string | null; asset_code?: string | null; department_id?: string | null } | null;
         const inserted = result.data as { id?: string };
-        const { emitNotificationEvent } = await import('@/services/notifications/notification-engine');
-        await emitNotificationEvent({
+        const notification = await createNotificationEvent({
           event_type: 'calibration.failed_or_adjusted',
           source_table: 'calibration_records',
           source_id: inserted.id ?? null,
@@ -302,15 +308,32 @@ export async function createCalibrationRecordAction(payload: Record<string, unkn
             record_id: inserted.id ?? null,
           },
         });
+        if (notificationDeliveryNeedsReview(notification)) {
+          notificationWarning = NOTIFICATION_DELIVERY_REVIEW_WARNING;
+          notificationResult = {
+            event_id: notification.eventId ?? null,
+            event_type: notification.eventType,
+            notification_count: notification.notificationCount,
+            recipients_resolved: notification.recipientsResolved,
+            warnings: notification.warnings,
+            errors: notification.errors,
+          };
+        }
       } catch (e) {
         console.error('[notifications] calibration.failed_or_adjusted emit failed:', e);
+        notificationWarning = NOTIFICATION_DELIVERY_REVIEW_WARNING;
+        notificationResult = { error: e instanceof Error ? e.message : 'unknown_notification_error' };
       }
     }
 
     revalidateMany(calibrationPaths);
-    const responseDataRecord = recordAnalyticsWarning
-      ? { ...(result.data as Record<string, unknown>), analytics_refresh_warning: recordAnalyticsWarning }
-      : result.data;
+    const responseDataRecord = {
+      ...(result.data as Record<string, unknown>),
+      ...(recordAnalyticsWarning ? { analytics_refresh_warning: recordAnalyticsWarning } : {}),
+      ...(notificationWarning
+        ? { notification_warning: notificationWarning, notification_result: notificationResult }
+        : {}),
+    };
     return { success: true, data: responseDataRecord };
   } catch (err) {
     return actionError(err, 'Failed to create calibration record');

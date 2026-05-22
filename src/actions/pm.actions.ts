@@ -5,7 +5,12 @@ import { recomputeAssetAnalytics } from './analytics.actions';
 import { getActionContextForCapability, logServerAuditEvent, revalidateMany, actionError, nullIfEmpty, interpretMissingMutationResult, type ActionResult } from './_shared';
 import { OPEN_MAINTENANCE_REQUEST_STATUSES } from '@/utils/maintenance/request-status';
 import { datePlusDays } from '@/utils/pm/semantics';
-import { createNotificationEvent, emitNotificationEvent } from '@/services/notifications/notification-engine';
+import {
+  NOTIFICATION_DELIVERY_REVIEW_WARNING,
+  createNotificationEvent,
+  emitNotificationEvent,
+  notificationDeliveryNeedsReview,
+} from '@/services/notifications/notification-engine';
 
 const pmPaths = ['/pm', '/calendar', '/command', '/reports/pm'];
 const ACTIVE_PM_SCHEDULE_STATUSES = ['scheduled', 'in_progress', 'overdue', 'deferred'] as const;
@@ -20,7 +25,7 @@ const PM_ASSIGNMENT_SELECT = `
 
 type PMAssignmentWarning =
   | 'audit_log_failed'
-  | 'notification_queue_failed';
+  | 'notification_delivery_needs_review';
 
 type PMAssignmentResult = {
   schedule: Record<string, unknown>;
@@ -33,6 +38,9 @@ type PMAssignmentResult = {
   notificationStatus?: {
     rule_status: 'matched' | 'skipped' | 'failed';
     notification_count: number;
+    recipients_resolved?: number;
+    warnings?: string[];
+    errors?: string[];
     error?: string;
   };
   auditStatus?: {
@@ -488,33 +496,47 @@ export async function assignPMScheduleAction(id: string, assignedTo: string | nu
             asset_code: assetRow?.asset_code ?? null,
             assigned_to: assignee,
           },
-        }, { client: supabase, createdBy: profile.id });
+        }, { createdBy: profile.id });
         notificationStatus = {
           rule_status: notification.rule_status,
           notification_count: notification.notifications.length,
+          recipients_resolved: notification.recipientsResolved,
+          warnings: notification.warnings,
+          errors: notification.errors,
           error: notification.error,
         };
-        if (notification.rule_status === 'failed') {
-          warnings.push('notification_queue_failed');
+        if (notificationDeliveryNeedsReview(notification)) {
+          warnings.push('notification_delivery_needs_review');
         }
       } catch (e) {
-        warnings.push('notification_queue_failed');
+        warnings.push('notification_delivery_needs_review');
         notificationStatus = {
           rule_status: 'failed',
           notification_count: 0,
+          recipients_resolved: 0,
+          warnings: [NOTIFICATION_DELIVERY_REVIEW_WARNING],
+          errors: [e instanceof Error ? e.message : 'unknown_notification_error'],
           error: e instanceof Error ? e.message : 'unknown_notification_error',
         };
         console.error('[notifications] pm.assigned emit failed:', e);
       }
     }
-    if (warnings.includes('notification_queue_failed')) {
+    if (warnings.includes('notification_delivery_needs_review')) {
       await logServerAuditEvent({
         supabase,
         profileId: profile.id,
         action: 'pm_schedule.assignment_notification_failed',
         entityType: 'pm_schedules',
         entityId: id,
-        details: notificationStatus?.error ? { error: notificationStatus.error } : null,
+        details: notificationStatus
+          ? {
+            error: notificationStatus.error ?? null,
+            notification_count: notificationStatus.notification_count,
+            recipients_resolved: notificationStatus.recipients_resolved ?? null,
+            warnings: notificationStatus.warnings ?? [],
+            errors: notificationStatus.errors ?? [],
+          }
+          : null,
       });
     }
     revalidateMany([...pmPaths, `/pm/schedules/${id}`, assetId ? `/equipment/${assetId}` : '/equipment']);

@@ -31,6 +31,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
 import { useRole } from '@/hooks/useRole';
 import { useOfflineSync } from '@/components/offline/SyncEngineProvider';
+import { publishNotificationsUpdated } from '@/lib/notifications/client-events';
 import type { OfflineActionRunResult, OfflineQueueRecord } from '@/types/offline';
 import type {
   WorkOrder, WorkOrderStatus, MaintenanceEvent, FailureCode, MaintenanceActionCode, Profile,
@@ -204,13 +205,16 @@ export default function WorkOrderDetailPage() {
     if (!result.success) {
       toast('error', result.error ?? `Failed to update work order`);
     } else {
-      const warning = (result.data as { condition_sync_warning?: string } | undefined)?.condition_sync_warning;
-      if (warning) {
+      const data = result.data as { condition_sync_warning?: string; notification_warning?: string } | undefined;
+      if (data?.condition_sync_warning) {
         // R5: work order status changed but equipment condition didn't sync.
-        toast('warning', `Work order updated. Equipment condition could not be updated: ${warning}`);
+        toast('warning', `Work order updated. Equipment condition could not be updated: ${data.condition_sync_warning}`);
+      } else if (data?.notification_warning) {
+        toast('warning', 'Work order updated, but notification delivery needs review.');
       } else {
         toast('success', `Work order ${status.replace(/_/g, ' ')}`);
       }
+      publishNotificationsUpdated('work-order-status');
       await loadWO();
     }
     setActionLoading(false);
@@ -265,7 +269,7 @@ export default function WorkOrderDetailPage() {
     if (!result.success) {
       toast('error', result.error ?? 'Failed to complete work order');
     } else {
-      const data = result.data as { condition_sync_warning?: string; reliability_evidence_warning?: string } | undefined;
+      const data = result.data as { condition_sync_warning?: string; reliability_evidence_warning?: string; notification_warning?: string } | undefined;
       if (data?.condition_sync_warning) {
         // R5: completion succeeded but final equipment condition could not be recorded.
         toast('warning', `Work order completed. Final equipment condition could not be recorded: ${data.condition_sync_warning}`);
@@ -274,9 +278,12 @@ export default function WorkOrderDetailPage() {
         // visible (RLS denial, constraint violation, etc.). Completion itself
         // succeeded.
         toast('warning', `Work order completed. ${data.reliability_evidence_warning}`);
+      } else if (data?.notification_warning) {
+        toast('warning', 'Work order completed, but notification delivery needs review.');
       } else {
         toast('success', 'Work order completed');
       }
+      publishNotificationsUpdated('work-order-completed');
       setCompletionModalOpen(false);
       // Reload BOTH the WO and the events linked to this WO so the
       // "Maintenance Events" section reflects the new completion evidence
@@ -380,7 +387,13 @@ export default function WorkOrderDetailPage() {
     if (!result.success) {
       toast('error', result.error ?? `Failed to ${wo.assigned_to ? 'reassign' : 'assign'} work order`);
     } else {
-      toast('success', `Work order ${wo.assigned_to ? 'reassigned' : 'assigned'}`);
+      const warning = (result.data as { notification_warning?: string } | undefined)?.notification_warning;
+      if (warning) {
+        toast('warning', `Work order ${wo.assigned_to ? 'reassigned' : 'assigned'}, but notification delivery needs review.`);
+      } else {
+        toast('success', `Work order ${wo.assigned_to ? 'reassigned' : 'assigned'}`);
+      }
+      publishNotificationsUpdated('work-order-assigned');
       setAssignModalOpen(false);
       await loadWO();
     }

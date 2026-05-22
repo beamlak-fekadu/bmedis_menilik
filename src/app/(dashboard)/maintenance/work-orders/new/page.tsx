@@ -11,6 +11,7 @@ import { createWorkOrderAction } from '@/actions/maintenance.actions';
 import { getEquipmentList } from '@/services/equipment.service';
 import { getActiveTechnicians, ASSIGNABLE_TECHNICIANS_EMPTY_STATE } from '@/services/users.service';
 import { useToast } from '@/components/ui/Toast';
+import { publishNotificationsUpdated } from '@/lib/notifications/client-events';
 import type { EquipmentAsset, Profile, WorkType, Urgency } from '@/types/domain';
 
 export default function NewWorkOrderPage() {
@@ -78,12 +79,15 @@ export default function NewWorkOrderPage() {
     }
     // R17: surface request-status-sync failure if the WO was created from a
     // request but the request's status couldn't be flipped.
-    const created = result.data as { id?: string; request_status_sync_warning?: string };
+    const created = result.data as { id?: string; request_status_sync_warning?: string; notification_warning?: string };
     if (created.request_status_sync_warning) {
       toast('warning', `Work order created. Originating request status could not be updated: ${created.request_status_sync_warning}`);
+    } else if (created.notification_warning) {
+      toast('warning', 'Work order created, but notification delivery needs review.');
     } else {
       toast('success', 'Work order created');
     }
+    publishNotificationsUpdated('work-order-created');
     router.push(`/maintenance/work-orders/${created.id ?? ''}`);
   }
 

@@ -35,12 +35,12 @@ import type {
 } from '@/types/notifications';
 
 const SAMPLE_VARIANTS: Array<{ id: string; label: string; description: string }> = [
-  { id: 'bme_head_critical', label: 'BME Head — critical maintenance', description: 'Critical equipment request lands for leadership.' },
-  { id: 'technician_assignment', label: 'Technician — critical assignment', description: 'New high-priority work order assigned.' },
-  { id: 'store_stock_blocker', label: 'Store — stock blocker', description: 'Repair blocked by missing spare part.' },
-  { id: 'department_update', label: 'Department — critical equipment', description: 'Department-scoped critical update.' },
-  { id: 'viewer_readiness', label: 'Viewer — readiness risk', description: 'Management-only service readiness signal.' },
-  { id: 'developer_system', label: 'Developer — rule failed', description: 'Developer-only system signal.' },
+  { id: 'work_order_assigned_technician', label: 'Work order → Technician', description: 'Production work_order.assigned rule with exact technician profile.' },
+  { id: 'pm_assigned_technician', label: 'PM → Technician', description: 'Production pm.assigned rule with exact technician profile.' },
+  { id: 'maintenance_request_created_bme_head', label: 'Request → BME Head', description: 'Department-created maintenance request to leadership.' },
+  { id: 'calibration_failed_bme_head', label: 'Calibration fail → BME', description: 'Failed calibration record to leadership.' },
+  { id: 'procurement_delivered_store', label: 'Delivered → Store', description: 'Delivered procurement pending stock receipt.' },
+  { id: 'qr_revoked_security', label: 'Revoked QR → Security', description: 'Revoked QR scan evidence to BME/developer leadership.' },
 ];
 
 interface WebhookSetup {
@@ -157,10 +157,12 @@ export default function NotificationDiagnosticsSection() {
     async (variant: string) => {
       setWorking(true);
       const res = await sendSampleRoleNotificationAction(variant);
-      setWorking(false);
-      if (!res.success) toast('error', res.error ?? 'Sample failed');
-      else toast('success', 'Sample notification queued');
-      void fetchAll();
+    setWorking(false);
+    const data = res.data as { notificationCount?: number; notifications_created?: number; result?: { notificationCount?: number } } | null;
+    const created = data?.notificationCount ?? data?.notifications_created ?? data?.result?.notificationCount ?? 0;
+    if (!res.success) toast('error', res.error ?? 'Sample failed');
+    else toast('success', `Sample created ${created} notification row${created === 1 ? '' : 's'}`);
+    void fetchAll();
     },
     [fetchAll, toast],
   );
@@ -255,6 +257,18 @@ export default function NotificationDiagnosticsSection() {
                 <StatLine label="Unread total" value={diagnostics.notifications_unread_total} />
                 <StatLine label="Unread critical" value={diagnostics.notifications_unread_critical} />
                 <StatLine label="Rule failures today" value={diagnostics.rule_failures_today} />
+                <StatLine label="Instant delivery health" value={diagnostics.instant_delivery_health} />
+                <StatLine
+                  label="Event → notification"
+                  value={diagnostics.latest_event_to_notification_ms == null ? '—' : `${diagnostics.latest_event_to_notification_ms} ms`}
+                />
+                <StatLine
+                  label="Notification → delivery log"
+                  value={diagnostics.latest_notification_to_delivery_ms == null ? '—' : `${diagnostics.latest_notification_to_delivery_ms} ms`}
+                />
+                <p className="mt-2 rounded-md border border-[var(--border-subtle)] bg-[var(--surface-1)] p-2 text-xs text-[var(--text-muted)]">
+                  {diagnostics.instant_delivery_message}
+                </p>
               </div>
             )}
           </CardContent>
@@ -465,6 +479,51 @@ export default function NotificationDiagnosticsSection() {
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardContent>
+            <p className="mb-2 text-sm font-semibold text-[var(--foreground)]">Recipient readiness by role</p>
+            <div className="max-h-80 overflow-y-auto">
+              {diagnostics?.role_recipient_counts.length === 0 && (
+                <p className="text-xs text-[var(--text-muted)]">No active recipients found.</p>
+              )}
+              {diagnostics?.role_recipient_counts.map((row) => (
+                <div key={row.role} className="border-b border-[var(--border-subtle)] py-2 text-xs last:border-b-0">
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono text-[var(--foreground)]">{row.role}</span>
+                    <Badge variant={row.active_profiles > 0 ? 'success' : 'warning'}>{row.active_profiles} active</Badge>
+                  </div>
+                  <p className="mt-1 text-[var(--text-muted)]">
+                    {row.auth_linked_profiles} auth-linked · {row.telegram_connected_profiles} Telegram connected
+                  </p>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent>
+            <p className="mb-2 text-sm font-semibold text-[var(--foreground)]">Latest notification rows</p>
+            <div className="max-h-80 overflow-y-auto">
+              {diagnostics?.recent_notifications.length === 0 && (
+                <p className="text-xs text-[var(--text-muted)]">No notification rows yet.</p>
+              )}
+              {diagnostics?.recent_notifications.slice(0, 12).map((n) => (
+                <div key={n.id} className="border-b border-[var(--border-subtle)] py-2 last:border-b-0">
+                  <div className="flex items-center justify-between gap-2 text-[11px]">
+                    <span className="truncate font-medium text-[var(--foreground)]">{n.title}</span>
+                    <StatusBadge value={n.status} />
+                  </div>
+                  <p className="text-[11px] text-[var(--text-muted)]">
+                    {new Date(n.created_at).toLocaleString()} · recipient {n.recipient_profile_id}
+                  </p>
+                  <p className="truncate text-[11px] text-[var(--text-subtle)]">{n.action_href ?? 'no link'}</p>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent>
             <p className="mb-2 text-sm font-semibold text-[var(--foreground)]">Recent delivery logs</p>
             <div className="max-h-80 overflow-y-auto">
               {deliveries.length === 0 && (
@@ -498,7 +557,7 @@ export default function NotificationDiagnosticsSection() {
               {ruleLogs.length === 0 && (
                 <p className="text-xs text-[var(--text-muted)]">No rule logs yet.</p>
               )}
-              {ruleLogs.slice(0, 25).map((r) => (
+              {(diagnostics?.recent_rule_logs ?? ruleLogs).slice(0, 25).map((r) => (
                 <div key={r.id} className="border-b border-[var(--border-subtle)] py-2 last:border-b-0">
                   <div className="flex items-center justify-between text-[11px]">
                     <span className="font-mono text-[var(--text-muted)]">{r.rule_name}</span>

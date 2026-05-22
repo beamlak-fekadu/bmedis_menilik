@@ -32,6 +32,7 @@ import {
   startPMScheduleAction,
 } from '@/actions/pm.actions';
 import { useToast } from '@/components/ui/Toast';
+import { publishNotificationsUpdated } from '@/lib/notifications/client-events';
 import { useRole } from '@/hooks/useRole';
 import type { EquipmentCondition, PMChecklistItem, PMScheduleStatus, RiskLevel } from '@/types/domain';
 import { ScoreExplanation } from '../../../command/_components/ScoreExplanation';
@@ -329,13 +330,14 @@ export default function PMScheduleDetailPage() {
       return;
     }
     const warnings = (result.data as { warnings?: string[] } | undefined)?.warnings ?? [];
-    if (warnings.includes('notification_queue_failed')) {
-      toast('warning', 'Assignment succeeded, but notification delivery could not be queued.');
+    if (warnings.includes('notification_delivery_needs_review')) {
+      toast('warning', 'Assignment completed, but notification delivery needs review.');
     } else if (warnings.includes('audit_log_failed')) {
       toast('warning', 'Assignment succeeded, but audit logging could not be recorded.');
     } else {
       toast('success', assignment ? 'PM assignment updated' : 'PM assignment cleared');
     }
+    publishNotificationsUpdated('pm-assigned');
     setAssignmentModalOpen(false);
     await load();
   }

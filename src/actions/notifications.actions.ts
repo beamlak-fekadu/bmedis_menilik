@@ -20,8 +20,10 @@ import {
   runNotificationRuleCheck,
 } from '@/services/notifications/notification.service';
 import {
+  NOTIFICATION_DELIVERY_REVIEW_WARNING,
   createNotificationEvent,
   emitNotificationEvent,
+  notificationDeliveryNeedsReview,
 } from '@/services/notifications/notification-engine';
 import {
   getAppBaseUrl,
@@ -103,6 +105,31 @@ export async function getMyNotificationsAction(filters: Record<string, unknown> 
   }
 }
 
+export async function getMyNotificationIdentityAction(): Promise<ActionResult> {
+  try {
+    const { profile, error } = await getActionContext([
+      'developer',
+      'admin',
+      'bme_head',
+      'technician',
+      'department_head',
+      'department_user',
+      'store_user',
+      'viewer',
+    ]);
+    if (error || !profile) return { success: false, error: error ?? 'Not authenticated' };
+    return {
+      success: true,
+      data: {
+        profile_id: profile.id,
+        roleNames: profile.roleNames,
+      },
+    };
+  } catch (err) {
+    return actionError(err, 'Failed to load notification identity');
+  }
+}
+
 // ─── Developer-only diagnostics + tests ─────────────────────────────────────
 
 export async function getNotificationDiagnosticsAction(): Promise<ActionResult> {
@@ -140,7 +167,11 @@ export async function listRuleLogsAction(filters: Record<string, unknown> = {}):
     const { error } = await getActionContextForCapability('developer.diagnostics');
     if (error) return { success: false, error };
     const statusFilter =
-      filters.status === 'matched' || filters.status === 'skipped' || filters.status === 'failed'
+      filters.status === 'matched' ||
+      filters.status === 'skipped' ||
+      filters.status === 'failed' ||
+      filters.status === 'no_recipients' ||
+      filters.status === 'no_rule'
         ? filters.status
         : undefined;
     const rows = await listNotificationRuleLogs({ statusFilter });
@@ -368,6 +399,12 @@ export async function sendTelegramTestMessageAction(): Promise<ActionResult> {
 const sampleVariantSchema = z.enum([
   'bme_head_critical',
   'technician_assignment',
+  'work_order_assigned_technician',
+  'pm_assigned_technician',
+  'maintenance_request_created_bme_head',
+  'calibration_failed_bme_head',
+  'procurement_delivered_store',
+  'qr_revoked_security',
   'store_stock_blocker',
   'department_update',
   'viewer_readiness',
@@ -376,12 +413,23 @@ const sampleVariantSchema = z.enum([
 
 export async function sendSampleRoleNotificationAction(variant: string): Promise<ActionResult> {
   try {
-    const { error } = await getActionContextForCapability('developer.diagnostics');
+    const { supabase, error } = await getActionContextForCapability('developer.diagnostics');
     if (error) return { success: false, error };
     const parsed = sampleVariantSchema.parse(variant);
+    const findRoleProfile = async (role: string): Promise<string | null> => {
+      const { data } = (await supabase
+        .from('profiles')
+        .select('id, user_roles!user_roles_user_id_fkey!inner(roles!inner(name))')
+        .eq('is_active', true)
+        .eq('user_roles.roles.name', role)
+        .limit(1)
+        .maybeSingle()) as { data: { id: string } | null };
+      return data?.id ?? null;
+    };
     let event;
     switch (parsed) {
       case 'bme_head_critical':
+      case 'maintenance_request_created_bme_head':
         event = await createNotificationEvent({
           event_type: 'maintenance_request.created',
           priority: 'critical',
@@ -394,14 +442,77 @@ export async function sendSampleRoleNotificationAction(variant: string): Promise
         });
         break;
       case 'technician_assignment':
+      case 'work_order_assigned_technician': {
+        const technicianId = await findRoleProfile('technician');
         event = await createNotificationEvent({
           event_type: 'work_order.assigned',
+          source_table: 'work_orders',
+          source_id: 'sample-work-order',
           priority: 'critical',
           payload: {
             asset_name: 'ICU Ventilator (TEST)',
             asset_code: 'TEST-VENT-002',
             work_order_number: 'TEST-WO-' + Date.now().toString(36).toUpperCase(),
             priority: 'critical',
+            technician_profile_id: technicianId,
+            assigned_to: technicianId,
+          },
+        });
+        break;
+      }
+      case 'pm_assigned_technician': {
+        const technicianId = await findRoleProfile('technician');
+        event = await createNotificationEvent({
+          event_type: 'pm.assigned',
+          source_table: 'pm_schedules',
+          source_id: 'sample-pm-schedule',
+          priority: 'medium',
+          payload: {
+            asset_name: 'Infusion Pump (TEST)',
+            asset_code: 'TEST-PM-001',
+            assigned_to: technicianId,
+          },
+        });
+        break;
+      }
+      case 'calibration_failed_bme_head':
+        event = await createNotificationEvent({
+          event_type: 'calibration.failed_or_adjusted',
+          source_table: 'calibration_records',
+          source_id: 'sample-calibration-record',
+          priority: 'high',
+          payload: {
+            asset_name: 'Patient Monitor (TEST)',
+            asset_code: 'TEST-CAL-001',
+            result: 'fail',
+            record_id: 'sample-calibration-record',
+          },
+        });
+        break;
+      case 'procurement_delivered_store':
+        event = await createNotificationEvent({
+          event_type: 'procurement.delivered_pending_receipt',
+          source_table: 'procurement_requests',
+          source_id: 'sample-procurement-request',
+          priority: 'medium',
+          payload: {
+            description: 'Oxygen sensor procurement (TEST)',
+            request_number: 'TEST-PR-' + Date.now().toString(36).toUpperCase(),
+            stock_receipt_prefill_href:
+              '/spare-parts?action=record-receipt&procurement_id=sample-procurement-request&source=procurement-delivery',
+          },
+        });
+        break;
+      case 'qr_revoked_security':
+        event = await createNotificationEvent({
+          event_type: 'qr.revoked_scanned',
+          source_table: 'equipment_qr_scans',
+          source_id: 'sample-qr-scan',
+          priority: 'high',
+          payload: {
+            asset_name: 'masked asset',
+            masked_token: 'qra_••TEST',
+            sample: true,
           },
         });
         break;
@@ -443,11 +554,19 @@ export async function sendSampleRoleNotificationAction(variant: string): Promise
         break;
     }
     revalidateMany(notificationPaths);
+    if (notificationDeliveryNeedsReview(event)) {
+      return {
+        success: false,
+        error: event?.warnings?.[0] ?? event?.errors?.[0] ?? NOTIFICATION_DELIVERY_REVIEW_WARNING,
+        data: event,
+      };
+    }
     return {
       success: true,
       data: {
         event_id: event?.event?.id ?? null,
         notifications_created: event?.notifications?.length ?? 0,
+        result: event,
       },
     };
   } catch (err) {
@@ -633,15 +752,7 @@ export async function emitNotificationEventAction(
   input: Record<string, unknown>,
 ): Promise<ActionResult> {
   try {
-    const { error } = await getActionContext([
-      'developer',
-      'admin',
-      'bme_head',
-      'technician',
-      'store_user',
-      'department_head',
-      'department_user',
-    ]);
+    const { error } = await getActionContextForCapability('developer.diagnostics');
     if (error) return { success: false, error };
     await emitNotificationEvent(input as unknown as Parameters<typeof emitNotificationEvent>[0]);
     return { success: true };

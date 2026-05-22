@@ -9,6 +9,8 @@ import { PageHeader, Badge, Button, Tabs, EmptyState } from '@/components/ui';
 import Card, { CardContent } from '@/components/ui/Card';
 import { PageLoader } from '@/components/ui/Spinner';
 import { useToast } from '@/components/ui/Toast';
+import { useNotificationRealtime } from '@/hooks/useNotificationRealtime';
+import { publishNotificationsUpdated } from '@/lib/notifications/client-events';
 import {
   createTestNotificationToSelfAction,
   getMyNotificationsAction,
@@ -219,10 +221,13 @@ export default function NotificationsPage() {
     void fetchAll();
   }, [fetchAll]);
 
+  useNotificationRealtime(fetchAll);
+
   const handleMarkRead = useCallback(
     async (id: string) => {
       const res = await markNotificationStatusAction(id, 'read');
       if (!res.success) toast('error', res.error ?? 'Failed to mark as read');
+      else publishNotificationsUpdated('mark-read');
       void fetchAll();
     },
     [fetchAll, toast],
@@ -232,6 +237,7 @@ export default function NotificationsPage() {
     async (id: string) => {
       const res = await markNotificationStatusAction(id, 'reviewed');
       if (!res.success) toast('error', res.error ?? 'Failed to mark as reviewed');
+      else publishNotificationsUpdated('mark-reviewed');
       void fetchAll();
     },
     [fetchAll, toast],
@@ -241,6 +247,7 @@ export default function NotificationsPage() {
     async (id: string) => {
       const res = await markNotificationStatusAction(id, 'dismissed');
       if (!res.success) toast('error', res.error ?? 'Failed to dismiss');
+      else publishNotificationsUpdated('dismiss');
       void fetchAll();
     },
     [fetchAll, toast],
@@ -249,14 +256,20 @@ export default function NotificationsPage() {
   const handleMarkAll = useCallback(async () => {
     const res = await markAllNotificationsReadAction();
     if (!res.success) toast('error', res.error ?? 'Failed to mark all read');
-    else toast('success', 'Notifications marked as read');
+    else {
+      toast('success', 'Notifications marked as read');
+      publishNotificationsUpdated('mark-all-read');
+    }
     void fetchAll();
   }, [fetchAll, toast]);
 
   const handleTest = useCallback(async () => {
     const res = await createTestNotificationToSelfAction();
     if (!res.success) toast('error', res.error ?? 'Failed to send test');
-    else toast('success', 'Test notification queued');
+    else {
+      toast('success', 'Test notification created');
+      publishNotificationsUpdated('test-notification');
+    }
     void fetchAll();
   }, [fetchAll, toast]);
 

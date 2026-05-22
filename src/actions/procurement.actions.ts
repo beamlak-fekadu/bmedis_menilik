@@ -2,6 +2,11 @@
 
 import { z } from 'zod';
 import { getActionContextForCapability, logServerAuditEvent, refreshDecisionSupportSnapshotsBestEffort, revalidateMany, actionError, nullIfEmpty, interpretMissingMutationResult, type ActionResult } from './_shared';
+import {
+  NOTIFICATION_DELIVERY_REVIEW_WARNING,
+  createNotificationEvent,
+  notificationDeliveryNeedsReview,
+} from '@/services/notifications/notification-engine';
 
 const procurementPaths = ['/procurement', '/logistics', '/calendar', '/command'];
 const procurementStatus = z.enum(['requested', 'approved', 'ordered', 'in_transit', 'delivered', 'canceled']);
@@ -78,11 +83,12 @@ export async function updateProcurementStatusAction(id: string, status: string):
     }
     await logServerAuditEvent({ supabase, profileId: profile.id, action: 'procurement_request.status_update', entityType: 'procurement_requests', entityId: id, oldValues: oldRow.data as Record<string, unknown> | null, newValues: result.data as Record<string, unknown> });
 
+    let notificationWarning: string | null = null;
+    let notificationResult: Record<string, unknown> | null = null;
     if (parsedStatus === 'delivered') {
       try {
         const row = result.data as Record<string, unknown>;
         const description = (row.description as string) ?? (row.title as string) ?? 'Procurement request';
-        const { emitNotificationEvent } = await import('@/services/notifications/notification-engine');
 
         // R21: delivered does NOT auto-update spare_parts.current_stock.
         // The dedicated 'procurement.delivered_pending_receipt' event links
@@ -101,7 +107,7 @@ export async function updateProcurementStatusAction(id: string, status: string):
         });
         if (sparePartId) receiptParams.set('partId', sparePartId);
         if (requestedQuantity) receiptParams.set('quantity', String(requestedQuantity));
-        await emitNotificationEvent({
+        const pendingReceiptNotification = await createNotificationEvent({
           event_type: 'procurement.delivered_pending_receipt',
           source_table: 'procurement_requests',
           source_id: id,
@@ -118,11 +124,22 @@ export async function updateProcurementStatusAction(id: string, status: string):
             stock_receipt_prefill_href: `/spare-parts?${receiptParams.toString()}`,
           },
         });
+        if (notificationDeliveryNeedsReview(pendingReceiptNotification)) {
+          notificationWarning = NOTIFICATION_DELIVERY_REVIEW_WARNING;
+          notificationResult = {
+            event_id: pendingReceiptNotification.eventId ?? null,
+            event_type: pendingReceiptNotification.eventType,
+            notification_count: pendingReceiptNotification.notificationCount,
+            recipients_resolved: pendingReceiptNotification.recipientsResolved,
+            warnings: pendingReceiptNotification.warnings,
+            errors: pendingReceiptNotification.errors,
+          };
+        }
 
         // Existing event preserved for downstream consumers that already
         // subscribe to the legacy name. The pending-receipt event above is
         // the new signal Store User should act on.
-        await emitNotificationEvent({
+        await createNotificationEvent({
           event_type: 'procurement.delivered',
           source_table: 'procurement_requests',
           source_id: id,
@@ -134,6 +151,8 @@ export async function updateProcurementStatusAction(id: string, status: string):
         });
       } catch (e) {
         console.error('[notifications] procurement.delivered emit failed:', e);
+        notificationWarning = NOTIFICATION_DELIVERY_REVIEW_WARNING;
+        notificationResult = { error: e instanceof Error ? e.message : 'unknown_notification_error' };
       }
     }
 
@@ -145,7 +164,15 @@ export async function updateProcurementStatusAction(id: string, status: string):
       entityId: id,
     }).catch(() => undefined);
     revalidateMany(procurementPaths);
-    return { success: true, data: result.data };
+    return {
+      success: true,
+      data: {
+        ...(result.data as Record<string, unknown>),
+        ...(notificationWarning
+          ? { notification_warning: notificationWarning, notification_result: notificationResult }
+          : {}),
+      },
+    };
   } catch (err) {
     return actionError(err, 'Failed to update procurement status');
   }

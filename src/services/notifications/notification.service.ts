@@ -4,6 +4,7 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import type {
   NotificationCategory,
   NotificationDiagnostics,
@@ -157,7 +158,7 @@ export async function markAllMyNotificationsRead(): Promise<{ ok: boolean; updat
 }
 
 export async function getNotificationDiagnostics(): Promise<NotificationDiagnostics> {
-  const client = await db();
+  const client = (createAdminClient() as DbClient | null) ?? (await db());
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const todayIso = today.toISOString();
@@ -182,7 +183,7 @@ export async function getNotificationDiagnostics(): Promise<NotificationDiagnost
     client.from('notifications').select('id', { count: 'exact', head: true }).gte('created_at', todayIso),
     client.from('notifications').select('id', { count: 'exact', head: true }).eq('status', 'unread'),
     client.from('notifications').select('id', { count: 'exact', head: true }).eq('status', 'unread').eq('priority', 'critical'),
-    client.from('notification_rule_logs').select('id', { count: 'exact', head: true }).eq('status', 'failed').gte('created_at', todayIso),
+    client.from('notification_rule_logs').select('id', { count: 'exact', head: true }).in('status', ['failed', 'no_recipients', 'no_rule']).gte('created_at', todayIso),
     client.from('notification_deliveries').select('id', { count: 'exact', head: true }).gte('created_at', todayIso),
     client.from('notification_deliveries').select('id', { count: 'exact', head: true }).eq('status', 'sent').gte('created_at', todayIso),
     client.from('notification_deliveries').select('id', { count: 'exact', head: true }).eq('status', 'skipped').gte('created_at', todayIso),
@@ -190,11 +191,105 @@ export async function getNotificationDiagnostics(): Promise<NotificationDiagnost
     client.from('notification_deliveries').select('id', { count: 'exact', head: true }).eq('channel', 'telegram_monitor').gte('created_at', todayIso),
   ]);
 
-  const [recentEventsRes, recentRuleFailuresRes, recentDeliveriesRes] = await Promise.all([
+  const [
+    recentEventsRes,
+    recentRuleFailuresRes,
+    recentRuleLogsRes,
+    recentNotificationsRes,
+    recentDeliveriesRes,
+    recentZeroRecipientRes,
+    recentInsertFailureRes,
+    recentTelegramIssueRes,
+    profilesRes,
+    userRolesRes,
+    telegramConnectionsRes,
+  ] = await Promise.all([
     client.from('notification_events').select('*').order('created_at', { ascending: false }).limit(10),
-    client.from('notification_rule_logs').select('*').eq('status', 'failed').order('created_at', { ascending: false }).limit(10),
+    client.from('notification_rule_logs').select('*').in('status', ['failed', 'no_recipients', 'no_rule']).order('created_at', { ascending: false }).limit(10),
+    client.from('notification_rule_logs').select('*').order('created_at', { ascending: false }).limit(20),
+    client.from('notifications').select('*').order('created_at', { ascending: false }).limit(20),
     client.from('notification_deliveries').select('*').order('created_at', { ascending: false }).limit(20),
+    client.from('notification_events').select('*').eq('processing_status', 'failed').ilike('processing_error', '%zero recipients%').order('created_at', { ascending: false }).limit(1),
+    client.from('notification_events').select('*').eq('processing_status', 'failed').ilike('processing_error', '%Notification insert failed%').order('created_at', { ascending: false }).limit(1),
+    client.from('notification_deliveries').select('*').in('status', ['skipped', 'failed']).order('created_at', { ascending: false }).limit(1),
+    client.from('profiles').select('id, full_name, email, user_id, department_id, is_active').eq('is_active', true).limit(500),
+    client.from('user_roles').select('user_id, roles(name)').limit(2000),
+    client.from('telegram_connections').select('profile_id, is_enabled').eq('is_enabled', true).limit(1000),
   ]);
+
+  const recentEvents = (recentEventsRes.data as NotificationEventRow[] | null) ?? [];
+  const recentNotifications = (recentNotificationsRes.data as NotificationRow[] | null) ?? [];
+  const recentDeliveries = (recentDeliveriesRes.data as NotificationDeliveryRow[] | null) ?? [];
+  const profileRows = ((profilesRes.data ?? []) as Array<{
+    id: string;
+    full_name: string | null;
+    email: string | null;
+    user_id: string | null;
+    department_id: string | null;
+    is_active: boolean | null;
+  }>);
+  const rolesByProfile = new Map<string, string[]>();
+  for (const row of ((userRolesRes.data ?? []) as Array<{ user_id: string | null; roles: { name?: string | null } | null }>)) {
+    if (!row.user_id) continue;
+    const name = row.roles?.name ?? null;
+    if (!name) continue;
+    rolesByProfile.set(row.user_id, [...(rolesByProfile.get(row.user_id) ?? []), name]);
+  }
+  const telegramProfiles = new Set(
+    ((telegramConnectionsRes.data ?? []) as Array<{ profile_id: string | null; is_enabled: boolean | null }>)
+      .filter((row) => row.profile_id && row.is_enabled !== false)
+      .map((row) => row.profile_id as string),
+  );
+  const recipientProfiles = profileRows.map((profile) => ({
+    id: profile.id,
+    full_name: profile.full_name,
+    email: profile.email,
+    user_id: profile.user_id,
+    department_id: profile.department_id,
+    is_active: profile.is_active,
+    roleNames: rolesByProfile.get(profile.id) ?? [],
+    telegramConnected: telegramProfiles.has(profile.id),
+  }));
+  const roleNames = Array.from(new Set(recipientProfiles.flatMap((profile) => profile.roleNames))).sort();
+  const roleRecipientCounts = roleNames.map((role) => {
+    const members = recipientProfiles.filter((profile) => profile.roleNames.includes(role));
+    return {
+      role,
+      active_profiles: members.length,
+      auth_linked_profiles: members.filter((profile) => !!profile.user_id).length,
+      telegram_connected_profiles: members.filter((profile) => profile.telegramConnected).length,
+    };
+  });
+
+  const latestNotification = recentNotifications[0] ?? null;
+  const latestEvent = latestNotification?.event_id
+    ? recentEvents.find((event) => event.id === latestNotification.event_id) ?? null
+    : null;
+  const latestDelivery = latestNotification
+    ? recentDeliveries.find((delivery) => delivery.notification_id === latestNotification.id) ?? null
+    : null;
+  const latestEventToNotificationMs = latestNotification && latestEvent
+    ? new Date(latestNotification.created_at).getTime() - new Date(latestEvent.created_at).getTime()
+    : null;
+  const latestNotificationToDeliveryMs = latestNotification && latestDelivery
+    ? new Date(latestDelivery.created_at).getTime() - new Date(latestNotification.created_at).getTime()
+    : null;
+
+  const recentZeroRecipientEvent = ((recentZeroRecipientRes.data as NotificationEventRow[] | null) ?? [])[0] ?? null;
+  const recentInAppInsertFailure = ((recentInsertFailureRes.data as NotificationEventRow[] | null) ?? [])[0] ?? null;
+  const recentTelegramIssue = ((recentTelegramIssueRes.data as NotificationDeliveryRow[] | null) ?? [])[0] ?? null;
+  const instantDeliveryHealth: NotificationDiagnostics['instant_delivery_health'] =
+    (eventsFailedTodayRes.count ?? 0) > 0 || !!recentZeroRecipientEvent || !!recentInAppInsertFailure
+      ? 'critical'
+      : (eventsPendingRes.count ?? 0) > 0 || (deliveriesFailedRes.count ?? 0) > 0
+        ? 'warning'
+        : 'healthy';
+  const instantDeliveryMessage =
+    instantDeliveryHealth === 'critical'
+      ? 'Workflow notification fan-out has failed or resolved zero recipients recently.'
+      : instantDeliveryHealth === 'warning'
+        ? 'Notification rows are being created, but pending events or delivery failures need review.'
+        : 'Recent workflow notifications are processing synchronously.';
 
   return {
     events_today: eventsTodayRes.count ?? 0,
@@ -214,9 +309,20 @@ export async function getNotificationDiagnostics(): Promise<NotificationDiagnost
     telegram_monitor_enabled: isTelegramMonitorConfigured(),
     telegram_monitor_chat_id_present: !!getTelegramMonitorChatId(),
     telegram_monitor_chat_id_masked: maskTelegramChatId(getTelegramMonitorChatId() ?? null),
-    recent_events: (recentEventsRes.data as NotificationEventRow[]) ?? [],
+    recent_events: recentEvents,
     recent_rule_failures: (recentRuleFailuresRes.data as NotificationRuleLogRow[]) ?? [],
-    recent_deliveries: (recentDeliveriesRes.data as NotificationDeliveryRow[]) ?? [],
+    recent_rule_logs: (recentRuleLogsRes.data as NotificationRuleLogRow[]) ?? [],
+    recent_notifications: recentNotifications,
+    recent_deliveries: recentDeliveries,
+    recent_zero_recipient_event: recentZeroRecipientEvent,
+    recent_in_app_insert_failure: recentInAppInsertFailure,
+    recent_telegram_issue: recentTelegramIssue,
+    instant_delivery_health: instantDeliveryHealth,
+    instant_delivery_message: instantDeliveryMessage,
+    latest_event_to_notification_ms: Number.isFinite(latestEventToNotificationMs ?? Number.NaN) ? latestEventToNotificationMs : null,
+    latest_notification_to_delivery_ms: Number.isFinite(latestNotificationToDeliveryMs ?? Number.NaN) ? latestNotificationToDeliveryMs : null,
+    role_recipient_counts: roleRecipientCounts,
+    recipient_profiles: recipientProfiles,
   };
 }
 
@@ -243,7 +349,7 @@ export async function listNotificationDeliveries(
 }
 
 export async function listNotificationRuleLogs(
-  options: { limit?: number; statusFilter?: 'matched' | 'skipped' | 'failed' } = {},
+  options: { limit?: number; statusFilter?: 'matched' | 'skipped' | 'failed' | 'no_recipients' | 'no_rule' } = {},
 ): Promise<NotificationRuleLogRow[]> {
   const client = await db();
   let q = client.from('notification_rule_logs').select('*').order('created_at', { ascending: false });

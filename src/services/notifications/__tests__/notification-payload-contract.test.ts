@@ -149,3 +149,40 @@ test('PART 4: recipient resolver does NOT confuse auth uid with profile id', () 
   assert.match(src, /NOTIFICATION_RECIPIENT_IDENTITY_CONTRACT/);
   assert.match(src, /recipientProfileId.*profiles\.id/);
 });
+
+test('INSTANT-01: notification engine uses trusted server fan-out and records no-recipient states', () => {
+  const src = readSource('src/services/notifications/notification-engine.ts');
+  assert.match(src, /createAdminClient/);
+  assert.match(src, /SUPABASE_SERVICE_ROLE_KEY/);
+  assert.match(src, /no_recipients/);
+  assert.match(src, /no_rule/);
+  assert.match(src, /notificationDeliveryNeedsReview/);
+});
+
+test('INSTANT-02: migration 00076 enables rule diagnostics and realtime notifications', () => {
+  const src = readSource('supabase/migrations/00076_notification_instant_fanout.sql');
+  assert.match(src, /no_recipients/);
+  assert.match(src, /no_rule/);
+  assert.match(src, /ALTER TABLE notifications REPLICA IDENTITY FULL/);
+  assert.match(src, /ALTER PUBLICATION supabase_realtime ADD TABLE notifications/);
+});
+
+test('INSTANT-03: bell and notifications page use realtime/event refresh, not 45-second polling only', () => {
+  const bell = readSource('src/components/notifications/NotificationBell.tsx');
+  const page = readSource('src/app/(dashboard)/notifications/page.tsx');
+  assert.match(bell, /useNotificationRealtime/);
+  assert.match(bell, /publishNotificationsUpdated/);
+  assert.doesNotMatch(bell, /45_000/);
+  assert.match(bell, /15_000/);
+  assert.match(page, /useNotificationRealtime/);
+  assert.match(page, /publishNotificationsUpdated/);
+});
+
+test('INSTANT-04: workflow warnings use review wording instead of generic queue failure', () => {
+  const pm = readSource('src/actions/pm.actions.ts');
+  const pmPage = readSource('src/app/(dashboard)/pm/schedules/[id]/page.tsx');
+  assert.doesNotMatch(pm, /notification_queue_failed/);
+  assert.doesNotMatch(pmPage, /notification delivery could not be queued/);
+  assert.match(pm, /notification_delivery_needs_review/);
+  assert.match(pmPage, /notification delivery needs review/);
+});

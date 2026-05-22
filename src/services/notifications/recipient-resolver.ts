@@ -17,6 +17,7 @@ export const NOTIFICATION_RECIPIENT_IDENTITY_CONTRACT = {
 
 interface ProfileRolesRow {
   id: string;
+  user_id: string | null;
   full_name: string | null;
   email: string | null;
   department_id: string | null;
@@ -46,6 +47,8 @@ function toRecipient(row: ProfileRolesRow): RecipientProfile | null {
     full_name: row.full_name,
     email: row.email,
     department_id: row.department_id,
+    user_id: (row as ProfileRolesRow & { user_id?: string | null }).user_id ?? null,
+    is_active: row.is_active,
     primaryRole,
     roleNames,
   };
@@ -62,7 +65,7 @@ async function fetchProfilesByRoleName(
       // PostgREST FK hint: user_roles has two FKs to profiles (user_id,
       // assigned_by). Without the hint, PGRST201 silently zeros every
       // recipient lookup and notifications never reach any role.
-      'id, full_name, email, department_id, is_active, user_roles!user_roles_user_id_fkey!inner(roles!inner(name))',
+      'id, user_id, full_name, email, department_id, is_active, user_roles!user_roles_user_id_fkey!inner(roles!inner(name))',
     )
     .eq('is_active', true)
     .eq('user_roles.roles.name', roleName);
@@ -139,7 +142,7 @@ export async function getProfileById(
       // PostgREST FK hint: user_roles has two FKs to profiles (user_id,
       // assigned_by). Without the hint, PGRST201 silently zeros every
       // recipient lookup and notifications never reach any role.
-      'id, full_name, email, department_id, is_active, user_roles!user_roles_user_id_fkey!inner(roles!inner(name))',
+      'id, user_id, full_name, email, department_id, is_active, user_roles!user_roles_user_id_fkey!inner(roles!inner(name))',
     )
     .eq('id', profileId)
     .maybeSingle()) as { data: ProfileRolesRow | null; error: unknown };
