@@ -245,6 +245,8 @@ function OperationalEquipmentListPage() {
   const router = useRouter();
   const { roles, canManageEquipment, canCreateRequests } = useRole();
   const canManageQr = roles.some((role) => role === 'developer' || role === 'admin');
+  // BME Head sees the top-level QR navigation links but not the per-row / bulk action UI.
+  const canSeeQrLinks = roles.some((role) => role === 'developer' || role === 'admin' || role === 'bme_head');
 
   const [allRows, setAllRows] = useState<EnrichedRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -601,19 +603,19 @@ function OperationalEquipmentListPage() {
         }}
         availableEvidenceLinks={[
           { label: 'Equipment', href: '/equipment', type: 'module' },
-          ...(canManageQr ? [
+          ...(canSeeQrLinks ? [
             { label: 'QR Coverage', href: '/equipment/qr-coverage', type: 'qr' },
             { label: 'QR Scans', href: '/equipment/qr-scans', type: 'qr' },
           ] : []),
         ]}
-        quickPrompts={canManageQr ? ['Which equipment needs attention?', 'Check QR coverage issues.', 'Which assets have high risk?'] : ['Which equipment needs attention?', 'Which assets have high risk?', 'Which assets need an open request?']}
+        quickPrompts={canSeeQrLinks ? ['Which equipment needs attention?', 'Check QR coverage issues.', 'Which assets have high risk?'] : ['Which equipment needs attention?', 'Which assets have high risk?', 'Which assets need an open request?']}
       />
       <PageHeader
         title="Equipment"
         description="Asset-level operational control — condition, maintenance state, risk, and actions"
         actions={
           <div className="flex flex-wrap gap-2">
-            {canManageQr && (
+            {canSeeQrLinks && (
               <>
                 <Link href="/equipment/qr-coverage">
                   <Button variant="outline">

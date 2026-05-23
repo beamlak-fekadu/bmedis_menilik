@@ -123,9 +123,10 @@ const DEVELOPER_CAPS: Capability[] = [
   'developer.diagnostics', 'developer.refresh_snapshots', 'developer.sandbox', 'developer.demo_reset',
 ];
 
-// BME Head = Developer minus developer-only tools and minus Developer Lab nav.
+// BME Head = Developer minus developer-only tools, Developer Lab nav, and Compliance Overview
+// (BME Head uses the dedicated /pm and /calibration pages as operational evidence).
 const BME_HEAD_CAPS: Capability[] = DEVELOPER_CAPS.filter((c) =>
-  !c.startsWith('developer.') && c !== 'nav.developer_lab'
+  !c.startsWith('developer.') && c !== 'nav.developer_lab' && c !== 'nav.compliance'
 );
 
 export const CAPABILITY_MATRIX: Matrix = {
@@ -133,7 +134,8 @@ export const CAPABILITY_MATRIX: Matrix = {
 
   // Legacy 'admin' kept for backward compatibility with seed/02. Treat it as
   // BME Head plus user/role management — same surface, no developer-only.
-  admin: caps(...BME_HEAD_CAPS),
+  // Admin retains nav.compliance because the /compliance page explicitly allows admin.
+  admin: caps(...BME_HEAD_CAPS, 'nav.compliance'),
 
   bme_head: caps(...BME_HEAD_CAPS),
 
