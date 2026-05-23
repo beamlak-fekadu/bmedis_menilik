@@ -65,8 +65,8 @@ export default function QrIdentityPanel({
   categoryName,
   criticalityLevel,
 }: Props) {
-  const { isDeveloper, isAdmin } = useRole();
-  const canAdmin = isDeveloper || isAdmin;
+  const { isDeveloper, isAdmin, isBmeHead } = useRole();
+  const canAdmin = isDeveloper || isAdmin || isBmeHead;
   const downloadCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
   const [identity, setIdentity] = useState<Identity | null>(null);
