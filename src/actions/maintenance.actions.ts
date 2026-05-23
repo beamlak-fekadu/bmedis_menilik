@@ -1128,6 +1128,8 @@ export async function declareWorkOrderPartNeededAction(payload: Record<string, u
     revalidateMany([
       ...maintenancePaths,
       `/maintenance/work-orders/${parsed.work_order_id}`,
+      '/work-orders',
+      '/command',
       '/spare-parts',
       '/logistics',
     ]);
@@ -1180,6 +1182,8 @@ export async function updateWorkOrderPartNeededStatusAction(
     revalidateMany([
       ...maintenancePaths,
       ...(existing.work_order_id ? [`/maintenance/work-orders/${existing.work_order_id}`] : []),
+      '/work-orders',
+      '/command',
       '/spare-parts',
       '/logistics',
     ]);

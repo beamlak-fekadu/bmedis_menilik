@@ -126,7 +126,7 @@ export default function RequestsHubClient({ data }: { data: RequestsHubData }) {
           source={assetFilter.source}
         />
       ) : null}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-4">
         {data.categoryCards.map((card) => {
           const Icon = ICONS[card.type];
           const active = selectedType === card.type;
@@ -135,23 +135,23 @@ export default function RequestsHubClient({ data }: { data: RequestsHubData }) {
               key={card.type}
               type="button"
               onClick={() => setFilter(() => setSelectedType(active ? 'all' : card.type))}
-              className={`panel-surface rounded-lg p-4 text-left transition-colors hover:border-[var(--brand)]/60 ${
+              className={`panel-surface min-h-[132px] rounded-lg p-4 text-left transition-colors hover:border-[var(--brand)]/60 ${
                 active ? 'border-[var(--brand)]/70 bg-[var(--brand)]/10' : ''
               }`}
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="text-sm font-medium text-[var(--text-muted)]">{card.label}</p>
-                  <p className="mt-1 text-xl font-bold text-[var(--foreground)] xl:text-2xl">{card.configured ? card.total : '0'}</p>
+                  <p className="text-sm font-semibold leading-snug text-[var(--foreground)]">{card.label}</p>
+                  <p className="mt-3 text-3xl font-bold tracking-normal text-[var(--foreground)]">{card.configured ? card.total : '0'}</p>
                 </div>
                 <span className="shrink-0 rounded-lg bg-[var(--brand)]/15 p-1.5 text-[var(--brand)]">
                   <Icon className="h-4 w-4" />
                 </span>
               </div>
-              <p className="mt-2 text-xs text-[var(--text-muted)]">
+              <p className="mt-3 text-sm text-[var(--text-muted)]">
                 {card.configured ? `${card.open} open • ${card.countLabel}` : 'Not configured'}
               </p>
-              <p className="mt-1 truncate text-xs text-[var(--text-muted)]">Owner: {card.owner}</p>
+              <p className="mt-1 line-clamp-2 text-xs text-[var(--text-muted)]">Owner: {card.owner}</p>
             </button>
           );
         })}

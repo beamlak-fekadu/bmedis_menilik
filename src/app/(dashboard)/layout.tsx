@@ -37,10 +37,9 @@ const EXTRA_ROUTE_RULES: Array<{ prefix: string; roles: RoleName[] }> = [
   { prefix: '/pm/schedules/', roles: ['developer', 'admin', 'bme_head', 'technician', 'viewer'] },
   // Viewer drilldowns into evidence (procurement, replacement) — read-only.
   { prefix: '/command/drilldown/', roles: ['developer', 'admin', 'bme_head', 'technician', 'department_head', 'department_user', 'store_user', 'viewer'] },
-  // Compliance Overview is primarily a Viewer route, but allowed for
-  // developer/admin/bme_head for parity, and for department roles which see
-  // a department-scoped variant.
-  { prefix: '/compliance', roles: ['developer', 'admin', 'bme_head', 'viewer', 'department_head', 'department_user'] },
+  // Compliance Overview is hidden from BME Head; BME Head uses the dedicated
+  // PM and Calibration pages as the operational evidence source.
+  { prefix: '/compliance', roles: ['developer', 'admin', 'viewer', 'department_head', 'department_user'] },
   { prefix: '/requests', roles: ['developer', 'admin', 'bme_head', 'technician', 'department_head', 'department_user', 'store_user', 'viewer'] },
   { prefix: '/documents', roles: ['developer', 'admin', 'bme_head', 'technician'] },
   { prefix: '/installation', roles: ['developer', 'admin', 'bme_head', 'technician'] },

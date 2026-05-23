@@ -15,6 +15,10 @@ function readEnv(name: string) {
   return process.env[name]?.trim() ?? '';
 }
 
+export function isSmtpConfigured() {
+  return Boolean(readEnv('SMTP_HOST'));
+}
+
 function readPort() {
   const raw = readEnv('SMTP_PORT');
   if (!raw) return 587;

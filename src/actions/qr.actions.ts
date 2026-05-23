@@ -38,6 +38,7 @@ import {
 import type { AssetQrScanSummary } from '@/types/qr';
 
 const assetIdSchema = z.string().uuid({ message: 'Invalid asset id' });
+const assetIdentifierSchema = z.string().trim().min(1, 'Asset id is required');
 const reasonSchema = z.string().trim().max(500).optional().nullable();
 
 const qrRevalidatePaths = ['/equipment', '/inventory', '/developer-lab', '/command', '/equipment/qr-labels', '/equipment/qr-coverage'];
@@ -56,6 +57,27 @@ function actionFailureFrom<T>(err: unknown, fallback: string): ActionResult<T> {
     return failure<T>(String((err as { message: unknown }).message));
   }
   return failure<T>(fallback);
+}
+
+async function resolveAssetId(
+  supabase: Awaited<ReturnType<typeof import('@/lib/supabase/server').createClient>>,
+  assetIdentifier: string,
+) {
+  const candidate = assetIdentifierSchema.parse(assetIdentifier);
+  const parsed = assetIdSchema.safeParse(candidate);
+  if (parsed.success) return parsed.data;
+
+  const { data, error } = await supabase
+    .from('equipment_assets')
+    .select('id')
+    .eq('asset_code', candidate)
+    .is('deleted_at', null)
+    .maybeSingle();
+
+  if (error) throw new Error(error.message);
+  const resolved = (data as { id?: string } | null)?.id;
+  if (!resolved) throw new Error('Invalid asset id');
+  return resolved;
 }
 
 export async function ensureAssetQrTokenAction(
@@ -116,9 +138,9 @@ export async function regenerateAssetQrTokenAction(
 
 export async function markQrLabelPrintedAction(assetId: string): Promise<ActionResult> {
   try {
-    const parsedId = assetIdSchema.parse(assetId);
     const { supabase, profile, error } = await getActionContextForCapability('equipment.edit');
     if (error || !profile) return { success: false, error };
+    const parsedId = await resolveAssetId(supabase, assetId);
 
     await markQrLabelPrinted(parsedId, supabase);
 
@@ -139,9 +161,9 @@ export async function markQrLabelPrintedAction(assetId: string): Promise<ActionR
 
 export async function markQrLabelAttachedAction(assetId: string): Promise<ActionResult> {
   try {
-    const parsedId = assetIdSchema.parse(assetId);
     const { supabase, profile, error } = await getActionContextForCapability('equipment.edit');
     if (error || !profile) return { success: false, error };
+    const parsedId = await resolveAssetId(supabase, assetId);
 
     await markQrLabelAttached(parsedId, supabase);
 

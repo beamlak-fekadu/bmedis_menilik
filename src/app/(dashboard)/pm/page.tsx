@@ -28,7 +28,6 @@ import { generateNextPMScheduleAction, pausePMPlanAction, resumePMPlanAction } f
 import { useToast } from '@/components/ui/Toast';
 import { useRole } from '@/hooks/useRole';
 import type { PMScheduleStatus } from '@/types/domain';
-import { AskAiButton } from '@/components/assistant/AskAiButton';
 import { ScoreExplanation } from '../command/_components/ScoreExplanation';
 import {
   COMPLIANCE_THRESHOLD,
@@ -710,11 +709,6 @@ export default function PMPage() {
         breadcrumbs={[{ label: 'Command Center', href: '/command' }, { label: 'Preventive Maintenance' }]}
         actions={
           <div className="flex flex-wrap gap-2">
-            <AskAiButton
-              moduleLabel="Preventive Maintenance"
-              label="Explain PM issues"
-              seedPrompt="Explain overdue PM concerns and what should be prioritized first."
-            />
             <Link href="/calendar?type=pm">
               <Button variant="outline" size="sm">
                 <CalendarDays className="h-4 w-4" />

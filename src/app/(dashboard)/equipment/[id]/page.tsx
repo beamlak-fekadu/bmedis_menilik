@@ -875,7 +875,7 @@ export default function EquipmentDetailPage({ params }: { params: Promise<{ id: 
         </HealthCard>
       </div>
 
-      {/* QR Identity panel (admin actions for developer/admin/bme_head; read-only badge otherwise) */}
+      {/* QR Identity panel (admin actions for developer/admin; read-only badge otherwise) */}
       <div id="qr-identity" className="mb-6 scroll-mt-24">
         <QrIdentityPanel
           assetId={id}

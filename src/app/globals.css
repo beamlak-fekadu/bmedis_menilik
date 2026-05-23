@@ -292,6 +292,38 @@ body,
   opacity: 1;
 }
 
+/* Native form controls used throughout older pages should follow the theme
+   even when a component forgot to opt into .input-surface. */
+:where(
+  input:not([type='button']):not([type='submit']):not([type='reset']):not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']):not([type='file']),
+  select,
+  textarea
+) {
+  background-color: var(--surface-1);
+  border-color: var(--border-subtle);
+  color: var(--foreground);
+  caret-color: var(--foreground);
+}
+
+:where(
+  input:not([type='button']):not([type='submit']):not([type='reset']):not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']):not([type='file']),
+  textarea
+)::placeholder {
+  color: var(--text-subtle);
+  opacity: 1;
+}
+
+:where(select option, select optgroup) {
+  background-color: var(--surface-solid);
+  color: var(--foreground);
+}
+
+:where(input:-webkit-autofill, textarea:-webkit-autofill, select:-webkit-autofill) {
+  -webkit-text-fill-color: var(--foreground);
+  transition: background-color 9999s ease-in-out 0s;
+  box-shadow: 0 0 0 1000px var(--surface-solid) inset;
+}
+
 /* ── Global cursor rules ────────────────────────────────────────────────────
    Make cursor behavior consistent system-wide without touching every page:
    - clickable/navigational elements get the pointer hand

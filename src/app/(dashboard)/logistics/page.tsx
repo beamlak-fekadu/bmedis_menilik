@@ -10,7 +10,6 @@ import { cardItem, cardStagger } from '@/lib/ui/motion-presets';
 import AssistantPageContextBridge from '@/components/assistant/AssistantPageContextBridge';
 import ClearFiltersButton from '@/components/ui/ClearFiltersButton';
 import Table from '@/components/ui/Table';
-import { AskAiButton } from '@/components/assistant/AskAiButton';
 import { getLowStockParts, getSpareParts } from '@/services/spare-parts.service';
 import { getProcurementPipeline } from '@/services/procurement.service';
 import { createClient } from '@/lib/supabase/client';
@@ -423,11 +422,6 @@ function OperationalLogisticsPage() {
         description="Store operations for stock receiving, request, issue, balance, and usage traceability."
         actions={
           <div className="flex items-center gap-2">
-            <AskAiButton
-              moduleLabel="Logistics"
-              label="Explain stock issues"
-              seedPrompt="Explain likely stock risks and what actions to prioritize for logistics continuity."
-            />
             <Badge variant="warning">Stockout visibility active</Badge>
           </div>
         }

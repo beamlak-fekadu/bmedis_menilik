@@ -86,7 +86,8 @@ export default function BmedisTrainingRequestForm({ defaults }: { defaults: Bmed
       return;
     }
 
-    toast('success', 'BMEDIS training request sent');
+    const warning = (result.data as { warning?: string | null } | undefined)?.warning;
+    toast(warning ? 'warning' : 'success', warning ?? 'BMEDIS training request sent');
     setSubmitted(true);
   }
 

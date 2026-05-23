@@ -244,7 +244,7 @@ export default function EquipmentListPage() {
 function OperationalEquipmentListPage() {
   const router = useRouter();
   const { roles, canManageEquipment, canCreateRequests } = useRole();
-  const canManageQr = roles.some((role) => role === 'developer' || role === 'admin' || role === 'bme_head');
+  const canManageQr = roles.some((role) => role === 'developer' || role === 'admin');
 
   const [allRows, setAllRows] = useState<EnrichedRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -601,10 +601,12 @@ function OperationalEquipmentListPage() {
         }}
         availableEvidenceLinks={[
           { label: 'Equipment', href: '/equipment', type: 'module' },
-          { label: 'QR Coverage', href: '/equipment/qr-coverage', type: 'qr' },
-          { label: 'QR Scans', href: '/equipment/qr-scans', type: 'qr' },
+          ...(canManageQr ? [
+            { label: 'QR Coverage', href: '/equipment/qr-coverage', type: 'qr' },
+            { label: 'QR Scans', href: '/equipment/qr-scans', type: 'qr' },
+          ] : []),
         ]}
-        quickPrompts={['Which equipment needs attention?', 'Check QR coverage issues.', 'Which assets have high risk?']}
+        quickPrompts={canManageQr ? ['Which equipment needs attention?', 'Check QR coverage issues.', 'Which assets have high risk?'] : ['Which equipment needs attention?', 'Which assets have high risk?', 'Which assets need an open request?']}
       />
       <PageHeader
         title="Equipment"

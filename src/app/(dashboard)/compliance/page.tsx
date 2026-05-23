@@ -23,7 +23,8 @@ import {
 // v_calibration_due, v_overdue_pm — so the numbers agree with /pm, /calibration,
 // and the Reports module.
 //
-// This route is Viewer-first but also accessible to Developer/Admin/BME Head.
+// This route is hidden from BME Head. BME Head uses the dedicated PM and
+// Calibration pages as operational evidence.
 
 interface PMScheduleRow {
   id: string;
@@ -84,7 +85,7 @@ function ComplianceCard({ label, value, sub, icon, tone = 'info' }: { label: str
 }
 
 export default async function ComplianceOverviewPage() {
-  const profile = await requireRole(['developer', 'admin', 'bme_head', 'viewer', 'department_head', 'department_user']);
+  const profile = await requireRole(['developer', 'admin', 'viewer', 'department_head', 'department_user']);
   const supabase = await createClient();
   const { nowMs, todayIso, in30dIso, last90dIso } = buildDateWindow();
 

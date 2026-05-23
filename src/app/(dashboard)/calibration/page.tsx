@@ -68,6 +68,7 @@ function formatLabel(val: string) {
 type CalRecord = Record<string, unknown>;
 type CalRequest = Record<string, unknown>;
 type CalibrationTab = 'requests' | 'upcoming' | 'overdue' | 'records';
+type CalibrationTriageTab = 'urgent' | 'scheduling' | 'awaiting' | 'overdue';
 type CalibrationFilter =
   | 'all'
   | 'due-soon'
@@ -172,6 +173,7 @@ export default function CalibrationPage() {
     if (requested === 'due-soon') return 'due-soon';
     return 'all';
   });
+  const [triageTab, setTriageTab] = useState<CalibrationTriageTab>('urgent');
 
   const [recordModalOpen, setRecordModalOpen] = useState(false);
   const [requestModalOpen, setRequestModalOpen] = useState(false);
@@ -704,6 +706,13 @@ export default function CalibrationPage() {
     || (awaitingActionRequests.length > 0 ? 'requests' : overdueRows.length > 0 ? 'overdue' : dueSoonRows.length > 0 ? 'upcoming' : 'records');
   const selectedTab = activeTab || defaultTab;
   const selectedFilter = activeFilter;
+  const triageGroups = [
+    { key: 'urgent' as const, title: 'Urgent Safety Risk', count: urgentSafetyRows.length, rows: urgentSafetyRows.slice(0, 8), empty: 'No urgent calibration safety risks.' },
+    { key: 'scheduling' as const, title: 'Needs Scheduling', count: needsSchedulingRows.length, rows: needsSchedulingRows.slice(0, 8), empty: 'No due items without a workflow.' },
+    { key: 'awaiting' as const, title: 'Awaiting Action', count: awaitingActionRequests.length, requests: awaitingActionRequests.slice(0, 8), empty: 'No calibration requests awaiting action.' },
+    { key: 'overdue' as const, title: 'Longest Overdue', count: longestOverdueRows.length, rows: longestOverdueRows, empty: 'No overdue calibration rows.' },
+  ];
+  const activeTriageGroup = triageGroups.find((group) => group.key === triageTab) ?? triageGroups[0];
 
   const filteredRecords = recordsScoped.filter((row) => {
     if (selectedFilter === 'failed-adjusted') return ['fail', 'adjusted'].includes(String(row.result ?? ''));
@@ -871,74 +880,83 @@ export default function CalibrationPage() {
             </div>
             <Badge variant="warning">Scoring method visible per item</Badge>
           </div>
-          <div className="grid gap-3 lg:grid-cols-4">
-            {[
-              { title: 'Urgent Safety Risk', rows: urgentSafetyRows.slice(0, 4), empty: 'No urgent calibration safety risks.' },
-              { title: 'Needs Scheduling', rows: needsSchedulingRows.slice(0, 4), empty: 'No due items without a workflow.' },
-              { title: 'Awaiting Action', requests: awaitingActionRequests.slice(0, 4), empty: 'No calibration requests awaiting action.' },
-              { title: 'Longest Overdue', rows: longestOverdueRows, empty: 'No overdue calibration rows.' },
-            ].map((group) => (
-              <div key={group.title} className="rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-1)] p-3">
-                <h3 className="text-sm font-semibold text-[var(--foreground)]">{group.title}</h3>
-                <div className="mt-3 space-y-2">
-                  {'requests' in group ? (
-                    (group.requests ?? []).length === 0 ? (
-                      <p className="text-sm text-[var(--text-muted)]">{group.empty}</p>
-                    ) : (group.requests ?? []).map((request) => {
-                      const asset = calibrationAsset(request);
-                      return (
-                        <Link key={String(request.id)} href={`/calibration/requests/${request.id as string}${request.status === 'approved' ? '?action=schedule' : ''}`} className="block rounded-md bg-[var(--surface-2)]/70 p-2 hover:bg-[var(--surface-2)]">
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="min-w-0">
-                              <p className="truncate text-sm font-medium text-[var(--foreground)]">{asset?.asset_code ?? 'Request'} · {asset?.name ?? String(request.request_number ?? 'Calibration request')}</p>
-                              <p className="text-xs text-[var(--text-muted)]">{asset?.departments?.name ?? 'No department'} · {formatLabel(String(request.status ?? 'pending'))}</p>
-                            </div>
-                            <span className="text-xs font-medium text-[var(--brand)]">{request.status === 'pending' ? 'Review Calibration Request' : 'Schedule Calibration'}</span>
-                          </div>
-                        </Link>
-                      );
-                    })
-                  ) : (group.rows ?? []).length === 0 ? (
-                    <p className="text-sm text-[var(--text-muted)]">{group.empty}</p>
-                  ) : (group.rows ?? []).map((row) => {
-                    const asset = calibrationAsset(row);
-                    const request = openRequestForAsset(String(row.asset_id ?? asset?.id ?? ''));
-                    const factors = calibrationFactors(row, request);
-                    const calType = (row.calibration_types as { name?: string } | null)?.name ?? 'Calibration';
-                    const dueText = row.next_due_date ? new Date(String(row.next_due_date)).toLocaleDateString() : '—';
-                    const actionLabel = request?.id ? 'Open Request' : 'Schedule Calibration';
-                    const actionHref = request?.id
-                      ? `/calibration/requests/${request.id as string}`
-                      : `/calibration/requests/new?assetId=${asset?.id ?? ''}&calibrationTypeId=${String(row.calibration_type_id ?? '')}&source=triage`;
-                    return (
-                      <div key={String(row.id)} className="rounded-md bg-[var(--surface-2)]/70 p-2">
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="min-w-0">
-                            <p className="truncate text-sm font-medium text-[var(--foreground)]">{asset?.asset_code ?? 'Asset'} · {asset?.name ?? 'Unknown'}</p>
-                            <p className="text-xs text-[var(--text-muted)]">{asset?.departments?.name ?? 'No department'} · {formatLabel(String(calType))} · Due {dueText}</p>
-                          </div>
-                          <div className="flex shrink-0 items-center gap-1.5">
-                            {factors.length > 0 && (
-                              <InfoPopover align="right">
-                                <p className="mb-1 font-semibold text-[var(--foreground)]">Priority drivers</p>
-                                <ul className="space-y-0.5 text-xs text-[var(--text-muted)]">
-                                  {factors.map((factor) => (
-                                    <li key={factor}>• {factor}</li>
-                                  ))}
-                                </ul>
-                              </InfoPopover>
-                            )}
-                            {asset?.id && (
-                              <Link className="text-xs font-medium text-[var(--brand)] hover:underline" href={actionHref}>{actionLabel}</Link>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
+          <div className="flex gap-2 overflow-x-auto border-b border-[var(--border-subtle)] pb-2">
+            {triageGroups.map((group) => (
+              <button
+                key={group.key}
+                type="button"
+                onClick={() => setTriageTab(group.key)}
+                className={`shrink-0 rounded-md border px-3 py-2 text-sm font-medium transition-colors ${
+                  triageTab === group.key
+                    ? 'border-[var(--brand)] bg-[var(--brand)]/15 text-[var(--foreground)]'
+                    : 'border-[var(--border-subtle)] text-[var(--text-muted)] hover:bg-[var(--surface-2)] hover:text-[var(--foreground)]'
+                }`}
+              >
+                {group.title}
+                <span className="ml-2 text-xs opacity-75">{group.count}</span>
+              </button>
             ))}
+          </div>
+
+          <div className="mt-4 rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-1)] p-3">
+            <h3 className="text-sm font-semibold text-[var(--foreground)]">{activeTriageGroup.title}</h3>
+            <div className="mt-3 grid gap-2 lg:grid-cols-2">
+              {'requests' in activeTriageGroup ? (
+                (activeTriageGroup.requests ?? []).length === 0 ? (
+                  <p className="text-sm text-[var(--text-muted)]">{activeTriageGroup.empty}</p>
+                ) : (activeTriageGroup.requests ?? []).map((request) => {
+                  const asset = calibrationAsset(request);
+                  return (
+                    <Link key={String(request.id)} href={`/calibration/requests/${request.id as string}${request.status === 'approved' ? '?action=schedule' : ''}`} className="block rounded-md bg-[var(--surface-2)]/70 p-3 hover:bg-[var(--surface-2)]">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium text-[var(--foreground)]">{asset?.asset_code ?? 'Request'} · {asset?.name ?? String(request.request_number ?? 'Calibration request')}</p>
+                          <p className="text-xs text-[var(--text-muted)]">{asset?.departments?.name ?? 'No department'} · {formatLabel(String(request.status ?? 'pending'))}</p>
+                        </div>
+                        <span className="shrink-0 text-xs font-medium text-[var(--brand)]">{request.status === 'pending' ? 'Review Request' : 'Schedule'}</span>
+                      </div>
+                    </Link>
+                  );
+                })
+              ) : (activeTriageGroup.rows ?? []).length === 0 ? (
+                <p className="text-sm text-[var(--text-muted)]">{activeTriageGroup.empty}</p>
+              ) : (activeTriageGroup.rows ?? []).map((row) => {
+                const asset = calibrationAsset(row);
+                const request = openRequestForAsset(String(row.asset_id ?? asset?.id ?? ''));
+                const factors = calibrationFactors(row, request);
+                const calType = (row.calibration_types as { name?: string } | null)?.name ?? 'Calibration';
+                const dueText = row.next_due_date ? new Date(String(row.next_due_date)).toLocaleDateString() : '—';
+                const actionLabel = request?.id ? 'Open Request' : 'Schedule Calibration';
+                const actionHref = request?.id
+                  ? `/calibration/requests/${request.id as string}`
+                  : `/calibration/requests/new?assetId=${asset?.id ?? ''}&calibrationTypeId=${String(row.calibration_type_id ?? '')}&source=triage`;
+                return (
+                  <div key={String(row.id)} className="rounded-md bg-[var(--surface-2)]/70 p-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium text-[var(--foreground)]">{asset?.asset_code ?? 'Asset'} · {asset?.name ?? 'Unknown'}</p>
+                        <p className="text-xs text-[var(--text-muted)]">{asset?.departments?.name ?? 'No department'} · {formatLabel(String(calType))} · Due {dueText}</p>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-1.5">
+                        {factors.length > 0 && (
+                          <InfoPopover align="right">
+                            <p className="mb-1 font-semibold text-[var(--foreground)]">Priority drivers</p>
+                            <ul className="space-y-0.5 text-xs text-[var(--text-muted)]">
+                              {factors.map((factor) => (
+                                <li key={factor}>• {factor}</li>
+                              ))}
+                            </ul>
+                          </InfoPopover>
+                        )}
+                        {asset?.id && (
+                          <Link className="text-xs font-medium text-[var(--brand)] hover:underline" href={actionHref}>{actionLabel}</Link>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </section>
       )}

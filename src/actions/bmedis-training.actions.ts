@@ -2,7 +2,7 @@
 
 import { z } from 'zod';
 import { actionError, getActionContextForCapability, logServerAuditEvent, type ActionResult } from './_shared';
-import { sendMail } from '@/services/email.service';
+import { isSmtpConfigured, sendMail } from '@/services/email.service';
 
 const RECIPIENT = process.env.BMEDIS_TRAINING_REQUEST_TO?.trim() || 'beamlak.work@gmail.com';
 const ALLOWED_REQUEST_ROLES = new Set(['developer', 'admin', 'bme_head']);
@@ -129,24 +129,38 @@ export async function requestBmedisSystemTrainingAction(payload: Record<string, 
       </div>
     `;
 
-    await sendMail({
-      to: RECIPIENT,
-      subject,
-      text,
-      html,
-      replyTo: { name: request.requester_name, address: request.requester_email },
-    });
+    const smtpConfigured = isSmtpConfigured();
+    if (smtpConfigured) {
+      await sendMail({
+        to: RECIPIENT,
+        subject,
+        text,
+        html,
+        replyTo: { name: request.requester_name, address: request.requester_email },
+      });
+    }
 
     await logServerAuditEvent({
       supabase,
       profileId: profile.id,
-      action: 'bmedis_training_request.email_sent',
+      action: smtpConfigured ? 'bmedis_training_request.email_sent' : 'bmedis_training_request.email_not_configured',
       entityType: 'bmedis_training_request',
       entityId: null,
       newValues: request,
+      details: smtpConfigured ? undefined : {
+        warning: 'SMTP_HOST is not configured; request was audit-logged but no outbound email was sent.',
+      },
     });
 
-    return { success: true, data: { recipient: RECIPIENT, submitted_at: submittedAt } };
+    return {
+      success: true,
+      data: {
+        recipient: RECIPIENT,
+        submitted_at: submittedAt,
+        delivery: smtpConfigured ? 'email_sent' : 'audit_logged_only',
+        warning: smtpConfigured ? null : 'SMTP_HOST is not configured, so the request was recorded in audit logs but not emailed.',
+      },
+    };
   } catch (err) {
     return actionError(err, 'Failed to send BMEDIS system training request');
   }
