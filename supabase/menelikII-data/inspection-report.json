@@ -1,0 +1,2087 @@
+{
+  "workbookPath": "/Users/beamlak/Desktop/bmedis_menilik/bmedis_menilik/supabase/menelikII-data/Menelik_II_Medical_Equipment_Management.xlsx",
+  "inspectedAt": "2026-05-26T04:25:02.150Z",
+  "sheets": [
+    {
+      "name": "Dashboard",
+      "totalRows": 19,
+      "dataRows": 15,
+      "headers": [],
+      "sourceNote": "Medical Equipment Management System — Summary Dashboard",
+      "uniqueValues": {},
+      "emptyCells": {},
+      "qualityIssues": []
+    },
+    {
+      "name": "Equipment Inventory",
+      "totalRows": 173,
+      "dataRows": 170,
+      "headers": [
+        {
+          "col": 1,
+          "value": "#"
+        },
+        {
+          "col": 2,
+          "value": "Inventory Number"
+        },
+        {
+          "col": 3,
+          "value": "Equipment Name (Standardized)"
+        },
+        {
+          "col": 4,
+          "value": "WHO Category"
+        },
+        {
+          "col": 5,
+          "value": "Original Name in Record"
+        },
+        {
+          "col": 6,
+          "value": "Department / Ward"
+        },
+        {
+          "col": 7,
+          "value": "Manufacturer / Brand"
+        },
+        {
+          "col": 8,
+          "value": "Model"
+        },
+        {
+          "col": 9,
+          "value": "Serial Number"
+        },
+        {
+          "col": 10,
+          "value": "Status"
+        }
+      ],
+      "sourceNote": "Source: 2018 E.C. First Round Inventory  |  Filtered: WHO Essential Medical Equipment (electrical/electronic only; excludes mechanical scales, exam lights, passive tools)  |  Total: 170",
+      "uniqueValues": {
+        "#": [
+          "(170 unique values — too many to list)"
+        ],
+        "Inventory Number": [
+          "(158 unique values — too many to list)"
+        ],
+        "Equipment Name (Standardized)": [
+          "(84 unique values — too many to list)"
+        ],
+        "WHO Category": [
+          "Dental Equipment",
+          "Diagnostic Imaging",
+          "ENT Equipment",
+          "Laboratory Equipment",
+          "Life Support & Respiratory",
+          "Neonatology",
+          "Ophthalmology",
+          "Patient Monitoring",
+          "Physiotherapy & Rehabilitation",
+          "Renal Dialysis",
+          "Sterilization Equipment",
+          "Surgery & Theatre",
+          "Vital Signs & Diagnostic"
+        ],
+        "Original Name in Record": [
+          "(105 unique values — too many to list)"
+        ],
+        "Department / Ward": [
+          "3rd floor",
+          "ART LAB",
+          "Abortion(Family Planning)",
+          "Adult Emergency",
+          "Blood Bank",
+          "Central Steralization",
+          "Central Triage",
+          "Compound Pharmacy",
+          "Delivery room",
+          "Dental Room",
+          "Dermathology",
+          "Dialysis center",
+          "ENT",
+          "EYE Emergency",
+          "EYE OPD",
+          "Eye OPD",
+          "Eye OR",
+          "Gelacoma",
+          "Gyni OR",
+          "ICU",
+          "Imaging",
+          "LAB,Emergency",
+          "Laboratory",
+          "Major OR",
+          "Medical Refral",
+          "NICU",
+          "Orthopedic out patient",
+          "Pediatric Emergency",
+          "biometry room(eye opd)",
+          "blood bank",
+          "dialysis center",
+          "eye OR",
+          "family planning",
+          "laboratory",
+          "microbiology",
+          "pathology"
+        ],
+        "Manufacturer / Brand": [
+          "(126 unique values — too many to list)"
+        ],
+        "Model": [
+          "(140 unique values — too many to list)"
+        ],
+        "Serial Number": [
+          "(140 unique values — too many to list)"
+        ],
+        "Status": [
+          "Functional",
+          "Non-Functional",
+          "To Be Disposed"
+        ]
+      },
+      "emptyCells": {
+        "#": 0,
+        "Inventory Number": 2,
+        "Equipment Name (Standardized)": 0,
+        "WHO Category": 0,
+        "Original Name in Record": 0,
+        "Department / Ward": 0,
+        "Manufacturer / Brand": 16,
+        "Model": 27,
+        "Serial Number": 27,
+        "Status": 0
+      },
+      "qualityIssues": []
+    },
+    {
+      "name": "Performance Verification",
+      "totalRows": 16,
+      "dataRows": 13,
+      "headers": [
+        {
+          "col": 1,
+          "value": "#"
+        },
+        {
+          "col": 2,
+          "value": "Equipment Name"
+        },
+        {
+          "col": 3,
+          "value": "Manufacturer"
+        },
+        {
+          "col": 4,
+          "value": "Model"
+        },
+        {
+          "col": 5,
+          "value": "Serial Number"
+        },
+        {
+          "col": 6,
+          "value": "Maintenance Site"
+        },
+        {
+          "col": 7,
+          "value": "Date"
+        },
+        {
+          "col": 8,
+          "value": "Work Order Type"
+        },
+        {
+          "col": 9,
+          "value": "Duration"
+        },
+        {
+          "col": 10,
+          "value": "Overall Result"
+        },
+        {
+          "col": 11,
+          "value": "Technicians"
+        },
+        {
+          "col": 12,
+          "value": "Test Equipment Used"
+        },
+        {
+          "col": 13,
+          "value": "Remarks / Performance Summary"
+        }
+      ],
+      "sourceNote": "Source: Physical paper records photographed 25 May 2026 | Covers Preventive Maintenance sessions July 2016",
+      "uniqueValues": {
+        "#": [
+          "1",
+          "10",
+          "11",
+          "12",
+          "13",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8",
+          "9"
+        ],
+        "Equipment Name": [
+          "Mechanical Ventilator",
+          "Mechanical Ventilator / Anesthesia Unit",
+          "Oxygen Concentrator"
+        ],
+        "Manufacturer": [
+          "Longfian SciTech",
+          "Mekics",
+          "Mindray",
+          "Philips",
+          "Sheng ang canta Medical Tech Co.Ltd",
+          "Shenyang Canta Medical Tech",
+          "Shenzen Comen",
+          "Yuyue"
+        ],
+        "Model": [
+          "AX-400",
+          "JAZ-5BW",
+          "V200",
+          "V2000",
+          "V8-WN-NS",
+          "WATO EX_35"
+        ],
+        "Serial Number": [
+          "2448141050620",
+          "2448664051220",
+          "2448705051220",
+          "KG-8C003261",
+          "MV2000TA2J5763",
+          "MV2000UA1D1620",
+          "N2J5S12324D",
+          "VS0003162",
+          "X42021219004B"
+        ],
+        "Maintenance Site": [
+          "Emergency",
+          "Emergency Room",
+          "ICU",
+          "Medical Ward",
+          "Operation Room"
+        ],
+        "Date": [
+          "25/07/2016",
+          "26/07/2016"
+        ],
+        "Work Order Type": [
+          "Preventive Maintenance"
+        ],
+        "Duration": [
+          "1 hour",
+          "50 min"
+        ],
+        "Overall Result": [
+          "Partial Pass",
+          "Pass"
+        ],
+        "Technicians": [
+          "Tebeje Beyene, Atnafu Gojo, Getie, Chernet, Mesfin"
+        ],
+        "Test Equipment Used": [
+          "Gas flow analyzer (FLUKE SN:4179049)",
+          "Oxygen analyzer (Maxtec AF17199058); Digital pressure meter (DMG-2G SN:3130002)"
+        ],
+        "Remarks / Performance Summary": [
+          "5 of 8 units satisfactory for all parameters; 2 units unsatisfactory for O2 purity & cycle pressure on analyzer; 1 unit unsatisfactory for O2 purity & cycle pressure.",
+          "All parameters satisfactory per ISO 80601-2-12-2011(E).",
+          "Battery alarm, power failure test, battery voltage satisfactory. Cycle pressure readings unsatisfactory (model-specific range).",
+          "Battery test load alarm pass. Cycle pressure readings unsatisfactory.",
+          "O2 alarm pass; air failure alarm pass. Breathing circuit leak test pass. O2 calibration N/A. Tidal volume, breath rate, O2 concentration generally satisfactory. Some pressure deviations noted.",
+          "O2 alarm, air failure alarm pass. Breathing circuit leak — N/A (anesthesia unit). O2 calibration pass. Tidal volume, breath rate, O2 concentration pass. Pressure readings unsatisfactory; parameters measured 11 times — average unacceptable per ISO 80601-2-12-2011(E).",
+          "O2 alarm, air failure alarm pass. O2 calibration N/A (anesthesia unit). Tidal volume 360ml (limit 270–330) — FAIL. PEEP pass.",
+          "O2 purity & battery voltage satisfactory. Battery alarm, power failure alarm, cycle pressure unsatisfactory.",
+          "O2 purity & battery voltage satisfactory. Cycle pressure unsatisfactory.",
+          "O2 purity satisfactory. Battery alarm & power failure alarm unsatisfactory. Cycle pressure readings unsatisfactory.",
+          "O2 purity unsatisfactory on analyzer. Battery alarm & power failure alarm, battery voltage satisfactory.",
+          "O2 purity, battery alarm, power failure alarm, battery voltage satisfactory. Cycle pressure readings unsatisfactory.",
+          "Similar results to above. FIO2, tidal volume, breath rate satisfactory. Pressure, frequency readings unsatisfactory."
+        ]
+      },
+      "emptyCells": {
+        "#": 0,
+        "Equipment Name": 0,
+        "Manufacturer": 1,
+        "Model": 4,
+        "Serial Number": 4,
+        "Maintenance Site": 0,
+        "Date": 0,
+        "Work Order Type": 0,
+        "Duration": 0,
+        "Overall Result": 0,
+        "Technicians": 0,
+        "Test Equipment Used": 0,
+        "Remarks / Performance Summary": 0
+      },
+      "qualityIssues": []
+    },
+    {
+      "name": "Work Orders",
+      "totalRows": 16,
+      "dataRows": 13,
+      "headers": [
+        {
+          "col": 1,
+          "value": "WO#"
+        },
+        {
+          "col": 2,
+          "value": "Equipment Name"
+        },
+        {
+          "col": 3,
+          "value": "Model"
+        },
+        {
+          "col": 4,
+          "value": "Serial Number"
+        },
+        {
+          "col": 5,
+          "value": "Department"
+        },
+        {
+          "col": 6,
+          "value": "Location / Room"
+        },
+        {
+          "col": 7,
+          "value": "Reported Time"
+        },
+        {
+          "col": 8,
+          "value": "Issue Description"
+        },
+        {
+          "col": 9,
+          "value": "Critical Situation?"
+        },
+        {
+          "col": 10,
+          "value": "Usability Impact"
+        },
+        {
+          "col": 11,
+          "value": "Corrective Action Taken"
+        },
+        {
+          "col": 12,
+          "value": "Post-Repair Result"
+        },
+        {
+          "col": 13,
+          "value": "Completed By"
+        },
+        {
+          "col": 14,
+          "value": "Completion Date"
+        },
+        {
+          "col": 15,
+          "value": "Approved By"
+        },
+        {
+          "col": 16,
+          "value": "Approval Date"
+        }
+      ],
+      "sourceNote": "Source: Physical work order binder photographed 25 May 2026 | Biomedical Engineering Case Team",
+      "uniqueValues": {
+        "WO#": [
+          "WO-001",
+          "WO-002",
+          "WO-003",
+          "WO-004",
+          "WO-005",
+          "WO-006",
+          "WO-007",
+          "WO-008",
+          "WO-009",
+          "WO-010",
+          "WO-011",
+          "WO-012",
+          "WO-013"
+        ],
+        "Equipment Name": [
+          "Bipolar Coagulator / Autocautery",
+          "Infant Radiant Warmer",
+          "Infusion Pump",
+          "OR Light",
+          "Patient Bed",
+          "Slit Lamp",
+          "Suction Machine"
+        ],
+        "Model": [
+          "74-23D",
+          "7A-23D",
+          "AUTOCAUTERY/ACP01",
+          "BM-100",
+          "F-600",
+          "JEG-130",
+          "MOTEK",
+          "MaxSpeed 62",
+          "S2-6400A",
+          "TS-LED"
+        ],
+        "Serial Number": [
+          "0242034162",
+          "10/6029",
+          "1130105268",
+          "17101133",
+          "1820-22",
+          "2002-03427",
+          "221780ASP",
+          "2Mdo28-0002",
+          "E17E17"
+        ],
+        "Department": [
+          "Delivery",
+          "Eye OR",
+          "Gaxmi Ward",
+          "MCH Ward",
+          "Major OR",
+          "Midwifery OR",
+          "T22"
+        ],
+        "Location / Room": [
+          "Interior Segment",
+          "MCH Ward 07",
+          "Major OR",
+          "OR",
+          "Room 01",
+          "Room 1",
+          "Room 2",
+          "Room 3"
+        ],
+        "Reported Time": [
+          "03:00",
+          "03:15",
+          "04:00",
+          "05:00",
+          "05:30",
+          "06:00",
+          "09:00",
+          "1 week",
+          "10:50",
+          "15 mins"
+        ],
+        "Issue Description": [
+          "Board (IC) is not working",
+          "Device breakdown reported",
+          "Device issue reported — finding blank",
+          "Device not powering on — fault detected",
+          "Fusion [pump] breakdown",
+          "Installation issue",
+          "Loose connection of suction tube",
+          "Motor stacked (jammed)",
+          "Motor stacked; check for leakage",
+          "Potentiometer not working — unable to change intensity",
+          "Reduced functionality (issue blank)",
+          "Unable to open bottle cover"
+        ],
+        "Critical Situation?": [
+          "No",
+          "Yes"
+        ],
+        "Usability Impact": [
+          "Delay in treatment",
+          "Reduced functionality",
+          "Unable to use",
+          "Unable to use; Delay in treatment",
+          "Unable to use; Reduced functionality"
+        ],
+        "Corrective Action Taken": [
+          "(b) Adjust mechanical part; (d) Restore functionality (button/touch screen)",
+          "(f) Lubrication; (m) Other: Unscrew the motor and cleaned",
+          "(g) Tightening loose connection; (h) Replace/repair broken wiring",
+          "(j) Leak repair: Yes",
+          "(m) Other: Chase/replace another board",
+          "(m) Other: Tube connection solved",
+          "Check power supply connection; Self-test/functionality test",
+          "Corrective action in progress",
+          "Installation resolved"
+        ],
+        "Post-Repair Result": [
+          "Pass",
+          "Yes — Functional"
+        ],
+        "Completed By": [
+          "Abel Getachew, Gereusalem Mondero, Hosat Seid",
+          "Birhanu & Eetseder",
+          "Birhanu Sane",
+          "Daniel",
+          "Eskandir",
+          "Fiyew Gor",
+          "Kilsman Aborre",
+          "Mekdes & Birhanu"
+        ],
+        "Completion Date": [
+          "05/02/2018",
+          "07/05/2019",
+          "16/06/2018",
+          "17/06/2018",
+          "18/06/2018",
+          "20/01/2018",
+          "22/12/2017",
+          "25/03/2018",
+          "30/04/2018"
+        ],
+        "Approved By": [
+          "Arkeis",
+          "Birhan",
+          "Esegenea Tlg",
+          "Eshnader",
+          "Ewebet M",
+          "Hargwegn",
+          "Hyenas",
+          "Jinwork Alegne",
+          "Luisma Abore",
+          "Mekomnon"
+        ],
+        "Approval Date": [
+          "05/02/2018",
+          "07/05/2019",
+          "16/06/2018",
+          "17/06/2018",
+          "18/06/2018",
+          "20/01/2018",
+          "25/03/2018",
+          "30/04/2018"
+        ]
+      },
+      "emptyCells": {
+        "WO#": 0,
+        "Equipment Name": 0,
+        "Model": 2,
+        "Serial Number": 4,
+        "Department": 1,
+        "Location / Room": 2,
+        "Reported Time": 2,
+        "Issue Description": 0,
+        "Critical Situation?": 7,
+        "Usability Impact": 4,
+        "Corrective Action Taken": 3,
+        "Post-Repair Result": 7,
+        "Completed By": 3,
+        "Completion Date": 3,
+        "Approved By": 2,
+        "Approval Date": 4
+      },
+      "qualityIssues": [
+        "Column \"Critical Situation?\" is >50% empty (7/13 rows)",
+        "Column \"Post-Repair Result\" is >50% empty (7/13 rows)"
+      ]
+    },
+    {
+      "name": "Preventive Maintenance",
+      "totalRows": 5,
+      "dataRows": 2,
+      "headers": [
+        {
+          "col": 1,
+          "value": "PM#"
+        },
+        {
+          "col": 2,
+          "value": "Equipment Name"
+        },
+        {
+          "col": 3,
+          "value": "Model"
+        },
+        {
+          "col": 4,
+          "value": "Serial Number"
+        },
+        {
+          "col": 5,
+          "value": "Department"
+        },
+        {
+          "col": 6,
+          "value": "Inventory Number"
+        },
+        {
+          "col": 7,
+          "value": "PM Date"
+        },
+        {
+          "col": 8,
+          "value": "Tasks Performed"
+        },
+        {
+          "col": 9,
+          "value": "Frequency"
+        },
+        {
+          "col": 10,
+          "value": "Next PM Date"
+        },
+        {
+          "col": 11,
+          "value": "Completed By"
+        },
+        {
+          "col": 12,
+          "value": "Approved By"
+        },
+        {
+          "col": 13,
+          "value": "Approval Date"
+        }
+      ],
+      "sourceNote": "Source: PM binder photographed 25 May 2026 | Menelik II CSH Biomedical Engineering Case Team",
+      "uniqueValues": {
+        "PM#": [
+          "PM-001",
+          "PM-002"
+        ],
+        "Equipment Name": [
+          "Dialysis Monitor / Medical Monitor",
+          "Patient Monitor"
+        ],
+        "Model": [
+          "BPM-1010",
+          "Dilux"
+        ],
+        "Serial Number": [],
+        "Department": [
+          "Medical Ward",
+          "Medical Wards"
+        ],
+        "Inventory Number": [],
+        "PM Date": [
+          "22/02/2019",
+          "24/07/2017"
+        ],
+        "Tasks Performed": [
+          "1. Checked power source\n2. Covered area and calibration check\n3. Cleaned with saline",
+          "1. Cleaned with gauze & alcohol\n2. Checked parameters (setup/calibration)\n3. Checked power source"
+        ],
+        "Frequency": [
+          "Annual",
+          "Semi-Annual"
+        ],
+        "Next PM Date": [
+          "22/02/2020",
+          "24/02/2018"
+        ],
+        "Completed By": [
+          "Abe Abel Ayele, Birhan Severia",
+          "Daniel Ayele, Birhaniyis"
+        ],
+        "Approved By": [
+          "Amenise Atef",
+          "Lens Severia"
+        ],
+        "Approval Date": [
+          "22/02/2019",
+          "24/07/2017"
+        ]
+      },
+      "emptyCells": {
+        "PM#": 0,
+        "Equipment Name": 0,
+        "Model": 0,
+        "Serial Number": 2,
+        "Department": 0,
+        "Inventory Number": 2,
+        "PM Date": 0,
+        "Tasks Performed": 0,
+        "Frequency": 0,
+        "Next PM Date": 0,
+        "Completed By": 0,
+        "Approved By": 0,
+        "Approval Date": 0
+      },
+      "qualityIssues": [
+        "Column \"Serial Number\" is >50% empty (2/2 rows)",
+        "Column \"Inventory Number\" is >50% empty (2/2 rows)"
+      ]
+    },
+    {
+      "name": "Acceptance Testing",
+      "totalRows": 6,
+      "dataRows": 2,
+      "headers": [
+        {
+          "col": 1,
+          "value": "#"
+        },
+        {
+          "col": 2,
+          "value": "Equipment Name"
+        },
+        {
+          "col": 3,
+          "value": "Date Received"
+        },
+        {
+          "col": 4,
+          "value": "Supplied By"
+        },
+        {
+          "col": 5,
+          "value": "Company Contact"
+        },
+        {
+          "col": 6,
+          "value": "Rep Present?"
+        },
+        {
+          "col": 7,
+          "value": "Damage on Delivery?"
+        },
+        {
+          "col": 8,
+          "value": "Equipment Complete?"
+        },
+        {
+          "col": 9,
+          "value": "Spare Parts?"
+        },
+        {
+          "col": 10,
+          "value": "Accessories?"
+        },
+        {
+          "col": 11,
+          "value": "User Manual?"
+        },
+        {
+          "col": 12,
+          "value": "Operator Manual?"
+        },
+        {
+          "col": 13,
+          "value": "Assembly By"
+        },
+        {
+          "col": 14,
+          "value": "All Parts Available?"
+        },
+        {
+          "col": 15,
+          "value": "Parts Fit Together?"
+        },
+        {
+          "col": 16,
+          "value": "Functionality Test Passed?"
+        },
+        {
+          "col": 17,
+          "value": "Equipment Accepted?"
+        },
+        {
+          "col": 18,
+          "value": "Training Provided to Users?"
+        },
+        {
+          "col": 19,
+          "value": "Training Provided to Tech Staff?"
+        },
+        {
+          "col": 20,
+          "value": "Remarks"
+        }
+      ],
+      "sourceNote": "Source: Acceptance Test Logsheet (blank template captured 05/09/2018) | To be completed per equipment receipt",
+      "uniqueValues": {
+        "#": [
+          "AT-001",
+          "ℹ Note: This sheet is a structured template based on the Menelik II Acceptance Test Logsheet (dated 05/09/2018 E.C.). Add one row per equipment unit received. Fields marked Yes/No require confirmation. Acceptance must be certified by the Biomedical Engineering Directorate."
+        ],
+        "Equipment Name": [
+          "[Equipment Name]",
+          "ℹ Note: This sheet is a structured template based on the Menelik II Acceptance Test Logsheet (dated 05/09/2018 E.C.). Add one row per equipment unit received. Fields marked Yes/No require confirmation. Acceptance must be certified by the Biomedical Engineering Directorate."
+        ],
+        "Date Received": [
+          "[Date]",
+          "ℹ Note: This sheet is a structured template based on the Menelik II Acceptance Test Logsheet (dated 05/09/2018 E.C.). Add one row per equipment unit received. Fields marked Yes/No require confirmation. Acceptance must be certified by the Biomedical Engineering Directorate."
+        ],
+        "Supplied By": [
+          "[Company Name]",
+          "ℹ Note: This sheet is a structured template based on the Menelik II Acceptance Test Logsheet (dated 05/09/2018 E.C.). Add one row per equipment unit received. Fields marked Yes/No require confirmation. Acceptance must be certified by the Biomedical Engineering Directorate."
+        ],
+        "Company Contact": [
+          "[Contact]",
+          "ℹ Note: This sheet is a structured template based on the Menelik II Acceptance Test Logsheet (dated 05/09/2018 E.C.). Add one row per equipment unit received. Fields marked Yes/No require confirmation. Acceptance must be certified by the Biomedical Engineering Directorate."
+        ],
+        "Rep Present?": [
+          "Yes/No",
+          "ℹ Note: This sheet is a structured template based on the Menelik II Acceptance Test Logsheet (dated 05/09/2018 E.C.). Add one row per equipment unit received. Fields marked Yes/No require confirmation. Acceptance must be certified by the Biomedical Engineering Directorate."
+        ],
+        "Damage on Delivery?": [
+          "Yes/No",
+          "ℹ Note: This sheet is a structured template based on the Menelik II Acceptance Test Logsheet (dated 05/09/2018 E.C.). Add one row per equipment unit received. Fields marked Yes/No require confirmation. Acceptance must be certified by the Biomedical Engineering Directorate."
+        ],
+        "Equipment Complete?": [
+          "Yes/No",
+          "ℹ Note: This sheet is a structured template based on the Menelik II Acceptance Test Logsheet (dated 05/09/2018 E.C.). Add one row per equipment unit received. Fields marked Yes/No require confirmation. Acceptance must be certified by the Biomedical Engineering Directorate."
+        ],
+        "Spare Parts?": [
+          "Yes/No (list)",
+          "ℹ Note: This sheet is a structured template based on the Menelik II Acceptance Test Logsheet (dated 05/09/2018 E.C.). Add one row per equipment unit received. Fields marked Yes/No require confirmation. Acceptance must be certified by the Biomedical Engineering Directorate."
+        ],
+        "Accessories?": [
+          "Yes/No (list)",
+          "ℹ Note: This sheet is a structured template based on the Menelik II Acceptance Test Logsheet (dated 05/09/2018 E.C.). Add one row per equipment unit received. Fields marked Yes/No require confirmation. Acceptance must be certified by the Biomedical Engineering Directorate."
+        ],
+        "User Manual?": [
+          "Yes/No",
+          "ℹ Note: This sheet is a structured template based on the Menelik II Acceptance Test Logsheet (dated 05/09/2018 E.C.). Add one row per equipment unit received. Fields marked Yes/No require confirmation. Acceptance must be certified by the Biomedical Engineering Directorate."
+        ],
+        "Operator Manual?": [
+          "Yes/No",
+          "ℹ Note: This sheet is a structured template based on the Menelik II Acceptance Test Logsheet (dated 05/09/2018 E.C.). Add one row per equipment unit received. Fields marked Yes/No require confirmation. Acceptance must be certified by the Biomedical Engineering Directorate."
+        ],
+        "Assembly By": [
+          "[Company Name]",
+          "ℹ Note: This sheet is a structured template based on the Menelik II Acceptance Test Logsheet (dated 05/09/2018 E.C.). Add one row per equipment unit received. Fields marked Yes/No require confirmation. Acceptance must be certified by the Biomedical Engineering Directorate."
+        ],
+        "All Parts Available?": [
+          "Yes/No",
+          "ℹ Note: This sheet is a structured template based on the Menelik II Acceptance Test Logsheet (dated 05/09/2018 E.C.). Add one row per equipment unit received. Fields marked Yes/No require confirmation. Acceptance must be certified by the Biomedical Engineering Directorate."
+        ],
+        "Parts Fit Together?": [
+          "Yes/No",
+          "ℹ Note: This sheet is a structured template based on the Menelik II Acceptance Test Logsheet (dated 05/09/2018 E.C.). Add one row per equipment unit received. Fields marked Yes/No require confirmation. Acceptance must be certified by the Biomedical Engineering Directorate."
+        ],
+        "Functionality Test Passed?": [
+          "Yes/No",
+          "ℹ Note: This sheet is a structured template based on the Menelik II Acceptance Test Logsheet (dated 05/09/2018 E.C.). Add one row per equipment unit received. Fields marked Yes/No require confirmation. Acceptance must be certified by the Biomedical Engineering Directorate."
+        ],
+        "Equipment Accepted?": [
+          "Yes/No",
+          "ℹ Note: This sheet is a structured template based on the Menelik II Acceptance Test Logsheet (dated 05/09/2018 E.C.). Add one row per equipment unit received. Fields marked Yes/No require confirmation. Acceptance must be certified by the Biomedical Engineering Directorate."
+        ],
+        "Training Provided to Users?": [
+          "Yes/No",
+          "ℹ Note: This sheet is a structured template based on the Menelik II Acceptance Test Logsheet (dated 05/09/2018 E.C.). Add one row per equipment unit received. Fields marked Yes/No require confirmation. Acceptance must be certified by the Biomedical Engineering Directorate."
+        ],
+        "Training Provided to Tech Staff?": [
+          "Yes/No",
+          "ℹ Note: This sheet is a structured template based on the Menelik II Acceptance Test Logsheet (dated 05/09/2018 E.C.). Add one row per equipment unit received. Fields marked Yes/No require confirmation. Acceptance must be certified by the Biomedical Engineering Directorate."
+        ],
+        "Remarks": [
+          "[Notes]",
+          "ℹ Note: This sheet is a structured template based on the Menelik II Acceptance Test Logsheet (dated 05/09/2018 E.C.). Add one row per equipment unit received. Fields marked Yes/No require confirmation. Acceptance must be certified by the Biomedical Engineering Directorate."
+        ]
+      },
+      "emptyCells": {
+        "#": 0,
+        "Equipment Name": 0,
+        "Date Received": 0,
+        "Supplied By": 0,
+        "Company Contact": 0,
+        "Rep Present?": 0,
+        "Damage on Delivery?": 0,
+        "Equipment Complete?": 0,
+        "Spare Parts?": 0,
+        "Accessories?": 0,
+        "User Manual?": 0,
+        "Operator Manual?": 0,
+        "Assembly By": 0,
+        "All Parts Available?": 0,
+        "Parts Fit Together?": 0,
+        "Functionality Test Passed?": 0,
+        "Equipment Accepted?": 0,
+        "Training Provided to Users?": 0,
+        "Training Provided to Tech Staff?": 0,
+        "Remarks": 0
+      },
+      "qualityIssues": []
+    },
+    {
+      "name": "Training Records",
+      "totalRows": 15,
+      "dataRows": 12,
+      "headers": [
+        {
+          "col": 1,
+          "value": "#"
+        },
+        {
+          "col": 2,
+          "value": "Department / Ward"
+        },
+        {
+          "col": 3,
+          "value": "Medical Device"
+        },
+        {
+          "col": 4,
+          "value": "Model"
+        },
+        {
+          "col": 5,
+          "value": "Manufacturer / Supplier"
+        },
+        {
+          "col": 6,
+          "value": "Trainee Name"
+        },
+        {
+          "col": 7,
+          "value": "Position"
+        },
+        {
+          "col": 8,
+          "value": "Trained By"
+        },
+        {
+          "col": 9,
+          "value": "Date of Training"
+        },
+        {
+          "col": 10,
+          "value": "Assessment / Review Date"
+        },
+        {
+          "col": 11,
+          "value": "Comments"
+        }
+      ],
+      "sourceNote": "Source: Training Verification Form (photographed 25 May 2026) | Biomedical Engineering Case Team",
+      "uniqueValues": {
+        "#": [
+          "1",
+          "10",
+          "11",
+          "12",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8",
+          "9"
+        ],
+        "Department / Ward": [
+          "Adult Emergency"
+        ],
+        "Medical Device": [
+          "Oxygen Concentrator",
+          "Patient Monitor",
+          "Suction Machine"
+        ],
+        "Model": [],
+        "Manufacturer / Supplier": [],
+        "Trainee Name": [
+          "Abrham Tipha",
+          "Daniel M.",
+          "Gimenachis Fepadu",
+          "Samuel Yolele",
+          "Tigrr Elrom"
+        ],
+        "Position": [
+          "Nurse / Clinician"
+        ],
+        "Trained By": [
+          "Mekaoned Robens"
+        ],
+        "Date of Training": [
+          "02/10/2015"
+        ],
+        "Assessment / Review Date": [],
+        "Comments": []
+      },
+      "emptyCells": {
+        "#": 0,
+        "Department / Ward": 0,
+        "Medical Device": 0,
+        "Model": 12,
+        "Manufacturer / Supplier": 12,
+        "Trainee Name": 0,
+        "Position": 0,
+        "Trained By": 0,
+        "Date of Training": 0,
+        "Assessment / Review Date": 12,
+        "Comments": 12
+      },
+      "qualityIssues": [
+        "Column \"Model\" is >50% empty (12/12 rows)",
+        "Column \"Manufacturer / Supplier\" is >50% empty (12/12 rows)",
+        "Column \"Assessment / Review Date\" is >50% empty (12/12 rows)",
+        "Column \"Comments\" is >50% empty (12/12 rows)"
+      ]
+    },
+    {
+      "name": "Calibration",
+      "totalRows": 6,
+      "dataRows": 2,
+      "headers": [
+        {
+          "col": 1,
+          "value": "Cal#"
+        },
+        {
+          "col": 2,
+          "value": "Equipment Name"
+        },
+        {
+          "col": 3,
+          "value": "Model"
+        },
+        {
+          "col": 4,
+          "value": "Serial Number"
+        },
+        {
+          "col": 5,
+          "value": "Department"
+        },
+        {
+          "col": 6,
+          "value": "Inventory Number"
+        },
+        {
+          "col": 7,
+          "value": "Calibration Date"
+        },
+        {
+          "col": 8,
+          "value": "Calibration Type"
+        },
+        {
+          "col": 9,
+          "value": "Calibrating Body / Agency"
+        },
+        {
+          "col": 10,
+          "value": "Result"
+        },
+        {
+          "col": 11,
+          "value": "Calibration Certificate #"
+        },
+        {
+          "col": 12,
+          "value": "Next Calibration Due"
+        },
+        {
+          "col": 13,
+          "value": "Remarks"
+        }
+      ],
+      "sourceNote": "Source: 'Calibration Performance and Results for Medical Equipment' report (June 2017 E.C.) | Photographed 25 May 2026",
+      "uniqueValues": {
+        "Cal#": [
+          "CAL-001",
+          "ℹ Note: The June 2017 E.C. Calibration Performance and Results report was identified from the photographed documents. The cover page was captured but internal pages were not individually photographed. Add calibration records here as data becomes available from that report and future calibration activities."
+        ],
+        "Equipment Name": [
+          "[Equipment Name — from June 2017 E.C. report]",
+          "ℹ Note: The June 2017 E.C. Calibration Performance and Results report was identified from the photographed documents. The cover page was captured but internal pages were not individually photographed. Add calibration records here as data becomes available from that report and future calibration activities."
+        ],
+        "Model": [
+          "ℹ Note: The June 2017 E.C. Calibration Performance and Results report was identified from the photographed documents. The cover page was captured but internal pages were not individually photographed. Add calibration records here as data becomes available from that report and future calibration activities."
+        ],
+        "Serial Number": [
+          "ℹ Note: The June 2017 E.C. Calibration Performance and Results report was identified from the photographed documents. The cover page was captured but internal pages were not individually photographed. Add calibration records here as data becomes available from that report and future calibration activities."
+        ],
+        "Department": [
+          "ℹ Note: The June 2017 E.C. Calibration Performance and Results report was identified from the photographed documents. The cover page was captured but internal pages were not individually photographed. Add calibration records here as data becomes available from that report and future calibration activities."
+        ],
+        "Inventory Number": [
+          "ℹ Note: The June 2017 E.C. Calibration Performance and Results report was identified from the photographed documents. The cover page was captured but internal pages were not individually photographed. Add calibration records here as data becomes available from that report and future calibration activities."
+        ],
+        "Calibration Date": [
+          "June 2017 (E.C.)",
+          "ℹ Note: The June 2017 E.C. Calibration Performance and Results report was identified from the photographed documents. The cover page was captured but internal pages were not individually photographed. Add calibration records here as data becomes available from that report and future calibration activities."
+        ],
+        "Calibration Type": [
+          "Performance Calibration",
+          "ℹ Note: The June 2017 E.C. Calibration Performance and Results report was identified from the photographed documents. The cover page was captured but internal pages were not individually photographed. Add calibration records here as data becomes available from that report and future calibration activities."
+        ],
+        "Calibrating Body / Agency": [
+          "Menelik II CSH Biomedical Engineering",
+          "ℹ Note: The June 2017 E.C. Calibration Performance and Results report was identified from the photographed documents. The cover page was captured but internal pages were not individually photographed. Add calibration records here as data becomes available from that report and future calibration activities."
+        ],
+        "Result": [
+          "[See source document]",
+          "ℹ Note: The June 2017 E.C. Calibration Performance and Results report was identified from the photographed documents. The cover page was captured but internal pages were not individually photographed. Add calibration records here as data becomes available from that report and future calibration activities."
+        ],
+        "Calibration Certificate #": [
+          "ℹ Note: The June 2017 E.C. Calibration Performance and Results report was identified from the photographed documents. The cover page was captured but internal pages were not individually photographed. Add calibration records here as data becomes available from that report and future calibration activities."
+        ],
+        "Next Calibration Due": [
+          "[12 months from calibration date]",
+          "ℹ Note: The June 2017 E.C. Calibration Performance and Results report was identified from the photographed documents. The cover page was captured but internal pages were not individually photographed. Add calibration records here as data becomes available from that report and future calibration activities."
+        ],
+        "Remarks": [
+          "Source: Physical calibration report cover page photographed May 2026. Full detail from internal report.",
+          "ℹ Note: The June 2017 E.C. Calibration Performance and Results report was identified from the photographed documents. The cover page was captured but internal pages were not individually photographed. Add calibration records here as data becomes available from that report and future calibration activities."
+        ]
+      },
+      "emptyCells": {
+        "Cal#": 0,
+        "Equipment Name": 0,
+        "Model": 1,
+        "Serial Number": 1,
+        "Department": 1,
+        "Inventory Number": 1,
+        "Calibration Date": 0,
+        "Calibration Type": 0,
+        "Calibrating Body / Agency": 0,
+        "Result": 0,
+        "Calibration Certificate #": 1,
+        "Next Calibration Due": 0,
+        "Remarks": 0
+      },
+      "qualityIssues": []
+    }
+  ],
+  "departments": [
+    {
+      "raw": "Adult Emergency",
+      "count": 21
+    },
+    {
+      "raw": "eye OR",
+      "count": 21
+    },
+    {
+      "raw": "Laboratory",
+      "count": 15
+    },
+    {
+      "raw": "Eye OPD",
+      "count": 8
+    },
+    {
+      "raw": "Eye OR",
+      "count": 8
+    },
+    {
+      "raw": "microbiology",
+      "count": 7
+    },
+    {
+      "raw": "EYE Emergency",
+      "count": 6
+    },
+    {
+      "raw": "ICU",
+      "count": 6
+    },
+    {
+      "raw": "Major OR",
+      "count": 6
+    },
+    {
+      "raw": "blood bank",
+      "count": 5
+    },
+    {
+      "raw": "Gyni OR",
+      "count": 5
+    },
+    {
+      "raw": "Imaging",
+      "count": 5
+    },
+    {
+      "raw": "NICU",
+      "count": 5
+    },
+    {
+      "raw": "3rd floor",
+      "count": 4
+    },
+    {
+      "raw": "Delivery room",
+      "count": 4
+    },
+    {
+      "raw": "dialysis center",
+      "count": 4
+    },
+    {
+      "raw": "Central Steralization",
+      "count": 3
+    },
+    {
+      "raw": "Compound Pharmacy",
+      "count": 3
+    },
+    {
+      "raw": "Dental Room",
+      "count": 3
+    },
+    {
+      "raw": "ENT",
+      "count": 3
+    },
+    {
+      "raw": "EYE OPD",
+      "count": 3
+    },
+    {
+      "raw": "laboratory",
+      "count": 3
+    },
+    {
+      "raw": "pathology",
+      "count": 3
+    },
+    {
+      "raw": "ART LAB",
+      "count": 2
+    },
+    {
+      "raw": "biometry room(eye opd)",
+      "count": 2
+    },
+    {
+      "raw": "Dialysis center",
+      "count": 2
+    },
+    {
+      "raw": "Gelacoma",
+      "count": 2
+    },
+    {
+      "raw": "LAB,Emergency",
+      "count": 2
+    },
+    {
+      "raw": "Orthopedic out patient",
+      "count": 2
+    },
+    {
+      "raw": "Abortion(Family Planning)",
+      "count": 1
+    },
+    {
+      "raw": "Blood Bank",
+      "count": 1
+    },
+    {
+      "raw": "Central Triage",
+      "count": 1
+    },
+    {
+      "raw": "Dermathology",
+      "count": 1
+    },
+    {
+      "raw": "family planning",
+      "count": 1
+    },
+    {
+      "raw": "Medical Refral",
+      "count": 1
+    },
+    {
+      "raw": "Pediatric Emergency",
+      "count": 1
+    }
+  ],
+  "statuses": [
+    "Functional",
+    "Non-Functional",
+    "To Be Disposed"
+  ],
+  "manufacturers": [
+    {
+      "raw": "YCO-010",
+      "count": 4,
+      "likelyType": "unknown"
+    },
+    {
+      "raw": "HK-100",
+      "count": 3,
+      "likelyType": "unknown"
+    },
+    {
+      "raw": "7A-23D",
+      "count": 3,
+      "likelyType": "likely_model"
+    },
+    {
+      "raw": "BN-100",
+      "count": 3,
+      "likelyType": "unknown"
+    },
+    {
+      "raw": "mikrodental E-line 100",
+      "count": 3,
+      "likelyType": "likely_serial"
+    },
+    {
+      "raw": "surdial55 plus",
+      "count": 3,
+      "likelyType": "unknown"
+    },
+    {
+      "raw": "S8",
+      "count": 3,
+      "likelyType": "likely_code"
+    },
+    {
+      "raw": "V200",
+      "count": 3,
+      "likelyType": "unknown"
+    },
+    {
+      "raw": "Anyview A8",
+      "count": 2,
+      "likelyType": "unknown"
+    },
+    {
+      "raw": "Helmer",
+      "count": 2,
+      "likelyType": "manufacturer"
+    },
+    {
+      "raw": "Visuplan 500",
+      "count": 2,
+      "likelyType": "unknown"
+    },
+    {
+      "raw": "Opmi Lumera 300",
+      "count": 2,
+      "likelyType": "unknown"
+    },
+    {
+      "raw": "ACD01",
+      "count": 2,
+      "likelyType": "likely_model"
+    },
+    {
+      "raw": "G-23004",
+      "count": 2,
+      "likelyType": "unknown"
+    },
+    {
+      "raw": "Primo Star",
+      "count": 2,
+      "likelyType": "unknown"
+    },
+    {
+      "raw": "IN-010",
+      "count": 2,
+      "likelyType": "unknown"
+    },
+    {
+      "raw": "XHZ-90L",
+      "count": 2,
+      "likelyType": "unknown"
+    },
+    {
+      "raw": "V6",
+      "count": 2,
+      "likelyType": "likely_code"
+    },
+    {
+      "raw": "HS2205",
+      "count": 2,
+      "likelyType": "likely_model"
+    },
+    {
+      "raw": "240",
+      "count": 1,
+      "likelyType": "likely_serial_or_model"
+    },
+    {
+      "raw": "7200",
+      "count": 1,
+      "likelyType": "likely_serial_or_model"
+    },
+    {
+      "raw": "9000",
+      "count": 1,
+      "likelyType": "likely_serial_or_model"
+    },
+    {
+      "raw": "8127004",
+      "count": 1,
+      "likelyType": "likely_serial_or_model"
+    },
+    {
+      "raw": "yuye",
+      "count": 1,
+      "likelyType": "manufacturer"
+    },
+    {
+      "raw": "ROSSMAX",
+      "count": 1,
+      "likelyType": "manufacturer"
+    },
+    {
+      "raw": "RIESTER",
+      "count": 1,
+      "likelyType": "manufacturer"
+    },
+    {
+      "raw": "mgc-200",
+      "count": 1,
+      "likelyType": "unknown"
+    },
+    {
+      "raw": "TM-900",
+      "count": 1,
+      "likelyType": "unknown"
+    },
+    {
+      "raw": "MV2000",
+      "count": 1,
+      "likelyType": "likely_model"
+    },
+    {
+      "raw": "SV300",
+      "count": 1,
+      "likelyType": "likely_model"
+    },
+    {
+      "raw": "Yuyue",
+      "count": 1,
+      "likelyType": "manufacturer"
+    },
+    {
+      "raw": "Newlife Intensity",
+      "count": 1,
+      "likelyType": "unknown"
+    },
+    {
+      "raw": "Gima",
+      "count": 1,
+      "likelyType": "manufacturer"
+    },
+    {
+      "raw": "DC13",
+      "count": 1,
+      "likelyType": "likely_model"
+    },
+    {
+      "raw": "SA300H",
+      "count": 1,
+      "likelyType": "likely_model"
+    },
+    {
+      "raw": "Mobile Dart",
+      "count": 1,
+      "likelyType": "unknown"
+    },
+    {
+      "raw": "ASKIR C30 AP FS 2",
+      "count": 1,
+      "likelyType": "unknown"
+    },
+    {
+      "raw": "MAC 600",
+      "count": 1,
+      "likelyType": "unknown"
+    },
+    {
+      "raw": "binheart-03",
+      "count": 1,
+      "likelyType": "likely_serial"
+    },
+    {
+      "raw": "TD6C",
+      "count": 1,
+      "likelyType": "likely_model"
+    },
+    {
+      "raw": "BDFACS PRESTO",
+      "count": 1,
+      "likelyType": "unknown"
+    },
+    {
+      "raw": "AR/205---",
+      "count": 1,
+      "likelyType": "likely_serial"
+    },
+    {
+      "raw": "quntel medical",
+      "count": 1,
+      "likelyType": "unknown"
+    },
+    {
+      "raw": "YCW010",
+      "count": 1,
+      "likelyType": "likely_model"
+    },
+    {
+      "raw": "BPA-01",
+      "count": 1,
+      "likelyType": "unknown"
+    },
+    {
+      "raw": "CX-21",
+      "count": 1,
+      "likelyType": "unknown"
+    },
+    {
+      "raw": "R-8CPLUS",
+      "count": 1,
+      "likelyType": "unknown"
+    },
+    {
+      "raw": "SAKURA",
+      "count": 1,
+      "likelyType": "manufacturer"
+    },
+    {
+      "raw": "CIS42104/04/1",
+      "count": 1,
+      "likelyType": "likely_model"
+    },
+    {
+      "raw": "5596-1V Tuttnauer",
+      "count": 1,
+      "likelyType": "likely_serial_or_model"
+    },
+    {
+      "raw": "RBP-100",
+      "count": 1,
+      "likelyType": "unknown"
+    },
+    {
+      "raw": "BN112BB",
+      "count": 1,
+      "likelyType": "likely_model"
+    },
+    {
+      "raw": "WDZ-20",
+      "count": 1,
+      "likelyType": "unknown"
+    },
+    {
+      "raw": "GYZD-10",
+      "count": 1,
+      "likelyType": "unknown"
+    },
+    {
+      "raw": "RAD-G",
+      "count": 1,
+      "likelyType": "unknown"
+    },
+    {
+      "raw": "Rad-G",
+      "count": 1,
+      "likelyType": "unknown"
+    },
+    {
+      "raw": "Z 50",
+      "count": 1,
+      "likelyType": "unknown"
+    },
+    {
+      "raw": "apex-2000",
+      "count": 1,
+      "likelyType": "likely_serial"
+    },
+    {
+      "raw": "E-34",
+      "count": 1,
+      "likelyType": "unknown"
+    },
+    {
+      "raw": "diatrom 300",
+      "count": 1,
+      "likelyType": "unknown"
+    },
+    {
+      "raw": "Keeler",
+      "count": 1,
+      "likelyType": "manufacturer"
+    },
+    {
+      "raw": "SLM-3ER",
+      "count": 1,
+      "likelyType": "unknown"
+    },
+    {
+      "raw": "Visuref  100",
+      "count": 1,
+      "likelyType": "unknown"
+    },
+    {
+      "raw": "RMK - 150",
+      "count": 1,
+      "likelyType": "likely_serial"
+    },
+    {
+      "raw": "IOLMASTER",
+      "count": 1,
+      "likelyType": "unknown"
+    },
+    {
+      "raw": "AAFCO1",
+      "count": 1,
+      "likelyType": "likely_model"
+    },
+    {
+      "raw": "AMO9HSMART",
+      "count": 1,
+      "likelyType": "likely_model"
+    },
+    {
+      "raw": "LSLYA 9111",
+      "count": 1,
+      "likelyType": "unknown"
+    },
+    {
+      "raw": "7-43",
+      "count": 1,
+      "likelyType": "likely_serial_or_model"
+    },
+    {
+      "raw": "Pro-45",
+      "count": 1,
+      "likelyType": "unknown"
+    },
+    {
+      "raw": "Aeon7200",
+      "count": 1,
+      "likelyType": "unknown"
+    },
+    {
+      "raw": "MKII",
+      "count": 1,
+      "likelyType": "unknown"
+    },
+    {
+      "raw": "AAOM230/250 Brilliant",
+      "count": 1,
+      "likelyType": "likely_model"
+    },
+    {
+      "raw": "OP830",
+      "count": 1,
+      "likelyType": "likely_model"
+    },
+    {
+      "raw": "VC821100",
+      "count": 1,
+      "likelyType": "likely_model"
+    },
+    {
+      "raw": "smart-810NM",
+      "count": 1,
+      "likelyType": "likely_serial"
+    },
+    {
+      "raw": "GALAXY TURBO ORBIT",
+      "count": 1,
+      "likelyType": "unknown"
+    },
+    {
+      "raw": "DE-00T3",
+      "count": 1,
+      "likelyType": "unknown"
+    },
+    {
+      "raw": "GALAXY TURBO ORBITAL",
+      "count": 1,
+      "likelyType": "unknown"
+    },
+    {
+      "raw": "PULSAR",
+      "count": 1,
+      "likelyType": "unknown"
+    },
+    {
+      "raw": "V500",
+      "count": 1,
+      "likelyType": "unknown"
+    },
+    {
+      "raw": "(70-1065)",
+      "count": 1,
+      "likelyType": "likely_serial"
+    },
+    {
+      "raw": "CISA",
+      "count": 1,
+      "likelyType": "manufacturer"
+    },
+    {
+      "raw": "avanta",
+      "count": 1,
+      "likelyType": "unknown"
+    },
+    {
+      "raw": "ACC001",
+      "count": 1,
+      "likelyType": "likely_model"
+    },
+    {
+      "raw": "AS-300H",
+      "count": 1,
+      "likelyType": "unknown"
+    },
+    {
+      "raw": "SL990-3X",
+      "count": 1,
+      "likelyType": "likely_model"
+    },
+    {
+      "raw": "ESL-1",
+      "count": 1,
+      "likelyType": "unknown"
+    },
+    {
+      "raw": "FE 300",
+      "count": 1,
+      "likelyType": "unknown"
+    },
+    {
+      "raw": "OP330",
+      "count": 1,
+      "likelyType": "likely_model"
+    },
+    {
+      "raw": "Benehart D3",
+      "count": 1,
+      "likelyType": "unknown"
+    },
+    {
+      "raw": "SV-300",
+      "count": 1,
+      "likelyType": "unknown"
+    },
+    {
+      "raw": "ABL800flex",
+      "count": 1,
+      "likelyType": "likely_model"
+    },
+    {
+      "raw": "Dual Shot Alpha",
+      "count": 1,
+      "likelyType": "unknown"
+    },
+    {
+      "raw": "New Orental 1000",
+      "count": 1,
+      "likelyType": "unknown"
+    },
+    {
+      "raw": "5122080-12",
+      "count": 1,
+      "likelyType": "likely_serial_or_model"
+    },
+    {
+      "raw": "1/2P13DK",
+      "count": 1,
+      "likelyType": "likely_serial_or_model"
+    },
+    {
+      "raw": "New Orental 1001",
+      "count": 1,
+      "likelyType": "unknown"
+    },
+    {
+      "raw": "CATNG0151",
+      "count": 1,
+      "likelyType": "likely_model"
+    },
+    {
+      "raw": "BC-5150",
+      "count": 1,
+      "likelyType": "unknown"
+    },
+    {
+      "raw": "BSC-1000IIAR",
+      "count": 1,
+      "likelyType": "likely_serial"
+    },
+    {
+      "raw": "R-8C Plus",
+      "count": 1,
+      "likelyType": "likely_serial"
+    },
+    {
+      "raw": "VEN 1",
+      "count": 1,
+      "likelyType": "unknown"
+    },
+    {
+      "raw": "IN-010-helmer",
+      "count": 1,
+      "likelyType": "likely_serial"
+    },
+    {
+      "raw": "HELMER",
+      "count": 1,
+      "likelyType": "manufacturer"
+    },
+    {
+      "raw": "AVI-526",
+      "count": 1,
+      "likelyType": "unknown"
+    },
+    {
+      "raw": "BC-S150",
+      "count": 1,
+      "likelyType": "unknown"
+    },
+    {
+      "raw": "WDZ20",
+      "count": 1,
+      "likelyType": "likely_model"
+    },
+    {
+      "raw": "Cepheid",
+      "count": 1,
+      "likelyType": "manufacturer"
+    },
+    {
+      "raw": "VRN-200",
+      "count": 1,
+      "likelyType": "unknown"
+    },
+    {
+      "raw": "BS-200",
+      "count": 1,
+      "likelyType": "unknown"
+    },
+    {
+      "raw": "XL-3600C",
+      "count": 1,
+      "likelyType": "unknown"
+    },
+    {
+      "raw": "AL204-IC",
+      "count": 1,
+      "likelyType": "likely_model"
+    },
+    {
+      "raw": "Fazzini",
+      "count": 1,
+      "likelyType": "manufacturer"
+    },
+    {
+      "raw": "Op830",
+      "count": 1,
+      "likelyType": "unknown"
+    },
+    {
+      "raw": "LMD276NB",
+      "count": 1,
+      "likelyType": "likely_model"
+    },
+    {
+      "raw": "LMD-2765NB",
+      "count": 1,
+      "likelyType": "likely_serial"
+    },
+    {
+      "raw": "V24.N1418",
+      "count": 1,
+      "likelyType": "unknown"
+    },
+    {
+      "raw": "stryeker",
+      "count": 1,
+      "likelyType": "manufacturer"
+    },
+    {
+      "raw": "EEG-1200K",
+      "count": 1,
+      "likelyType": "likely_serial"
+    },
+    {
+      "raw": "KS-20LBD",
+      "count": 1,
+      "likelyType": "unknown"
+    },
+    {
+      "raw": "ARISHKAR",
+      "count": 1,
+      "likelyType": "unknown"
+    },
+    {
+      "raw": "uayledental",
+      "count": 1,
+      "likelyType": "unknown"
+    },
+    {
+      "raw": "XPERTMTB",
+      "count": 1,
+      "likelyType": "unknown"
+    },
+    {
+      "raw": "BILITRON",
+      "count": 1,
+      "likelyType": "unknown"
+    },
+    {
+      "raw": "w003",
+      "count": 1,
+      "likelyType": "unknown"
+    }
+  ],
+  "whoCategories": [
+    {
+      "raw": "Laboratory Equipment",
+      "count": 49
+    },
+    {
+      "raw": "Surgery & Theatre",
+      "count": 25
+    },
+    {
+      "raw": "Life Support & Respiratory",
+      "count": 22
+    },
+    {
+      "raw": "Ophthalmology",
+      "count": 17
+    },
+    {
+      "raw": "Patient Monitoring",
+      "count": 13
+    },
+    {
+      "raw": "Diagnostic Imaging",
+      "count": 12
+    },
+    {
+      "raw": "Sterilization Equipment",
+      "count": 9
+    },
+    {
+      "raw": "Neonatology",
+      "count": 9
+    },
+    {
+      "raw": "Vital Signs & Diagnostic",
+      "count": 4
+    },
+    {
+      "raw": "Dental Equipment",
+      "count": 3
+    },
+    {
+      "raw": "Renal Dialysis",
+      "count": 3
+    },
+    {
+      "raw": "Physiotherapy & Rehabilitation",
+      "count": 2
+    },
+    {
+      "raw": "ENT Equipment",
+      "count": 2
+    }
+  ],
+  "duplicateSerialNumbers": [
+    {
+      "serial": "608259",
+      "rows": [
+        34,
+        140
+      ]
+    },
+    {
+      "serial": "809807",
+      "rows": [
+        143,
+        162
+      ]
+    },
+    {
+      "serial": "2074349",
+      "rows": [
+        39,
+        136
+      ]
+    }
+  ],
+  "duplicateInventoryNumbers": [
+    {
+      "inventory": "AA/DMCSH/104/4523/811/CB/ICU/0002",
+      "rows": [
+        16,
+        119
+      ]
+    },
+    {
+      "inventory": "AA/DMCH/104/4523/933/BB/CB/0001",
+      "rows": [
+        35,
+        39
+      ]
+    },
+    {
+      "inventory": "AA/DMCH/104/4523/NEW/CB/LW/0001",
+      "rows": [
+        48,
+        49
+      ]
+    },
+    {
+      "inventory": "AA/DMCSH/104/4523/855/CB/EOPD/0001",
+      "rows": [
+        66,
+        75
+      ]
+    },
+    {
+      "inventory": "AA/DMCH/104/4523/818/CB/EYEOR/0005",
+      "rows": [
+        89,
+        107
+      ]
+    },
+    {
+      "inventory": "AA/DMCH/104/4523/818/CB/EYEOR/0001",
+      "rows": [
+        97,
+        105
+      ]
+    },
+    {
+      "inventory": "AA/DMCH/104/4523/PHECO/CB/EYEOR/0005",
+      "rows": [
+        99,
+        101
+      ]
+    },
+    {
+      "inventory": "NEW",
+      "rows": [
+        132,
+        133,
+        135,
+        138
+      ]
+    }
+  ],
+  "dateFormats": [
+    "Ethiopian Calendar (E.C.)",
+    "Month YYYY",
+    "DD/MM/YYYY",
+    "HH:MM (time only)"
+  ],
+  "summary": {
+    "totalSheets": 8,
+    "totalEquipment": 170,
+    "totalWorkOrders": 13,
+    "totalPerformanceVerification": 13,
+    "totalPreventiveMaintenance": 2,
+    "totalTraining": 12,
+    "totalCalibration": 2,
+    "totalAcceptanceTesting": 2,
+    "skippedSheets": [
+      "Dashboard",
+      "Acceptance Testing",
+      "Calibration"
+    ]
+  }
+}

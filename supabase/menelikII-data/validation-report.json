@@ -1,0 +1,101 @@
+{
+  "validatedAt": "2026-05-26T04:36:07.669Z",
+  "supabaseUrl": "https://nxiszgkiharsltyetohm.supabase.co",
+  "presentationReady": true,
+  "checks": [
+    {
+      "name": "Equipment assets >= 160",
+      "status": "pass",
+      "detail": "170 equipment assets"
+    },
+    {
+      "name": "Departments with equipment >= 10",
+      "status": "pass",
+      "detail": "13 departments have equipment"
+    },
+    {
+      "name": "Condition variety >= 2",
+      "status": "pass",
+      "detail": "Conditions found: functional, decommissioned, non_functional"
+    },
+    {
+      "name": "Work orders >= 10",
+      "status": "pass",
+      "detail": "10 work orders"
+    },
+    {
+      "name": "PM/PV evidence rows >= 10",
+      "status": "pass",
+      "detail": "14 PM schedule/evidence rows"
+    },
+    {
+      "name": "Training sessions >= 10",
+      "status": "pass",
+      "detail": "12 training sessions"
+    },
+    {
+      "name": "No orphaned department FK",
+      "status": "pass",
+      "detail": "0 assets with invalid department_id"
+    },
+    {
+      "name": "No orphaned category FK",
+      "status": "pass",
+      "detail": "0 assets with invalid category_id"
+    },
+    {
+      "name": "Profile department_id valid",
+      "status": "pass",
+      "detail": "All profile department_ids are valid"
+    },
+    {
+      "name": "Condition values valid",
+      "status": "pass",
+      "detail": "0 assets with invalid condition"
+    },
+    {
+      "name": "Source-tagged assets",
+      "status": "pass",
+      "detail": "170 assets tagged with source='menelik_ii_2018ec_import'"
+    },
+    {
+      "name": "No duplicate asset codes",
+      "status": "pass",
+      "detail": "No duplicates"
+    }
+  ],
+  "counts": {
+    "departments": 13,
+    "equipment_categories": 13,
+    "manufacturers": 12,
+    "equipment_models": 0,
+    "equipment_assets": 170,
+    "maintenance_requests": 10,
+    "work_orders": 10,
+    "maintenance_events": 0,
+    "downtime_logs": 0,
+    "pm_plans": 3,
+    "pm_schedules": 14,
+    "pm_completions": 14,
+    "calibration_records": 0,
+    "calibration_requests": 0,
+    "training_sessions": 12,
+    "staff_training_records": 12,
+    "equipment_training_records": 0,
+    "profiles": 7,
+    "roles": 7,
+    "user_roles": 7,
+    "equipment_reliability_metrics": 165,
+    "equipment_risk_scores": 165,
+    "pm_compliance_metrics": 0,
+    "replacement_priority_scores": 165,
+    "spare_parts": 0,
+    "stock_receipts": 0,
+    "stock_issues": 0
+  },
+  "summary": {
+    "passed": 12,
+    "warnings": 0,
+    "failed": 0
+  }
+}

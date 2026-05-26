@@ -1,0 +1,243 @@
+{
+  "plans": [
+    {
+      "id": "9515a979-cdff-6158-9b4a-bd066853fa52",
+      "asset_id": "0bfd2a8d-04af-47e8-a524-833f95901be9",
+      "name": "Performance Verification — Oxygen Concentrator",
+      "frequency_days": 180,
+      "is_active": false
+    },
+    {
+      "id": "96576e94-1742-f00f-83f2-e0bb4261a715",
+      "asset_id": "7fb06525-987c-417c-9a69-068de85ea3ab",
+      "name": "Performance Verification — Mechanical Ventilator",
+      "frequency_days": 180,
+      "is_active": false
+    }
+  ],
+  "schedules": [
+    {
+      "id": "5662c7d8-b01f-4e6f-9f20-c43aa446c1c2",
+      "plan_id": "9515a979-cdff-6158-9b4a-bd066853fa52",
+      "asset_id": "0bfd2a8d-04af-47e8-a524-833f95901be9",
+      "scheduled_date": "2016-07-26",
+      "status": "completed",
+      "result": "pass",
+      "completion_notes": "Imported from Menelik II Hospital performance verification record. Maintenance site: Operation Room. Work order type: Preventive Maintenance. Test equipment: Oxygen analyzer (Maxtec AF17199058); Digital pressure meter (DMG-2G SN:3130002). Battery alarm, power failure test, battery voltage satisfactory. Cycle pressure readings unsatisfactory (model-specific range).",
+      "completed_at": "2016-07-26T00:00:00Z"
+    },
+    {
+      "id": "f861b3e3-7ad0-4445-a4d6-8a0e95c426bb",
+      "plan_id": "9515a979-cdff-6158-9b4a-bd066853fa52",
+      "asset_id": "0bfd2a8d-04af-47e8-a524-833f95901be9",
+      "scheduled_date": "2016-07-26",
+      "status": "completed",
+      "result": "pass",
+      "completion_notes": "Imported from Menelik II Hospital performance verification record. Maintenance site: Emergency Room. Work order type: Preventive Maintenance. Test equipment: Oxygen analyzer (Maxtec AF17199058); Digital pressure meter (DMG-2G SN:3130002). O2 purity satisfactory. Battery alarm & power failure alarm unsatisfactory. Cycle pressure readings unsatisfactory.",
+      "completed_at": "2016-07-26T00:00:00Z"
+    },
+    {
+      "id": "63e683fb-4b83-4804-9227-185e92710e91",
+      "plan_id": "9515a979-cdff-6158-9b4a-bd066853fa52",
+      "asset_id": "0bfd2a8d-04af-47e8-a524-833f95901be9",
+      "scheduled_date": "2016-07-26",
+      "status": "completed",
+      "result": "pass",
+      "completion_notes": "Imported from Menelik II Hospital performance verification record. Maintenance site: Emergency. Work order type: Preventive Maintenance. Test equipment: Oxygen analyzer (Maxtec AF17199058); Digital pressure meter (DMG-2G SN:3130002). O2 purity & battery voltage satisfactory. Battery alarm, power failure alarm, cycle pressure unsatisfactory.",
+      "completed_at": "2016-07-26T00:00:00Z"
+    },
+    {
+      "id": "f3cd2b63-9ef0-43b9-8194-a980a204ad7a",
+      "plan_id": "9515a979-cdff-6158-9b4a-bd066853fa52",
+      "asset_id": "0bfd2a8d-04af-47e8-a524-833f95901be9",
+      "scheduled_date": "2016-07-26",
+      "status": "completed",
+      "result": "pass",
+      "completion_notes": "Imported from Menelik II Hospital performance verification record. Maintenance site: Emergency. Work order type: Preventive Maintenance. Test equipment: Oxygen analyzer (Maxtec AF17199058); Digital pressure meter (DMG-2G SN:3130002). O2 purity & battery voltage satisfactory. Cycle pressure unsatisfactory.",
+      "completed_at": "2016-07-26T00:00:00Z"
+    },
+    {
+      "id": "10221bf1-8dcf-41b5-b54a-d4f50b4ef4f5",
+      "plan_id": "9515a979-cdff-6158-9b4a-bd066853fa52",
+      "asset_id": "0bfd2a8d-04af-47e8-a524-833f95901be9",
+      "scheduled_date": "2016-07-26",
+      "status": "completed",
+      "result": "pass",
+      "completion_notes": "Imported from Menelik II Hospital performance verification record. Maintenance site: Emergency. Work order type: Preventive Maintenance. Test equipment: Oxygen analyzer (Maxtec AF17199058); Digital pressure meter (DMG-2G SN:3130002). Battery test load alarm pass. Cycle pressure readings unsatisfactory.",
+      "completed_at": "2016-07-26T00:00:00Z"
+    },
+    {
+      "id": "cf3262c2-0eb7-4888-869e-53b0e27bb1e8",
+      "plan_id": "9515a979-cdff-6158-9b4a-bd066853fa52",
+      "asset_id": "0bfd2a8d-04af-47e8-a524-833f95901be9",
+      "scheduled_date": "2016-07-26",
+      "status": "completed",
+      "result": "pass",
+      "completion_notes": "Imported from Menelik II Hospital performance verification record. Maintenance site: Medical Ward. Work order type: Preventive Maintenance. Test equipment: Oxygen analyzer (Maxtec AF17199058); Digital pressure meter (DMG-2G SN:3130002). O2 purity unsatisfactory on analyzer. Battery alarm & power failure alarm, battery voltage satisfactory.",
+      "completed_at": "2016-07-26T00:00:00Z"
+    },
+    {
+      "id": "253e24f0-fb17-465b-a12d-e8b20b879013",
+      "plan_id": "9515a979-cdff-6158-9b4a-bd066853fa52",
+      "asset_id": "0bfd2a8d-04af-47e8-a524-833f95901be9",
+      "scheduled_date": "2016-07-26",
+      "status": "completed",
+      "result": "pass",
+      "completion_notes": "Imported from Menelik II Hospital performance verification record. Maintenance site: Medical Ward. Work order type: Preventive Maintenance. Test equipment: Oxygen analyzer (Maxtec AF17199058); Digital pressure meter (DMG-2G SN:3130002). O2 purity, battery alarm, power failure alarm, battery voltage satisfactory. Cycle pressure readings unsatisfactory.",
+      "completed_at": "2016-07-26T00:00:00Z"
+    },
+    {
+      "id": "844fdb78-dd8f-4d22-bf77-b8ca324ef9ed",
+      "plan_id": "9515a979-cdff-6158-9b4a-bd066853fa52",
+      "asset_id": "0bfd2a8d-04af-47e8-a524-833f95901be9",
+      "scheduled_date": "2016-07-25",
+      "status": "completed",
+      "result": "pass",
+      "completion_notes": "Imported from Menelik II Hospital performance verification record. Maintenance site: Medical Ward. Work order type: Preventive Maintenance. Test equipment: Oxygen analyzer (Maxtec AF17199058); Digital pressure meter (DMG-2G SN:3130002). 5 of 8 units satisfactory for all parameters; 2 units unsatisfactory for O2 purity & cycle pressure on analyzer; 1 unit unsatisfactory for O2 purity & cycle pressure.",
+      "completed_at": "2016-07-25T00:00:00Z"
+    },
+    {
+      "id": "5e204797-9b37-4dd7-9332-f838d9b42132",
+      "plan_id": "96576e94-1742-f00f-83f2-e0bb4261a715",
+      "asset_id": "7fb06525-987c-417c-9a69-068de85ea3ab",
+      "scheduled_date": "2016-07-25",
+      "status": "completed",
+      "result": "pass",
+      "completion_notes": "Imported from Menelik II Hospital performance verification record. Maintenance site: ICU. Work order type: Preventive Maintenance. Test equipment: Gas flow analyzer (FLUKE SN:4179049). O2 alarm, air failure alarm pass. Breathing circuit leak — N/A (anesthesia unit). O2 calibration pass. Tidal volume, breath rate, O2 concentration pass. Pressure readings unsatisfactory; parameters measured 11 times — average unacceptable per ISO 80601-2-12-2011(E).",
+      "completed_at": "2016-07-25T00:00:00Z"
+    },
+    {
+      "id": "90746ea2-c7ca-4181-93d2-ef93c23eb744",
+      "plan_id": "96576e94-1742-f00f-83f2-e0bb4261a715",
+      "asset_id": "7fb06525-987c-417c-9a69-068de85ea3ab",
+      "scheduled_date": "2016-07-25",
+      "status": "completed",
+      "result": "pass",
+      "completion_notes": "Imported from Menelik II Hospital performance verification record. Maintenance site: ICU. Work order type: Preventive Maintenance. Test equipment: Gas flow analyzer (FLUKE SN:4179049). Similar results to above. FIO2, tidal volume, breath rate satisfactory. Pressure, frequency readings unsatisfactory.",
+      "completed_at": "2016-07-25T00:00:00Z"
+    },
+    {
+      "id": "2fd7ae55-106f-49e0-a0bd-2f943d262a12",
+      "plan_id": "96576e94-1742-f00f-83f2-e0bb4261a715",
+      "asset_id": "7fb06525-987c-417c-9a69-068de85ea3ab",
+      "scheduled_date": "2016-07-25",
+      "status": "completed",
+      "result": "pass",
+      "completion_notes": "Imported from Menelik II Hospital performance verification record. Maintenance site: ICU. Work order type: Preventive Maintenance. Test equipment: Gas flow analyzer (FLUKE SN:4179049). All parameters satisfactory per ISO 80601-2-12-2011(E).",
+      "completed_at": "2016-07-25T00:00:00Z"
+    },
+    {
+      "id": "6097f9d4-b04a-4038-86b7-8e517304dc7b",
+      "plan_id": "96576e94-1742-f00f-83f2-e0bb4261a715",
+      "asset_id": "7fb06525-987c-417c-9a69-068de85ea3ab",
+      "scheduled_date": "2016-07-25",
+      "status": "completed",
+      "result": "pass",
+      "completion_notes": "Imported from Menelik II Hospital performance verification record. Maintenance site: Operation Room. Work order type: Preventive Maintenance. Test equipment: Gas flow analyzer (FLUKE SN:4179049). O2 alarm, air failure alarm pass. O2 calibration N/A (anesthesia unit). Tidal volume 360ml (limit 270–330) — FAIL. PEEP pass.",
+      "completed_at": "2016-07-25T00:00:00Z"
+    },
+    {
+      "id": "f561ae91-9d50-480e-89d7-4b61ad2f8258",
+      "plan_id": "96576e94-1742-f00f-83f2-e0bb4261a715",
+      "asset_id": "7fb06525-987c-417c-9a69-068de85ea3ab",
+      "scheduled_date": "2016-07-25",
+      "status": "completed",
+      "result": "pass",
+      "completion_notes": "Imported from Menelik II Hospital performance verification record. Maintenance site: Operation Room. Work order type: Preventive Maintenance. Test equipment: Gas flow analyzer (FLUKE SN:4179049). O2 alarm pass; air failure alarm pass. Breathing circuit leak test pass. O2 calibration N/A. Tidal volume, breath rate, O2 concentration generally satisfactory. Some pressure deviations noted.",
+      "completed_at": "2016-07-25T00:00:00Z"
+    }
+  ],
+  "completions": [
+    {
+      "id": "15042e7f-6431-48a1-acf3-399a2014a7b7",
+      "schedule_id": "5662c7d8-b01f-4e6f-9f20-c43aa446c1c2",
+      "completion_date": "2016-07-26",
+      "duration_hours": 0.8333333333333334,
+      "notes": "Technicians: Tebeje Beyene, Atnafu Gojo, Getie, Chernet, Mesfin. Result: Partial Pass. Imported from Menelik II Hospital performance verification record. Maintenance site: Operation Room. Work order type: Preventive Maintenance. Test equipment: Oxygen analyzer (Maxtec AF17199058); Digital pressure meter (DMG-2G SN:3130002). Battery alarm, power failure test, battery voltage satisfactory. Cycle pressure readings unsatisfactory (model-specific range)."
+    },
+    {
+      "id": "63d405eb-2e78-4593-acfb-59e2aef20fda",
+      "schedule_id": "f861b3e3-7ad0-4445-a4d6-8a0e95c426bb",
+      "completion_date": "2016-07-26",
+      "duration_hours": 0.8333333333333334,
+      "notes": "Technicians: Tebeje Beyene, Atnafu Gojo, Getie, Chernet, Mesfin. Result: Partial Pass. Imported from Menelik II Hospital performance verification record. Maintenance site: Emergency Room. Work order type: Preventive Maintenance. Test equipment: Oxygen analyzer (Maxtec AF17199058); Digital pressure meter (DMG-2G SN:3130002). O2 purity satisfactory. Battery alarm & power failure alarm unsatisfactory. Cycle pressure readings unsatisfactory."
+    },
+    {
+      "id": "9fa48b4e-6739-4953-bd5a-9d3d5ffbf6c4",
+      "schedule_id": "63e683fb-4b83-4804-9227-185e92710e91",
+      "completion_date": "2016-07-26",
+      "duration_hours": 0.8333333333333334,
+      "notes": "Technicians: Tebeje Beyene, Atnafu Gojo, Getie, Chernet, Mesfin. Result: Partial Pass. Imported from Menelik II Hospital performance verification record. Maintenance site: Emergency. Work order type: Preventive Maintenance. Test equipment: Oxygen analyzer (Maxtec AF17199058); Digital pressure meter (DMG-2G SN:3130002). O2 purity & battery voltage satisfactory. Battery alarm, power failure alarm, cycle pressure unsatisfactory."
+    },
+    {
+      "id": "8ad948aa-a2ca-4485-b72a-48d43b6181cb",
+      "schedule_id": "f3cd2b63-9ef0-43b9-8194-a980a204ad7a",
+      "completion_date": "2016-07-26",
+      "duration_hours": 0.8333333333333334,
+      "notes": "Technicians: Tebeje Beyene, Atnafu Gojo, Getie, Chernet, Mesfin. Result: Partial Pass. Imported from Menelik II Hospital performance verification record. Maintenance site: Emergency. Work order type: Preventive Maintenance. Test equipment: Oxygen analyzer (Maxtec AF17199058); Digital pressure meter (DMG-2G SN:3130002). O2 purity & battery voltage satisfactory. Cycle pressure unsatisfactory."
+    },
+    {
+      "id": "69e8fafb-9fd4-430e-a11f-990f7a7c3d22",
+      "schedule_id": "10221bf1-8dcf-41b5-b54a-d4f50b4ef4f5",
+      "completion_date": "2016-07-26",
+      "duration_hours": 0.8333333333333334,
+      "notes": "Technicians: Tebeje Beyene, Atnafu Gojo, Getie, Chernet, Mesfin. Result: Partial Pass. Imported from Menelik II Hospital performance verification record. Maintenance site: Emergency. Work order type: Preventive Maintenance. Test equipment: Oxygen analyzer (Maxtec AF17199058); Digital pressure meter (DMG-2G SN:3130002). Battery test load alarm pass. Cycle pressure readings unsatisfactory."
+    },
+    {
+      "id": "d9cb0a68-5f9d-4eca-9427-03760af463e0",
+      "schedule_id": "cf3262c2-0eb7-4888-869e-53b0e27bb1e8",
+      "completion_date": "2016-07-26",
+      "duration_hours": 0.8333333333333334,
+      "notes": "Technicians: Tebeje Beyene, Atnafu Gojo, Getie, Chernet, Mesfin. Result: Partial Pass. Imported from Menelik II Hospital performance verification record. Maintenance site: Medical Ward. Work order type: Preventive Maintenance. Test equipment: Oxygen analyzer (Maxtec AF17199058); Digital pressure meter (DMG-2G SN:3130002). O2 purity unsatisfactory on analyzer. Battery alarm & power failure alarm, battery voltage satisfactory."
+    },
+    {
+      "id": "a4532952-4c4c-416d-9d94-34d0673421f6",
+      "schedule_id": "253e24f0-fb17-465b-a12d-e8b20b879013",
+      "completion_date": "2016-07-26",
+      "duration_hours": null,
+      "notes": "Technicians: Tebeje Beyene, Atnafu Gojo, Getie, Chernet, Mesfin. Result: Partial Pass. Imported from Menelik II Hospital performance verification record. Maintenance site: Medical Ward. Work order type: Preventive Maintenance. Test equipment: Oxygen analyzer (Maxtec AF17199058); Digital pressure meter (DMG-2G SN:3130002). O2 purity, battery alarm, power failure alarm, battery voltage satisfactory. Cycle pressure readings unsatisfactory."
+    },
+    {
+      "id": "5798be0b-3130-4ae4-a75a-041ebff23ebe",
+      "schedule_id": "844fdb78-dd8f-4d22-bf77-b8ca324ef9ed",
+      "completion_date": "2016-07-25",
+      "duration_hours": null,
+      "notes": "Technicians: Tebeje Beyene, Atnafu Gojo, Getie, Chernet, Mesfin. Result: Partial Pass. Imported from Menelik II Hospital performance verification record. Maintenance site: Medical Ward. Work order type: Preventive Maintenance. Test equipment: Oxygen analyzer (Maxtec AF17199058); Digital pressure meter (DMG-2G SN:3130002). 5 of 8 units satisfactory for all parameters; 2 units unsatisfactory for O2 purity & cycle pressure on analyzer; 1 unit unsatisfactory for O2 purity & cycle pressure."
+    },
+    {
+      "id": "58e161a4-ee69-4f35-ac66-a18f033ce870",
+      "schedule_id": "5e204797-9b37-4dd7-9332-f838d9b42132",
+      "completion_date": "2016-07-25",
+      "duration_hours": null,
+      "notes": "Technicians: Tebeje Beyene, Atnafu Gojo, Getie, Chernet, Mesfin. Result: Partial Pass. Imported from Menelik II Hospital performance verification record. Maintenance site: ICU. Work order type: Preventive Maintenance. Test equipment: Gas flow analyzer (FLUKE SN:4179049). O2 alarm, air failure alarm pass. Breathing circuit leak — N/A (anesthesia unit). O2 calibration pass. Tidal volume, breath rate, O2 concentration pass. Pressure readings unsatisfactory; parameters measured 11 times — average unacceptable per ISO 80601-2-12-2011(E)."
+    },
+    {
+      "id": "61e10232-e46c-474a-9ba6-cb5a090965e3",
+      "schedule_id": "90746ea2-c7ca-4181-93d2-ef93c23eb744",
+      "completion_date": "2016-07-25",
+      "duration_hours": null,
+      "notes": "Technicians: Tebeje Beyene, Atnafu Gojo, Getie, Chernet, Mesfin. Result: Partial Pass. Imported from Menelik II Hospital performance verification record. Maintenance site: ICU. Work order type: Preventive Maintenance. Test equipment: Gas flow analyzer (FLUKE SN:4179049). Similar results to above. FIO2, tidal volume, breath rate satisfactory. Pressure, frequency readings unsatisfactory."
+    },
+    {
+      "id": "09e7cf8c-2ea6-423a-b422-ab689d182ce7",
+      "schedule_id": "2fd7ae55-106f-49e0-a0bd-2f943d262a12",
+      "completion_date": "2016-07-25",
+      "duration_hours": null,
+      "notes": "Technicians: Tebeje Beyene, Atnafu Gojo, Getie, Chernet, Mesfin. Result: Pass. Imported from Menelik II Hospital performance verification record. Maintenance site: ICU. Work order type: Preventive Maintenance. Test equipment: Gas flow analyzer (FLUKE SN:4179049). All parameters satisfactory per ISO 80601-2-12-2011(E)."
+    },
+    {
+      "id": "f2b050ec-0545-4115-8a13-ce19d4f9c514",
+      "schedule_id": "6097f9d4-b04a-4038-86b7-8e517304dc7b",
+      "completion_date": "2016-07-25",
+      "duration_hours": null,
+      "notes": "Technicians: Tebeje Beyene, Atnafu Gojo, Getie, Chernet, Mesfin. Result: Partial Pass. Imported from Menelik II Hospital performance verification record. Maintenance site: Operation Room. Work order type: Preventive Maintenance. Test equipment: Gas flow analyzer (FLUKE SN:4179049). O2 alarm, air failure alarm pass. O2 calibration N/A (anesthesia unit). Tidal volume 360ml (limit 270–330) — FAIL. PEEP pass."
+    },
+    {
+      "id": "a529d355-4684-4823-a3b1-ffee4823c4cb",
+      "schedule_id": "f561ae91-9d50-480e-89d7-4b61ad2f8258",
+      "completion_date": "2016-07-25",
+      "duration_hours": null,
+      "notes": "Technicians: Tebeje Beyene, Atnafu Gojo, Getie, Chernet, Mesfin. Result: Partial Pass. Imported from Menelik II Hospital performance verification record. Maintenance site: Operation Room. Work order type: Preventive Maintenance. Test equipment: Gas flow analyzer (FLUKE SN:4179049). O2 alarm pass; air failure alarm pass. Breathing circuit leak test pass. O2 calibration N/A. Tidal volume, breath rate, O2 concentration generally satisfactory. Some pressure deviations noted."
+    }
+  ]
+}

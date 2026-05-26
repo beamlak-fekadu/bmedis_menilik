@@ -1,0 +1,80 @@
+[
+  {
+    "name": "Emergency Department",
+    "code": "ED",
+    "description": "Emergency and trauma care services including adult, pediatric, and triage",
+    "id": "d0000001-0000-0000-0000-000000000003"
+  },
+  {
+    "name": "Eye Department",
+    "code": "EYE",
+    "description": "Ophthalmology services including OR, OPD, emergency, biometry, and glaucoma",
+    "id": "884b0369-be03-12a0-b904-ae6f75c4291d"
+  },
+  {
+    "name": "Laboratory",
+    "code": "LAB",
+    "description": "Clinical laboratory, microbiology, pathology, ART lab, and blood bank",
+    "id": "d0000001-0000-0000-0000-000000000005"
+  },
+  {
+    "name": "Operating Theater",
+    "code": "OT",
+    "description": "Major surgical suites and gynecology OR",
+    "id": "d0000001-0000-0000-0000-000000000002"
+  },
+  {
+    "name": "ICU",
+    "code": "ICU",
+    "description": "Intensive care unit for critically ill patients",
+    "id": "d0000001-0000-0000-0000-000000000001"
+  },
+  {
+    "name": "NICU",
+    "code": "NICU",
+    "description": "Neonatal intensive care unit",
+    "id": "2b382a4b-7013-ccb1-8854-7ad01c66c013"
+  },
+  {
+    "name": "Radiology and Imaging",
+    "code": "RAD",
+    "description": "Diagnostic imaging services",
+    "id": "d0000001-0000-0000-0000-000000000004"
+  },
+  {
+    "name": "Maternal and Child Health",
+    "code": "MCH",
+    "description": "Delivery, family planning, and maternal services",
+    "id": "e5afe68b-997b-076a-e341-3bc13f259d30"
+  },
+  {
+    "name": "Dialysis Center",
+    "code": "DIA",
+    "description": "Renal dialysis services",
+    "id": "2b2c9a60-d4de-1906-7946-353dbedfbe0e"
+  },
+  {
+    "name": "Central Sterilization",
+    "code": "CSSD",
+    "description": "Central sterilization supply department",
+    "id": "cb13f093-d7cf-d496-0b29-48d28635862c"
+  },
+  {
+    "name": "Pharmacy",
+    "code": "PHARM",
+    "description": "Pharmaceutical services",
+    "id": "d0000001-0000-0000-0000-000000000006"
+  },
+  {
+    "name": "Specialty OPD",
+    "code": "SOPD",
+    "description": "Dental, ENT, orthopedic, and dermatology outpatient services",
+    "id": "32f854be-3fe2-a5e0-d642-cb2eb7674df7"
+  },
+  {
+    "name": "Inpatient Ward",
+    "code": "IPW",
+    "description": "General inpatient wards",
+    "id": "d0000001-0000-0000-0000-000000000007"
+  }
+]

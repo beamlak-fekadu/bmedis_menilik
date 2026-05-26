@@ -1,0 +1,80 @@
+[
+  {
+    "id": "c0000001-0000-0000-0000-000000000001",
+    "name": "Patient Monitoring",
+    "code": "MON",
+    "criticality": "critical"
+  },
+  {
+    "id": "c0000001-0000-0000-0000-000000000008",
+    "name": "Respiratory and Ventilation",
+    "code": "RESP",
+    "criticality": "critical"
+  },
+  {
+    "id": "4c0d5682-f3bb-e610-6ddc-eda5e729bd6a",
+    "name": "Vital Signs and Diagnostic",
+    "code": "VSD",
+    "criticality": "high"
+  },
+  {
+    "id": "c0000001-0000-0000-0000-000000000011",
+    "name": "Physiotherapy Equipment",
+    "code": "PHYS",
+    "criticality": "low"
+  },
+  {
+    "id": "c0000001-0000-0000-0000-000000000005",
+    "name": "Laboratory Equipment",
+    "code": "LBEQ",
+    "criticality": "high"
+  },
+  {
+    "id": "c0000001-0000-0000-0000-000000000004",
+    "name": "Diagnostic Imaging",
+    "code": "IMG",
+    "criticality": "high"
+  },
+  {
+    "id": "c0000001-0000-0000-0000-000000000006",
+    "name": "Sterilization Equipment",
+    "code": "STER",
+    "criticality": "high"
+  },
+  {
+    "id": "c0000001-0000-0000-0000-000000000003",
+    "name": "Surgical Equipment",
+    "code": "SURG",
+    "criticality": "high"
+  },
+  {
+    "id": "0c498a20-15ce-6010-7aa3-589a169142af",
+    "name": "Ophthalmology Equipment",
+    "code": "OPH",
+    "criticality": "high"
+  },
+  {
+    "id": "05736ca8-cbb3-e707-4e4a-8a9393bb3a87",
+    "name": "Neonatology Equipment",
+    "code": "NEO",
+    "criticality": "critical"
+  },
+  {
+    "id": "c0000001-0000-0000-0000-000000000010",
+    "name": "Dental Equipment",
+    "code": "DENT",
+    "criticality": "medium"
+  },
+  {
+    "id": "756d3daa-a6d5-5739-62fc-e53a616f8c5e",
+    "name": "Renal Dialysis Equipment",
+    "code": "RDI",
+    "criticality": "critical"
+  },
+  {
+    "id": "22f788b4-b0b1-26b4-8fdc-1c49256f0efc",
+    "name": "ENT Equipment",
+    "code": "ENT",
+    "criticality": "medium"
+  }
+]

@@ -1,0 +1,94 @@
+{
+  "mode": "dry-run",
+  "startedAt": "2026-05-26T04:31:54.213Z",
+  "completedAt": "2026-05-26T04:32:03.865Z",
+  "preImportSnapshot": {
+    "equipment_assets": 0,
+    "maintenance_requests": 0,
+    "work_orders": 0,
+    "maintenance_events": 0,
+    "downtime_logs": 0,
+    "pm_plans": 0,
+    "pm_schedules": 0,
+    "pm_completions": 0,
+    "calibration_records": 0,
+    "calibration_requests": 0,
+    "training_sessions": 0,
+    "staff_training_records": 0,
+    "equipment_training_records": 0,
+    "equipment_reliability_metrics": 0,
+    "equipment_risk_scores": 0,
+    "pm_compliance_metrics": 0,
+    "replacement_priority_scores": 0,
+    "spare_parts": 0,
+    "stock_receipts": 0,
+    "stock_issues": 0
+  },
+  "imported": {
+    "equipment_assets": 170,
+    "maintenance_requests": 10,
+    "work_orders": 10,
+    "pm_plans": 3,
+    "pm_schedules": 14,
+    "pm_completions": 14,
+    "training_sessions": 12,
+    "staff_training_records": 12
+  },
+  "skipped": [
+    {
+      "sheet": "Work Orders",
+      "row": 4,
+      "reason": "No matching asset for OR Light"
+    },
+    {
+      "sheet": "Work Orders",
+      "row": 7,
+      "reason": "No matching asset for Patient Bed"
+    },
+    {
+      "sheet": "Work Orders",
+      "row": 8,
+      "reason": "No matching asset for Patient Bed"
+    },
+    {
+      "sheet": "Preventive Maintenance",
+      "row": 5,
+      "reason": "No matching asset for Dialysis Monitor / Medical Monitor"
+    },
+    {
+      "sheet": "Calibration",
+      "row": 0,
+      "reason": "Only 1 placeholder row referencing physical cover page — no importable calibration data"
+    },
+    {
+      "sheet": "Acceptance Testing",
+      "row": 0,
+      "reason": "Blank template — no real acceptance test data"
+    },
+    {
+      "sheet": "Dashboard",
+      "row": 0,
+      "reason": "Summary only — not source operational data"
+    }
+  ],
+  "warnings": [],
+  "assetMatching": {
+    "matched": 10,
+    "unmatched": 3,
+    "details": [
+      "WO-001: OR Light (serial: 17101133) - no match",
+      "WO-004: Patient Bed (serial: —) - no match",
+      "WO-005: Patient Bed (serial: 0242034162) - no match"
+    ]
+  },
+  "analyticsRefresh": "skipped (dry-run)",
+  "limitations": [
+    "Calibration data: Only 1 placeholder row — no mature calibration dataset imported.",
+    "Acceptance testing: Blank template only — no completed acceptance records.",
+    "Dates: DD/MM/YYYY dates that fall in 2015-2019 range may be Ethiopian Calendar; stored in notes without conversion.",
+    "Manufacturers: ~85% of \"Manufacturer/Brand\" column values are model/serial numbers; stored in notes.",
+    "PM compliance: Based on 13 performance verification + 2 PM records only — not hospital-wide.",
+    "Work order matching: Some WOs may not match to imported assets if serial/name differs from inventory.",
+    "Analytics: MTBF/MTTR/availability require accumulated operational history beyond what was imported."
+  ]
+}
