@@ -1,0 +1,11 @@
+rank,asset_code,asset_name,department,category,severity,occurrence,detectability,RPN,risk_level,assignment_method
+1,ICU-0004,Mechanical Ventilator,ICU,Respiratory and Ventilation,9,6,6,324,high,computed
+2,ED-0002,Patient Monitor,Emergency Department,Patient Monitoring,9,6,6,324,high,computed
+3,ED-0017,"Suction Machine, Electrical",Emergency Department,Respiratory and Ventilation,9,6,6,324,high,computed
+4,EYE-0027,Anesthesia Machine,Eye Department,Respiratory and Ventilation,9,6,6,324,high,computed
+5,ICU-0005,Mechanical Ventilator,ICU,Respiratory and Ventilation,9,6,6,324,high,computed
+6,ICU-0006,Mechanical Ventilator,ICU,Respiratory and Ventilation,9,6,6,324,high,computed
+7,LAB-0004,Platelet Agitator,Laboratory,Laboratory Equipment,8,6,6,288,high,computed
+8,EYE-0019,Indirect Ophthalmoscope,Eye Department,Ophthalmology Equipment,8,6,6,288,high,computed
+9,EYE-0042,Steam Sterilizer,Eye Department,Sterilization Equipment,8,6,6,288,high,computed
+10,RAD-0003,CT Scanner,Radiology and Imaging,Diagnostic Imaging,8,6,6,288,high,computed

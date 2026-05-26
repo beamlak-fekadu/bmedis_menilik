@@ -1,0 +1,11 @@
+rank,asset_code,asset_name,department,score_RPI,band,age_score,failure_score,availability_score,maintenance_burden_score,spare_part_score,risk_score,cost_score,main_drivers
+1,ED-0002,Patient Monitor,Emergency Department,0.575,review,0.5,0.5,0.5,0.5,0.5,1,0.5,"System-computed: top drivers = availability(0.100), risk(0.150), failure(0.075)"
+2,ED-0017,"Suction Machine, Electrical",Emergency Department,0.575,review,0.5,0.5,0.5,0.5,0.5,1,0.5,"System-computed: top drivers = availability(0.100), risk(0.150), failure(0.075)"
+3,ICU-0004,Mechanical Ventilator,ICU,0.575,review,0.5,0.5,0.5,0.5,0.5,1,0.5,"System-computed: top drivers = availability(0.100), risk(0.150), failure(0.075)"
+4,ICU-0005,Mechanical Ventilator,ICU,0.575,review,0.5,0.5,0.5,0.5,0.5,1,0.5,"System-computed: top drivers = availability(0.100), risk(0.150), failure(0.075)"
+5,ICU-0006,Mechanical Ventilator,ICU,0.575,review,0.5,0.5,0.5,0.5,0.5,1,0.5,"System-computed: top drivers = availability(0.100), risk(0.150), failure(0.075)"
+6,EYE-0027,Anesthesia Machine,Eye Department,0.575,review,0.5,0.5,0.5,0.5,0.5,1,0.5,"System-computed: top drivers = availability(0.100), risk(0.150), failure(0.075)"
+7,LAB-0004,Platelet Agitator,Laboratory,0.5577,review,0.5,0.5,0.5,0.5,0.5,0.8846,0.5,"System-computed: top drivers = availability(0.100), risk(0.133), failure(0.075)"
+8,RAD-0003,CT Scanner,Radiology and Imaging,0.5577,review,0.5,0.5,0.5,0.5,0.5,0.8846,0.5,"System-computed: top drivers = availability(0.100), risk(0.133), failure(0.075)"
+9,EYE-0042,Steam Sterilizer,Eye Department,0.5577,review,0.5,0.5,0.5,0.5,0.5,0.8846,0.5,"System-computed: top drivers = availability(0.100), risk(0.133), failure(0.075)"
+10,RAD-0005,X-Ray Machine w/ Fluoroscopy,Radiology and Imaging,0.5577,review,0.5,0.5,0.5,0.5,0.5,0.8846,0.5,"System-computed: top drivers = availability(0.100), risk(0.133), failure(0.075)"

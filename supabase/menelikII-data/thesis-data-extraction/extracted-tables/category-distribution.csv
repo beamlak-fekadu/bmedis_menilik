@@ -1,0 +1,14 @@
+Equipment Category,Equipment Count,Percentage,Notes
+Laboratory Equipment,49,28.8%,Criticality: high
+Surgical Equipment,25,14.7%,Criticality: high
+Respiratory and Ventilation,22,12.9%,Criticality: critical
+Ophthalmology Equipment,17,10.0%,Criticality: high
+Patient Monitoring,13,7.6%,Criticality: critical
+Diagnostic Imaging,12,7.1%,Criticality: high
+Neonatology Equipment,9,5.3%,Criticality: critical
+Sterilization Equipment,9,5.3%,Criticality: high
+Vital Signs and Diagnostic,4,2.4%,Criticality: high
+Dental Equipment,3,1.8%,Criticality: medium
+Renal Dialysis Equipment,3,1.8%,Criticality: critical
+ENT Equipment,2,1.2%,Criticality: medium
+Physiotherapy Equipment,2,1.2%,Criticality: low

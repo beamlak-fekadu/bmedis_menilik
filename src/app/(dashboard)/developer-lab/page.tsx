@@ -24,6 +24,7 @@ import {
   scoreFreshnessBadgeVariant,
 } from '@/utils/analytics/score-registry';
 import { demoRoleIntegritySummary } from '@/utils/developer-lab/demo-role-validation';
+import { getQrBaseUrl } from '@/utils/qr/url';
 import {
   countLowStock,
   countStockout,
@@ -46,6 +47,15 @@ type HealthCheck = {
   actionLabel?: string;
   group: 'data' | 'workflow' | 'decision-support' | 'security';
 };
+
+function hostFromUrl(value: string | null | undefined): string | null {
+  if (!value) return null;
+  try {
+    return new URL(value.startsWith('http') ? value : `https://${value}`).host;
+  } catch {
+    return null;
+  }
+}
 
 const METHOD_CARDS = [
   {
@@ -453,8 +463,17 @@ export default async function DeveloperLabPage({ searchParams }: { searchParams:
   const demoSummary = demoRoleIntegritySummary(demoRoleDiagnostics.rows);
   const currentDepartment = departments.find((row) => row.id === profile.department_id);
   const appUrl = process.env.NEXT_PUBLIC_APP_URL
+    ?? process.env.NEXT_PUBLIC_SITE_URL
     ?? process.env.SITE_URL
     ?? (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null);
+  const qrBaseUrl = getQrBaseUrl();
+  const deploymentUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null;
+  const qrBaseHost = hostFromUrl(qrBaseUrl);
+  const deploymentHosts = [
+    hostFromUrl(process.env.NEXT_PUBLIC_VERCEL_URL),
+    hostFromUrl(deploymentUrl),
+  ].filter(Boolean);
+  const qrBaseMatchesDeploymentHost = !!qrBaseHost && deploymentHosts.includes(qrBaseHost);
   const supabaseHost = (() => {
     const raw = process.env.NEXT_PUBLIC_SUPABASE_URL;
     if (!raw) return null;
@@ -469,7 +488,9 @@ export default async function DeveloperLabPage({ searchParams }: { searchParams:
   const environmentWarnings = [
     !profile?.id ? 'Current authenticated user has no linked profile.' : null,
     (profile.roleNames ?? []).length === 0 ? 'Current profile has no assigned roles.' : null,
-    !appUrl ? 'NEXT_PUBLIC_APP_URL/SITE_URL is missing; QR and Telegram links may resolve incorrectly.' : null,
+    !appUrl ? 'NEXT_PUBLIC_APP_URL/NEXT_PUBLIC_SITE_URL/SITE_URL is missing; links may resolve incorrectly.' : null,
+    !qrBaseUrl ? 'QR base URL is missing; QR label printing is disabled until NEXT_PUBLIC_APP_URL or NEXT_PUBLIC_SITE_URL points to a stable production domain.' : null,
+    qrBaseMatchesDeploymentHost ? 'QR base URL matches the current Vercel deployment host. Set NEXT_PUBLIC_APP_URL or NEXT_PUBLIC_SITE_URL to a stable production domain before printing labels.' : null,
     !supabaseHost ? 'NEXT_PUBLIC_SUPABASE_URL is missing.' : null,
     vercelBranch && vercelBranch !== 'ui_semifinal' ? `Vercel branch is ${vercelBranch}, expected ui_semifinal for this preview.` : null,
     demoSummary.hasFailures ? 'Demo role integrity has failures. This may indicate wrong Supabase project, missing seed, or auth/profile linkage drift.' : null,
@@ -553,6 +574,7 @@ export default async function DeveloperLabPage({ searchParams }: { searchParams:
               {[
                 ['App name', 'BMEDIS'],
                 ['Resolved app URL', appUrl ?? 'Missing'],
+                ['QR base URL', qrBaseUrl ?? 'Missing'],
                 ['Supabase host', supabaseHost ?? 'Missing'],
                 ['Current auth email', authUser?.email ?? 'Not authenticated'],
                 ['Current auth user id', authUser?.id ?? 'Not authenticated'],
@@ -564,7 +586,7 @@ export default async function DeveloperLabPage({ searchParams }: { searchParams:
                 ['Vercel environment', process.env.VERCEL_ENV ?? 'Unknown'],
                 ['Vercel git branch', vercelBranch ?? 'Unknown'],
                 ['Vercel commit', commitSha ?? 'Unknown'],
-                ['Deployment URL', process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'Unknown'],
+                ['Deployment URL', deploymentUrl ?? 'Unknown'],
               ].map(([label, value]) => (
                 <div key={label} className="rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-1)] p-3 text-sm">
                   <p className="text-xs text-[var(--text-muted)]">{label}</p>

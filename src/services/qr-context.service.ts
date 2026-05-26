@@ -153,7 +153,7 @@ export type QrRoleContext = {
   route: {
     path: string | null;
     url: string | null;
-    baseUrl: string;
+    baseUrl: string | null;
     maskedToken: string;
     tokenFormatValid: boolean;
   };

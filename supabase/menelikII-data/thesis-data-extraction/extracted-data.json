@@ -1,0 +1,780 @@
+{
+  "project": {
+    "system_name": "BMEDIS — Biomedical Equipment Management and Decision-Support Information System",
+    "thesis_title": "Design and Development of a Medical Equipment Asset Management and Decision-Support System for Hospital-Level Implementation in Ethiopia",
+    "implementation": "Menelik II Hospital real-data deployment",
+    "source_tag": "menelik_ii_2018ec_import",
+    "extracted_at": "2026-05-26T12:22:12.838Z"
+  },
+  "repo": {
+    "cwd": "/Users/beamlak/Desktop/bmedis_menilik/bmedis_menilik",
+    "files_found": [
+      {
+        "Item": "workbook",
+        "Path": "supabase/menelikII-data/Menelik_II_Medical_Equipment_Management.xlsx",
+        "Found": "yes"
+      },
+      {
+        "Item": "inspection",
+        "Path": "supabase/menelikII-data/inspection-report.json",
+        "Found": "yes"
+      },
+      {
+        "Item": "dryRun",
+        "Path": "supabase/menelikII-data/dry-run-report.json",
+        "Found": "yes"
+      },
+      {
+        "Item": "import",
+        "Path": "supabase/menelikII-data/import-report.json",
+        "Found": "yes"
+      },
+      {
+        "Item": "validation",
+        "Path": "supabase/menelikII-data/validation-report.json",
+        "Found": "yes"
+      },
+      {
+        "Item": "notes",
+        "Path": "supabase/menelikII-data/paper-update-notes.md",
+        "Found": "yes"
+      },
+      {
+        "Item": "readme",
+        "Path": "supabase/menelikII-data/README.md",
+        "Found": "yes"
+      }
+    ],
+    "package_scripts": {
+      "dev": "next dev",
+      "build": "next build",
+      "start": "next start",
+      "lint": "eslint",
+      "test:chatbot": "tsx --test src/services/chatbot/__tests__/*.test.ts",
+      "test:system-fix": "tsx --test src/services/chatbot/__tests__/*.test.ts src/services/notifications/__tests__/*.test.ts src/services/metrics/__tests__/*.test.ts src/services/__tests__/*.test.ts src/utils/developer-lab/__tests__/*.test.ts src/utils/maintenance/__tests__/*.test.ts src/utils/analytics/__tests__/*.test.ts src/utils/decision-support/__tests__/*.test.ts src/lib/rbac/__tests__/*.test.ts src/lib/offline/__tests__/*.test.ts src/actions/__tests__/*.test.ts",
+      "setup:demo-users": "tsx scripts/setup-demo-users.ts",
+      "setup:menelik-users": "tsx scripts/setup-menelik-users.ts",
+      "inspect:menelik": "tsx scripts/inspect-menelik-workbook.ts",
+      "import:menelik:dry-run": "tsx scripts/import-menelik-data.ts --dry-run",
+      "import:menelik": "tsx scripts/import-menelik-data.ts",
+      "validate:menelik": "tsx scripts/validate-menelik-data.ts",
+      "storybook": "storybook dev -p 6006",
+      "build-storybook": "storybook build"
+    }
+  },
+  "menelik_import": {
+    "workbook": {
+      "path": "supabase/menelikII-data/Menelik_II_Medical_Equipment_Management.xlsx",
+      "absolute_path": "/Users/beamlak/Desktop/bmedis_menilik/bmedis_menilik/supabase/menelikII-data/Menelik_II_Medical_Equipment_Management.xlsx",
+      "found": true,
+      "inspected_at": "2026-05-26T04:25:02.150Z"
+    },
+    "sheets": [
+      {
+        "Source Sheet": "Dashboard",
+        "Source Type": "Summary dashboard",
+        "Data Rows": 15,
+        "Imported?": "No",
+        "Reason / Use": "Summary only — not source operational data"
+      },
+      {
+        "Source Sheet": "Equipment Inventory",
+        "Source Type": "Inventory",
+        "Data Rows": 170,
+        "Imported?": "Yes",
+        "Reason / Use": "Used as source evidence for corresponding module."
+      },
+      {
+        "Source Sheet": "Performance Verification",
+        "Source Type": "PM/performance verification records",
+        "Data Rows": 13,
+        "Imported?": "Yes",
+        "Reason / Use": "Used as source evidence for corresponding module."
+      },
+      {
+        "Source Sheet": "Work Orders",
+        "Source Type": "Corrective maintenance records",
+        "Data Rows": 13,
+        "Imported?": "Partially",
+        "Reason / Use": "10 matched rows imported; 3 unmatched rows skipped."
+      },
+      {
+        "Source Sheet": "Preventive Maintenance",
+        "Source Type": "Preventive maintenance records",
+        "Data Rows": 2,
+        "Imported?": "Partially",
+        "Reason / Use": "Matched PM evidence imported; one unmatched row skipped."
+      },
+      {
+        "Source Sheet": "Acceptance Testing",
+        "Source Type": "Acceptance test template",
+        "Data Rows": 2,
+        "Imported?": "No",
+        "Reason / Use": "Blank template — no real acceptance test data"
+      },
+      {
+        "Source Sheet": "Training Records",
+        "Source Type": "Training verification records",
+        "Data Rows": 12,
+        "Imported?": "Yes",
+        "Reason / Use": "Used as source evidence for corresponding module."
+      },
+      {
+        "Source Sheet": "Calibration",
+        "Source Type": "Calibration placeholder/report cover",
+        "Data Rows": 2,
+        "Imported?": "No",
+        "Reason / Use": "Calibration sheet contained only placeholder/report-cover information; no row-level calibration records were imported."
+      }
+    ],
+    "import_counts": {
+      "equipment_assets": 170,
+      "maintenance_requests": 10,
+      "work_orders": 10,
+      "pm_plans": 3,
+      "pm_schedules": 14,
+      "pm_completions": 14,
+      "training_sessions": 12,
+      "staff_training_records": 12,
+      "disposal_requests": 5
+    },
+    "validation_counts": {
+      "departments": 13,
+      "equipment_categories": 13,
+      "manufacturers": 12,
+      "equipment_models": 0,
+      "equipment_assets": 170,
+      "maintenance_requests": 10,
+      "work_orders": 10,
+      "maintenance_events": 0,
+      "downtime_logs": 0,
+      "pm_plans": 3,
+      "pm_schedules": 14,
+      "pm_completions": 14,
+      "calibration_records": 0,
+      "calibration_requests": 0,
+      "training_sessions": 12,
+      "staff_training_records": 12,
+      "equipment_training_records": 0,
+      "profiles": 14,
+      "roles": 7,
+      "user_roles": 14,
+      "equipment_reliability_metrics": 165,
+      "equipment_risk_scores": 165,
+      "pm_compliance_metrics": 0,
+      "replacement_priority_scores": 165,
+      "disposal_requests": 5,
+      "disposed_assets": 0,
+      "spare_parts": 0,
+      "stock_receipts": 0,
+      "stock_issues": 0
+    },
+    "skipped": [
+      {
+        "sheet": "Work Orders",
+        "row": 4,
+        "reason": "No matching asset for OR Light"
+      },
+      {
+        "sheet": "Work Orders",
+        "row": 7,
+        "reason": "No matching asset for Patient Bed"
+      },
+      {
+        "sheet": "Work Orders",
+        "row": 8,
+        "reason": "No matching asset for Patient Bed"
+      },
+      {
+        "sheet": "Preventive Maintenance",
+        "row": 5,
+        "reason": "No matching asset for Dialysis Monitor / Medical Monitor"
+      },
+      {
+        "sheet": "Calibration",
+        "row": 0,
+        "reason": "Calibration sheet contained only placeholder/report-cover information; no row-level calibration records were imported."
+      },
+      {
+        "sheet": "Acceptance Testing",
+        "row": 0,
+        "reason": "Blank template — no real acceptance test data"
+      },
+      {
+        "sheet": "Dashboard",
+        "row": 0,
+        "reason": "Summary only — not source operational data"
+      }
+    ],
+    "limitations": [
+      "Calibration data: Calibration sheet contained only placeholder/report-cover information; no row-level calibration records were imported.",
+      "Acceptance testing: Blank template only — no completed acceptance records.",
+      "Dates: DD/MM/YYYY dates that fall in 2015-2019 range may be Ethiopian Calendar; stored in notes without conversion.",
+      "Manufacturers: ~85% of \"Manufacturer/Brand\" column values are model/serial numbers; stored in notes.",
+      "PM compliance: Based on 13 performance verification + 2 PM records only — not hospital-wide.",
+      "Work order matching: Some WOs may not match to imported assets if serial/name differs from inventory.",
+      "Analytics: MTBF/MTTR/availability require accumulated operational history beyond what was imported."
+    ],
+    "departments": [
+      {
+        "Department": "Eye Department",
+        "Equipment Count": 50,
+        "Percentage of 170": "29.4%",
+        "Notes": "Final normalized/imported department grouping"
+      },
+      {
+        "Department": "Laboratory",
+        "Equipment Count": 38,
+        "Percentage of 170": "22.4%",
+        "Notes": "Final normalized/imported department grouping"
+      },
+      {
+        "Department": "Emergency Department",
+        "Equipment Count": 23,
+        "Percentage of 170": "13.5%",
+        "Notes": "Final normalized/imported department grouping"
+      },
+      {
+        "Department": "Operating Theater",
+        "Equipment Count": 11,
+        "Percentage of 170": "6.5%",
+        "Notes": "Final normalized/imported department grouping"
+      },
+      {
+        "Department": "Specialty OPD",
+        "Equipment Count": 9,
+        "Percentage of 170": "5.3%",
+        "Notes": "Final normalized/imported department grouping"
+      },
+      {
+        "Department": "Dialysis Center",
+        "Equipment Count": 6,
+        "Percentage of 170": "3.5%",
+        "Notes": "Final normalized/imported department grouping"
+      },
+      {
+        "Department": "ICU",
+        "Equipment Count": 6,
+        "Percentage of 170": "3.5%",
+        "Notes": "Final normalized/imported department grouping"
+      },
+      {
+        "Department": "Maternal and Child Health",
+        "Equipment Count": 6,
+        "Percentage of 170": "3.5%",
+        "Notes": "Final normalized/imported department grouping"
+      },
+      {
+        "Department": "Inpatient Ward",
+        "Equipment Count": 5,
+        "Percentage of 170": "2.9%",
+        "Notes": "Final normalized/imported department grouping"
+      },
+      {
+        "Department": "NICU",
+        "Equipment Count": 5,
+        "Percentage of 170": "2.9%",
+        "Notes": "Final normalized/imported department grouping"
+      },
+      {
+        "Department": "Radiology and Imaging",
+        "Equipment Count": 5,
+        "Percentage of 170": "2.9%",
+        "Notes": "Final normalized/imported department grouping"
+      },
+      {
+        "Department": "Central Sterilization",
+        "Equipment Count": 3,
+        "Percentage of 170": "1.8%",
+        "Notes": "Final normalized/imported department grouping"
+      },
+      {
+        "Department": "Pharmacy",
+        "Equipment Count": 3,
+        "Percentage of 170": "1.8%",
+        "Notes": "Final normalized/imported department grouping"
+      }
+    ],
+    "categories": [
+      {
+        "Equipment Category": "Laboratory Equipment",
+        "Equipment Count": 49,
+        "Percentage": "28.8%",
+        "Notes": "Criticality: high"
+      },
+      {
+        "Equipment Category": "Surgical Equipment",
+        "Equipment Count": 25,
+        "Percentage": "14.7%",
+        "Notes": "Criticality: high"
+      },
+      {
+        "Equipment Category": "Respiratory and Ventilation",
+        "Equipment Count": 22,
+        "Percentage": "12.9%",
+        "Notes": "Criticality: critical"
+      },
+      {
+        "Equipment Category": "Ophthalmology Equipment",
+        "Equipment Count": 17,
+        "Percentage": "10.0%",
+        "Notes": "Criticality: high"
+      },
+      {
+        "Equipment Category": "Patient Monitoring",
+        "Equipment Count": 13,
+        "Percentage": "7.6%",
+        "Notes": "Criticality: critical"
+      },
+      {
+        "Equipment Category": "Diagnostic Imaging",
+        "Equipment Count": 12,
+        "Percentage": "7.1%",
+        "Notes": "Criticality: high"
+      },
+      {
+        "Equipment Category": "Neonatology Equipment",
+        "Equipment Count": 9,
+        "Percentage": "5.3%",
+        "Notes": "Criticality: critical"
+      },
+      {
+        "Equipment Category": "Sterilization Equipment",
+        "Equipment Count": 9,
+        "Percentage": "5.3%",
+        "Notes": "Criticality: high"
+      },
+      {
+        "Equipment Category": "Vital Signs and Diagnostic",
+        "Equipment Count": 4,
+        "Percentage": "2.4%",
+        "Notes": "Criticality: high"
+      },
+      {
+        "Equipment Category": "Dental Equipment",
+        "Equipment Count": 3,
+        "Percentage": "1.8%",
+        "Notes": "Criticality: medium"
+      },
+      {
+        "Equipment Category": "Renal Dialysis Equipment",
+        "Equipment Count": 3,
+        "Percentage": "1.8%",
+        "Notes": "Criticality: critical"
+      },
+      {
+        "Equipment Category": "ENT Equipment",
+        "Equipment Count": 2,
+        "Percentage": "1.2%",
+        "Notes": "Criticality: medium"
+      },
+      {
+        "Equipment Category": "Physiotherapy Equipment",
+        "Equipment Count": 2,
+        "Percentage": "1.2%",
+        "Notes": "Criticality: low"
+      }
+    ],
+    "conditions": [
+      {
+        "Condition / Status": "functional / active",
+        "Count": 153,
+        "Percentage": "90.0%",
+        "Interpretation": "Imported as active functional equipment."
+      },
+      {
+        "Condition / Status": "non_functional / active",
+        "Count": 12,
+        "Percentage": "7.1%",
+        "Interpretation": "Imported as non-functional active equipment needing attention."
+      },
+      {
+        "Condition / Status": "decommissioned / inactive",
+        "Count": 5,
+        "Percentage": "2.9%",
+        "Interpretation": "Mapped from source status \"To Be Disposed\"; inactive and pending disposal review."
+      }
+    ],
+    "manufacturers": [
+      {
+        "Manufacturer": "Unknown / not identified",
+        "Equipment Count": 154,
+        "Notes": "Manufacturer/Brand source column often contained model/serial values; original raw values preserved in notes where applicable."
+      },
+      {
+        "Manufacturer": "Helmer",
+        "Equipment Count": 4,
+        "Notes": "Identified by import pipeline manufacturer normalization."
+      },
+      {
+        "Manufacturer": "Yuyue",
+        "Equipment Count": 2,
+        "Notes": "Identified by import pipeline manufacturer normalization."
+      },
+      {
+        "Manufacturer": "Cepheid",
+        "Equipment Count": 1,
+        "Notes": "Identified by import pipeline manufacturer normalization."
+      },
+      {
+        "Manufacturer": "CISA",
+        "Equipment Count": 1,
+        "Notes": "Identified by import pipeline manufacturer normalization."
+      },
+      {
+        "Manufacturer": "Fazzini",
+        "Equipment Count": 1,
+        "Notes": "Identified by import pipeline manufacturer normalization."
+      },
+      {
+        "Manufacturer": "Gima",
+        "Equipment Count": 1,
+        "Notes": "Identified by import pipeline manufacturer normalization."
+      },
+      {
+        "Manufacturer": "Keeler",
+        "Equipment Count": 1,
+        "Notes": "Identified by import pipeline manufacturer normalization."
+      },
+      {
+        "Manufacturer": "Riester",
+        "Equipment Count": 1,
+        "Notes": "Identified by import pipeline manufacturer normalization."
+      },
+      {
+        "Manufacturer": "Rossmax",
+        "Equipment Count": 1,
+        "Notes": "Identified by import pipeline manufacturer normalization."
+      },
+      {
+        "Manufacturer": "Sakura",
+        "Equipment Count": 1,
+        "Notes": "Identified by import pipeline manufacturer normalization."
+      },
+      {
+        "Manufacturer": "Stryker",
+        "Equipment Count": 1,
+        "Notes": "Identified by import pipeline manufacturer normalization."
+      },
+      {
+        "Manufacturer": "Tuttnauer",
+        "Equipment Count": 1,
+        "Notes": "Identified by import pipeline manufacturer normalization."
+      }
+    ],
+    "asset_codes": {
+      "format": "{DEPT}-{NNNN}",
+      "validation": "All codes match pattern",
+      "examples": [
+        "EYE-0029",
+        "EYE-0030",
+        "EYE-0031",
+        "EYE-0032",
+        "EYE-0033",
+        "EYE-0034",
+        "EYE-0035",
+        "IPW-0001",
+        "IPW-0002",
+        "IPW-0003",
+        "IPW-0004",
+        "MCH-0001"
+      ]
+    },
+    "original_inventory_numbers": {
+      "preserved_count": 168,
+      "missing_count": 2,
+      "validation_detail": "168 assets have original inventory number in notes"
+    }
+  },
+  "workflow_counts": {
+    "equipment_assets": 170,
+    "active_assets": 165,
+    "source_tagged_assets": 170,
+    "maintenance_requests": 10,
+    "work_orders": 10,
+    "open_work_orders": 3,
+    "pm_plans": 3,
+    "pm_schedules": 14,
+    "pm_completions": 14,
+    "calibration_records": 0,
+    "calibration_requests": 0,
+    "training_sessions": 12,
+    "staff_training_records": 12,
+    "disposal_requests": 5,
+    "disposed_assets": 0,
+    "spare_parts": 0,
+    "stock_receipts": 0,
+    "stock_issues": 0,
+    "procurement_requests": 0,
+    "equipment_qr_scans": 0,
+    "offline_sync_events": 0,
+    "notifications": 0,
+    "notification_events": 0
+  },
+  "analytics": {
+    "reliability": {
+      "count": 165,
+      "mtbf_non_null": 0,
+      "mttr_non_null": 0,
+      "availability_non_null": 0,
+      "avg_mtbf_hours": null,
+      "median_mtbf_hours": null,
+      "avg_mttr_hours": null,
+      "median_mttr_hours": null,
+      "avg_availability": null,
+      "median_availability": null,
+      "insufficient_history_assets": 165
+    },
+    "risk": {
+      "count": 165,
+      "bands": [
+        {
+          "RiskBand": "low",
+          "Count": 149,
+          "PercentageOfRiskRows": "90.3%"
+        },
+        {
+          "RiskBand": "high",
+          "Count": 13,
+          "PercentageOfRiskRows": "7.9%"
+        },
+        {
+          "RiskBand": "medium",
+          "Count": 3,
+          "PercentageOfRiskRows": "1.8%"
+        }
+      ],
+      "top10_csv": "extracted-tables/risk-ranking-menelik.csv"
+    },
+    "replacement": {
+      "count": 165,
+      "bands": [
+        {
+          "ReplacementBand": "monitor",
+          "Count": 153,
+          "Threshold": "RPI < 0.55"
+        },
+        {
+          "ReplacementBand": "review",
+          "Count": 12,
+          "Threshold": "0.55 <= RPI < 0.70"
+        }
+      ],
+      "candidate_threshold": "RPI >= 0.55",
+      "strong_threshold": "RPI >= 0.70",
+      "top10_csv": "extracted-tables/replacement-priority-menelik.csv"
+    },
+    "health": {
+      "count": 165,
+      "csv": "extracted-tables/equipment-health-menelik.csv"
+    },
+    "readiness": {
+      "count": 13,
+      "csv": "extracted-tables/department-readiness-menelik.csv"
+    },
+    "command_center_summary_csv": "extracted-tables/command-center-summary-menelik.csv",
+    "query_errors": []
+  },
+  "validation": {
+    "presentation_ready": true,
+    "summary": {
+      "passed": 17,
+      "warnings": 1,
+      "failed": 0
+    },
+    "checks": [
+      {
+        "name": "Equipment assets >= 160",
+        "status": "pass",
+        "detail": "170 equipment assets"
+      },
+      {
+        "name": "Departments with equipment >= 10",
+        "status": "pass",
+        "detail": "13 departments have equipment"
+      },
+      {
+        "name": "Condition variety >= 2",
+        "status": "pass",
+        "detail": "Conditions found: functional, non_functional, decommissioned"
+      },
+      {
+        "name": "Work orders >= 10",
+        "status": "pass",
+        "detail": "10 work orders"
+      },
+      {
+        "name": "PM/PV evidence rows >= 10",
+        "status": "pass",
+        "detail": "14 PM schedule/evidence rows"
+      },
+      {
+        "name": "Training sessions >= 10",
+        "status": "pass",
+        "detail": "12 training sessions"
+      },
+      {
+        "name": "No orphaned department FK",
+        "status": "pass",
+        "detail": "0 assets with invalid department_id"
+      },
+      {
+        "name": "No orphaned category FK",
+        "status": "pass",
+        "detail": "0 assets with invalid category_id"
+      },
+      {
+        "name": "Profile department_id valid",
+        "status": "pass",
+        "detail": "All profile department_ids are valid"
+      },
+      {
+        "name": "Condition values valid",
+        "status": "pass",
+        "detail": "0 assets with invalid condition"
+      },
+      {
+        "name": "Source-tagged assets",
+        "status": "pass",
+        "detail": "170 assets tagged with source='menelik_ii_2018ec_import'"
+      },
+      {
+        "name": "No duplicate asset codes",
+        "status": "pass",
+        "detail": "No duplicates"
+      },
+      {
+        "name": "Asset codes match format {DEPT}-{NNNN}",
+        "status": "pass",
+        "detail": "All codes match pattern"
+      },
+      {
+        "name": "Original inventory numbers in notes",
+        "status": "pass",
+        "detail": "168 assets have original inventory number in notes"
+      },
+      {
+        "name": "No demo email profiles",
+        "status": "warn",
+        "detail": "7 profiles with demo email"
+      },
+      {
+        "name": "Menelik role emails exist",
+        "status": "pass",
+        "detail": "7/7 Menelik emails found in profiles"
+      },
+      {
+        "name": "Disposal requests match decommissioned assets",
+        "status": "pass",
+        "detail": "5 disposal requests for 5 decommissioned assets"
+      },
+      {
+        "name": "No disposed_assets from import",
+        "status": "pass",
+        "detail": "0 disposed_assets rows"
+      }
+    ],
+    "generated_from_existing_report": true,
+    "validation_rows": [
+      {
+        "Check": "inspect:menelik",
+        "Command": "npm run inspect:menelik",
+        "Result": "Existing report present; inspectedAt 2026-05-26T04:25:02.150Z",
+        "Evidence Source": "inspection-report.json",
+        "Thesis Wording": "Workbook structure and source sheet counts were inspected before import."
+      },
+      {
+        "Check": "import:menelik:dry-run",
+        "Command": "npm run import:menelik:dry-run",
+        "Result": "Existing dry-run report 2026-05-26T09:47:11.120Z; analyticsRefresh=skipped (dry-run)",
+        "Evidence Source": "dry-run-report.json",
+        "Thesis Wording": "A dry run normalized the workbook and previewed import counts without DB writes."
+      },
+      {
+        "Check": "import:menelik",
+        "Command": "npm run import:menelik",
+        "Result": "Existing live import report 2026-05-26T09:49:14.950Z; analyticsRefresh=completed",
+        "Evidence Source": "import-report.json",
+        "Thesis Wording": "The Menelik dataset was loaded into the deployment and analytics refresh completed."
+      },
+      {
+        "Check": "validate:menelik",
+        "Command": "npm run validate:menelik",
+        "Result": "Run during extraction; exit code 0. Verdict PRESENTATION READY; 17 passed, 1 warning, 0 failed. validation-report.json updated at 2026-05-26T12:23:23.385Z.",
+        "Evidence Source": "Current command run + validation-report.json",
+        "Thesis Wording": "Post-import validation found the deployment presentation-ready with one warning about legacy demo email profiles."
+      },
+      {
+        "Check": "lint",
+        "Command": "npm run lint",
+        "Result": "Run during extraction; exit code 0. ESLint completed with no reported errors or warnings.",
+        "Evidence Source": "Current command run",
+        "Thesis Wording": "The codebase passed lint during the extraction pass."
+      },
+      {
+        "Check": "build",
+        "Command": "npm run build",
+        "Result": "Run during extraction; exit code 0. Next.js 16.2.4 compiled successfully, TypeScript finished, and static generation completed 54/54 pages. Warning only: middleware file convention is deprecated in favor of proxy.",
+        "Evidence Source": "Current command run",
+        "Thesis Wording": "The production build completed successfully with 54/54 static pages generated."
+      },
+      {
+        "Check": "test:chatbot",
+        "Command": "npm run test:chatbot",
+        "Result": "Available npm script; not run in this extraction pass.",
+        "Evidence Source": "package.json",
+        "Thesis Wording": "Do not claim chatbot test pass unless separately run."
+      },
+      {
+        "Check": "test:system-fix",
+        "Command": "npm run test:system-fix",
+        "Result": "Available npm script; not run in this extraction pass.",
+        "Evidence Source": "package.json",
+        "Thesis Wording": "Do not claim system test pass unless separately run."
+      }
+    ]
+  },
+  "roles": {
+    "role_names": [
+      "developer",
+      "bme_head",
+      "department_head",
+      "department_user",
+      "technician",
+      "store_user",
+      "viewer"
+    ],
+    "menelik_emails": [
+      "developer@bmedis-menelik.local",
+      "bme.head@bmedis-menelik.local",
+      "department.head@bmedis-menelik.local",
+      "department.user@bmedis-menelik.local",
+      "technician@bmedis-menelik.local",
+      "store.user@bmedis-menelik.local",
+      "viewer@bmedis-menelik.local"
+    ],
+    "validation_detail": "7/7 Menelik emails found in profiles",
+    "demo_email_warning": "7 profiles with demo email",
+    "caution": "Do not include passwords. The setup script contains credentials and should not be copied into the thesis."
+  },
+  "chapter_updates": {
+    "chapter_5": "Replace old simulation/demonstration dataset with Menelik real-data import and deployment result tables.",
+    "chapter_6": "Replace old demo screenshots/counts/emails with Menelik deployment evidence and limitations.",
+    "appendix_a": "Replace @bmerms-demo.local emails with @bmedis-menelik.local emails only; do not include passwords."
+  },
+  "limitations": [
+    "Calibration data: Calibration sheet contained only placeholder/report-cover information; no row-level calibration records were imported.",
+    "Acceptance testing: Blank template only — no completed acceptance records.",
+    "Dates: DD/MM/YYYY dates that fall in 2015-2019 range may be Ethiopian Calendar; stored in notes without conversion.",
+    "Manufacturers: ~85% of \"Manufacturer/Brand\" column values are model/serial numbers; stored in notes.",
+    "PM compliance: Based on 13 performance verification + 2 PM records only — not hospital-wide.",
+    "Work order matching: Some WOs may not match to imported assets if serial/name differs from inventory.",
+    "Analytics: MTBF/MTTR/availability require accumulated operational history beyond what was imported."
+  ],
+  "not_verified": [
+    "No BME expert evaluation source file verifying 4.33/5 or 93.75% agreement was found by repository search.",
+    "No Vercel deployment metadata file was found in the repository; deployment URL/status not independently verified from local files.",
+    "Manual export validation was not verified by this extraction unless separate logs are added.",
+    "Manual QR label attachment/scanning validation was not verified by this extraction unless separate logs are added."
+  ]
+}

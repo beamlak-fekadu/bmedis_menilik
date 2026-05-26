@@ -1,0 +1,13 @@
+Metric,Value,Evidence,Interpretation
+Total equipment assets (all non-deleted),170,equipment_assets / normalized equipment-assets.json,Inventory size for thesis dataset.
+Active equipment assets,165,equipment_assets.status=active,Command Center active equipment basis where active-only views are used.
+Functional active assets,153,equipment_assets.condition/status,Functional equipment in active registry.
+Non-functional active assets,12,equipment_assets.condition/status,Active assets marked non-functional.
+Open work orders,3,work_orders.status in open/assigned/in_progress/on_hold,Corrective work still open after import.
+Critical/high open work orders,0,work_orders.priority on open rows,High urgency open corrective work.
+Overdue PM,0,pm_schedules scheduled_date/status,Imported schedules are completed; no overdue PM from imported PM/PV evidence.
+Calibration due,0,v_calibration_due when query succeeded,No Menelik calibration rows were imported; avoid old 54 calibration due claim.
+Stock risks / blockers,0,spare_parts current_stock <= reorder_level,Workbook did not populate spare parts.
+Replacement candidates (RPI >= 0.55),12,replacement_priority_scores + src/utils/decision-support/replacement-thresholds.ts,Prototype planning threshold; not automatic replacement approval.
+Strong replacement candidates (RPI >= 0.70),0,replacement_priority_scores + replacement threshold,Strong planning pressure only.
+Pending disposal requests,5,disposal_requests.status,"Pending review, not completed disposal."

@@ -1,0 +1,21 @@
+group,rank,asset_code,asset_name,department,health_score,reliability_component,pm_component,risk_component,status_component
+top,1,MCH-0001,Cryotherapy Machine,Maternal and Child Health,91.9,92,80,12,100
+top,2,EYE-0022,Cryotherapy Machine,Eye Department,91.9,92,80,12,100
+top,3,SOPD-0001,Dental Unit,Specialty OPD,91.7,92,80,20,100
+top,4,SOPD-0002,Dental Unit,Specialty OPD,91.7,92,80,20,100
+top,5,SOPD-0003,Dental Unit,Specialty OPD,91.7,92,80,20,100
+top,6,SOPD-0005,ENT Chair (Powered),Specialty OPD,91.7,92,80,20,100
+top,7,SOPD-0006,ENT Chair (Powered),Specialty OPD,91.7,92,80,20,100
+top,8,EYE-0029,"Microscope, Operating",Eye Department,90.6,92,80,64,100
+top,9,EYE-0030,Phaco Machine,Eye Department,90.6,92,80,64,100
+top,10,EYE-0031,Appasamy Infrared Laser,Eye Department,90.6,92,80,64,100
+bottom,1,ICU-0006,Mechanical Ventilator,ICU,79.6,92,80,324,70
+bottom,2,ICU-0005,Mechanical Ventilator,ICU,79.6,92,80,324,70
+bottom,3,ICU-0004,Mechanical Ventilator,ICU,79.6,92,80,324,70
+bottom,4,EYE-0027,Anesthesia Machine,Eye Department,79.6,92,80,324,70
+bottom,5,ED-0017,"Suction Machine, Electrical",Emergency Department,79.6,92,80,324,70
+bottom,6,ED-0002,Patient Monitor,Emergency Department,79.6,92,80,324,70
+bottom,7,LAB-0025,Clinical Chemistry Analyzer,Laboratory,80.5,92,80,288,70
+bottom,8,RAD-0005,X-Ray Machine w/ Fluoroscopy,Radiology and Imaging,80.5,92,80,288,70
+bottom,9,RAD-0003,CT Scanner,Radiology and Imaging,80.5,92,80,288,70
+bottom,10,EYE-0042,Steam Sterilizer,Eye Department,80.5,92,80,288,70

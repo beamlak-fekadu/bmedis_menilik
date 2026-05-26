@@ -20,6 +20,7 @@ import {
   markQrLabelsAttachedBulkAction,
   markQrLabelsNeedsReplacementBulkAction,
 } from '@/actions/qr.actions';
+import { getQrBaseUrl } from '@/utils/qr/url';
 
 type Props = {
   assets: QrLabelAsset[];
@@ -60,6 +61,8 @@ export default function QrLabelSheetClient({
   const [message, setMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const autoPrintRanRef = useRef(false);
+  const qrBaseUrl = getQrBaseUrl();
+  const canPrintQrLabels = !!qrBaseUrl;
 
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -83,11 +86,12 @@ export default function QrLabelSheetClient({
 
   useEffect(() => {
     if (!autoPrint || autoPrintRanRef.current) return;
+    if (!canPrintQrLabels) return;
     if (printableNow.length === 0) return;
     autoPrintRanRef.current = true;
     const id = setTimeout(() => window.print(), 250);
     return () => clearTimeout(id);
-  }, [autoPrint, printableNow]);
+  }, [autoPrint, canPrintQrLabels, printableNow]);
 
   const togglePick = (id: string) => {
     setSelected((prev) => {
@@ -112,6 +116,10 @@ export default function QrLabelSheetClient({
   const triggerPrint = () => {
     setMessage(null);
     setErrorMessage(null);
+    if (!canPrintQrLabels) {
+      setErrorMessage('QR labels cannot be printed until NEXT_PUBLIC_APP_URL or NEXT_PUBLIC_SITE_URL is set to the stable production domain.');
+      return;
+    }
     if (printableNow.length === 0) {
       setErrorMessage('No tokenized assets to print. Generate missing tokens or adjust the filter.');
       return;
@@ -226,6 +234,13 @@ export default function QrLabelSheetClient({
       </div>
 
       <div className="no-print panel-surface space-y-4 rounded-lg p-4">
+        {!canPrintQrLabels && (
+          <div className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-200">
+            QR printing is disabled because no stable QR base URL is configured. Set
+            NEXT_PUBLIC_APP_URL or NEXT_PUBLIC_SITE_URL to the production domain before printing labels.
+          </div>
+        )}
+
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-xs uppercase tracking-wide text-[var(--text-muted)]">Filter</span>
           {QR_LABEL_FILTER_VALUES.map((value) => (
@@ -254,7 +269,7 @@ export default function QrLabelSheetClient({
         </div>
 
         <div className="flex flex-wrap gap-2">
-          <Button size="sm" onClick={triggerPrint} disabled={printableNow.length === 0}>
+          <Button size="sm" onClick={triggerPrint} disabled={!canPrintQrLabels || printableNow.length === 0}>
             <Printer className="h-4 w-4" />
             Print {selectedAssets.length > 0 ? `${selectedAssets.length} selected` : `${printableNow.length} visible`}
           </Button>

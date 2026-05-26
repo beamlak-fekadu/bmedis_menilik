@@ -1,0 +1,4 @@
+Source,Available Data,Imported Count,Reason
+Calibration,Placeholder/report-cover information only,0,No row-level calibration results were available in the cleaned workbook.
+Acceptance Testing,Blank/template-only acceptance test sheet,0,No operational acceptance test records were available for import.
+Dashboard,Workbook summary dashboard,0,"Summary only, not source operational data."

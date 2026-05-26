@@ -703,7 +703,7 @@ function DeveloperInfoSection({ asset, context }: { asset: QrLandingAsset; conte
     ['Replaced at', formatDateTime(asset.qr_label_replaced_at)],
     ['Regenerated at', formatDateTime(asset.qr_token_regenerated_at)],
     ['Route path', context.route.path ?? 'Not available'],
-    ['URL base', context.route.baseUrl],
+    ['URL base', context.route.baseUrl ?? 'Not configured'],
     ['Resolved role category', context.roleCategory],
   ];
   return (

@@ -1,0 +1,3 @@
+ReplacementBand,Count,Threshold
+monitor,153,RPI < 0.55
+review,12,0.55 <= RPI < 0.70

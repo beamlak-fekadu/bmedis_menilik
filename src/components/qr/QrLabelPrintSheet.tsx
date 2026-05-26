@@ -7,7 +7,7 @@
 
 import QrLabelPreview from './QrLabelPreview';
 import type { QrLabelAsset } from '@/types/qr';
-import { buildAssetQrUrl } from '@/utils/qr/url';
+import { buildAssetQrUrl, getQrBaseUrl } from '@/utils/qr/url';
 
 type Props = {
   assets: QrLabelAsset[];
@@ -15,10 +15,19 @@ type Props = {
 
 export default function QrLabelPrintSheet({ assets }: Props) {
   const printable = assets.filter((asset) => !!asset.qr_token);
+  const qrBaseUrl = getQrBaseUrl();
   if (printable.length === 0) {
     return (
       <div className="rounded-md border border-dashed border-[var(--border-subtle)] bg-[var(--surface-1)] p-6 text-center text-sm text-[var(--text-muted)]">
         No assets with QR tokens to print. Use Generate Missing Tokens first.
+      </div>
+    );
+  }
+  if (!qrBaseUrl) {
+    return (
+      <div className="rounded-md border border-amber-500/30 bg-amber-500/10 p-6 text-center text-sm text-amber-200">
+        QR label printing is unavailable because no stable QR base URL is configured.
+        Set NEXT_PUBLIC_APP_URL or NEXT_PUBLIC_SITE_URL to the production domain before printing labels.
       </div>
     );
   }

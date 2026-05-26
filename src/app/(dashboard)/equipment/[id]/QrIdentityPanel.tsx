@@ -152,6 +152,7 @@ export default function QrIdentityPanel({
   const qrUrl = buildAssetQrUrl(identity?.qr_token ?? null);
   const qrPath = buildAssetQrPath(identity?.qr_token ?? null);
   const canPrintLabel = hasToken && status !== 'revoked' && !!qrUrl;
+  const qrUrlConfigurationMissing = hasToken && status !== 'revoked' && !qrUrl;
   const printRoute = `/equipment/qr-labels?assets=${encodeURIComponent(assetId)}&print=1`;
   const displayAssetCode = assetCode ?? 'ASSET';
   const displayAssetName = assetName ?? 'Equipment';
@@ -303,6 +304,14 @@ export default function QrIdentityPanel({
           <div className="hidden">
             <QRCodeCanvas value={qrUrl} size={420} level="M" bgColor="#ffffff" fgColor="#0a0a0a" marginSize={2} ref={downloadCanvasRef} />
           </div>
+        </div>
+      )}
+
+      {qrUrlConfigurationMissing && (
+        <div className="mt-4 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+          QR preview, copy, download, and print are disabled because no stable QR base URL is
+          configured. Set NEXT_PUBLIC_APP_URL or NEXT_PUBLIC_SITE_URL to the production domain
+          before printing labels.
         </div>
       )}
 

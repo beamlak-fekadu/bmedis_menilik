@@ -1,0 +1,9 @@
+Source Sheet,Source Type,Data Rows,Imported?,Reason / Use
+Dashboard,Summary dashboard,15,No,Summary only — not source operational data
+Equipment Inventory,Inventory,170,Yes,Used as source evidence for corresponding module.
+Performance Verification,PM/performance verification records,13,Yes,Used as source evidence for corresponding module.
+Work Orders,Corrective maintenance records,13,Partially,10 matched rows imported; 3 unmatched rows skipped.
+Preventive Maintenance,Preventive maintenance records,2,Partially,Matched PM evidence imported; one unmatched row skipped.
+Acceptance Testing,Acceptance test template,2,No,Blank template — no real acceptance test data
+Training Records,Training verification records,12,Yes,Used as source evidence for corresponding module.
+Calibration,Calibration placeholder/report cover,2,No,Calibration sheet contained only placeholder/report-cover information; no row-level calibration records were imported.

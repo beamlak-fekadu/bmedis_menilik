@@ -1,0 +1,14 @@
+Manufacturer,Equipment Count,Notes
+Unknown / not identified,154,Manufacturer/Brand source column often contained model/serial values; original raw values preserved in notes where applicable.
+Helmer,4,Identified by import pipeline manufacturer normalization.
+Yuyue,2,Identified by import pipeline manufacturer normalization.
+Cepheid,1,Identified by import pipeline manufacturer normalization.
+CISA,1,Identified by import pipeline manufacturer normalization.
+Fazzini,1,Identified by import pipeline manufacturer normalization.
+Gima,1,Identified by import pipeline manufacturer normalization.
+Keeler,1,Identified by import pipeline manufacturer normalization.
+Riester,1,Identified by import pipeline manufacturer normalization.
+Rossmax,1,Identified by import pipeline manufacturer normalization.
+Sakura,1,Identified by import pipeline manufacturer normalization.
+Stryker,1,Identified by import pipeline manufacturer normalization.
+Tuttnauer,1,Identified by import pipeline manufacturer normalization.

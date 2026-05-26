@@ -1,0 +1,7 @@
+Type,Name,Count,Notes
+Schedule status,completed,14,Imported PM/PV schedule status
+Completion department,Inpatient Ward,8,Department of matched asset for imported PM/PV evidence
+Completion department,ICU,5,Department of matched asset for imported PM/PV evidence
+Completion department,Emergency Department,1,Department of matched asset for imported PM/PV evidence
+Completion category,Respiratory and Ventilation,13,Category of matched asset for imported PM/PV evidence
+Completion category,Patient Monitoring,1,Category of matched asset for imported PM/PV evidence

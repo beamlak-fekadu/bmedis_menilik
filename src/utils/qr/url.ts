@@ -7,6 +7,7 @@
 import { isValidQrTokenFormat } from './token';
 
 const DEFAULT_LOCAL_BASE = 'http://localhost:3000';
+const CANONICAL_QR_URL_ENV_KEYS = ['NEXT_PUBLIC_APP_URL', 'NEXT_PUBLIC_SITE_URL'] as const;
 
 function trimTrailingSlash(value: string): string {
   return value.endsWith('/') ? value.slice(0, -1) : value;
@@ -21,20 +22,27 @@ function withProtocol(value: string): string {
  * Resolves the public base URL used to encode QR codes. Order of preference:
  *   1. NEXT_PUBLIC_APP_URL
  *   2. NEXT_PUBLIC_SITE_URL
- *   3. NEXT_PUBLIC_VERCEL_URL (prefixed with https://)
- *   4. http://localhost:3000 fallback for local development
- * Never hardcodes a production domain.
+ *   3. http://localhost:3000 fallback for local development only
+ *
+ * Vercel deployment/branch URLs are intentionally not fallback candidates.
+ * Printed QR labels must point at a stable canonical host, not the deployment
+ * that happened to render the print sheet.
  */
-export function getQrBaseUrl(): string {
-  const candidates = [
-    process.env.NEXT_PUBLIC_APP_URL,
-    process.env.NEXT_PUBLIC_SITE_URL,
-    process.env.NEXT_PUBLIC_VERCEL_URL,
-  ];
+export function getQrBaseUrl(): string | null {
+  const candidates = CANONICAL_QR_URL_ENV_KEYS.map((key) => process.env[key]);
   for (const candidate of candidates) {
     if (candidate && candidate.trim().length > 0) {
       return trimTrailingSlash(withProtocol(candidate.trim()));
     }
+  }
+  if (
+    process.env.NODE_ENV === 'production' ||
+    process.env.VERCEL ||
+    process.env.VERCEL_ENV ||
+    process.env.VERCEL_URL ||
+    process.env.NEXT_PUBLIC_VERCEL_URL
+  ) {
+    return null;
   }
   return DEFAULT_LOCAL_BASE;
 }
@@ -56,5 +64,7 @@ export function buildAssetQrPath(qrToken: string | null | undefined): string | n
 export function buildAssetQrUrl(qrToken: string | null | undefined): string | null {
   const path = buildAssetQrPath(qrToken);
   if (!path) return null;
-  return `${getQrBaseUrl()}${path}`;
+  const baseUrl = getQrBaseUrl();
+  if (!baseUrl) return null;
+  return `${baseUrl}${path}`;
 }

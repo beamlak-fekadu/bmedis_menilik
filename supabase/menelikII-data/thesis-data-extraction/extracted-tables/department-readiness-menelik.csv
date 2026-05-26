@@ -1,0 +1,14 @@
+department,readiness_score,essential_total,essential_functional,source
+Dialysis Center,100,6,6,clinical_readiness_snapshots
+NICU,100,3,3,clinical_readiness_snapshots
+Specialty OPD,100,4,4,clinical_readiness_snapshots
+Central Sterilization,100,3,3,clinical_readiness_snapshots
+Operating Theater,100,11,11,clinical_readiness_snapshots
+Pharmacy,100,2,2,clinical_readiness_snapshots
+Inpatient Ward,100,5,5,clinical_readiness_snapshots
+Maternal and Child Health,100,5,5,clinical_readiness_snapshots
+Laboratory,94.74,38,36,clinical_readiness_snapshots
+Eye Department,93.88,49,46,clinical_readiness_snapshots
+Emergency Department,90.91,22,20,clinical_readiness_snapshots
+Radiology and Imaging,60,5,3,clinical_readiness_snapshots
+ICU,40,5,2,clinical_readiness_snapshots

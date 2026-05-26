@@ -1,0 +1,4 @@
+Sheet,Row,Reason,Interpretation
+Work Orders,4,No matching asset for OR Light,Skipped during matching/import; not counted as imported work order.
+Work Orders,7,No matching asset for Patient Bed,Skipped during matching/import; not counted as imported work order.
+Work Orders,8,No matching asset for Patient Bed,Skipped during matching/import; not counted as imported work order.

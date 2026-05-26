@@ -1,0 +1,4 @@
+Disposal Evidence,Count,Source,Interpretation
+"Disposal requests generated from ""To Be Disposed"" assets",5,import-report.json + normalized/disposal-requests.json,"Pending disposal review, not completed disposal."
+Pending disposal requests,5,disposal_requests.status,Review queue state after import.
+disposed_assets rows,0,validation-report.json / disposed_assets,No completed disposal evidence unless rows are created later.

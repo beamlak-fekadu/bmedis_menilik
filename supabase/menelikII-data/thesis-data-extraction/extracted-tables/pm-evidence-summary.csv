@@ -1,0 +1,7 @@
+Metric,Count,Interpretation
+Performance verification source records,13,Treated as PM/performance verification evidence where matched to equipment.
+Preventive maintenance source records,2,One of two PM source rows was matched/imported; one was skipped due to missing asset match.
+Imported PM plans,3,Plans created from matched PM/PV equipment.
+Imported PM schedules,14,"All imported schedules are completion-backed evidence rows, not hospital-wide future PM coverage."
+Imported PM completions,14,Completion rows linked to imported schedules.
+PM compliance metrics rows,0,No stored PM compliance metric rows in validation report; avoid hospital-wide PM compliance claims.

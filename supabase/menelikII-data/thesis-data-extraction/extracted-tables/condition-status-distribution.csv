@@ -1,0 +1,4 @@
+Condition / Status,Count,Percentage,Interpretation
+functional / active,153,90.0%,Imported as active functional equipment.
+non_functional / active,12,7.1%,Imported as non-functional active equipment needing attention.
+decommissioned / inactive,5,2.9%,"Mapped from source status ""To Be Disposed""; inactive and pending disposal review."
