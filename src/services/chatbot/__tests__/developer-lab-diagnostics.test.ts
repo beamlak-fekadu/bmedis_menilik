@@ -27,7 +27,7 @@ const EXPECTED_WEIGHTED_SENSITIVITY_KEYS = [
 
 test('demo role validation distinguishes auth user id from profile id', () => {
   const result = validateDemoRoleMapping({
-    email: 'developer@bmerms-demo.local',
+    email: 'developer@bmedis-menelik.local',
     authUserId: 'auth-user-1',
     profileId: 'profile-1',
     profileUserId: 'auth-user-1',
@@ -44,7 +44,7 @@ test('demo role validation distinguishes auth user id from profile id', () => {
 
 test('demo role validation gives actionable missing auth/profile reasons', () => {
   const missingAuth = validateDemoRoleMapping({
-    email: 'viewer@bmerms-demo.local',
+    email: 'viewer@bmedis-menelik.local',
     authUserId: null,
     profileId: 'profile-viewer',
     profileUserId: 'auth-viewer',
@@ -56,7 +56,7 @@ test('demo role validation gives actionable missing auth/profile reasons', () =>
   assert.ok(missingAuth.reasons.includes('MISSING_AUTH_USER'));
 
   const wrongAuthLink = validateDemoRoleMapping({
-    email: 'viewer@bmerms-demo.local',
+    email: 'viewer@bmedis-menelik.local',
     authUserId: 'auth-viewer',
     profileId: 'profile-viewer',
     profileUserId: 'different-auth-user',
@@ -68,7 +68,7 @@ test('demo role validation gives actionable missing auth/profile reasons', () =>
   assert.ok(wrongAuthLink.reasons.includes('PROFILE_NOT_LINKED_TO_AUTH'));
 
   const missingProfile = validateDemoRoleMappings([]).find(
-    (row) => row.email === 'developer@bmerms-demo.local',
+    (row) => row.email === 'developer@bmedis-menelik.local',
   );
   assert.ok(missingProfile);
   assert.equal(missingProfile.primaryReason, 'MISSING_AUTH_USER');
@@ -77,7 +77,7 @@ test('demo role validation gives actionable missing auth/profile reasons', () =>
 
 test('demo role validation detects wrong and multiple roles', () => {
   const result = validateDemoRoleMapping({
-    email: 'technician@bmerms-demo.local',
+    email: 'technician@bmedis-menelik.local',
     authUserId: 'auth-tech',
     profileId: 'profile-tech',
     profileUserId: 'auth-tech',
@@ -95,13 +95,13 @@ test('demo role validation covers all required seeded users', () => {
   assert.deepEqual(
     EXPECTED_DEMO_USERS.map((user) => user.email),
     [
-      'developer@bmerms-demo.local',
-      'bme.head@bmerms-demo.local',
-      'technician@bmerms-demo.local',
-      'department.head@bmerms-demo.local',
-      'department.user@bmerms-demo.local',
-      'store.user@bmerms-demo.local',
-      'viewer@bmerms-demo.local',
+      'developer@bmedis-menelik.local',
+      'bme.head@bmedis-menelik.local',
+      'technician@bmedis-menelik.local',
+      'department.head@bmedis-menelik.local',
+      'department.user@bmedis-menelik.local',
+      'store.user@bmedis-menelik.local',
+      'viewer@bmedis-menelik.local',
     ],
   );
 

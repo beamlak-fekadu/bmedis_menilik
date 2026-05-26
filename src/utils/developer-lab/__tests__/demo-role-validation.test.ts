@@ -9,7 +9,7 @@ import {
 
 function inputForDeveloperOk() {
   return {
-    email: 'developer@bmerms-demo.local',
+    email: 'developer@bmedis-menelik.local',
     authUserId: '11111111-1111-1111-1111-111111111111',
     profileId: '22222222-2222-2222-2222-222222222222',
     profileUserId: '11111111-1111-1111-1111-111111111111',
@@ -74,7 +74,7 @@ test('Department mismatch fires WRONG_DEPARTMENT', () => {
 test('validateDemoRoleMappings fills in missing rows for absent emails', () => {
   const results = validateDemoRoleMappings([inputForDeveloperOk()]);
   assert.equal(results.length, EXPECTED_DEMO_USERS.length);
-  const otherRows = results.filter((r) => r.email !== 'developer@bmerms-demo.local');
+  const otherRows = results.filter((r) => r.email !== 'developer@bmedis-menelik.local');
   for (const row of otherRows) {
     assert.ok(row.reasons.includes('MISSING_AUTH_USER'));
     assert.ok(row.reasons.includes('MISSING_PROFILE'));

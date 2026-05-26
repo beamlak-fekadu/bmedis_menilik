@@ -156,6 +156,23 @@ const MENELIK_DEPARTMENTS = [
   { name: 'Inpatient Ward', code: 'IPW', description: 'General inpatient wards' },
 ];
 
+// Asset code prefix per department (shorter codes for operational use)
+const ASSET_CODE_PREFIX: Record<string, string> = {
+  'Emergency Department': 'ED',
+  'Eye Department': 'EYE',
+  'Laboratory': 'LAB',
+  'Operating Theater': 'OT',
+  'ICU': 'ICU',
+  'NICU': 'NICU',
+  'Radiology and Imaging': 'RAD',
+  'Maternal and Child Health': 'MCH',
+  'Dialysis Center': 'DIA',
+  'Central Sterilization': 'CSS',
+  'Pharmacy': 'PHA',
+  'Specialty OPD': 'SOPD',
+  'Inpatient Ward': 'IPW',
+};
+
 // Existing demo departments that may overlap
 const EXISTING_DEPT_NAMES: Record<string, string> = {
   'Intensive Care Unit': 'd0000001-0000-0000-0000-000000000001',
@@ -483,6 +500,9 @@ async function upsertManufacturers(
   return mfrMap;
 }
 
+// Track "To Be Disposed" assets for disposal request generation
+const toBeDisposedAssets: { id: string; name: string; invNumber: string; rawDept: string; row: number }[] = [];
+
 async function importEquipment(
   supabase: SupabaseClient,
   ws: ExcelJS.Worksheet,
@@ -492,7 +512,7 @@ async function importEquipment(
 ): Promise<Map<string, string>> {
   const assetMap = new Map<string, string>(); // serial/name → asset_id
   const assets: any[] = [];
-  const usedCodes = new Set<string>();
+  const deptSeq: Record<string, number> = {}; // per-department sequence counter
 
   for (let r = DATA_START_ROW; r <= ws.rowCount; r++) {
     const row = ws.getRow(r);
@@ -511,16 +531,15 @@ async function importEquipment(
     const serialNumber = getCellString(row.getCell(9));
     const rawStatus = getCellString(row.getCell(10));
 
-    // Generate unique asset_code
-    let assetCode = invNumber || `MNK-${String(r - DATA_START_ROW + 1).padStart(4, '0')}`;
-    if (usedCodes.has(assetCode)) {
-      assetCode = `${assetCode}-R${r}`;
-    }
-    usedCodes.add(assetCode);
-
-    // Map references
+    // Map department first so we can generate the asset code
     const deptName = normalizeDepartment(rawDept);
     const deptId = deptMap.get(deptName);
+
+    // Generate short asset code: {DEPT_PREFIX}-{NNNN}
+    const prefix = ASSET_CODE_PREFIX[deptName] || 'GEN';
+    deptSeq[prefix] = (deptSeq[prefix] || 0) + 1;
+    const assetCode = `${prefix}-${String(deptSeq[prefix]).padStart(4, '0')}`;
+
     const catInfo = getCategoryInfo(whoCategory);
     const mfrName = identifyManufacturer(rawMfr);
     const mfrId = mfrName ? mfrMap.get(mfrName) : null;
@@ -536,6 +555,7 @@ async function importEquipment(
     }
 
     const notes = [
+      invNumber ? `Original Menelik inventory number: ${invNumber}.` : null,
       `Imported from Menelik II Hospital records (2018 E.C. inventory).`,
       originalName ? `Original name: ${originalName}.` : null,
       rawDept ? `Source ward: ${rawDept}.` : null,
@@ -562,12 +582,16 @@ async function importEquipment(
 
     assets.push(asset);
 
+    // Track "To Be Disposed" assets for disposal request generation
+    if (rawStatus && rawStatus.toLowerCase().includes('disposed')) {
+      toBeDisposedAssets.push({ id, name, invNumber, rawDept, row: r });
+    }
+
     // Build lookup maps for matching work orders later
     if (serialNumber && serialNumber !== '—') {
       assetMap.set(`serial:${serialNumber}`, id);
     }
     assetMap.set(`name:${name.toLowerCase()}:${deptName.toLowerCase()}`, id);
-    // Also store name-only for fuzzy matching (first match wins for a given name)
     const nameKey = `nameonly:${name.toLowerCase()}`;
     if (!assetMap.has(nameKey)) assetMap.set(nameKey, id);
     assetMap.set(`row:${r}`, id);
@@ -608,7 +632,7 @@ async function importWorkOrders(
     const { data } = await supabase
       .from('profiles')
       .select('id')
-      .eq('email', 'technician@bmerms-demo.local')
+      .eq('email', 'technician@bmedis-menelik.local')
       .maybeSingle();
     technicianProfileId = data?.id || null;
   }
@@ -1233,9 +1257,52 @@ async function main() {
   }
 
   // Step 10: Skip calibration (placeholder only)
-  report.skipped.push({ sheet: 'Calibration', row: 0, reason: 'Only 1 placeholder row referencing physical cover page — no importable calibration data' });
+  report.skipped.push({ sheet: 'Calibration', row: 0, reason: 'Calibration sheet contained only placeholder/report-cover information; no row-level calibration records were imported.' });
   report.skipped.push({ sheet: 'Acceptance Testing', row: 0, reason: 'Blank template — no real acceptance test data' });
   report.skipped.push({ sheet: 'Dashboard', row: 0, reason: 'Summary only — not source operational data' });
+
+  // Step 10b: Create disposal requests for "To Be Disposed" assets
+  if (toBeDisposedAssets.length > 0) {
+    console.log(`\n🗑️  Creating disposal requests for ${toBeDisposedAssets.length} "To Be Disposed" assets...`);
+
+    // Look up BME Head profile for requested_by
+    let bmeHeadProfileId: string | null = null;
+    if (!DRY_RUN) {
+      const { data } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('email', 'bme.head@bmedis-menelik.local')
+        .maybeSingle();
+      bmeHeadProfileId = data?.id || null;
+    }
+
+    const disposalRequests = toBeDisposedAssets.map((asset, idx) => ({
+      id: deterministicUuid('disposal', asset.id),
+      request_number: `MNK-DSP-${String(idx + 1).padStart(3, '0')}`,
+      asset_id: asset.id,
+      requested_by: bmeHeadProfileId,
+      reason: "Marked 'To Be Disposed' in Menelik II Hospital 2018 E.C. equipment inventory.",
+      disposal_method_proposed: 'other',
+      status: 'pending',
+      notes: `Imported from Menelik II inventory. Original inventory number: ${asset.invNumber || 'N/A'}. Equipment: ${asset.name}. Department: ${asset.rawDept}. Source row: ${asset.row}. Assessment required before final disposal method determination.`,
+    }));
+
+    fs.writeFileSync(
+      path.join(NORMALIZED_DIR, 'disposal-requests.json'),
+      JSON.stringify(disposalRequests, null, 2)
+    );
+
+    if (!DRY_RUN) {
+      const { error } = await supabase.from('disposal_requests').insert(disposalRequests);
+      if (error) {
+        console.error(`    ❌ Disposal requests insert failed: ${error.message}`);
+        report.warnings.push(`Disposal requests insert failed: ${error.message}`);
+      }
+    }
+
+    report.imported['disposal_requests'] = disposalRequests.length;
+    console.log(`  Disposal requests: ${disposalRequests.length} created`);
+  }
 
   // Step 11: Refresh analytics
   if (!DRY_RUN) {
@@ -1247,7 +1314,7 @@ async function main() {
   // Step 12: Write report
   report.completedAt = new Date().toISOString();
   report.limitations = [
-    'Calibration data: Only 1 placeholder row — no mature calibration dataset imported.',
+    'Calibration data: Calibration sheet contained only placeholder/report-cover information; no row-level calibration records were imported.',
     'Acceptance testing: Blank template only — no completed acceptance records.',
     'Dates: DD/MM/YYYY dates that fall in 2015-2019 range may be Ethiopian Calendar; stored in notes without conversion.',
     'Manufacturers: ~85% of "Manufacturer/Brand" column values are model/serial numbers; stored in notes.',

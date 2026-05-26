@@ -1,7 +1,7 @@
 [
   {
-    "id": "261de796-83bd-4f2d-a499-653f95a0cc07",
-    "asset_code": "AA/DMCH/104/4523/new/CB/MED/A/0001",
+    "id": "73443734-5596-48b0-a41b-dfce69863219",
+    "asset_code": "IPW-0001",
     "name": "Patient Monitor/Screen",
     "category_id": "c0000001-0000-0000-0000-000000000001",
     "department_id": "d0000001-0000-0000-0000-000000000007",
@@ -10,11 +10,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: SCREEN,Patient. Source ward: 3rd floor."
+    "notes": "Original Menelik inventory number: AA/DMCH/104/4523/new/CB/MED/A/0001. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: SCREEN,Patient. Source ward: 3rd floor."
   },
   {
-    "id": "0bfd2a8d-04af-47e8-a524-833f95901be9",
-    "asset_code": "AA/DMCH/104/4523/833/CB/MED/A/0001",
+    "id": "92818270-4b2e-44c7-8019-4e89e4e89c28",
+    "asset_code": "IPW-0002",
     "name": "Oxygen Concentrator",
     "category_id": "c0000001-0000-0000-0000-000000000008",
     "department_id": "d0000001-0000-0000-0000-000000000007",
@@ -23,11 +23,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Oxygen concentrator. Source ward: 3rd floor."
+    "notes": "Original Menelik inventory number: AA/DMCH/104/4523/833/CB/MED/A/0001. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Oxygen concentrator. Source ward: 3rd floor."
   },
   {
-    "id": "df1a8a99-227b-4f08-b051-337e228fa0b8",
-    "asset_code": "AA/DMCH/104/4523/DBP/CB/MED/A/0001",
+    "id": "c1ccd9f0-214f-447f-b5b9-395d5e7fcc82",
+    "asset_code": "IPW-0003",
     "name": "Digital BP Monitor",
     "category_id": "4c0d5682-f3bb-e610-6ddc-eda5e729bd6a",
     "department_id": "d0000001-0000-0000-0000-000000000007",
@@ -36,11 +36,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: BP cuff,DIGITAL. Source ward: 3rd floor. Model info: 196025000024."
+    "notes": "Original Menelik inventory number: AA/DMCH/104/4523/DBP/CB/MED/A/0001. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: BP cuff,DIGITAL. Source ward: 3rd floor. Model info: 196025000024."
   },
   {
-    "id": "827c4300-d7cd-4cd2-87f5-c3358e6811fa",
-    "asset_code": "AA/DMCH/104/4523/DBP/CB/MED/A/0002",
+    "id": "29f2bc6d-37a6-43aa-8e52-80eaa1ddd8f2",
+    "asset_code": "IPW-0004",
     "name": "Digital BP Monitor",
     "category_id": "4c0d5682-f3bb-e610-6ddc-eda5e729bd6a",
     "department_id": "d0000001-0000-0000-0000-000000000007",
@@ -49,11 +49,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: BP cuff, DIGITAL. Source ward: 3rd floor. Model info: 000897."
+    "notes": "Original Menelik inventory number: AA/DMCH/104/4523/DBP/CB/MED/A/0002. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: BP cuff, DIGITAL. Source ward: 3rd floor. Model info: 000897."
   },
   {
-    "id": "5accf7aa-a140-4ff9-9ac7-6b238a80e0a8",
-    "asset_code": "AA/DMCSH/104/4523/Cryo/CB/ABOR/0001",
+    "id": "7dddb016-7df6-424e-8b54-d8bc06b32dee",
+    "asset_code": "MCH-0001",
     "name": "Cryotherapy Machine",
     "category_id": "c0000001-0000-0000-0000-000000000011",
     "department_id": "e5afe68b-997b-076a-e341-3bc13f259d30",
@@ -62,11 +62,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Cryotherapy Machine. Source ward: Abortion(Family Planning). Original manufacturer/brand value: mgc-200. Model info: 17712."
+    "notes": "Original Menelik inventory number: AA/DMCSH/104/4523/Cryo/CB/ABOR/0001. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Cryotherapy Machine. Source ward: Abortion(Family Planning). Original manufacturer/brand value: mgc-200. Model info: 17712."
   },
   {
-    "id": "c49495e5-d90c-4b79-898d-d6ac06f385a7",
-    "asset_code": "AA/DMCSH/104/4523/210/CB/EM/0002",
+    "id": "6b02504a-070e-4461-b6ec-db8dea5a6d07",
+    "asset_code": "ED-0001",
     "name": "Patient Monitor",
     "category_id": "c0000001-0000-0000-0000-000000000001",
     "department_id": "d0000001-0000-0000-0000-000000000003",
@@ -75,11 +75,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Monitor, Patient. Source ward: Adult Emergency. Original manufacturer/brand value: Anyview A8. Model info: A027E002473."
+    "notes": "Original Menelik inventory number: AA/DMCSH/104/4523/210/CB/EM/0002. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Monitor, Patient. Source ward: Adult Emergency. Original manufacturer/brand value: Anyview A8. Model info: A027E002473."
   },
   {
-    "id": "fa2d3d34-641a-4945-b601-8f0f611b80b0",
-    "asset_code": "AA/DMCSH/104/4523/210/CB/EM/0001",
+    "id": "f1ba1efd-0636-41a0-8327-b7dfdf5370d7",
+    "asset_code": "ED-0002",
     "name": "Patient Monitor",
     "category_id": "c0000001-0000-0000-0000-000000000001",
     "department_id": "d0000001-0000-0000-0000-000000000003",
@@ -88,11 +88,11 @@
     "condition": "non_functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Monitor, Patient. Source ward: Adult Emergency. Original manufacturer/brand value: TM-900. Model info: C721081867."
+    "notes": "Original Menelik inventory number: AA/DMCSH/104/4523/210/CB/EM/0001. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Monitor, Patient. Source ward: Adult Emergency. Original manufacturer/brand value: TM-900. Model info: C721081867."
   },
   {
-    "id": "5fcd8f72-f77a-4b5b-b77f-08dad92864c2",
-    "asset_code": "AA/DMCSH/104/4523/210/CB/EM/0005",
+    "id": "696f2f4e-92c3-4769-9e9b-92848da6317e",
+    "asset_code": "ED-0003",
     "name": "Patient Monitor",
     "category_id": "c0000001-0000-0000-0000-000000000001",
     "department_id": "d0000001-0000-0000-0000-000000000003",
@@ -101,11 +101,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Monitor, Patient. Source ward: Adult Emergency. Original manufacturer/brand value: Anyview A8. Model info: A027E002103."
+    "notes": "Original Menelik inventory number: AA/DMCSH/104/4523/210/CB/EM/0005. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Monitor, Patient. Source ward: Adult Emergency. Original manufacturer/brand value: Anyview A8. Model info: A027E002103."
   },
   {
-    "id": "fe3c0f08-e6f2-4a56-9ecd-56eab3d625c1",
-    "asset_code": "AA/DMCSH/104/4523/775/CB/EM/0002",
+    "id": "762014d3-9ff1-493e-a386-df19382d0d20",
+    "asset_code": "ED-0004",
     "name": "Dry Oven",
     "category_id": "c0000001-0000-0000-0000-000000000005",
     "department_id": "d0000001-0000-0000-0000-000000000003",
@@ -114,11 +114,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Dry Oven. Source ward: Adult Emergency. Original manufacturer/brand value: YCO-010. Model info: 618529."
+    "notes": "Original Menelik inventory number: AA/DMCSH/104/4523/775/CB/EM/0002. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Dry Oven. Source ward: Adult Emergency. Original manufacturer/brand value: YCO-010. Model info: 618529."
   },
   {
-    "id": "12df81ad-8a4a-4680-96fd-3625d344bcb0",
-    "asset_code": "AA/DMCSH/104/4523/799/CB/EM/0004",
+    "id": "32405995-b9de-4204-9a72-fe3d1f7d7d6c",
+    "asset_code": "ED-0005",
     "name": "Infusion Pump",
     "category_id": "c0000001-0000-0000-0000-000000000008",
     "department_id": "d0000001-0000-0000-0000-000000000003",
@@ -127,11 +127,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Infusion- Pump. Source ward: Adult Emergency. Original manufacturer/brand value: HK-100. Model info: 01111049."
+    "notes": "Original Menelik inventory number: AA/DMCSH/104/4523/799/CB/EM/0004. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Infusion- Pump. Source ward: Adult Emergency. Original manufacturer/brand value: HK-100. Model info: 01111049."
   },
   {
-    "id": "6c8327df-d10c-410a-bba0-93991d587305",
-    "asset_code": "AA/DMCSH/104/4523/799/CB/EM/0005",
+    "id": "037f475e-1022-4770-9aec-caa2a0d17208",
+    "asset_code": "ED-0006",
     "name": "Infusion Pump",
     "category_id": "c0000001-0000-0000-0000-000000000008",
     "department_id": "d0000001-0000-0000-0000-000000000003",
@@ -140,11 +140,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Infusion- Pump. Source ward: Adult Emergency. Original manufacturer/brand value: HK-100. Model info: 01111247."
+    "notes": "Original Menelik inventory number: AA/DMCSH/104/4523/799/CB/EM/0005. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Infusion- Pump. Source ward: Adult Emergency. Original manufacturer/brand value: HK-100. Model info: 01111247."
   },
   {
-    "id": "88a2c573-916b-40d7-8330-8868c19f00c4",
-    "asset_code": "AA/DMCSH/104/4523/799/CB/EM/0006",
+    "id": "05f5a478-a11f-4ce0-ad18-1e41ddc9a91b",
+    "asset_code": "ED-0007",
     "name": "Infusion Pump",
     "category_id": "c0000001-0000-0000-0000-000000000008",
     "department_id": "d0000001-0000-0000-0000-000000000003",
@@ -153,11 +153,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Infusion- Pump. Source ward: Adult Emergency. Original manufacturer/brand value: HK-100. Model info: 01111041."
+    "notes": "Original Menelik inventory number: AA/DMCSH/104/4523/799/CB/EM/0006. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Infusion- Pump. Source ward: Adult Emergency. Original manufacturer/brand value: HK-100. Model info: 01111041."
   },
   {
-    "id": "2c92676e-7e27-4c45-9601-e82238c92826",
-    "asset_code": "AA/DMCSH/104/4523/811/CB/ICU/0002",
+    "id": "df72c602-34b1-48ff-8b74-521b71fde9cc",
+    "asset_code": "ED-0008",
     "name": "Mechanical Ventilator, Mobile",
     "category_id": "c0000001-0000-0000-0000-000000000008",
     "department_id": "d0000001-0000-0000-0000-000000000003",
@@ -166,11 +166,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Mechanical Ventilator, Mobile. Source ward: Adult Emergency. Original manufacturer/brand value: MV2000. Model info: 08809268914133."
+    "notes": "Original Menelik inventory number: AA/DMCSH/104/4523/811/CB/ICU/0002. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Mechanical Ventilator, Mobile. Source ward: Adult Emergency. Original manufacturer/brand value: MV2000. Model info: 08809268914133."
   },
   {
-    "id": "ab2449ea-cc92-480e-8d17-034d5f7f8489",
-    "asset_code": "AA/DMCSH/104/4523/811/CB/ICU/0001",
+    "id": "84ad78bd-e795-48ec-8b6c-b7a5754df8c1",
+    "asset_code": "ED-0009",
     "name": "Mechanical Ventilator, Mobile",
     "category_id": "c0000001-0000-0000-0000-000000000008",
     "department_id": "d0000001-0000-0000-0000-000000000003",
@@ -179,11 +179,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Mechanical Ventilator, Mobile. Source ward: Adult Emergency. Original manufacturer/brand value: SV300. Model info: GB-26054191."
+    "notes": "Original Menelik inventory number: AA/DMCSH/104/4523/811/CB/ICU/0001. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Mechanical Ventilator, Mobile. Source ward: Adult Emergency. Original manufacturer/brand value: SV300. Model info: GB-26054191."
   },
   {
-    "id": "d067885e-04a4-40e0-9b60-b6e31dfc08cf",
-    "asset_code": "AA/DMCSH/104/4523/833/CB/EM/0003",
+    "id": "b2ad9986-09d9-48a3-8755-5dc5b435c705",
+    "asset_code": "ED-0010",
     "name": "Oxygen Concentrator",
     "category_id": "c0000001-0000-0000-0000-000000000008",
     "department_id": "d0000001-0000-0000-0000-000000000003",
@@ -192,11 +192,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Oxygen Concentrator. Source ward: Adult Emergency."
+    "notes": "Original Menelik inventory number: AA/DMCSH/104/4523/833/CB/EM/0003. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Oxygen Concentrator. Source ward: Adult Emergency."
   },
   {
-    "id": "ae6159d2-a203-48ad-af84-e5a7d2b8ca25",
-    "asset_code": "AA/DMCSH/104/4523/833/CB/EM/0052",
+    "id": "1db594b2-c0c7-4f2f-9a4f-77ed7da71210",
+    "asset_code": "ED-0011",
     "name": "Oxygen Concentrator",
     "category_id": "c0000001-0000-0000-0000-000000000008",
     "department_id": "d0000001-0000-0000-0000-000000000003",
@@ -205,11 +205,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Oxygen Concentrator. Source ward: Adult Emergency. Original manufacturer/brand value: Newlife Intensity. Model info: CBB0119230246."
+    "notes": "Original Menelik inventory number: AA/DMCSH/104/4523/833/CB/EM/0052. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Oxygen Concentrator. Source ward: Adult Emergency. Original manufacturer/brand value: Newlife Intensity. Model info: CBB0119230246."
   },
   {
-    "id": "3d281209-a9c1-4ae8-bb0f-7db8a2b84a1f",
-    "asset_code": "AA/DMCSH/104/4523/127/CB/EM/0004",
+    "id": "dfff33d7-c815-48c6-bba3-a313755761a2",
+    "asset_code": "ED-0012",
     "name": "Suction Machine, Electrical",
     "category_id": "c0000001-0000-0000-0000-000000000008",
     "department_id": "d0000001-0000-0000-0000-000000000003",
@@ -218,11 +218,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Suction machine, Electrical. Source ward: Adult Emergency. Model info: 1096."
+    "notes": "Original Menelik inventory number: AA/DMCSH/104/4523/127/CB/EM/0004. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Suction machine, Electrical. Source ward: Adult Emergency. Model info: 1096."
   },
   {
-    "id": "ac795906-244f-4cd8-b77b-c6c602545a6d",
-    "asset_code": "AA/DMCSH/104/4523/889/CB/IMG/0006",
+    "id": "89c2070f-e799-4f9d-ab5f-855448fb4e0d",
+    "asset_code": "ED-0013",
     "name": "Ultrasound Machine",
     "category_id": "c0000001-0000-0000-0000-000000000004",
     "department_id": "d0000001-0000-0000-0000-000000000003",
@@ -231,11 +231,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Ultrasound. Source ward: Adult Emergency. Original manufacturer/brand value: DC13. Model info: CA1/91001149."
+    "notes": "Original Menelik inventory number: AA/DMCSH/104/4523/889/CB/IMG/0006. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Ultrasound. Source ward: Adult Emergency. Original manufacturer/brand value: DC13. Model info: CA1/91001149."
   },
   {
-    "id": "99f540b1-bb63-47cc-965a-689793dd5d1b",
-    "asset_code": "AA/DMCSH/104/4523/902/CB/EM/0001",
+    "id": "449f4492-64c0-42fb-855a-b9a588eca4a8",
+    "asset_code": "ED-0014",
     "name": "X-Ray View Box, Powered",
     "category_id": "c0000001-0000-0000-0000-000000000004",
     "department_id": "d0000001-0000-0000-0000-000000000003",
@@ -244,11 +244,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: X-ray view box, powered. Source ward: Adult Emergency."
+    "notes": "Original Menelik inventory number: AA/DMCSH/104/4523/902/CB/EM/0001. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: X-ray view box, powered. Source ward: Adult Emergency."
   },
   {
-    "id": "238cd588-931a-4679-818b-7fb9be428fe3",
-    "asset_code": "AA/DMCSH/104/4523/50/CB/EM/0004",
+    "id": "26f48d0f-a59b-483d-a3ae-07e45a77cdb2",
+    "asset_code": "ED-0015",
     "name": "Steam Sterilizer",
     "category_id": "c0000001-0000-0000-0000-000000000006",
     "department_id": "d0000001-0000-0000-0000-000000000003",
@@ -257,11 +257,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Sterilizer, Steam. Source ward: Adult Emergency. Original manufacturer/brand value: SA300H. Model info: 2010240011-002."
+    "notes": "Original Menelik inventory number: AA/DMCSH/104/4523/50/CB/EM/0004. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Sterilizer, Steam. Source ward: Adult Emergency. Original manufacturer/brand value: SA300H. Model info: 2010240011-002."
   },
   {
-    "id": "a73d097b-fce3-4adf-8902-096ecb70a779",
-    "asset_code": "AA/DMCSH/104/4523/152/CB/EOPD/0007",
+    "id": "7c8c1789-f7ed-495e-b9c8-b5b4dd2daca1",
+    "asset_code": "ED-0016",
     "name": "X-Ray Machine, Mobile Digital",
     "category_id": "c0000001-0000-0000-0000-000000000004",
     "department_id": "d0000001-0000-0000-0000-000000000003",
@@ -270,11 +270,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: X-Ray, Mobile, Digital. Source ward: Adult Emergency. Original manufacturer/brand value: Mobile Dart. Model info: 41BDDF944001."
+    "notes": "Original Menelik inventory number: AA/DMCSH/104/4523/152/CB/EOPD/0007. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: X-Ray, Mobile, Digital. Source ward: Adult Emergency. Original manufacturer/brand value: Mobile Dart. Model info: 41BDDF944001."
   },
   {
-    "id": "9ed87d66-de82-4918-a41f-c80f1c0dd71c",
-    "asset_code": "AA/DMCSH/104/4523/152/CB/EOPD/0010",
+    "id": "97777276-08d7-4713-8d71-d054a080435c",
+    "asset_code": "ED-0017",
     "name": "Suction Machine, Electrical",
     "category_id": "c0000001-0000-0000-0000-000000000008",
     "department_id": "d0000001-0000-0000-0000-000000000003",
@@ -283,11 +283,11 @@
     "condition": "non_functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Suction machine, Electrical. Source ward: Adult Emergency. Original manufacturer/brand value: ASKIR C30 AP FS 2. Model info: 69064."
+    "notes": "Original Menelik inventory number: AA/DMCSH/104/4523/152/CB/EOPD/0010. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Suction machine, Electrical. Source ward: Adult Emergency. Original manufacturer/brand value: ASKIR C30 AP FS 2. Model info: 69064."
   },
   {
-    "id": "135543f5-db30-422c-85e7-a50c45e0c345",
-    "asset_code": "AA/DMCSH/104/4523/130/CB/EM/0001",
+    "id": "c9ad4658-9249-4688-a460-e055ec727e7e",
+    "asset_code": "ED-0018",
     "name": "Defibrillator",
     "category_id": "c0000001-0000-0000-0000-000000000003",
     "department_id": "d0000001-0000-0000-0000-000000000003",
@@ -296,11 +296,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Defibrilator. Source ward: Adult Emergency. Model info: DGB5B085259."
+    "notes": "Original Menelik inventory number: AA/DMCSH/104/4523/130/CB/EM/0001. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Defibrilator. Source ward: Adult Emergency. Model info: DGB5B085259."
   },
   {
-    "id": "db9b8b11-5943-4257-82a8-b6e661d81950",
-    "asset_code": "AA/DMCSH/104/4523/776/CB/EM/0003",
+    "id": "1d2f2d84-32ca-4c81-b1aa-1d690c02040c",
+    "asset_code": "ED-0019",
     "name": "ECG Machine",
     "category_id": "4c0d5682-f3bb-e610-6ddc-eda5e729bd6a",
     "department_id": "d0000001-0000-0000-0000-000000000003",
@@ -309,11 +309,11 @@
     "condition": "decommissioned",
     "status": "inactive",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: ECG Machine. Source ward: Adult Emergency. Original manufacturer/brand value: MAC 600. Model info: SS521360015PA."
+    "notes": "Original Menelik inventory number: AA/DMCSH/104/4523/776/CB/EM/0003. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: ECG Machine. Source ward: Adult Emergency. Original manufacturer/brand value: MAC 600. Model info: SS521360015PA."
   },
   {
-    "id": "e8cb0180-0c5f-4cf8-8407-57cd47e0ab55",
-    "asset_code": "AA/DMCSH/104/4523/152/CB/EM/0008",
+    "id": "2cc37c65-b4b8-498e-97c7-8fba4ea6a2e8",
+    "asset_code": "ED-0020",
     "name": "Suction Machine, Electrical",
     "category_id": "c0000001-0000-0000-0000-000000000008",
     "department_id": "d0000001-0000-0000-0000-000000000003",
@@ -322,11 +322,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Suction machine, Electrical. Source ward: Adult Emergency. Original manufacturer/brand value: 7A-23D. Model info: 2311110113."
+    "notes": "Original Menelik inventory number: AA/DMCSH/104/4523/152/CB/EM/0008. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Suction machine, Electrical. Source ward: Adult Emergency. Original manufacturer/brand value: 7A-23D. Model info: 2311110113."
   },
   {
-    "id": "26167bd2-30d9-4b50-be41-660b3a85b5e1",
-    "asset_code": "AA/DMCSH/104/4523/130/CB/EM/0002",
+    "id": "4ee2fc78-80dd-4cd4-959d-46096ded5633",
+    "asset_code": "ED-0021",
     "name": "Defibrillator",
     "category_id": "c0000001-0000-0000-0000-000000000003",
     "department_id": "d0000001-0000-0000-0000-000000000003",
@@ -335,11 +335,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Defibrilator. Source ward: Adult Emergency. Original manufacturer/brand value: binheart-03. Model info: ENSB023254."
+    "notes": "Original Menelik inventory number: AA/DMCSH/104/4523/130/CB/EM/0002. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Defibrilator. Source ward: Adult Emergency. Original manufacturer/brand value: binheart-03. Model info: ENSB023254."
   },
   {
-    "id": "d6cb3912-ae48-464d-a78b-ece716e9c223",
-    "asset_code": "AA/DMCSH/104/4523/762/CB/ARTLAB/0001",
+    "id": "c2262999-5e0e-42c0-9372-e3bea3e06c44",
+    "asset_code": "LAB-0001",
     "name": "Centrifuge",
     "category_id": "c0000001-0000-0000-0000-000000000005",
     "department_id": "d0000001-0000-0000-0000-000000000005",
@@ -348,11 +348,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: CENTRIFUGE. Source ward: ART LAB. Original manufacturer/brand value: TD6C. Model info: 24661905039."
+    "notes": "Original Menelik inventory number: AA/DMCSH/104/4523/762/CB/ARTLAB/0001. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: CENTRIFUGE. Source ward: ART LAB. Original manufacturer/brand value: TD6C. Model info: 24661905039."
   },
   {
-    "id": "7934e5b9-c0d7-49d2-b0ae-18259c6ac4d1",
-    "asset_code": "AA/DMCSH/104/4523/723/CB/ARTLAB/0001",
+    "id": "dc7d54b2-8005-4b40-bbaf-d5f88b06cd0b",
+    "asset_code": "LAB-0002",
     "name": "CD4 Analyzer",
     "category_id": "c0000001-0000-0000-0000-000000000005",
     "department_id": "d0000001-0000-0000-0000-000000000005",
@@ -361,11 +361,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: CD4 Machine. Source ward: ART LAB. Original manufacturer/brand value: BDFACS PRESTO. Model info: M6631100000989."
+    "notes": "Original Menelik inventory number: AA/DMCSH/104/4523/723/CB/ARTLAB/0001. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: CD4 Machine. Source ward: ART LAB. Original manufacturer/brand value: BDFACS PRESTO. Model info: M6631100000989."
   },
   {
-    "id": "b277f84c-3f46-4eba-a674-56bae158895e",
-    "asset_code": "AA/DMCH/104/4523/751/EYEOPD/CB/0001",
+    "id": "582daefd-efe7-4440-b7d8-0715061d3d5c",
+    "asset_code": "EYE-0001",
     "name": "Auto Refractometer",
     "category_id": "0c498a20-15ce-6010-7aa3-589a169142af",
     "department_id": "884b0369-be03-12a0-b904-ae6f75c4291d",
@@ -374,11 +374,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Autorefractometer. Source ward: biometry room(eye opd). Original manufacturer/brand value: AR/205---. Model info: 141358."
+    "notes": "Original Menelik inventory number: AA/DMCH/104/4523/751/EYEOPD/CB/0001. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Autorefractometer. Source ward: biometry room(eye opd). Original manufacturer/brand value: AR/205---. Model info: 141358."
   },
   {
-    "id": "89c6afa9-09f4-4589-b220-a5704fc92f33",
-    "asset_code": "AA/DMCH/104/4523/889/EYEOPD/CB/0001",
+    "id": "8c165edb-ac03-45b4-940d-dff271dc5431",
+    "asset_code": "EYE-0002",
     "name": "Ultrasound Machine",
     "category_id": "c0000001-0000-0000-0000-000000000004",
     "department_id": "884b0369-be03-12a0-b904-ae6f75c4291d",
@@ -387,11 +387,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Ultrasound. Source ward: biometry room(eye opd). Original manufacturer/brand value: quntel medical. Model info: 3628."
+    "notes": "Original Menelik inventory number: AA/DMCH/104/4523/889/EYEOPD/CB/0001. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Ultrasound. Source ward: biometry room(eye opd). Original manufacturer/brand value: quntel medical. Model info: 3628."
   },
   {
-    "id": "dbd14b77-13b5-4475-ab69-d16e3082a153",
-    "asset_code": "AA/DMCSH/104/4523/170/CB/LAB/0001",
+    "id": "ee791a76-85ce-4e38-a0ae-641c91bb8055",
+    "asset_code": "LAB-0003",
     "name": "Water Bath",
     "category_id": "c0000001-0000-0000-0000-000000000005",
     "department_id": "d0000001-0000-0000-0000-000000000005",
@@ -400,11 +400,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Water Bath. Source ward: Blood Bank. Original manufacturer/brand value: YCW010. Model info: 608259."
+    "notes": "Original Menelik inventory number: AA/DMCSH/104/4523/170/CB/LAB/0001. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Water Bath. Source ward: Blood Bank. Original manufacturer/brand value: YCW010. Model info: 608259."
   },
   {
-    "id": "21c0f3ab-726f-4784-a26c-f5f41e0485d2",
-    "asset_code": "AA/DMCH/104/4523/933/BB/CB/0001",
+    "id": "5950b70e-f457-46df-a18d-d53cda107c00",
+    "asset_code": "LAB-0004",
     "name": "Platelet Agitator",
     "category_id": "c0000001-0000-0000-0000-000000000005",
     "department_id": "d0000001-0000-0000-0000-000000000005",
@@ -413,11 +413,11 @@
     "condition": "non_functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Platelet agitator. Source ward: blood bank. Original manufacturer/brand value: BPA-01. Model info: 1480."
+    "notes": "Original Menelik inventory number: AA/DMCH/104/4523/933/BB/CB/0001. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Platelet agitator. Source ward: blood bank. Original manufacturer/brand value: BPA-01. Model info: 1480."
   },
   {
-    "id": "920e2622-1471-408b-b147-aab64c4db9b2",
-    "asset_code": "AA/DMCH/104/4523/792/BB/CB/0001",
+    "id": "4b3a5e51-7140-4bb0-a3ad-76b6fd94f8ef",
+    "asset_code": "LAB-0005",
     "name": "Plasma Freezer",
     "category_id": "c0000001-0000-0000-0000-000000000005",
     "department_id": "d0000001-0000-0000-0000-000000000005",
@@ -426,11 +426,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: plazma freezer. Source ward: blood bank. Model info: 2108025."
+    "notes": "Original Menelik inventory number: AA/DMCH/104/4523/792/BB/CB/0001. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: plazma freezer. Source ward: blood bank. Model info: 2108025."
   },
   {
-    "id": "6ee15ca7-0b9f-48b7-8437-7cc71a925fa6",
-    "asset_code": "MNK-0034",
+    "id": "0fc5a34a-9ab8-4976-9cc2-a1781f85e055",
+    "asset_code": "LAB-0006",
     "name": "Microscope, Light",
     "category_id": "c0000001-0000-0000-0000-000000000005",
     "department_id": "d0000001-0000-0000-0000-000000000005",
@@ -442,8 +442,8 @@
     "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Microscope. Source ward: blood bank. Original manufacturer/brand value: CX-21. Model info: 0633508."
   },
   {
-    "id": "0685afff-5be9-4778-a5bb-727f77fa1d87",
-    "asset_code": "MNK-0035",
+    "id": "a6d79759-e481-4671-8d86-08e0fc0c6efe",
+    "asset_code": "LAB-0007",
     "name": "Centrifuge",
     "category_id": "c0000001-0000-0000-0000-000000000005",
     "department_id": "d0000001-0000-0000-0000-000000000005",
@@ -455,8 +455,8 @@
     "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: CENTRIFUGE. Source ward: blood bank. Original manufacturer/brand value: R-8CPLUS. Model info: ZGEN-10054."
   },
   {
-    "id": "bbf99512-0c85-441a-81c3-b92dac0f0d49",
-    "asset_code": "AA/DMCH/104/4523/933/BB/CB/0001-R39",
+    "id": "67eb319e-6abd-4ab0-8aa9-4d56ade4e013",
+    "asset_code": "LAB-0008",
     "name": "Plasma/Platelet Agitator",
     "category_id": "c0000001-0000-0000-0000-000000000005",
     "department_id": "d0000001-0000-0000-0000-000000000005",
@@ -465,11 +465,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Plazma agitator. Source ward: blood bank. Model info: 2074349."
+    "notes": "Original Menelik inventory number: AA/DMCH/104/4523/933/BB/CB/0001. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Plazma agitator. Source ward: blood bank. Model info: 2074349."
   },
   {
-    "id": "b47937c3-73a5-45de-9f83-f8a82bb5168f",
-    "asset_code": "AA/DMCSH/104/4523/50/CB/CS/0001",
+    "id": "c9b418bb-6b3c-442f-a7e2-620f30251d57",
+    "asset_code": "CSS-0001",
     "name": "Autoclave, Steam",
     "category_id": "c0000001-0000-0000-0000-000000000006",
     "department_id": "cb13f093-d7cf-d496-0b29-48d28635862c",
@@ -478,11 +478,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Autoclave. Source ward: Central Steralization. Model info: 1C-37-B."
+    "notes": "Original Menelik inventory number: AA/DMCSH/104/4523/50/CB/CS/0001. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Autoclave. Source ward: Central Steralization. Model info: 1C-37-B."
   },
   {
-    "id": "4beb75f3-4490-4895-a2d0-d8af75d7333e",
-    "asset_code": "AA/DMCSH/104/4523/50/CB/CS/0002",
+    "id": "4b6c7792-e476-4fc6-a083-f1dba14dd279",
+    "asset_code": "CSS-0002",
     "name": "Autoclave, Steam",
     "category_id": "c0000001-0000-0000-0000-000000000006",
     "department_id": "cb13f093-d7cf-d496-0b29-48d28635862c",
@@ -491,11 +491,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Autoclave. Source ward: Central Steralization. Original manufacturer/brand value: CIS42104/04/1. Model info: 23996."
+    "notes": "Original Menelik inventory number: AA/DMCSH/104/4523/50/CB/CS/0002. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Autoclave. Source ward: Central Steralization. Original manufacturer/brand value: CIS42104/04/1. Model info: 23996."
   },
   {
-    "id": "39ac7403-60c6-42a7-a3ee-14f358785e3c",
-    "asset_code": "AA/DMCSH/104/4523/50/CB/CS/0003",
+    "id": "0091c884-2124-4222-b263-e7d9f3971d88",
+    "asset_code": "CSS-0003",
     "name": "Autoclave, Steam",
     "category_id": "c0000001-0000-0000-0000-000000000006",
     "department_id": "cb13f093-d7cf-d496-0b29-48d28635862c",
@@ -504,11 +504,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Autoclave. Source ward: Central Steralization. Model info: 20100024."
+    "notes": "Original Menelik inventory number: AA/DMCSH/104/4523/50/CB/CS/0003. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Autoclave. Source ward: Central Steralization. Model info: 20100024."
   },
   {
-    "id": "81ec419d-a6f9-4860-8106-f2de04155d29",
-    "asset_code": "AA/DMCSH/104/4523/DBP/CB/CNT/0001",
+    "id": "13f344b9-3e0f-4e44-8680-f18bd26b9dfc",
+    "asset_code": "ED-0022",
     "name": "Digital BP Monitor",
     "category_id": "4c0d5682-f3bb-e610-6ddc-eda5e729bd6a",
     "department_id": "d0000001-0000-0000-0000-000000000003",
@@ -517,11 +517,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: BP CUFF DIGITAL. Source ward: Central Triage. Original manufacturer/brand value: RBP-100. Model info: 6843."
+    "notes": "Original Menelik inventory number: AA/DMCSH/104/4523/DBP/CB/CNT/0001. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: BP CUFF DIGITAL. Source ward: Central Triage. Original manufacturer/brand value: RBP-100. Model info: 6843."
   },
   {
-    "id": "5024317c-dcd0-44b0-a0c1-5d997d321fdb",
-    "asset_code": "AA/DMCSH/104/4523/1164/CB/COPH/0001",
+    "id": "bd0fdb5b-42b1-49a4-8b04-47e68c2fb439",
+    "asset_code": "PHA-0001",
     "name": "Analytical Balance, Digital",
     "category_id": "c0000001-0000-0000-0000-000000000005",
     "department_id": "d0000001-0000-0000-0000-000000000006",
@@ -530,11 +530,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Analytical balance, digital. Source ward: Compound Pharmacy. Original manufacturer/brand value: BN112BB. Model info: 059810."
+    "notes": "Original Menelik inventory number: AA/DMCSH/104/4523/1164/CB/COPH/0001. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Analytical balance, digital. Source ward: Compound Pharmacy. Original manufacturer/brand value: BN112BB. Model info: 059810."
   },
   {
-    "id": "0bf61f40-346c-41a3-9a4b-1e1bbec03e4c",
-    "asset_code": "AA/DMCSH/104/4523/774/CB/COPH/0001",
+    "id": "b5086a01-13ec-4bfa-b816-375f303fff7f",
+    "asset_code": "PHA-0002",
     "name": "Water Distiller",
     "category_id": "c0000001-0000-0000-0000-000000000005",
     "department_id": "d0000001-0000-0000-0000-000000000006",
@@ -543,11 +543,11 @@
     "condition": "decommissioned",
     "status": "inactive",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Distiller. Source ward: Compound Pharmacy. Original manufacturer/brand value: WDZ-20. Model info: 12001643."
+    "notes": "Original Menelik inventory number: AA/DMCSH/104/4523/774/CB/COPH/0001. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Distiller. Source ward: Compound Pharmacy. Original manufacturer/brand value: WDZ-20. Model info: 12001643."
   },
   {
-    "id": "c6aa862f-fe3f-47a4-8583-b75b899ff658",
-    "asset_code": "AA/DMCSH/104/4523/distil/CB/cop ph/0001",
+    "id": "4f628c28-3491-4d64-9b1e-85ee5a5f568a",
+    "asset_code": "PHA-0003",
     "name": "Water Distiller",
     "category_id": "c0000001-0000-0000-0000-000000000005",
     "department_id": "d0000001-0000-0000-0000-000000000006",
@@ -556,11 +556,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Distiller. Source ward: Compound Pharmacy. Original manufacturer/brand value: GYZD-10."
+    "notes": "Original Menelik inventory number: AA/DMCSH/104/4523/distil/CB/cop ph/0001. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Distiller. Source ward: Compound Pharmacy. Original manufacturer/brand value: GYZD-10."
   },
   {
-    "id": "96db98d5-7303-4476-8263-8a2be926d068",
-    "asset_code": "AA/DMCSH/104/4523/127/CB/LW/0001",
+    "id": "6023c41b-747d-4b4c-8eb9-e66e77f45f73",
+    "asset_code": "MCH-0002",
     "name": "Suction Machine",
     "category_id": "c0000001-0000-0000-0000-000000000008",
     "department_id": "e5afe68b-997b-076a-e341-3bc13f259d30",
@@ -569,11 +569,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Suction Machine. Source ward: Delivery room. Original manufacturer/brand value: 7A-23D. Model info: 23122200017."
+    "notes": "Original Menelik inventory number: AA/DMCSH/104/4523/127/CB/LW/0001. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Suction Machine. Source ward: Delivery room. Original manufacturer/brand value: 7A-23D. Model info: 23122200017."
   },
   {
-    "id": "81b9e562-b950-46a0-982c-bccca01f979c",
-    "asset_code": "AA/DMCH/104/4523/NEW/CB/LW/0001",
+    "id": "01143195-41db-4368-a0d6-5df6cba24352",
+    "asset_code": "MCH-0003",
     "name": "Infant Radiant Warmer",
     "category_id": "05736ca8-cbb3-e707-4e4a-8a9393bb3a87",
     "department_id": "e5afe68b-997b-076a-e341-3bc13f259d30",
@@ -582,11 +582,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: infant radiant warmer. Source ward: Delivery room. Original manufacturer/brand value: BN-100. Model info: 1130105268."
+    "notes": "Original Menelik inventory number: AA/DMCH/104/4523/NEW/CB/LW/0001. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: infant radiant warmer. Source ward: Delivery room. Original manufacturer/brand value: BN-100. Model info: 1130105268."
   },
   {
-    "id": "42ef1844-2f9b-4d02-9e31-487bd6022cdb",
-    "asset_code": "AA/DMCH/104/4523/NEW/CB/LW/0001-R49",
+    "id": "ed34b465-29cc-457b-9bc3-e9f05b66599f",
+    "asset_code": "MCH-0004",
     "name": "Fetal Monitor",
     "category_id": "c0000001-0000-0000-0000-000000000001",
     "department_id": "e5afe68b-997b-076a-e341-3bc13f259d30",
@@ -595,11 +595,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: fetal moniter. Source ward: Delivery room."
+    "notes": "Original Menelik inventory number: AA/DMCH/104/4523/NEW/CB/LW/0001. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: fetal moniter. Source ward: Delivery room."
   },
   {
-    "id": "582467ec-c03c-4484-a5ba-ad891f107f2c",
-    "asset_code": "AA/DMCH/104/4523/NEW/CB/LW/0002",
+    "id": "a86d32ce-2a84-44be-935c-6beb59c68b49",
+    "asset_code": "MCH-0005",
     "name": "Fetal Monitor",
     "category_id": "c0000001-0000-0000-0000-000000000001",
     "department_id": "e5afe68b-997b-076a-e341-3bc13f259d30",
@@ -608,11 +608,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: fetal moniter. Source ward: Delivery room."
+    "notes": "Original Menelik inventory number: AA/DMCH/104/4523/NEW/CB/LW/0002. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: fetal moniter. Source ward: Delivery room."
   },
   {
-    "id": "607abe23-ee0b-48cc-b264-b0bf63dfd252",
-    "asset_code": "AA/DMCSH/104/4523/770/CB/DN/0001",
+    "id": "a9abf965-1de4-41b4-a18b-21b370c915aa",
+    "asset_code": "SOPD-0001",
     "name": "Dental Unit",
     "category_id": "c0000001-0000-0000-0000-000000000010",
     "department_id": "32f854be-3fe2-a5e0-d642-cb2eb7674df7",
@@ -621,11 +621,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Dental Unit. Source ward: Dental Room. Original manufacturer/brand value: mikrodental E-line 100. Model info: 1901-pc052."
+    "notes": "Original Menelik inventory number: AA/DMCSH/104/4523/770/CB/DN/0001. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Dental Unit. Source ward: Dental Room. Original manufacturer/brand value: mikrodental E-line 100. Model info: 1901-pc052."
   },
   {
-    "id": "80846e7b-d197-45d4-94ed-671b51250340",
-    "asset_code": "AA/DMCSH/104/4523/770/CB/DN/0002",
+    "id": "6fe7cd52-83fd-4eee-a583-3b65a20f6008",
+    "asset_code": "SOPD-0002",
     "name": "Dental Unit",
     "category_id": "c0000001-0000-0000-0000-000000000010",
     "department_id": "32f854be-3fe2-a5e0-d642-cb2eb7674df7",
@@ -634,11 +634,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Dental Unit. Source ward: Dental Room. Original manufacturer/brand value: mikrodental E-line 100. Model info: 1901-pc045."
+    "notes": "Original Menelik inventory number: AA/DMCSH/104/4523/770/CB/DN/0002. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Dental Unit. Source ward: Dental Room. Original manufacturer/brand value: mikrodental E-line 100. Model info: 1901-pc045."
   },
   {
-    "id": "20bb104e-cded-40b1-8cdf-c3fb2ff17a87",
-    "asset_code": "AA/DMCSH/104/4523/770/CB/DN/0003",
+    "id": "a00bdeea-c81c-4cff-a105-f32b139e2a13",
+    "asset_code": "SOPD-0003",
     "name": "Dental Unit",
     "category_id": "c0000001-0000-0000-0000-000000000010",
     "department_id": "32f854be-3fe2-a5e0-d642-cb2eb7674df7",
@@ -647,11 +647,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Dental Unit. Source ward: Dental Room. Original manufacturer/brand value: mikrodental E-line 100. Model info: not tagged."
+    "notes": "Original Menelik inventory number: AA/DMCSH/104/4523/770/CB/DN/0003. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Dental Unit. Source ward: Dental Room. Original manufacturer/brand value: mikrodental E-line 100. Model info: not tagged."
   },
   {
-    "id": "dced096b-6be2-4e4a-8aca-21e86bfc5fda",
-    "asset_code": "AA/DMCH/104/4523/145/CB/DERMA/0001",
+    "id": "9aac89ed-b969-44a9-8838-393b5b2234f9",
+    "asset_code": "SOPD-0004",
     "name": "Pulse Oximeter",
     "category_id": "c0000001-0000-0000-0000-000000000001",
     "department_id": "32f854be-3fe2-a5e0-d642-cb2eb7674df7",
@@ -660,11 +660,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Pulse oximeter. Source ward: Dermathology. Original manufacturer/brand value: RAD-G. Model info: 600001683."
+    "notes": "Original Menelik inventory number: AA/DMCH/104/4523/145/CB/DERMA/0001. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Pulse oximeter. Source ward: Dermathology. Original manufacturer/brand value: RAD-G. Model info: 600001683."
   },
   {
-    "id": "d9469aa9-c966-4d4d-bdd2-36c7f66813e3",
-    "asset_code": "AA/DMCSH/104/4523/DIA/CB/DIA/CENTER/0010",
+    "id": "9b2b0f68-4555-4680-9d44-0b9e927811f6",
+    "asset_code": "DIA-0001",
     "name": "Dialysis Machine",
     "category_id": "756d3daa-a6d5-5739-62fc-e53a616f8c5e",
     "department_id": "2b2c9a60-d4de-1906-7946-353dbedfbe0e",
@@ -673,11 +673,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Dialysis machine. Source ward: dialysis center. Original manufacturer/brand value: surdial55 plus. Model info: 23CX30452."
+    "notes": "Original Menelik inventory number: AA/DMCSH/104/4523/DIA/CB/DIA/CENTER/0010. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Dialysis machine. Source ward: dialysis center. Original manufacturer/brand value: surdial55 plus. Model info: 23CX30452."
   },
   {
-    "id": "400ada33-78ee-4254-b7f4-aa952d7fb231",
-    "asset_code": "AA/DMCSH/104/4523/DIA/CB/DIA/CENTER/0011",
+    "id": "0a7514e8-eea3-430c-852e-5acf601e9f4d",
+    "asset_code": "DIA-0002",
     "name": "Dialysis Machine",
     "category_id": "756d3daa-a6d5-5739-62fc-e53a616f8c5e",
     "department_id": "2b2c9a60-d4de-1906-7946-353dbedfbe0e",
@@ -686,11 +686,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Dialysis machine. Source ward: dialysis center. Original manufacturer/brand value: surdial55 plus. Model info: 23CX29048."
+    "notes": "Original Menelik inventory number: AA/DMCSH/104/4523/DIA/CB/DIA/CENTER/0011. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Dialysis machine. Source ward: dialysis center. Original manufacturer/brand value: surdial55 plus. Model info: 23CX29048."
   },
   {
-    "id": "74f34d98-aea8-4b79-a872-acee327fe27a",
-    "asset_code": "AA/DMCSH/104/4523/DIA/CB/DIA/CENTER/0012",
+    "id": "7764ba79-2737-45be-82eb-589851784d00",
+    "asset_code": "DIA-0003",
     "name": "Dialysis Machine",
     "category_id": "756d3daa-a6d5-5739-62fc-e53a616f8c5e",
     "department_id": "2b2c9a60-d4de-1906-7946-353dbedfbe0e",
@@ -699,11 +699,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Dialysis machine. Source ward: dialysis center. Original manufacturer/brand value: surdial55 plus. Model info: 23CX29516."
+    "notes": "Original Menelik inventory number: AA/DMCSH/104/4523/DIA/CB/DIA/CENTER/0012. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Dialysis machine. Source ward: dialysis center. Original manufacturer/brand value: surdial55 plus. Model info: 23CX29516."
   },
   {
-    "id": "93ea874b-2854-4eff-98d0-128ae6dd2ddf",
-    "asset_code": "AA/DMCSH/104/4523/145/CB/DIA/CENTER/0001",
+    "id": "9b446f59-f819-4714-8b7e-a3755b83a55f",
+    "asset_code": "DIA-0004",
     "name": "Pulse Oximeter",
     "category_id": "c0000001-0000-0000-0000-000000000001",
     "department_id": "2b2c9a60-d4de-1906-7946-353dbedfbe0e",
@@ -712,11 +712,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Pulse oximeter. Source ward: dialysis center. Original manufacturer/brand value: Rad-G. Model info: 6000054409."
+    "notes": "Original Menelik inventory number: AA/DMCSH/104/4523/145/CB/DIA/CENTER/0001. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Pulse oximeter. Source ward: dialysis center. Original manufacturer/brand value: Rad-G. Model info: 6000054409."
   },
   {
-    "id": "a89ab34e-6597-430c-b163-2dd8bcf0dc34",
-    "asset_code": "AA/DMCSH/104/4523/127/CB/DIA/CENTER/0001",
+    "id": "67965bc0-c1a2-4707-84b4-c1d809bd31e4",
+    "asset_code": "DIA-0005",
     "name": "Suction Machine",
     "category_id": "c0000001-0000-0000-0000-000000000008",
     "department_id": "2b2c9a60-d4de-1906-7946-353dbedfbe0e",
@@ -725,11 +725,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Suction machine. Source ward: Dialysis center. Original manufacturer/brand value: 7A-23D. Model info: 23122200062."
+    "notes": "Original Menelik inventory number: AA/DMCSH/104/4523/127/CB/DIA/CENTER/0001. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Suction machine. Source ward: Dialysis center. Original manufacturer/brand value: 7A-23D. Model info: 23122200062."
   },
   {
-    "id": "a34eb75d-b68b-423d-8c8a-f425729685a3",
-    "asset_code": "AA/DMCSH/104/4523/889/CB/DIA/CENTER/0001",
+    "id": "f7c2388f-c2eb-4c1b-88bb-f7ef0835da2e",
+    "asset_code": "DIA-0006",
     "name": "Ultrasound Machine",
     "category_id": "c0000001-0000-0000-0000-000000000004",
     "department_id": "2b2c9a60-d4de-1906-7946-353dbedfbe0e",
@@ -738,11 +738,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Ultrasound. Source ward: Dialysis center. Original manufacturer/brand value: Z 50. Model info: HH6-17001361."
+    "notes": "Original Menelik inventory number: AA/DMCSH/104/4523/889/CB/DIA/CENTER/0001. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Ultrasound. Source ward: Dialysis center. Original manufacturer/brand value: Z 50. Model info: HH6-17001361."
   },
   {
-    "id": "bde8b82b-a44d-4d9e-a83e-7bdfe5744880",
-    "asset_code": "AA/DMCSH/104/4523/924/CB/ENT/0001",
+    "id": "35232a7a-51d9-4219-98b5-9562f95b5673",
+    "asset_code": "SOPD-0005",
     "name": "ENT Chair (Powered)",
     "category_id": "22f788b4-b0b1-26b4-8fdc-1c49256f0efc",
     "department_id": "32f854be-3fe2-a5e0-d642-cb2eb7674df7",
@@ -751,11 +751,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: ENT chair. Source ward: ENT."
+    "notes": "Original Menelik inventory number: AA/DMCSH/104/4523/924/CB/ENT/0001. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: ENT chair. Source ward: ENT."
   },
   {
-    "id": "fa84a6e1-b83d-4589-a039-a5fc8cb53293",
-    "asset_code": "AA/DMCSH/104/4523/787/CB/ENT/0001",
+    "id": "bd44e1c7-bb21-467d-a9b0-30f1c2730c0d",
+    "asset_code": "SOPD-0006",
     "name": "ENT Chair (Powered)",
     "category_id": "22f788b4-b0b1-26b4-8fdc-1c49256f0efc",
     "department_id": "32f854be-3fe2-a5e0-d642-cb2eb7674df7",
@@ -764,11 +764,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: ENT Chair. Source ward: ENT. Original manufacturer/brand value: apex-2000."
+    "notes": "Original Menelik inventory number: AA/DMCSH/104/4523/787/CB/ENT/0001. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: ENT Chair. Source ward: ENT. Original manufacturer/brand value: apex-2000."
   },
   {
-    "id": "3d4e573c-bf74-4836-b429-1791eb548ad6",
-    "asset_code": "AA/DMCSH/104/4523/127/CB/ENT/0001",
+    "id": "04ca1354-8366-4079-8e1e-1819f66d34ad",
+    "asset_code": "SOPD-0007",
     "name": "Suction Machine",
     "category_id": "c0000001-0000-0000-0000-000000000008",
     "department_id": "32f854be-3fe2-a5e0-d642-cb2eb7674df7",
@@ -777,11 +777,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Suction machine. Source ward: ENT."
+    "notes": "Original Menelik inventory number: AA/DMCSH/104/4523/127/CB/ENT/0001. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Suction machine. Source ward: ENT."
   },
   {
-    "id": "c8f9a52e-9805-40e6-8dfb-5267a3159fc3",
-    "asset_code": "AA/DMCSH/104/4523/775/CB/EEM/0001",
+    "id": "3f5fe4b8-5a9c-45ba-b5da-20fb7fed80c5",
+    "asset_code": "EYE-0003",
     "name": "Dry Oven",
     "category_id": "c0000001-0000-0000-0000-000000000005",
     "department_id": "884b0369-be03-12a0-b904-ae6f75c4291d",
@@ -790,11 +790,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Dry Oven. Source ward: EYE Emergency. Original manufacturer/brand value: E-34. Model info: 84278."
+    "notes": "Original Menelik inventory number: AA/DMCSH/104/4523/775/CB/EEM/0001. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Dry Oven. Source ward: EYE Emergency. Original manufacturer/brand value: E-34. Model info: 84278."
   },
   {
-    "id": "57e00290-7746-43e1-8e14-3693dcdc8c7e",
-    "asset_code": "AA/DMCSH/104/4523/779/CB/EEM/0001",
+    "id": "36c6bfac-91b9-44af-a262-0f9e2dc8f16b",
+    "asset_code": "EYE-0004",
     "name": "Electrosurgical Unit",
     "category_id": "c0000001-0000-0000-0000-000000000003",
     "department_id": "884b0369-be03-12a0-b904-ae6f75c4291d",
@@ -803,11 +803,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Electrosurigcal Unit. Source ward: EYE Emergency. Original manufacturer/brand value: diatrom 300. Model info: 4000161956."
+    "notes": "Original Menelik inventory number: AA/DMCSH/104/4523/779/CB/EEM/0001. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Electrosurigcal Unit. Source ward: EYE Emergency. Original manufacturer/brand value: diatrom 300. Model info: 4000161956."
   },
   {
-    "id": "ab83b4f6-59e7-4016-b166-3a5393f86770",
-    "asset_code": "AA/DMCSH/104/4523/855/CB/EOPD/0001",
+    "id": "69607b47-5e6a-4232-8d57-848a4b02db1c",
+    "asset_code": "EYE-0005",
     "name": "Slit Lamp",
     "category_id": "0c498a20-15ce-6010-7aa3-589a169142af",
     "department_id": "884b0369-be03-12a0-b904-ae6f75c4291d",
@@ -816,11 +816,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Slit Lamp. Source ward: EYE Emergency. Model info: 3702066."
+    "notes": "Original Menelik inventory number: AA/DMCSH/104/4523/855/CB/EOPD/0001. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Slit Lamp. Source ward: EYE Emergency. Model info: 3702066."
   },
   {
-    "id": "979c7bac-6594-4cfa-9136-23db976d1429",
-    "asset_code": "AA/DMCSH/104/4523/876/CB/EEM/0005",
+    "id": "e0ff91a0-ae6d-42ce-a62a-b513f79761c0",
+    "asset_code": "EYE-0006",
     "name": "Tonometer",
     "category_id": "0c498a20-15ce-6010-7aa3-589a169142af",
     "department_id": "884b0369-be03-12a0-b904-ae6f75c4291d",
@@ -829,11 +829,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Tonometer. Source ward: EYE Emergency. Model info: 2414-110457."
+    "notes": "Original Menelik inventory number: AA/DMCSH/104/4523/876/CB/EEM/0005. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Tonometer. Source ward: EYE Emergency. Model info: 2414-110457."
   },
   {
-    "id": "8f2cea81-93cc-4e85-8ea7-c1195dd3f3b6",
-    "asset_code": "AA/DMCH/104/4523/855/EYE/EM/CB/0001",
+    "id": "cd172613-f05a-41b3-ba14-73785925a2ff",
+    "asset_code": "EYE-0007",
     "name": "Slit Lamp",
     "category_id": "0c498a20-15ce-6010-7aa3-589a169142af",
     "department_id": "884b0369-be03-12a0-b904-ae6f75c4291d",
@@ -842,11 +842,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Slit Lamp. Source ward: EYE Emergency. Original manufacturer/brand value: SLM-3ER. Model info: 68792204."
+    "notes": "Original Menelik inventory number: AA/DMCH/104/4523/855/EYE/EM/CB/0001. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Slit Lamp. Source ward: EYE Emergency. Original manufacturer/brand value: SLM-3ER. Model info: 68792204."
   },
   {
-    "id": "2c73420c-92f2-443e-8106-db1be50a38f4",
-    "asset_code": "AA/DMCH/104/4523/NEW/EYE/EM/CB/0001",
+    "id": "a6a59e37-13ea-4e8b-896a-12c89cf47065",
+    "asset_code": "EYE-0008",
     "name": "Patient Monitor/Screen",
     "category_id": "c0000001-0000-0000-0000-000000000001",
     "department_id": "884b0369-be03-12a0-b904-ae6f75c4291d",
@@ -855,11 +855,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: SCREEN,Patient. Source ward: EYE Emergency."
+    "notes": "Original Menelik inventory number: AA/DMCH/104/4523/NEW/EYE/EM/CB/0001. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: SCREEN,Patient. Source ward: EYE Emergency."
   },
   {
-    "id": "29ce8bbb-650e-48f9-ab17-9395d07ca4d4",
-    "asset_code": "AA/DMCSH/104/4523/751/CB/EOPD/0003",
+    "id": "f37ef867-2a59-4894-8854-3478b3188a5e",
+    "asset_code": "EYE-0009",
     "name": "Auto Refractometer",
     "category_id": "0c498a20-15ce-6010-7aa3-589a169142af",
     "department_id": "884b0369-be03-12a0-b904-ae6f75c4291d",
@@ -868,11 +868,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Auto Refractometer. Source ward: Eye OPD. Original manufacturer/brand value: Visuref  100. Model info: K85CA86D."
+    "notes": "Original Menelik inventory number: AA/DMCSH/104/4523/751/CB/EOPD/0003. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Auto Refractometer. Source ward: Eye OPD. Original manufacturer/brand value: Visuref  100. Model info: K85CA86D."
   },
   {
-    "id": "04007abe-11a5-4138-9ace-b97c0170ed7b",
-    "asset_code": "AA/DMCSH/104/4523/751/CB/EOPD/0004",
+    "id": "6a273c10-1682-42ac-9a9c-610503ad77e8",
+    "asset_code": "EYE-0010",
     "name": "Auto Refractometer",
     "category_id": "0c498a20-15ce-6010-7aa3-589a169142af",
     "department_id": "884b0369-be03-12a0-b904-ae6f75c4291d",
@@ -881,11 +881,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Auto Refractometer. Source ward: Eye OPD. Original manufacturer/brand value: RMK - 150. Model info: OP-RMK-150A05717."
+    "notes": "Original Menelik inventory number: AA/DMCSH/104/4523/751/CB/EOPD/0004. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Auto Refractometer. Source ward: Eye OPD. Original manufacturer/brand value: RMK - 150. Model info: OP-RMK-150A05717."
   },
   {
-    "id": "ef713180-f7fa-49ed-b7d1-474aaeb1a774",
-    "asset_code": "AA/DMCSH/104/4523/751/CB/EOPD/0005",
+    "id": "08055a51-fed3-4869-a291-853389edc300",
+    "asset_code": "EYE-0011",
     "name": "Biometry Unit",
     "category_id": "0c498a20-15ce-6010-7aa3-589a169142af",
     "department_id": "884b0369-be03-12a0-b904-ae6f75c4291d",
@@ -894,11 +894,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Biometry. Source ward: Eye OPD. Original manufacturer/brand value: IOLMASTER. Model info: 1000543."
+    "notes": "Original Menelik inventory number: AA/DMCSH/104/4523/751/CB/EOPD/0005. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Biometry. Source ward: Eye OPD. Original manufacturer/brand value: IOLMASTER. Model info: 1000543."
   },
   {
-    "id": "484881f6-6851-4ca5-a2db-26d903f42572",
-    "asset_code": "AA/DMCSH/104/4523/751/CB/EOPD/0006",
+    "id": "edf14056-02a9-4bce-bd4b-33dcaae49fb6",
+    "asset_code": "EYE-0012",
     "name": "Fundus Camera",
     "category_id": "c0000001-0000-0000-0000-000000000004",
     "department_id": "884b0369-be03-12a0-b904-ae6f75c4291d",
@@ -907,11 +907,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Fundus Camera. Source ward: Eye OPD. Original manufacturer/brand value: AAFCO1. Model info: FC2311102."
+    "notes": "Original Menelik inventory number: AA/DMCSH/104/4523/751/CB/EOPD/0006. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Fundus Camera. Source ward: Eye OPD. Original manufacturer/brand value: AAFCO1. Model info: FC2311102."
   },
   {
-    "id": "5b1f3391-31f0-4494-81f4-bcb001d02ffe",
-    "asset_code": "AA/DMCSH/104/4523/920/CB/EOPD/0001",
+    "id": "c1d4fefb-a5db-423e-84fe-8fd13795f835",
+    "asset_code": "EYE-0013",
     "name": "Green Laser (Ophthalmic)",
     "category_id": "0c498a20-15ce-6010-7aa3-589a169142af",
     "department_id": "884b0369-be03-12a0-b904-ae6f75c4291d",
@@ -920,11 +920,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Green Laser. Source ward: Eye OPD. Original manufacturer/brand value: AMO9HSMART. Model info: ILS23081048."
+    "notes": "Original Menelik inventory number: AA/DMCSH/104/4523/920/CB/EOPD/0001. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Green Laser. Source ward: Eye OPD. Original manufacturer/brand value: AMO9HSMART. Model info: ILS23081048."
   },
   {
-    "id": "7a09c661-d520-4ad5-b145-dbdd3a022c22",
-    "asset_code": "AA/DMCSH/104/4523/855/CB/EOPD/0001-R75",
+    "id": "fa646dcf-c602-4fca-886f-f8dd889f4ba5",
+    "asset_code": "EYE-0014",
     "name": "Slit Lamp",
     "category_id": "0c498a20-15ce-6010-7aa3-589a169142af",
     "department_id": "884b0369-be03-12a0-b904-ae6f75c4291d",
@@ -933,11 +933,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Slit Lamp. Source ward: Eye OPD. Original manufacturer/brand value: 8127004. Model info: 1910-03212."
+    "notes": "Original Menelik inventory number: AA/DMCSH/104/4523/855/CB/EOPD/0001. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Slit Lamp. Source ward: Eye OPD. Original manufacturer/brand value: 8127004. Model info: 1910-03212."
   },
   {
-    "id": "c6884ea1-dc81-4757-9a81-de53a5659b94",
-    "asset_code": "AA/DMCSH/104/4523/876/CB/EOPD/0001",
+    "id": "693438c2-6e4e-4480-8223-480c2faaa849",
+    "asset_code": "EYE-0015",
     "name": "Tonometer",
     "category_id": "0c498a20-15ce-6010-7aa3-589a169142af",
     "department_id": "884b0369-be03-12a0-b904-ae6f75c4291d",
@@ -946,11 +946,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Tonometer. Source ward: Eye OPD. Original manufacturer/brand value: Visuplan 500. Model info: 9703102463."
+    "notes": "Original Menelik inventory number: AA/DMCSH/104/4523/876/CB/EOPD/0001. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Tonometer. Source ward: Eye OPD. Original manufacturer/brand value: Visuplan 500. Model info: 9703102463."
   },
   {
-    "id": "d11b3f9a-449d-4169-935e-0db1be03245b",
-    "asset_code": "AA/DMCSH/104/4523/876/CB/EOPD/0002",
+    "id": "54188c44-c718-4398-865b-24a3c10164b7",
+    "asset_code": "EYE-0016",
     "name": "Tonometer",
     "category_id": "0c498a20-15ce-6010-7aa3-589a169142af",
     "department_id": "884b0369-be03-12a0-b904-ae6f75c4291d",
@@ -959,11 +959,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Tonometer. Source ward: Eye OPD. Original manufacturer/brand value: Visuplan 500. Model info: 9703102470."
+    "notes": "Original Menelik inventory number: AA/DMCSH/104/4523/876/CB/EOPD/0002. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Tonometer. Source ward: Eye OPD. Original manufacturer/brand value: Visuplan 500. Model info: 9703102470."
   },
   {
-    "id": "331e544b-2787-4b8f-bbec-f86eee15a511",
-    "asset_code": "AA/DMCH/104/4523/912/GL/CB/0002",
+    "id": "cf1d3fcb-3b1d-4408-91f8-549b5a787189",
+    "asset_code": "EYE-0017",
     "name": "Laser Machine (Ophthalmic)",
     "category_id": "0c498a20-15ce-6010-7aa3-589a169142af",
     "department_id": "884b0369-be03-12a0-b904-ae6f75c4291d",
@@ -972,11 +972,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Lazer machine. Source ward: EYE OPD. Original manufacturer/brand value: LSLYA 9111. Model info: 1208846."
+    "notes": "Original Menelik inventory number: AA/DMCH/104/4523/912/GL/CB/0002. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Lazer machine. Source ward: EYE OPD. Original manufacturer/brand value: LSLYA 9111. Model info: 1208846."
   },
   {
-    "id": "f8616f76-cb6d-4088-8c16-ee8c96b720b3",
-    "asset_code": "AA/DMCH/104/4523/855/EYEOPD/CB/0001",
+    "id": "33ff5984-2e81-45f9-a7be-1ff59ce85e49",
+    "asset_code": "EYE-0018",
     "name": "Corneal Topography",
     "category_id": "0c498a20-15ce-6010-7aa3-589a169142af",
     "department_id": "884b0369-be03-12a0-b904-ae6f75c4291d",
@@ -985,11 +985,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Corneal Topography. Source ward: EYE OPD. Original manufacturer/brand value: 9000. Model info: 9000-103776."
+    "notes": "Original Menelik inventory number: AA/DMCH/104/4523/855/EYEOPD/CB/0001. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Corneal Topography. Source ward: EYE OPD. Original manufacturer/brand value: 9000. Model info: 9000-103776."
   },
   {
-    "id": "17b0f550-56c9-413c-acd4-43ef5fddef55",
-    "asset_code": "AA/DMCH/104/4523/855/EYEOPD/CB/0002",
+    "id": "ef510b0f-627c-4bd1-b1ad-76191c0b546b",
+    "asset_code": "EYE-0019",
     "name": "Indirect Ophthalmoscope",
     "category_id": "0c498a20-15ce-6010-7aa3-589a169142af",
     "department_id": "884b0369-be03-12a0-b904-ae6f75c4291d",
@@ -998,11 +998,11 @@
     "condition": "non_functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: indarect opthalomoscope. Source ward: EYE OPD. Original manufacturer/brand value: 7-43. Model info: 74301."
+    "notes": "Original Menelik inventory number: AA/DMCH/104/4523/855/EYEOPD/CB/0002. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: indarect opthalomoscope. Source ward: EYE OPD. Original manufacturer/brand value: 7-43. Model info: 74301."
   },
   {
-    "id": "0da7a38c-d63b-4aa9-9c2e-3f9a17e2e4d4",
-    "asset_code": "AA/DMCSH/104/4523/743/CB/EOR/0003",
+    "id": "2a641276-34d6-46cc-b709-eb2554f3bad0",
+    "asset_code": "EYE-0020",
     "name": "Anesthesia Machine",
     "category_id": "c0000001-0000-0000-0000-000000000008",
     "department_id": "884b0369-be03-12a0-b904-ae6f75c4291d",
@@ -1011,11 +1011,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Anesthesia Machine. Source ward: Eye OR. Original manufacturer/brand value: Pro-45."
+    "notes": "Original Menelik inventory number: AA/DMCSH/104/4523/743/CB/EOR/0003. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Anesthesia Machine. Source ward: Eye OR. Original manufacturer/brand value: Pro-45."
   },
   {
-    "id": "9b701ffa-aec8-4fd2-abdd-86c5cd98aa7a",
-    "asset_code": "AA/DMCSH/104/4523/743/CB/EOR/0004",
+    "id": "18419025-ca8b-4f52-b586-5b630141ecf5",
+    "asset_code": "EYE-0021",
     "name": "Anesthesia Machine",
     "category_id": "c0000001-0000-0000-0000-000000000008",
     "department_id": "884b0369-be03-12a0-b904-ae6f75c4291d",
@@ -1024,11 +1024,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Anesthesia Machine. Source ward: Eye OR. Original manufacturer/brand value: Aeon7200. Model info: Aeon7200€yxz5044."
+    "notes": "Original Menelik inventory number: AA/DMCSH/104/4523/743/CB/EOR/0004. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Anesthesia Machine. Source ward: Eye OR. Original manufacturer/brand value: Aeon7200. Model info: Aeon7200€yxz5044."
   },
   {
-    "id": "1822ce8f-dfe0-4d7e-8bd1-009f72f8ac56",
-    "asset_code": "AA/DMCSH/104/4523/766/CB/EOR/0001",
+    "id": "a7086368-0c95-43a4-9e86-9bf7a9287ed9",
+    "asset_code": "EYE-0022",
     "name": "Cryotherapy Machine",
     "category_id": "c0000001-0000-0000-0000-000000000011",
     "department_id": "884b0369-be03-12a0-b904-ae6f75c4291d",
@@ -1037,11 +1037,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Cyromatic. Source ward: Eye OR. Original manufacturer/brand value: MKII. Model info: K0909825."
+    "notes": "Original Menelik inventory number: AA/DMCSH/104/4523/766/CB/EOR/0001. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Cyromatic. Source ward: Eye OR. Original manufacturer/brand value: MKII. Model info: K0909825."
   },
   {
-    "id": "c7fb2538-843c-484d-8d03-fcf1b5b7c75f",
-    "asset_code": "AA/DMCSH/104/4523/818/CB/EOR/0004",
+    "id": "a3882595-8863-44ff-ab93-3707743eee4e",
+    "asset_code": "EYE-0023",
     "name": "Microscope, Operating Ophthalmic",
     "category_id": "c0000001-0000-0000-0000-000000000005",
     "department_id": "884b0369-be03-12a0-b904-ae6f75c4291d",
@@ -1050,11 +1050,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Microscope, Operating, Ophthalmic. Source ward: Eye OR. Original manufacturer/brand value: AAOM230/250 Brilliant. Model info: 1462500350."
+    "notes": "Original Menelik inventory number: AA/DMCSH/104/4523/818/CB/EOR/0004. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Microscope, Operating, Ophthalmic. Source ward: Eye OR. Original manufacturer/brand value: AAOM230/250 Brilliant. Model info: 1462500350."
   },
   {
-    "id": "83083481-42e4-420f-8578-7c5b82455248",
-    "asset_code": "AA/DMCSH/104/4523/818/CB/EOR/0008",
+    "id": "a120e7c0-0f00-4998-aacb-8fed2932d558",
+    "asset_code": "EYE-0024",
     "name": "Microscope, Operating Ophthalmic",
     "category_id": "c0000001-0000-0000-0000-000000000005",
     "department_id": "884b0369-be03-12a0-b904-ae6f75c4291d",
@@ -1063,11 +1063,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Microscope, Operating, Ophthalmic. Source ward: Eye OR. Original manufacturer/brand value: Opmi Lumera 300. Model info: 6137102904."
+    "notes": "Original Menelik inventory number: AA/DMCSH/104/4523/818/CB/EOR/0008. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Microscope, Operating, Ophthalmic. Source ward: Eye OR. Original manufacturer/brand value: Opmi Lumera 300. Model info: 6137102904."
   },
   {
-    "id": "080cbf22-4762-48af-8c9b-6850211e16bb",
-    "asset_code": "AA/DMCSH/104/4523/818/CB/EOR/0003",
+    "id": "363bf546-21f2-450d-96e3-cdd912683e66",
+    "asset_code": "EYE-0025",
     "name": "Microscope, Operating Ophthalmic",
     "category_id": "c0000001-0000-0000-0000-000000000005",
     "department_id": "884b0369-be03-12a0-b904-ae6f75c4291d",
@@ -1076,11 +1076,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Microscope, Operating, Ophthalmic. Source ward: Eye OR. Original manufacturer/brand value: Opmi Lumera 300. Model info: 6137102905."
+    "notes": "Original Menelik inventory number: AA/DMCSH/104/4523/818/CB/EOR/0003. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Microscope, Operating, Ophthalmic. Source ward: Eye OR. Original manufacturer/brand value: Opmi Lumera 300. Model info: 6137102905."
   },
   {
-    "id": "11ee8c79-ab90-4526-a725-1577c472f772",
-    "asset_code": "AA/DMCSH/104/4523/870/CB/EOR/0006",
+    "id": "1f3bdc6f-f33d-49fa-83b4-91deec78e710",
+    "asset_code": "EYE-0026",
     "name": "Operating Table, Electro-Hydraulic",
     "category_id": "c0000001-0000-0000-0000-000000000003",
     "department_id": "884b0369-be03-12a0-b904-ae6f75c4291d",
@@ -1089,11 +1089,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Table, OR, Electro hydraulic. Source ward: Eye OR. Original manufacturer/brand value: OP830. Model info: OP830YUYY."
+    "notes": "Original Menelik inventory number: AA/DMCSH/104/4523/870/CB/EOR/0006. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Table, OR, Electro hydraulic. Source ward: Eye OR. Original manufacturer/brand value: OP830. Model info: OP830YUYY."
   },
   {
-    "id": "72a3b4bf-66eb-45e9-8da8-3d87e56bd07a",
-    "asset_code": "AA/DMCSH/104/4523/743/CB/EOR/0011",
+    "id": "1557b721-5343-486a-a1f5-badcf08c4ae2",
+    "asset_code": "EYE-0027",
     "name": "Anesthesia Machine",
     "category_id": "c0000001-0000-0000-0000-000000000008",
     "department_id": "884b0369-be03-12a0-b904-ae6f75c4291d",
@@ -1102,11 +1102,11 @@
     "condition": "non_functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Anesthesia Machine. Source ward: Eye OR. Original manufacturer/brand value: 7200. Model info: Gloryplus(s)yuyz094."
+    "notes": "Original Menelik inventory number: AA/DMCSH/104/4523/743/CB/EOR/0011. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Anesthesia Machine. Source ward: Eye OR. Original manufacturer/brand value: 7200. Model info: Gloryplus(s)yuyz094."
   },
   {
-    "id": "c76dab46-5a99-498b-b189-ca940dbb7d13",
-    "asset_code": "AA/DMCH/104/4523/818/CB/EYEOR/0005",
+    "id": "6563c464-6200-4be2-baf4-98bf4a8270b8",
+    "asset_code": "EYE-0028",
     "name": "Microscope, Operating",
     "category_id": "c0000001-0000-0000-0000-000000000005",
     "department_id": "884b0369-be03-12a0-b904-ae6f75c4291d",
@@ -1115,11 +1115,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Microscope,operating. Source ward: eye OR. Original manufacturer/brand value: S8. Model info: 6627502771."
+    "notes": "Original Menelik inventory number: AA/DMCH/104/4523/818/CB/EYEOR/0005. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Microscope,operating. Source ward: eye OR. Original manufacturer/brand value: S8. Model info: 6627502771."
   },
   {
-    "id": "ab14b96c-c8a6-4945-94c0-b29c3d5f56a5",
-    "asset_code": "AA/DMCH/104/4523/818/CB/EYEOR/0006",
+    "id": "77edc5b2-a9ce-47d4-8b64-3961e8c84814",
+    "asset_code": "EYE-0029",
     "name": "Microscope, Operating",
     "category_id": "c0000001-0000-0000-0000-000000000005",
     "department_id": "884b0369-be03-12a0-b904-ae6f75c4291d",
@@ -1128,11 +1128,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Microscope,operating. Source ward: eye OR. Original manufacturer/brand value: S8. Model info: 6629184942."
+    "notes": "Original Menelik inventory number: AA/DMCH/104/4523/818/CB/EYEOR/0006. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Microscope,operating. Source ward: eye OR. Original manufacturer/brand value: S8. Model info: 6629184942."
   },
   {
-    "id": "bb068234-d0e7-4bd2-896f-151ee7fb9944",
-    "asset_code": "AA/DMCH/104/4523/PHECO/CB/EYEOR/0006",
+    "id": "94bfc814-5a4f-4b40-bcee-445299b2527d",
+    "asset_code": "EYE-0030",
     "name": "Phaco Machine",
     "category_id": "c0000001-0000-0000-0000-000000000003",
     "department_id": "884b0369-be03-12a0-b904-ae6f75c4291d",
@@ -1141,11 +1141,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: PHECO MACHINE. Source ward: eye OR. Original manufacturer/brand value: VC821100. Model info: 73700084."
+    "notes": "Original Menelik inventory number: AA/DMCH/104/4523/PHECO/CB/EYEOR/0006. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: PHECO MACHINE. Source ward: eye OR. Original manufacturer/brand value: VC821100. Model info: 73700084."
   },
   {
-    "id": "c461c5e1-2688-4a39-944c-f2808ad1ad66",
-    "asset_code": "AA/DMCH/104/4523/IRLAZ/CB/EYEOR/0001",
+    "id": "b4d71fe8-993d-410a-bfba-c23c22963bf6",
+    "asset_code": "EYE-0031",
     "name": "Appasamy Infrared Laser",
     "category_id": "0c498a20-15ce-6010-7aa3-589a169142af",
     "department_id": "884b0369-be03-12a0-b904-ae6f75c4291d",
@@ -1154,11 +1154,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Appasamy infrared laser. Source ward: eye OR. Original manufacturer/brand value: smart-810NM. Model info: IRL2312008."
+    "notes": "Original Menelik inventory number: AA/DMCH/104/4523/IRLAZ/CB/EYEOR/0001. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Appasamy infrared laser. Source ward: eye OR. Original manufacturer/brand value: smart-810NM. Model info: IRL2312008."
   },
   {
-    "id": "2649f8fe-c38b-499f-907a-e9d7371e45f2",
-    "asset_code": "AA/DMCH/104/4523/PHECO/CB/EYEOR/0002",
+    "id": "a11b2f9c-1b7a-46c5-b8fb-5e547c572d36",
+    "asset_code": "EYE-0032",
     "name": "PPV + Phaco Machine",
     "category_id": "c0000001-0000-0000-0000-000000000003",
     "department_id": "884b0369-be03-12a0-b904-ae6f75c4291d",
@@ -1167,11 +1167,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: PPV + PHECO MACHINE. Source ward: eye OR. Original manufacturer/brand value: GALAXY TURBO ORBIT. Model info: 6304230093."
+    "notes": "Original Menelik inventory number: AA/DMCH/104/4523/PHECO/CB/EYEOR/0002. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: PPV + PHECO MACHINE. Source ward: eye OR. Original manufacturer/brand value: GALAXY TURBO ORBIT. Model info: 6304230093."
   },
   {
-    "id": "7ae73159-3acf-4372-942f-771b76964735",
-    "asset_code": "AA/DMCH/104/4523/775/CB/EYEOR/0007",
+    "id": "b43094f0-be26-4d65-b9bf-505ac68d57be",
+    "asset_code": "EYE-0033",
     "name": "Hot Air Sterilizer",
     "category_id": "c0000001-0000-0000-0000-000000000006",
     "department_id": "884b0369-be03-12a0-b904-ae6f75c4291d",
@@ -1180,11 +1180,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: STERALIZER,HOT AIR. Source ward: eye OR. Original manufacturer/brand value: YCO-010. Model info: 618527."
+    "notes": "Original Menelik inventory number: AA/DMCH/104/4523/775/CB/EYEOR/0007. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: STERALIZER,HOT AIR. Source ward: eye OR. Original manufacturer/brand value: YCO-010. Model info: 618527."
   },
   {
-    "id": "9892a2db-2c4b-401d-ac0a-a3d7c1ebb6e2",
-    "asset_code": "AA/DMCH/104/4523/775/CB/EYEOR/0003",
+    "id": "10afc743-1379-4983-a797-7b48677e4421",
+    "asset_code": "EYE-0034",
     "name": "Hot Air Sterilizer",
     "category_id": "c0000001-0000-0000-0000-000000000006",
     "department_id": "884b0369-be03-12a0-b904-ae6f75c4291d",
@@ -1193,11 +1193,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Steralizer,hot air. Source ward: eye OR. Original manufacturer/brand value: YCO-010. Model info: 618312."
+    "notes": "Original Menelik inventory number: AA/DMCH/104/4523/775/CB/EYEOR/0003. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Steralizer,hot air. Source ward: eye OR. Original manufacturer/brand value: YCO-010. Model info: 618312."
   },
   {
-    "id": "579c3484-29ab-4bbe-aa95-850548704698",
-    "asset_code": "AA/DMCH/104/4523/775/CB/EYEOR/0005",
+    "id": "6be615a7-ca25-412e-8f68-88423ccfac3e",
+    "asset_code": "EYE-0035",
     "name": "Hot Air Sterilizer",
     "category_id": "c0000001-0000-0000-0000-000000000006",
     "department_id": "884b0369-be03-12a0-b904-ae6f75c4291d",
@@ -1206,11 +1206,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Steralizer,hot air. Source ward: eye OR. Original manufacturer/brand value: DE-00T3. Model info: 0112."
+    "notes": "Original Menelik inventory number: AA/DMCH/104/4523/775/CB/EYEOR/0005. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Steralizer,hot air. Source ward: eye OR. Original manufacturer/brand value: DE-00T3. Model info: 0112."
   },
   {
-    "id": "39b05d02-217d-473e-baaf-faf2c74621ce",
-    "asset_code": "AA/DMCH/104/4523/818/CB/EYEOR/0001",
+    "id": "d75fd57f-e6ee-4ff8-963d-88c96ea2744f",
+    "asset_code": "EYE-0036",
     "name": "Microscope, Operating",
     "category_id": "c0000001-0000-0000-0000-000000000005",
     "department_id": "884b0369-be03-12a0-b904-ae6f75c4291d",
@@ -1219,11 +1219,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Microscope,operating. Source ward: eye OR. Original manufacturer/brand value: S8. Model info: 6629184951."
+    "notes": "Original Menelik inventory number: AA/DMCH/104/4523/818/CB/EYEOR/0001. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Microscope,operating. Source ward: eye OR. Original manufacturer/brand value: S8. Model info: 6629184951."
   },
   {
-    "id": "9778aeaa-e2d9-4e3e-9858-1810a50d8c26",
-    "asset_code": "AA/DMCH/104/4523/775/CB/EYEOR/0006",
+    "id": "2d8f884e-b0e0-4625-aadc-7e53a80f6557",
+    "asset_code": "EYE-0037",
     "name": "Dry Oven",
     "category_id": "c0000001-0000-0000-0000-000000000005",
     "department_id": "884b0369-be03-12a0-b904-ae6f75c4291d",
@@ -1232,11 +1232,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Dry oven. Source ward: eye OR."
+    "notes": "Original Menelik inventory number: AA/DMCH/104/4523/775/CB/EYEOR/0006. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Dry oven. Source ward: eye OR."
   },
   {
-    "id": "dffd69ee-bddc-40da-9739-b4080527a07b",
-    "asset_code": "AA/DMCH/104/4523/PHECO/CB/EYEOR/0005",
+    "id": "6814d3e9-a74f-4c35-afdb-c7e35d8470cf",
+    "asset_code": "EYE-0038",
     "name": "PPV + Phaco Machine",
     "category_id": "c0000001-0000-0000-0000-000000000003",
     "department_id": "884b0369-be03-12a0-b904-ae6f75c4291d",
@@ -1245,11 +1245,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: ppv+Pheco machine. Source ward: eye OR. Original manufacturer/brand value: GALAXY TURBO ORBITAL. Model info: 6304230094."
+    "notes": "Original Menelik inventory number: AA/DMCH/104/4523/PHECO/CB/EYEOR/0005. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: ppv+Pheco machine. Source ward: eye OR. Original manufacturer/brand value: GALAXY TURBO ORBITAL. Model info: 6304230094."
   },
   {
-    "id": "e0ff346b-9653-46be-a3cb-23bbbe9672ae",
-    "asset_code": "AA/DMCH/104/4523/PHECO/CB/EYEOR/00010",
+    "id": "8ca5ed15-fd32-42d1-a9fe-ec5ff8a71155",
+    "asset_code": "EYE-0039",
     "name": "Phaco Machine",
     "category_id": "c0000001-0000-0000-0000-000000000003",
     "department_id": "884b0369-be03-12a0-b904-ae6f75c4291d",
@@ -1258,11 +1258,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: PHECO MACHINE. Source ward: eye OR. Original manufacturer/brand value: PULSAR. Model info: 65AQ."
+    "notes": "Original Menelik inventory number: AA/DMCH/104/4523/PHECO/CB/EYEOR/00010. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: PHECO MACHINE. Source ward: eye OR. Original manufacturer/brand value: PULSAR. Model info: 65AQ."
   },
   {
-    "id": "af2fd321-d9f3-481f-abb3-6af323a64ed3",
-    "asset_code": "AA/DMCH/104/4523/PHECO/CB/EYEOR/0005-R101",
+    "id": "9e0b2a73-07a6-4c2c-a0cf-d19e827cf042",
+    "asset_code": "EYE-0040",
     "name": "PPV + Phaco Machine",
     "category_id": "c0000001-0000-0000-0000-000000000003",
     "department_id": "884b0369-be03-12a0-b904-ae6f75c4291d",
@@ -1271,11 +1271,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: ppv+Pheco machine. Source ward: eye OR. Original manufacturer/brand value: V500."
+    "notes": "Original Menelik inventory number: AA/DMCH/104/4523/PHECO/CB/EYEOR/0005. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: ppv+Pheco machine. Source ward: eye OR. Original manufacturer/brand value: V500."
   },
   {
-    "id": "ac811a8d-4f4a-4640-a8e8-2f1c7144dd4f",
-    "asset_code": "AA/DMCH/104/4523/145/CB/EYEOR/0008",
+    "id": "23e87942-591a-46e5-a7b8-ca3fa9cc83eb",
+    "asset_code": "EYE-0041",
     "name": "Pulse Oximeter",
     "category_id": "c0000001-0000-0000-0000-000000000001",
     "department_id": "884b0369-be03-12a0-b904-ae6f75c4291d",
@@ -1284,11 +1284,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Pulse oximeter. Source ward: eye OR. Original manufacturer/brand value: (70-1065). Model info: GIB008051."
+    "notes": "Original Menelik inventory number: AA/DMCH/104/4523/145/CB/EYEOR/0008. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Pulse oximeter. Source ward: eye OR. Original manufacturer/brand value: (70-1065). Model info: GIB008051."
   },
   {
-    "id": "3040c877-49ab-4403-a6c6-a2916918092f",
-    "asset_code": "AA/DMCH/104/4523/50/CB/EYEOR/0009",
+    "id": "ff16f333-d5f0-4477-9438-a768e801951f",
+    "asset_code": "EYE-0042",
     "name": "Steam Sterilizer",
     "category_id": "c0000001-0000-0000-0000-000000000006",
     "department_id": "884b0369-be03-12a0-b904-ae6f75c4291d",
@@ -1297,11 +1297,11 @@
     "condition": "non_functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Steam sterialzer. Source ward: eye OR."
+    "notes": "Original Menelik inventory number: AA/DMCH/104/4523/50/CB/EYEOR/0009. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Steam sterialzer. Source ward: eye OR."
   },
   {
-    "id": "a463d4cc-869e-4c4e-a19e-4bf55a306851",
-    "asset_code": "AA/DMCH/104/4523/779/CB/EYEOR/0043",
+    "id": "cb858046-650d-4989-8dd9-bf9e482cf08f",
+    "asset_code": "EYE-0043",
     "name": "Electrosurgical Unit",
     "category_id": "c0000001-0000-0000-0000-000000000003",
     "department_id": "884b0369-be03-12a0-b904-ae6f75c4291d",
@@ -1310,11 +1310,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Electrosurigcal Unit. Source ward: eye OR. Original manufacturer/brand value: avanta. Model info: L223B02AN."
+    "notes": "Original Menelik inventory number: AA/DMCH/104/4523/779/CB/EYEOR/0043. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Electrosurigcal Unit. Source ward: eye OR. Original manufacturer/brand value: avanta. Model info: L223B02AN."
   },
   {
-    "id": "211499de-6f92-4981-876e-67f7e46535d8",
-    "asset_code": "AA/DMCH/104/4523/818/CB/EYEOR/0001-R105",
+    "id": "b9cbbc25-1e11-4976-b6ea-8040746661aa",
+    "asset_code": "EYE-0044",
     "name": "Bipolar Coagulator",
     "category_id": "c0000001-0000-0000-0000-000000000003",
     "department_id": "884b0369-be03-12a0-b904-ae6f75c4291d",
@@ -1323,11 +1323,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Bipolar coagulator. Source ward: eye OR. Original manufacturer/brand value: ACC001. Model info: 2710150017."
+    "notes": "Original Menelik inventory number: AA/DMCH/104/4523/818/CB/EYEOR/0001. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Bipolar coagulator. Source ward: eye OR. Original manufacturer/brand value: ACC001. Model info: 2710150017."
   },
   {
-    "id": "6635a4d0-fc88-4cf7-bef5-962ecd567931",
-    "asset_code": "AA/DMCH/104/4523/818/CB/EYEOR/0044",
+    "id": "3b8094b6-c68e-4357-8fac-fc3a52ab80d4",
+    "asset_code": "EYE-0045",
     "name": "Electrosurgical Unit",
     "category_id": "c0000001-0000-0000-0000-000000000003",
     "department_id": "884b0369-be03-12a0-b904-ae6f75c4291d",
@@ -1336,11 +1336,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Electrosurigcal Unit. Source ward: eye OR. Original manufacturer/brand value: ACD01. Model info: E14G-05."
+    "notes": "Original Menelik inventory number: AA/DMCH/104/4523/818/CB/EYEOR/0044. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Electrosurigcal Unit. Source ward: eye OR. Original manufacturer/brand value: ACD01. Model info: E14G-05."
   },
   {
-    "id": "6475fe1d-169a-494d-a1fa-3683a3d33a34",
-    "asset_code": "AA/DMCH/104/4523/818/CB/EYEOR/0005-R107",
+    "id": "6be10ba4-4f0a-4a30-abd4-356a5ac7ffc6",
+    "asset_code": "EYE-0046",
     "name": "Bipolar Coagulator",
     "category_id": "c0000001-0000-0000-0000-000000000003",
     "department_id": "884b0369-be03-12a0-b904-ae6f75c4291d",
@@ -1349,11 +1349,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Bipolar coagulator. Source ward: eye OR. Original manufacturer/brand value: ACD01. Model info: EAE-17."
+    "notes": "Original Menelik inventory number: AA/DMCH/104/4523/818/CB/EYEOR/0005. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Bipolar coagulator. Source ward: eye OR. Original manufacturer/brand value: ACD01. Model info: EAE-17."
   },
   {
-    "id": "e56cea14-48de-4fbf-9602-e95810a0d539",
-    "asset_code": "AA/DMCH/104/4523/NEW/CB/EYEOR/0001",
+    "id": "451e5e90-e955-46fc-bd0d-ae78e8f70be9",
+    "asset_code": "EYE-0047",
     "name": "Vitrectomy Machine",
     "category_id": "c0000001-0000-0000-0000-000000000003",
     "department_id": "884b0369-be03-12a0-b904-ae6f75c4291d",
@@ -1362,11 +1362,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: VITROCTOMY. Source ward: eye OR. Original manufacturer/brand value: G-23004. Model info: VIT-1748444."
+    "notes": "Original Menelik inventory number: AA/DMCH/104/4523/NEW/CB/EYEOR/0001. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: VITROCTOMY. Source ward: eye OR. Original manufacturer/brand value: G-23004. Model info: VIT-1748444."
   },
   {
-    "id": "d1708c01-65f8-4505-8105-e167127d9499",
-    "asset_code": "AA/DMCH/104/4523/NEW/CB/EYEOR/0002",
+    "id": "95063615-8290-4adf-ac6c-87276e86b29d",
+    "asset_code": "EYE-0048",
     "name": "Vitrectomy Machine",
     "category_id": "c0000001-0000-0000-0000-000000000003",
     "department_id": "884b0369-be03-12a0-b904-ae6f75c4291d",
@@ -1375,11 +1375,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Vitroctomy. Source ward: eye OR. Original manufacturer/brand value: G-23004. Model info: VIT-0523019."
+    "notes": "Original Menelik inventory number: AA/DMCH/104/4523/NEW/CB/EYEOR/0002. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Vitroctomy. Source ward: eye OR. Original manufacturer/brand value: G-23004. Model info: VIT-0523019."
   },
   {
-    "id": "20dfe0ed-954e-405e-88d6-e919b8615017",
-    "asset_code": "AA/DMCSH/104/4523/50/CB/CX-CAS/0001",
+    "id": "e25b6055-8757-4a3c-9286-2d0b43ff1f34",
+    "asset_code": "MCH-0006",
     "name": "Steam Sterilizer",
     "category_id": "c0000001-0000-0000-0000-000000000006",
     "department_id": "e5afe68b-997b-076a-e341-3bc13f259d30",
@@ -1388,11 +1388,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Steam steralizer. Source ward: family planning. Original manufacturer/brand value: AS-300H. Model info: 307388."
+    "notes": "Original Menelik inventory number: AA/DMCSH/104/4523/50/CB/CX-CAS/0001. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Steam steralizer. Source ward: family planning. Original manufacturer/brand value: AS-300H. Model info: 307388."
   },
   {
-    "id": "a1088feb-ef97-4600-bfc6-f2bc88ecd1ee",
-    "asset_code": "AA/DMCH/104/4523/912/GL/CB/0001",
+    "id": "ea2ef492-86b2-4cec-96a8-5109fcbd6fa1",
+    "asset_code": "EYE-0049",
     "name": "Laser Machine (Ophthalmic)",
     "category_id": "0c498a20-15ce-6010-7aa3-589a169142af",
     "department_id": "884b0369-be03-12a0-b904-ae6f75c4291d",
@@ -1401,11 +1401,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Lasermachine. Source ward: Gelacoma. Original manufacturer/brand value: SL990-3X. Model info: 13070306."
+    "notes": "Original Menelik inventory number: AA/DMCH/104/4523/912/GL/CB/0001. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Lasermachine. Source ward: Gelacoma. Original manufacturer/brand value: SL990-3X. Model info: 13070306."
   },
   {
-    "id": "42ee36fc-36b8-4fce-8306-23c1661b24b1",
-    "asset_code": "AA/DMCH/104/4523/912/GL/CB/0010",
+    "id": "867299e3-d737-4316-90e6-5fd9e4064bac",
+    "asset_code": "EYE-0050",
     "name": "YAG Laser Machine",
     "category_id": "0c498a20-15ce-6010-7aa3-589a169142af",
     "department_id": "884b0369-be03-12a0-b904-ae6f75c4291d",
@@ -1414,11 +1414,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: yaglasermachine. Source ward: Gelacoma. Original manufacturer/brand value: ESL-1. Model info: 4290AR."
+    "notes": "Original Menelik inventory number: AA/DMCH/104/4523/912/GL/CB/0010. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: yaglasermachine. Source ward: Gelacoma. Original manufacturer/brand value: ESL-1. Model info: 4290AR."
   },
   {
-    "id": "c9fd4efd-8069-4735-a061-0c75d857e451",
-    "asset_code": "AA/DMCSH/104/4523/125/CB/GYOR/0007",
+    "id": "a2a02c24-3584-4c38-a222-b40da26a2d6e",
+    "asset_code": "OT-0001",
     "name": "Infant Radiant Warmer",
     "category_id": "05736ca8-cbb3-e707-4e4a-8a9393bb3a87",
     "department_id": "d0000001-0000-0000-0000-000000000002",
@@ -1427,11 +1427,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Radaint Warmer. Source ward: Gyni OR. Original manufacturer/brand value: BN-100. Model info: 1130105118."
+    "notes": "Original Menelik inventory number: AA/DMCSH/104/4523/125/CB/GYOR/0007. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Radaint Warmer. Source ward: Gyni OR. Original manufacturer/brand value: BN-100. Model info: 1130105118."
   },
   {
-    "id": "015e32b3-c034-485a-95c5-5b0974695abd",
-    "asset_code": "AA/DMCSH/104/4523/125/CB/GYOR/0012",
+    "id": "01303583-b01e-472f-bbe2-2f072c087ef1",
+    "asset_code": "OT-0002",
     "name": "Infant Radiant Warmer",
     "category_id": "05736ca8-cbb3-e707-4e4a-8a9393bb3a87",
     "department_id": "d0000001-0000-0000-0000-000000000002",
@@ -1440,11 +1440,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Radaint Warmer. Source ward: Gyni OR. Original manufacturer/brand value: BN-100. Model info: 1130105140."
+    "notes": "Original Menelik inventory number: AA/DMCSH/104/4523/125/CB/GYOR/0012. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Radaint Warmer. Source ward: Gyni OR. Original manufacturer/brand value: BN-100. Model info: 1130105140."
   },
   {
-    "id": "f5dd4004-db49-46b2-8b2b-8fde84173f1a",
-    "asset_code": "AA/DMCSH/104/4523/170/CB/LAB/0003",
+    "id": "2387bc8d-77c2-46c0-b42e-53abce606879",
+    "asset_code": "OT-0003",
     "name": "Water Bath",
     "category_id": "c0000001-0000-0000-0000-000000000005",
     "department_id": "d0000001-0000-0000-0000-000000000002",
@@ -1453,11 +1453,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Water Bath. Source ward: Gyni OR."
+    "notes": "Original Menelik inventory number: AA/DMCSH/104/4523/170/CB/LAB/0003. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Water Bath. Source ward: Gyni OR."
   },
   {
-    "id": "87b8d36f-3601-403d-94b6-2d18222b780b",
-    "asset_code": "AA/DMCSH/104/4523/870/CB/GYOR/0007",
+    "id": "d08434d0-a3e7-4aff-bec4-9cd0a62b8b14",
+    "asset_code": "OT-0004",
     "name": "Operating Table, Electric",
     "category_id": "c0000001-0000-0000-0000-000000000003",
     "department_id": "d0000001-0000-0000-0000-000000000002",
@@ -1466,11 +1466,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Table, OR, Electric. Source ward: Gyni OR. Original manufacturer/brand value: FE 300. Model info: 2016-10."
+    "notes": "Original Menelik inventory number: AA/DMCSH/104/4523/870/CB/GYOR/0007. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Table, OR, Electric. Source ward: Gyni OR. Original manufacturer/brand value: FE 300. Model info: 2016-10."
   },
   {
-    "id": "192ff22c-b0fe-4fd3-b88d-8b600fbbf84d",
-    "asset_code": "AA/DMCSH/104/4523/870/CB/GYOR/0001",
+    "id": "58cbf745-29ee-41d1-8b0e-a9dde38d77b1",
+    "asset_code": "OT-0005",
     "name": "Operating Table, Electro-Hydraulic",
     "category_id": "c0000001-0000-0000-0000-000000000003",
     "department_id": "d0000001-0000-0000-0000-000000000002",
@@ -1479,11 +1479,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Table, OR, Electro hydraulic. Source ward: Gyni OR. Original manufacturer/brand value: OP330."
+    "notes": "Original Menelik inventory number: AA/DMCSH/104/4523/870/CB/GYOR/0001. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Table, OR, Electro hydraulic. Source ward: Gyni OR. Original manufacturer/brand value: OP330."
   },
   {
-    "id": "ac83606b-b717-4d69-ba1c-ec53eb398de0",
-    "asset_code": "AA/DMCSH/104/4523/130/CB/ICU/0002",
+    "id": "a13e1e4b-130e-4c38-a09f-fae00d64ef76",
+    "asset_code": "ICU-0001",
     "name": "Defibrillator",
     "category_id": "c0000001-0000-0000-0000-000000000003",
     "department_id": "d0000001-0000-0000-0000-000000000001",
@@ -1492,11 +1492,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Defibrilator. Source ward: ICU. Original manufacturer/brand value: Benehart D3. Model info: EL-53019652."
+    "notes": "Original Menelik inventory number: AA/DMCSH/104/4523/130/CB/ICU/0002. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Defibrilator. Source ward: ICU. Original manufacturer/brand value: Benehart D3. Model info: EL-53019652."
   },
   {
-    "id": "f4e311c9-a35e-4d15-9b33-a239190caf7d",
-    "asset_code": "AA/DMCSH/104/4523/811/CB/ICU/0002-R119",
+    "id": "814ff675-ca37-47c6-a606-81a19abf48ad",
+    "asset_code": "ICU-0002",
     "name": "Mechanical Ventilator, Mobile",
     "category_id": "c0000001-0000-0000-0000-000000000008",
     "department_id": "d0000001-0000-0000-0000-000000000001",
@@ -1505,11 +1505,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Mechanical Ventilator, Mobile. Source ward: ICU. Original manufacturer/brand value: SV-300."
+    "notes": "Original Menelik inventory number: AA/DMCSH/104/4523/811/CB/ICU/0002. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Mechanical Ventilator, Mobile. Source ward: ICU. Original manufacturer/brand value: SV-300."
   },
   {
-    "id": "a6af9c29-e06c-422b-a51f-ce307366f32f",
-    "asset_code": "AA/DMCSH/104/4523/735/CB/ICU/0001",
+    "id": "eefa1d7b-732e-4550-a342-c07a896b2d90",
+    "asset_code": "ICU-0003",
     "name": "Blood Gas Analyzer",
     "category_id": "c0000001-0000-0000-0000-000000000005",
     "department_id": "d0000001-0000-0000-0000-000000000001",
@@ -1518,11 +1518,11 @@
     "condition": "decommissioned",
     "status": "inactive",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Analyzer, Blood Gas. Source ward: ICU. Original manufacturer/brand value: ABL800flex. Model info: YZB/DEN6769-2013."
+    "notes": "Original Menelik inventory number: AA/DMCSH/104/4523/735/CB/ICU/0001. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Analyzer, Blood Gas. Source ward: ICU. Original manufacturer/brand value: ABL800flex. Model info: YZB/DEN6769-2013."
   },
   {
-    "id": "7fb06525-987c-417c-9a69-068de85ea3ab",
-    "asset_code": "AA/DMCH/104/4523/811//CB/ICU/0008",
+    "id": "c83fe81d-d1e6-41e4-b9f6-caffa3b567e0",
+    "asset_code": "ICU-0004",
     "name": "Mechanical Ventilator",
     "category_id": "c0000001-0000-0000-0000-000000000008",
     "department_id": "d0000001-0000-0000-0000-000000000001",
@@ -1531,11 +1531,11 @@
     "condition": "non_functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Mechanical ventilator. Source ward: ICU. Original manufacturer/brand value: V200. Model info: VS0003162."
+    "notes": "Original Menelik inventory number: AA/DMCH/104/4523/811//CB/ICU/0008. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Mechanical ventilator. Source ward: ICU. Original manufacturer/brand value: V200. Model info: VS0003162."
   },
   {
-    "id": "22874f5e-22cb-4901-a0b6-4216e2477fd3",
-    "asset_code": "AA/DMCH/104/4523/811//CB/ICU/0009",
+    "id": "c7f6798d-2cc5-4fd2-97e5-ac55807e3603",
+    "asset_code": "ICU-0005",
     "name": "Mechanical Ventilator",
     "category_id": "c0000001-0000-0000-0000-000000000008",
     "department_id": "d0000001-0000-0000-0000-000000000001",
@@ -1544,11 +1544,11 @@
     "condition": "non_functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Mechanical ventilator. Source ward: ICU. Original manufacturer/brand value: V200. Model info: VS0003284."
+    "notes": "Original Menelik inventory number: AA/DMCH/104/4523/811//CB/ICU/0009. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Mechanical ventilator. Source ward: ICU. Original manufacturer/brand value: V200. Model info: VS0003284."
   },
   {
-    "id": "19e7be90-60e1-476b-a834-04eab3616086",
-    "asset_code": "AA/DMCH/104/4523/811//CB/ICU/0010",
+    "id": "b838d7a1-ca12-47a1-aed3-aba069177963",
+    "asset_code": "ICU-0006",
     "name": "Mechanical Ventilator",
     "category_id": "c0000001-0000-0000-0000-000000000008",
     "department_id": "d0000001-0000-0000-0000-000000000001",
@@ -1557,11 +1557,11 @@
     "condition": "non_functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Mechanical ventilator. Source ward: ICU. Original manufacturer/brand value: V200. Model info: VS0003223."
+    "notes": "Original Menelik inventory number: AA/DMCH/104/4523/811//CB/ICU/0010. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Mechanical ventilator. Source ward: ICU. Original manufacturer/brand value: V200. Model info: VS0003223."
   },
   {
-    "id": "e11c6d56-195e-4830-89da-029d27493c89",
-    "asset_code": "AA/DMCSH/104/4523/1160/CB/IM/0001",
+    "id": "decc51dc-7704-484c-9bc5-079019a340df",
+    "asset_code": "RAD-0001",
     "name": "Automatic Injector",
     "category_id": "c0000001-0000-0000-0000-000000000003",
     "department_id": "d0000001-0000-0000-0000-000000000004",
@@ -1570,11 +1570,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Automatic Injector. Source ward: Imaging. Original manufacturer/brand value: Dual Shot Alpha. Model info: QCBS0011G."
+    "notes": "Original Menelik inventory number: AA/DMCSH/104/4523/1160/CB/IM/0001. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Automatic Injector. Source ward: Imaging. Original manufacturer/brand value: Dual Shot Alpha. Model info: QCBS0011G."
   },
   {
-    "id": "94dc6e28-2d7b-481b-8b05-d3e4e8e86fc7",
-    "asset_code": "AA/DMCSH/104/4523/910/CB/IMG/0001",
+    "id": "5530c038-01ef-42d9-a234-072fc835e4b6",
+    "asset_code": "RAD-0002",
     "name": "X-Ray Machine, Radiography Digital",
     "category_id": "c0000001-0000-0000-0000-000000000004",
     "department_id": "d0000001-0000-0000-0000-000000000004",
@@ -1583,11 +1583,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: X-Ray, Radiography, Digital. Source ward: Imaging. Original manufacturer/brand value: New Orental 1000. Model info: y13/284/15/9."
+    "notes": "Original Menelik inventory number: AA/DMCSH/104/4523/910/CB/IMG/0001. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: X-Ray, Radiography, Digital. Source ward: Imaging. Original manufacturer/brand value: New Orental 1000. Model info: y13/284/15/9."
   },
   {
-    "id": "8e233fb7-8383-4a4b-a7ff-7b4db8df55b1",
-    "asset_code": "AA/DMCSH/104/4523/767/CB/IMG/0001",
+    "id": "a015275b-43f7-452f-ad0b-cad3dc5835d8",
+    "asset_code": "RAD-0003",
     "name": "CT Scanner",
     "category_id": "c0000001-0000-0000-0000-000000000004",
     "department_id": "d0000001-0000-0000-0000-000000000004",
@@ -1596,11 +1596,11 @@
     "condition": "non_functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: CT Scan. Source ward: Imaging. Original manufacturer/brand value: 5122080-12. Model info: 362870HMB."
+    "notes": "Original Menelik inventory number: AA/DMCSH/104/4523/767/CB/IMG/0001. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: CT Scan. Source ward: Imaging. Original manufacturer/brand value: 5122080-12. Model info: 362870HMB."
   },
   {
-    "id": "e0de3031-fe66-4f14-a3ba-16b1a98f5650",
-    "asset_code": "AA/DMCSH/104/4523/152/CB/EOPD/0008",
+    "id": "d134646f-81cd-475b-b3e3-30c183a68f61",
+    "asset_code": "RAD-0004",
     "name": "X-Ray Machine, Radiography",
     "category_id": "c0000001-0000-0000-0000-000000000004",
     "department_id": "d0000001-0000-0000-0000-000000000004",
@@ -1609,11 +1609,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: X-Ray, Radiography. Source ward: Imaging. Original manufacturer/brand value: 1/2P13DK. Model info: 83697."
+    "notes": "Original Menelik inventory number: AA/DMCSH/104/4523/152/CB/EOPD/0008. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: X-Ray, Radiography. Source ward: Imaging. Original manufacturer/brand value: 1/2P13DK. Model info: 83697."
   },
   {
-    "id": "79381747-a528-4430-8ef4-30546c268b07",
-    "asset_code": "AA/DMCSH/104/4523/152/CB/EOPD/0009",
+    "id": "395fa7aa-f9cd-463f-9aa9-84f1a2c3e530",
+    "asset_code": "RAD-0005",
     "name": "X-Ray Machine w/ Fluoroscopy",
     "category_id": "c0000001-0000-0000-0000-000000000004",
     "department_id": "d0000001-0000-0000-0000-000000000004",
@@ -1622,11 +1622,11 @@
     "condition": "non_functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: X-Ray, Radiography, Analog with fluoroscopy. Source ward: Imaging. Original manufacturer/brand value: New Orental 1001. Model info: y13/284/15/8."
+    "notes": "Original Menelik inventory number: AA/DMCSH/104/4523/152/CB/EOPD/0009. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: X-Ray, Radiography, Analog with fluoroscopy. Source ward: Imaging. Original manufacturer/brand value: New Orental 1001. Model info: y13/284/15/8."
   },
   {
-    "id": "fa7710b4-723c-42a5-a672-7b453b284107",
-    "asset_code": "AA/DMCH/104/4523/816/CB/LAB/0001",
+    "id": "290c5413-a855-46bb-b86c-388f6682b7bd",
+    "asset_code": "LAB-0009",
     "name": "Microscope, Light",
     "category_id": "c0000001-0000-0000-0000-000000000005",
     "department_id": "d0000001-0000-0000-0000-000000000005",
@@ -1635,11 +1635,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Microscope. Source ward: LAB,Emergency. Original manufacturer/brand value: Primo Star. Model info: 3144005621."
+    "notes": "Original Menelik inventory number: AA/DMCH/104/4523/816/CB/LAB/0001. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Microscope. Source ward: LAB,Emergency. Original manufacturer/brand value: Primo Star. Model info: 3144005621."
   },
   {
-    "id": "676a7f8f-ade2-4d22-98f4-27889f7133da",
-    "asset_code": "AA/DMCH/104/4523/762/CB/LAB/0001",
+    "id": "d10ab30f-e016-41c1-9da1-88ffd29c244a",
+    "asset_code": "LAB-0010",
     "name": "Centrifuge, Analytical",
     "category_id": "c0000001-0000-0000-0000-000000000005",
     "department_id": "d0000001-0000-0000-0000-000000000005",
@@ -1648,11 +1648,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: centrifuge,analytical. Source ward: LAB,Emergency. Original manufacturer/brand value: CATNG0151. Model info: 169077."
+    "notes": "Original Menelik inventory number: AA/DMCH/104/4523/762/CB/LAB/0001. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: centrifuge,analytical. Source ward: LAB,Emergency. Original manufacturer/brand value: CATNG0151. Model info: 169077."
   },
   {
-    "id": "1b02dcb4-5124-47ac-8584-aed4a233fb2a",
-    "asset_code": "AA/DMCSH/104/4523/163/CB/LAB/0001",
+    "id": "60593440-f47c-4f0f-b638-fa194ea4c8a5",
+    "asset_code": "LAB-0011",
     "name": "Hematology Analyzer",
     "category_id": "c0000001-0000-0000-0000-000000000005",
     "department_id": "d0000001-0000-0000-0000-000000000005",
@@ -1661,11 +1661,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Analyzer, Hematology. Source ward: Laboratory. Original manufacturer/brand value: BC-5150. Model info: 25006175."
+    "notes": "Original Menelik inventory number: AA/DMCSH/104/4523/163/CB/LAB/0001. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Analyzer, Hematology. Source ward: Laboratory. Original manufacturer/brand value: BC-5150. Model info: 25006175."
   },
   {
-    "id": "a53f7acf-f4b7-4e35-9299-9d2cab1de92b",
-    "asset_code": "NEW",
+    "id": "f3b8bfd3-17b8-4726-a07d-aa3bc5660060",
+    "asset_code": "LAB-0012",
     "name": "Biological Safety Cabinet",
     "category_id": "c0000001-0000-0000-0000-000000000005",
     "department_id": "d0000001-0000-0000-0000-000000000005",
@@ -1674,11 +1674,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Biological Safety. Source ward: Laboratory. Original manufacturer/brand value: BSC-1000IIAR."
+    "notes": "Original Menelik inventory number: NEW. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Biological Safety. Source ward: Laboratory. Original manufacturer/brand value: BSC-1000IIAR."
   },
   {
-    "id": "ed910499-f3f1-444a-a7ef-b6e9d47735f4",
-    "asset_code": "NEW-R133",
+    "id": "7823010a-784a-4f7b-9c03-3e307621c3c6",
+    "asset_code": "LAB-0013",
     "name": "Magnetic Stirrer",
     "category_id": "c0000001-0000-0000-0000-000000000005",
     "department_id": "d0000001-0000-0000-0000-000000000005",
@@ -1687,11 +1687,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Biometric Strvie magnetic stirrer. Source ward: Laboratory. Model info: MS00604."
+    "notes": "Original Menelik inventory number: NEW. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Biometric Strvie magnetic stirrer. Source ward: Laboratory. Model info: MS00604."
   },
   {
-    "id": "076f4d61-7eb4-49e3-b8a5-f506f2e3f5d1",
-    "asset_code": "AA/DMCSH/104/4523/762/CB/LAB/0002",
+    "id": "2f2f53cf-2742-40bc-8d4a-05d80a1d5598",
+    "asset_code": "LAB-0014",
     "name": "Centrifuge",
     "category_id": "c0000001-0000-0000-0000-000000000005",
     "department_id": "d0000001-0000-0000-0000-000000000005",
@@ -1700,11 +1700,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Centrifuge. Source ward: Laboratory. Original manufacturer/brand value: R-8C Plus. Model info: ZGEN-10056."
+    "notes": "Original Menelik inventory number: AA/DMCSH/104/4523/762/CB/LAB/0002. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Centrifuge. Source ward: Laboratory. Original manufacturer/brand value: R-8C Plus. Model info: ZGEN-10056."
   },
   {
-    "id": "160590cf-ab31-41a0-9a8a-edc58c6181c9",
-    "asset_code": "NEW-R135",
+    "id": "88bcee5c-0de2-41ac-ab85-89a2406fdc09",
+    "asset_code": "LAB-0015",
     "name": "Densitometer",
     "category_id": "c0000001-0000-0000-0000-000000000005",
     "department_id": "d0000001-0000-0000-0000-000000000005",
@@ -1713,11 +1713,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Densometer. Source ward: Laboratory. Original manufacturer/brand value: VEN 1. Model info: 00010223010068."
+    "notes": "Original Menelik inventory number: NEW. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Densometer. Source ward: Laboratory. Original manufacturer/brand value: VEN 1. Model info: 00010223010068."
   },
   {
-    "id": "ed30bd0a-fdf7-46a4-bc67-0dbbfdb0fe99",
-    "asset_code": "AA/DMCSH/104/4523/797/CB/LAB/0001",
+    "id": "0cbc0bf8-08be-461a-9137-9e2e6e18674a",
+    "asset_code": "LAB-0016",
     "name": "Incubator, Infant",
     "category_id": "05736ca8-cbb3-e707-4e4a-8a9393bb3a87",
     "department_id": "d0000001-0000-0000-0000-000000000005",
@@ -1726,11 +1726,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Incubator. Source ward: Laboratory. Model info: 2074349."
+    "notes": "Original Menelik inventory number: AA/DMCSH/104/4523/797/CB/LAB/0001. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Incubator. Source ward: Laboratory. Model info: 2074349."
   },
   {
-    "id": "a91bb5b5-2d39-4d1b-8df3-f0ed46627c74",
-    "asset_code": "AA/DMCSH/104/4523/816/CB/LAB/0001",
+    "id": "d81626b5-67e4-4503-b9ab-1bbae0935174",
+    "asset_code": "LAB-0017",
     "name": "Microscope, Light",
     "category_id": "c0000001-0000-0000-0000-000000000005",
     "department_id": "d0000001-0000-0000-0000-000000000005",
@@ -1739,11 +1739,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Microscope, Light. Source ward: Laboratory. Original manufacturer/brand value: Primo Star. Model info: 3149016163."
+    "notes": "Original Menelik inventory number: AA/DMCSH/104/4523/816/CB/LAB/0001. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Microscope, Light. Source ward: Laboratory. Original manufacturer/brand value: Primo Star. Model info: 3149016163."
   },
   {
-    "id": "1c0dd5c6-8f8c-4544-8392-5d67715edf27",
-    "asset_code": "NEW-R138",
+    "id": "f3c3f056-f9c1-4d26-a4e6-9bb1ead5a5d2",
+    "asset_code": "LAB-0018",
     "name": "Plasma Thawing System",
     "category_id": "c0000001-0000-0000-0000-000000000005",
     "department_id": "d0000001-0000-0000-0000-000000000005",
@@ -1752,11 +1752,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Plasma Thawing system. Source ward: Laboratory. Model info: 2106856."
+    "notes": "Original Menelik inventory number: NEW. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Plasma Thawing system. Source ward: Laboratory. Model info: 2106856."
   },
   {
-    "id": "3dd18eae-7c88-470a-b5fb-69d15be6015b",
-    "asset_code": "AA/DMCSH/104/4523/762/CB/EOPD/0007",
+    "id": "562e804f-da90-4230-b2cd-19bea9f7e560",
+    "asset_code": "LAB-0019",
     "name": "Centrifuge, Urine",
     "category_id": "c0000001-0000-0000-0000-000000000005",
     "department_id": "d0000001-0000-0000-0000-000000000005",
@@ -1765,11 +1765,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Urine electrical centrifuge. Source ward: Laboratory. Original manufacturer/brand value: AVI-526. Model info: 92026.092718."
+    "notes": "Original Menelik inventory number: AA/DMCSH/104/4523/762/CB/EOPD/0007. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Urine electrical centrifuge. Source ward: Laboratory. Original manufacturer/brand value: AVI-526. Model info: 92026.092718."
   },
   {
-    "id": "312e0d84-d685-4a69-b311-445915ca9c8f",
-    "asset_code": "AA/DMCSH/104/4523/170/CB/LAB/0002",
+    "id": "1a54622d-2725-4c88-bcbc-b162fb80652d",
+    "asset_code": "LAB-0020",
     "name": "Water Bath",
     "category_id": "c0000001-0000-0000-0000-000000000005",
     "department_id": "d0000001-0000-0000-0000-000000000005",
@@ -1778,11 +1778,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Water Bath. Source ward: Laboratory. Original manufacturer/brand value: YCO-010. Model info: 608259."
+    "notes": "Original Menelik inventory number: AA/DMCSH/104/4523/170/CB/LAB/0002. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Water Bath. Source ward: Laboratory. Original manufacturer/brand value: YCO-010. Model info: 608259."
   },
   {
-    "id": "35a71adf-7804-4b23-adaa-ee564206f32a",
-    "asset_code": "AA/DMCSH/104/4523/163/CB/LAB/0002",
+    "id": "a7c20ba1-f25d-4dee-9fb3-c935031de58d",
+    "asset_code": "LAB-0021",
     "name": "Hematology Analyzer",
     "category_id": "c0000001-0000-0000-0000-000000000005",
     "department_id": "d0000001-0000-0000-0000-000000000005",
@@ -1791,11 +1791,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Analyzer, Hematology. Source ward: Laboratory. Original manufacturer/brand value: BC-S150. Model info: SR-25006176."
+    "notes": "Original Menelik inventory number: AA/DMCSH/104/4523/163/CB/LAB/0002. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Analyzer, Hematology. Source ward: Laboratory. Original manufacturer/brand value: BC-S150. Model info: SR-25006176."
   },
   {
-    "id": "66980d7b-59e4-4d6d-ab57-6491d7cb8665",
-    "asset_code": "AA/DMCSH/104/4523/774/CB/LAB/0002",
+    "id": "dd64e6f5-d812-4aad-b67c-b69d78893e83",
+    "asset_code": "LAB-0022",
     "name": "Water Distiller",
     "category_id": "c0000001-0000-0000-0000-000000000005",
     "department_id": "d0000001-0000-0000-0000-000000000005",
@@ -1804,11 +1804,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Distiller. Source ward: Laboratory. Original manufacturer/brand value: WDZ20. Model info: 12001601."
+    "notes": "Original Menelik inventory number: AA/DMCSH/104/4523/774/CB/LAB/0002. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Distiller. Source ward: Laboratory. Original manufacturer/brand value: WDZ20. Model info: 12001601."
   },
   {
-    "id": "5e51c0ed-f077-4e01-8074-f2444e19a14a",
-    "asset_code": "AA/DMCSH/104/4523/794/CB/LAB/0001",
+    "id": "38879793-6e45-436c-bf90-33adb740a389",
+    "asset_code": "LAB-0023",
     "name": "GeneXpert Machine",
     "category_id": "c0000001-0000-0000-0000-000000000005",
     "department_id": "d0000001-0000-0000-0000-000000000005",
@@ -1817,11 +1817,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Gene Expert. Source ward: Laboratory. Model info: 809807."
+    "notes": "Original Menelik inventory number: AA/DMCSH/104/4523/794/CB/LAB/0001. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Gene Expert. Source ward: Laboratory. Model info: 809807."
   },
   {
-    "id": "ed531925-2c5f-4db1-ba9e-9c8ec79c83eb",
-    "asset_code": "AA/DMCSH/104/4523/1162/CB/LAB/0002",
+    "id": "1bc31ce8-b7d5-40cb-9d11-804d3512c6f4",
+    "asset_code": "LAB-0024",
     "name": "Shaker",
     "category_id": "c0000001-0000-0000-0000-000000000005",
     "department_id": "d0000001-0000-0000-0000-000000000005",
@@ -1830,11 +1830,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Shaker. Source ward: Laboratory. Original manufacturer/brand value: VRN-200. Model info: 509890."
+    "notes": "Original Menelik inventory number: AA/DMCSH/104/4523/1162/CB/LAB/0002. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Shaker. Source ward: Laboratory. Original manufacturer/brand value: VRN-200. Model info: 509890."
   },
   {
-    "id": "dca1f53d-9c15-4ab1-a081-ff47b932a003",
-    "asset_code": "AA/DMCSH/104/4523/83/CB/LAB/0003",
+    "id": "83a6efdd-73fe-47b4-b263-a997a367b138",
+    "asset_code": "LAB-0025",
     "name": "Clinical Chemistry Analyzer",
     "category_id": "c0000001-0000-0000-0000-000000000005",
     "department_id": "d0000001-0000-0000-0000-000000000005",
@@ -1843,11 +1843,11 @@
     "condition": "non_functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Analzer, Clinical, Chemistry. Source ward: Laboratory. Original manufacturer/brand value: BS-200."
+    "notes": "Original Menelik inventory number: AA/DMCSH/104/4523/83/CB/LAB/0003. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Analzer, Clinical, Chemistry. Source ward: Laboratory. Original manufacturer/brand value: BS-200."
   },
   {
-    "id": "127b7439-24a4-4367-b914-77e8e03af960",
-    "asset_code": "AA/DMCH/104/4523/NEW/LAB/CB/0001",
+    "id": "2f9d9437-8125-4fb7-bd1f-59610c5e9261",
+    "asset_code": "LAB-0026",
     "name": "Coagulation Analyzer",
     "category_id": "c0000001-0000-0000-0000-000000000005",
     "department_id": "d0000001-0000-0000-0000-000000000005",
@@ -1856,11 +1856,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: coagulation analyzer. Source ward: laboratory. Original manufacturer/brand value: XL-3600C."
+    "notes": "Original Menelik inventory number: AA/DMCH/104/4523/NEW/LAB/CB/0001. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: coagulation analyzer. Source ward: laboratory. Original manufacturer/brand value: XL-3600C."
   },
   {
-    "id": "b7cb8e74-b222-42ed-bc19-653e6c1fbaf7",
-    "asset_code": "AA/DMCH/104/4523/83/LAB/CB/0001",
+    "id": "351882a7-6a42-4ee4-a4a0-faefd09fd545",
+    "asset_code": "LAB-0027",
     "name": "Clinical Chemistry Analyzer",
     "category_id": "c0000001-0000-0000-0000-000000000005",
     "department_id": "d0000001-0000-0000-0000-000000000005",
@@ -1869,11 +1869,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Chemistry analyzer. Source ward: laboratory. Original manufacturer/brand value: 240. Model info: 010102000702200306."
+    "notes": "Original Menelik inventory number: AA/DMCH/104/4523/83/LAB/CB/0001. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Chemistry analyzer. Source ward: laboratory. Original manufacturer/brand value: 240. Model info: 010102000702200306."
   },
   {
-    "id": "bbbdff6c-ade0-448f-9d13-ce67e53803ec",
-    "asset_code": "AA/DMCH/104/4523/BBD/CB/LAB/0001",
+    "id": "f8994e23-38c9-4742-bd51-bd296126f022",
+    "asset_code": "LAB-0028",
     "name": "Analytical Balance, Digital",
     "category_id": "c0000001-0000-0000-0000-000000000005",
     "department_id": "d0000001-0000-0000-0000-000000000005",
@@ -1882,11 +1882,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Bean balance,digital. Source ward: laboratory. Original manufacturer/brand value: AL204-IC. Model info: 1128253384."
+    "notes": "Original Menelik inventory number: AA/DMCH/104/4523/BBD/CB/LAB/0001. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Bean balance,digital. Source ward: laboratory. Original manufacturer/brand value: AL204-IC. Model info: 1128253384."
   },
   {
-    "id": "0a090b00-dd62-479a-a4ff-c91b9389fbbb",
-    "asset_code": "AA/DMCSH/104/4523/870/CB/MJOR/0003",
+    "id": "82618a8e-71c7-4225-a171-6941e5412d53",
+    "asset_code": "OT-0006",
     "name": "Operating Table, Electric",
     "category_id": "c0000001-0000-0000-0000-000000000003",
     "department_id": "d0000001-0000-0000-0000-000000000002",
@@ -1895,11 +1895,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Table, OR, Electric. Source ward: Major OR."
+    "notes": "Original Menelik inventory number: AA/DMCSH/104/4523/870/CB/MJOR/0003. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Table, OR, Electric. Source ward: Major OR."
   },
   {
-    "id": "d3ed2f99-a2de-4bac-94fd-06aaff7c3cac",
-    "asset_code": "AA/DMCSH/104/4523/870/CB/MJOR/0005",
+    "id": "1b3e8e41-9854-44de-9239-492d9c575415",
+    "asset_code": "OT-0007",
     "name": "Operating Table, Electro-Hydraulic",
     "category_id": "c0000001-0000-0000-0000-000000000003",
     "department_id": "d0000001-0000-0000-0000-000000000002",
@@ -1908,11 +1908,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Table, OR, Electro hydraulic. Source ward: Major OR. Original manufacturer/brand value: Op830."
+    "notes": "Original Menelik inventory number: AA/DMCSH/104/4523/870/CB/MJOR/0005. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Table, OR, Electro hydraulic. Source ward: Major OR. Original manufacturer/brand value: Op830."
   },
   {
-    "id": "f87be43a-688e-4072-9155-6d0e743dfc9d",
-    "asset_code": "AA/DMCSH/104/4523/784/CB/MJOR/0001",
+    "id": "2dae7ace-e165-4192-b5d7-407c28a2652f",
+    "asset_code": "OT-0008",
     "name": "Endoscopy System",
     "category_id": "c0000001-0000-0000-0000-000000000003",
     "department_id": "d0000001-0000-0000-0000-000000000002",
@@ -1921,11 +1921,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Endoscopy. Source ward: Major OR. Original manufacturer/brand value: LMD276NB. Model info: 300924."
+    "notes": "Original Menelik inventory number: AA/DMCSH/104/4523/784/CB/MJOR/0001. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Endoscopy. Source ward: Major OR. Original manufacturer/brand value: LMD276NB. Model info: 300924."
   },
   {
-    "id": "ecbd1f38-0f6b-4eb4-8fd9-0637636a7616",
-    "asset_code": "AA/DMCSH/104/4523/LAPE/CB/MJOR/0001",
+    "id": "61a6cf95-b054-458f-9b48-888d648c12f0",
+    "asset_code": "OT-0009",
     "name": "Laparoscopy System",
     "category_id": "c0000001-0000-0000-0000-000000000003",
     "department_id": "d0000001-0000-0000-0000-000000000002",
@@ -1934,11 +1934,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: laparascopy. Source ward: Major OR. Original manufacturer/brand value: LMD-2765NB. Model info: 3000924."
+    "notes": "Original Menelik inventory number: AA/DMCSH/104/4523/LAPE/CB/MJOR/0001. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: laparascopy. Source ward: Major OR. Original manufacturer/brand value: LMD-2765NB. Model info: 3000924."
   },
   {
-    "id": "d0172531-4105-4b4d-a8ec-a3c601c66997",
-    "asset_code": "AA/DMCSH/104/4523/LAPE/CB/MJOR/0002",
+    "id": "642177a6-838c-4a95-83ef-aae254de9fb5",
+    "asset_code": "OT-0010",
     "name": "Laparoscopy System",
     "category_id": "c0000001-0000-0000-0000-000000000003",
     "department_id": "d0000001-0000-0000-0000-000000000002",
@@ -1947,11 +1947,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: laparascopy. Source ward: Major OR. Original manufacturer/brand value: V24.N1418. Model info: C18-007645."
+    "notes": "Original Menelik inventory number: AA/DMCSH/104/4523/LAPE/CB/MJOR/0002. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: laparascopy. Source ward: Major OR. Original manufacturer/brand value: V24.N1418. Model info: C18-007645."
   },
   {
-    "id": "085bd69a-1efe-4a3f-a767-4482c78f003d",
-    "asset_code": "AA/DMCSH/104/4523/LAPE/CB/MJOR/0003",
+    "id": "c377b499-124f-403c-b5fe-3d2b5ad77056",
+    "asset_code": "OT-0011",
     "name": "Laparoscopy System",
     "category_id": "c0000001-0000-0000-0000-000000000003",
     "department_id": "d0000001-0000-0000-0000-000000000002",
@@ -1960,11 +1960,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: laparascopy. Source ward: Major OR. Model info: CVE-2111005."
+    "notes": "Original Menelik inventory number: AA/DMCSH/104/4523/LAPE/CB/MJOR/0003. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: laparascopy. Source ward: Major OR. Model info: CVE-2111005."
   },
   {
-    "id": "0e0c86f9-0e9c-4ac0-ad86-1c6a6d0da6de",
-    "asset_code": "AA/DMCSH/104/4523/1167/CB/MED/REF/0001",
+    "id": "07f9f3c8-4fe8-4aa5-956f-311f5a949175",
+    "asset_code": "IPW-0005",
     "name": "EEG Machine",
     "category_id": "c0000001-0000-0000-0000-000000000001",
     "department_id": "d0000001-0000-0000-0000-000000000007",
@@ -1973,11 +1973,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: EEG. Source ward: Medical Refral. Original manufacturer/brand value: EEG-1200K. Model info: 4734."
+    "notes": "Original Menelik inventory number: AA/DMCSH/104/4523/1167/CB/MED/REF/0001. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: EEG. Source ward: Medical Refral. Original manufacturer/brand value: EEG-1200K. Model info: 4734."
   },
   {
-    "id": "e9de4785-99cf-4229-a722-d3a372e0e308",
-    "asset_code": "AA/DMCH/104/4523/1162/MBIO/CB/0001",
+    "id": "2640f1f4-2a3f-4d16-97a0-ad8244ea4595",
+    "asset_code": "LAB-0029",
     "name": "Orbital Shaker",
     "category_id": "c0000001-0000-0000-0000-000000000005",
     "department_id": "d0000001-0000-0000-0000-000000000005",
@@ -1986,11 +1986,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Orbital Shaker. Source ward: microbiology. Original manufacturer/brand value: KS-20LBD."
+    "notes": "Original Menelik inventory number: AA/DMCH/104/4523/1162/MBIO/CB/0001. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Orbital Shaker. Source ward: microbiology. Original manufacturer/brand value: KS-20LBD."
   },
   {
-    "id": "439a4583-53d2-4d76-a1e1-4cc4c7154471",
-    "asset_code": "AA/DMCH/104/4523/797/MBIO/CB/0001",
+    "id": "185fc4ea-3345-43ea-8d03-0de96ec4fa50",
+    "asset_code": "LAB-0030",
     "name": "Incubator, Infant",
     "category_id": "05736ca8-cbb3-e707-4e4a-8a9393bb3a87",
     "department_id": "d0000001-0000-0000-0000-000000000005",
@@ -1999,11 +1999,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: electrical incubator. Source ward: microbiology. Model info: 5-1481."
+    "notes": "Original Menelik inventory number: AA/DMCH/104/4523/797/MBIO/CB/0001. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: electrical incubator. Source ward: microbiology. Model info: 5-1481."
   },
   {
-    "id": "e85af76c-36a3-4df8-b4e4-781e73edb507",
-    "asset_code": "AA/DMCH/104/4523/797/MBIO/CB/0002",
+    "id": "4c8120f3-43e9-44d5-ab8c-249b9796c55f",
+    "asset_code": "LAB-0031",
     "name": "Incubator, Lab",
     "category_id": "c0000001-0000-0000-0000-000000000005",
     "department_id": "d0000001-0000-0000-0000-000000000005",
@@ -2012,11 +2012,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: LAB Incubator. Source ward: microbiology. Original manufacturer/brand value: IN-010. Model info: 1807712."
+    "notes": "Original Menelik inventory number: AA/DMCH/104/4523/797/MBIO/CB/0002. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: LAB Incubator. Source ward: microbiology. Original manufacturer/brand value: IN-010. Model info: 1807712."
   },
   {
-    "id": "3ef9c084-26a6-4bc3-b10a-d1b3cffd7f59",
-    "asset_code": "AA/DMCH/104/4523/797/MBIO/CB/0003",
+    "id": "1e807e01-53cc-4399-89d9-f7d39bb6eaf4",
+    "asset_code": "LAB-0032",
     "name": "Incubator, Lab",
     "category_id": "c0000001-0000-0000-0000-000000000005",
     "department_id": "d0000001-0000-0000-0000-000000000005",
@@ -2025,11 +2025,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: LAB Incubator. Source ward: microbiology. Original manufacturer/brand value: IN-010. Model info: 618571."
+    "notes": "Original Menelik inventory number: AA/DMCH/104/4523/797/MBIO/CB/0003. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: LAB Incubator. Source ward: microbiology. Original manufacturer/brand value: IN-010. Model info: 618571."
   },
   {
-    "id": "0db3453a-449b-45f6-9865-fc864a7557a8",
-    "asset_code": "AA/DMCH/104/4523/797/MBIO/CB/0004",
+    "id": "70292991-e6e9-42e6-a751-e8f436797c4b",
+    "asset_code": "LAB-0033",
     "name": "Incubator, Infant",
     "category_id": "05736ca8-cbb3-e707-4e4a-8a9393bb3a87",
     "department_id": "d0000001-0000-0000-0000-000000000005",
@@ -2038,11 +2038,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Incubator. Source ward: microbiology. Original manufacturer/brand value: ARISHKAR. Model info: 410."
+    "notes": "Original Menelik inventory number: AA/DMCH/104/4523/797/MBIO/CB/0004. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Incubator. Source ward: microbiology. Original manufacturer/brand value: ARISHKAR. Model info: 410."
   },
   {
-    "id": "39d056b4-b885-48e6-9eb2-5bd2a66e0aa3",
-    "asset_code": "AA/DMCH/104/4523/MST/CB/MBIO/0001",
+    "id": "959eb250-161d-4dec-8286-63db91ee9bf5",
+    "asset_code": "LAB-0034",
     "name": "Magnetic Stirrer/Stainer",
     "category_id": "c0000001-0000-0000-0000-000000000005",
     "department_id": "d0000001-0000-0000-0000-000000000005",
@@ -2051,11 +2051,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Magnetic stainer. Source ward: microbiology. Original manufacturer/brand value: uayledental. Model info: stno-m50064."
+    "notes": "Original Menelik inventory number: AA/DMCH/104/4523/MST/CB/MBIO/0001. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Magnetic stainer. Source ward: microbiology. Original manufacturer/brand value: uayledental. Model info: stno-m50064."
   },
   {
-    "id": "a5a261c2-cc2f-4073-b91f-6f4839aff810",
-    "asset_code": "AA/DMCH/104/4523/794/CB/MBIO/0001",
+    "id": "5bb3f69e-1b04-4908-af02-3bc436b65323",
+    "asset_code": "LAB-0035",
     "name": "GeneXpert Machine",
     "category_id": "c0000001-0000-0000-0000-000000000005",
     "department_id": "d0000001-0000-0000-0000-000000000005",
@@ -2064,11 +2064,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: genexpert. Source ward: microbiology. Original manufacturer/brand value: XPERTMTB. Model info: 809807."
+    "notes": "Original Menelik inventory number: AA/DMCH/104/4523/794/CB/MBIO/0001. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: genexpert. Source ward: microbiology. Original manufacturer/brand value: XPERTMTB. Model info: 809807."
   },
   {
-    "id": "1b7cf2ac-2acd-4fb1-b4d2-cc7a1518bc81",
-    "asset_code": "AA/DMCSH/104/4523/144/CB/NICU/0005",
+    "id": "1e13bbcd-aa0b-4486-82e0-659c5302c2c7",
+    "asset_code": "NICU-0001",
     "name": "Phototherapy Unit",
     "category_id": "05736ca8-cbb3-e707-4e4a-8a9393bb3a87",
     "department_id": "2b382a4b-7013-ccb1-8854-7ad01c66c013",
@@ -2077,11 +2077,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Phototherapy. Source ward: NICU. Original manufacturer/brand value: BILITRON. Model info: NAK/36285."
+    "notes": "Original Menelik inventory number: AA/DMCSH/104/4523/144/CB/NICU/0005. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Phototherapy. Source ward: NICU. Original manufacturer/brand value: BILITRON. Model info: NAK/36285."
   },
   {
-    "id": "3cf5516e-8343-4e7b-bd1c-edc5aa20533b",
-    "asset_code": "AA/DMCSH/104/4523/144/CB/NICU/0003",
+    "id": "353c041a-aeff-4edb-89ae-9d27a90b0f14",
+    "asset_code": "NICU-0002",
     "name": "Phototherapy Unit",
     "category_id": "05736ca8-cbb3-e707-4e4a-8a9393bb3a87",
     "department_id": "2b382a4b-7013-ccb1-8854-7ad01c66c013",
@@ -2090,11 +2090,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Phototherapy. Source ward: NICU. Original manufacturer/brand value: XHZ-90L. Model info: B46BZZH070006."
+    "notes": "Original Menelik inventory number: AA/DMCSH/104/4523/144/CB/NICU/0003. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Phototherapy. Source ward: NICU. Original manufacturer/brand value: XHZ-90L. Model info: B46BZZH070006."
   },
   {
-    "id": "f22fd009-7519-44ab-b257-1e3793bf9823",
-    "asset_code": "AA/DMCSH/104/4523/144/CB/NICU/0008",
+    "id": "c1dbb3b5-5b02-4db1-bd51-2428c7025e56",
+    "asset_code": "NICU-0003",
     "name": "Phototherapy Unit",
     "category_id": "05736ca8-cbb3-e707-4e4a-8a9393bb3a87",
     "department_id": "2b382a4b-7013-ccb1-8854-7ad01c66c013",
@@ -2103,11 +2103,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Phototherapy. Source ward: NICU. Original manufacturer/brand value: XHZ-90L. Model info: A46BB0041004."
+    "notes": "Original Menelik inventory number: AA/DMCSH/104/4523/144/CB/NICU/0008. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Phototherapy. Source ward: NICU. Original manufacturer/brand value: XHZ-90L. Model info: A46BB0041004."
   },
   {
-    "id": "ece0d5fb-bfe2-4e04-9bb4-e26347161f5c",
-    "asset_code": "AA/DMCSH/104/4523/210/CB/NICU/0050",
+    "id": "3fea2622-9e92-4c0f-848a-16ddf8c70518",
+    "asset_code": "NICU-0004",
     "name": "Vital Signs Monitor",
     "category_id": "c0000001-0000-0000-0000-000000000001",
     "department_id": "2b382a4b-7013-ccb1-8854-7ad01c66c013",
@@ -2116,11 +2116,11 @@
     "condition": "decommissioned",
     "status": "inactive",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Monitor, Vital Sign. Source ward: NICU. Original manufacturer/brand value: V6. Model info: V026E005517."
+    "notes": "Original Menelik inventory number: AA/DMCSH/104/4523/210/CB/NICU/0050. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Monitor, Vital Sign. Source ward: NICU. Original manufacturer/brand value: V6. Model info: V026E005517."
   },
   {
-    "id": "9f114642-4b8d-4d6b-9303-d452cb1cdd79",
-    "asset_code": "AA/DMCSH/104/4523/210/CB/NICU/0052",
+    "id": "05fca758-4635-4a02-9e03-4b0313bf421e",
+    "asset_code": "NICU-0005",
     "name": "Vital Signs Monitor",
     "category_id": "c0000001-0000-0000-0000-000000000001",
     "department_id": "2b382a4b-7013-ccb1-8854-7ad01c66c013",
@@ -2129,11 +2129,11 @@
     "condition": "decommissioned",
     "status": "inactive",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Monitor, Vital Sign. Source ward: NICU. Original manufacturer/brand value: V6. Model info: V026E005504."
+    "notes": "Original Menelik inventory number: AA/DMCSH/104/4523/210/CB/NICU/0052. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Monitor, Vital Sign. Source ward: NICU. Original manufacturer/brand value: V6. Model info: V026E005504."
   },
   {
-    "id": "da14fcdd-ea22-4e60-bd3e-184cd2495be0",
-    "asset_code": "AA/DMCSH/104/4523/902/CB/ORO/0002",
+    "id": "9791cf88-b1ac-4902-8e90-1e57c56a3796",
+    "asset_code": "SOPD-0008",
     "name": "X-Ray View Box, Powered",
     "category_id": "c0000001-0000-0000-0000-000000000004",
     "department_id": "32f854be-3fe2-a5e0-d642-cb2eb7674df7",
@@ -2142,11 +2142,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: X-ray view box, powered. Source ward: Orthopedic out patient."
+    "notes": "Original Menelik inventory number: AA/DMCSH/104/4523/902/CB/ORO/0002. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: X-ray view box, powered. Source ward: Orthopedic out patient."
   },
   {
-    "id": "cf26cc06-01c6-4e11-b144-022b9145ced5",
-    "asset_code": "AA/DMCSH/104/4523/902/CB/ORO/0003",
+    "id": "441b9c4d-348f-4e43-ba5f-5aa2ce10ff68",
+    "asset_code": "SOPD-0009",
     "name": "X-Ray View Box, Powered",
     "category_id": "c0000001-0000-0000-0000-000000000004",
     "department_id": "32f854be-3fe2-a5e0-d642-cb2eb7674df7",
@@ -2155,11 +2155,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: X-ray view box, powered. Source ward: Orthopedic out patient."
+    "notes": "Original Menelik inventory number: AA/DMCSH/104/4523/902/CB/ORO/0003. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: X-ray view box, powered. Source ward: Orthopedic out patient."
   },
   {
-    "id": "f952f8d8-2486-4052-b5af-5710e323354c",
-    "asset_code": "AA/DMCH/104/4523/NEW/PAT/CB/0001",
+    "id": "fd5abaaf-4423-4eae-be2a-e071a85fffd7",
+    "asset_code": "LAB-0036",
     "name": "Rotary Microtome",
     "category_id": "c0000001-0000-0000-0000-000000000005",
     "department_id": "d0000001-0000-0000-0000-000000000005",
@@ -2168,11 +2168,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Rotery microtomy. Source ward: pathology. Original manufacturer/brand value: HS2205. Model info: CJHS1413-79HS2205."
+    "notes": "Original Menelik inventory number: AA/DMCH/104/4523/NEW/PAT/CB/0001. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Rotery microtomy. Source ward: pathology. Original manufacturer/brand value: HS2205. Model info: CJHS1413-79HS2205."
   },
   {
-    "id": "e1282b15-83ef-4ab8-a02e-3b36357b258d",
-    "asset_code": "AA/DMCH/104/4523/NEW/PAT/CB/0002",
+    "id": "bdcedff2-7138-4d70-afcf-908a79413c91",
+    "asset_code": "LAB-0037",
     "name": "Rotary Microtome",
     "category_id": "c0000001-0000-0000-0000-000000000005",
     "department_id": "d0000001-0000-0000-0000-000000000005",
@@ -2181,11 +2181,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Rotery microtomy. Source ward: pathology. Original manufacturer/brand value: HS2205. Model info: CJHS1414-50HS2205."
+    "notes": "Original Menelik inventory number: AA/DMCH/104/4523/NEW/PAT/CB/0002. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: Rotery microtomy. Source ward: pathology. Original manufacturer/brand value: HS2205. Model info: CJHS1414-50HS2205."
   },
   {
-    "id": "139faa6a-0cdb-40da-80ec-02efcd421280",
-    "asset_code": "AA/DMCH/104/4523/AST/PAT/CB/0001",
+    "id": "5a00f02c-d207-4fc2-9f56-76d1c2a70f15",
+    "asset_code": "LAB-0038",
     "name": "Auto Stainer",
     "category_id": "c0000001-0000-0000-0000-000000000005",
     "department_id": "d0000001-0000-0000-0000-000000000005",
@@ -2194,11 +2194,11 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: auto stainer. Source ward: pathology."
+    "notes": "Original Menelik inventory number: AA/DMCH/104/4523/AST/PAT/CB/0001. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: auto stainer. Source ward: pathology."
   },
   {
-    "id": "1b6dd320-5a1a-4919-9e32-408c0a4a57c6",
-    "asset_code": "AA/DMCSH/104/4523/nebu/CB/PDE/0001",
+    "id": "20f1a1c0-3330-4e9f-b37e-01c3c5273047",
+    "asset_code": "ED-0023",
     "name": "Nebulizer",
     "category_id": "c0000001-0000-0000-0000-000000000008",
     "department_id": "d0000001-0000-0000-0000-000000000003",
@@ -2207,6 +2207,6 @@
     "condition": "functional",
     "status": "active",
     "source": "menelik_ii_2018ec_import",
-    "notes": "Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: nebulizer. Source ward: Pediatric Emergency. Original manufacturer/brand value: w003. Model info: 20180225/10."
+    "notes": "Original Menelik inventory number: AA/DMCSH/104/4523/nebu/CB/PDE/0001. Imported from Menelik II Hospital records (2018 E.C. inventory). Original name: nebulizer. Source ward: Pediatric Emergency. Original manufacturer/brand value: w003. Model info: 20180225/10."
   }
 ]

@@ -48,6 +48,13 @@
 >   cost and maintenance burden history
 > - Calibration compliance — no structured calibration records available for import
 
+### Calibration Data
+
+> Calibration records were identified as a document source, but the available
+> cleaned workbook did not contain row-level calibration results. Therefore,
+> calibration is configured in the system but not populated with mature
+> calibration history from the current dataset.
+
 ### Deployment Demonstration
 
 > The deployment demonstrates that real Ethiopian hospital records can

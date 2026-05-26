@@ -10,6 +10,7 @@
     "test:chatbot": "tsx --test src/services/chatbot/__tests__/*.test.ts",
     "test:system-fix": "tsx --test src/services/chatbot/__tests__/*.test.ts src/services/notifications/__tests__/*.test.ts src/services/metrics/__tests__/*.test.ts src/services/__tests__/*.test.ts src/utils/developer-lab/__tests__/*.test.ts src/utils/maintenance/__tests__/*.test.ts src/utils/analytics/__tests__/*.test.ts src/utils/decision-support/__tests__/*.test.ts src/lib/rbac/__tests__/*.test.ts src/lib/offline/__tests__/*.test.ts src/actions/__tests__/*.test.ts",
     "setup:demo-users": "tsx scripts/setup-demo-users.ts",
+    "setup:menelik-users": "tsx scripts/setup-menelik-users.ts",
     "inspect:menelik": "tsx scripts/inspect-menelik-workbook.ts",
     "import:menelik:dry-run": "tsx scripts/import-menelik-data.ts --dry-run",
     "import:menelik": "tsx scripts/import-menelik-data.ts",

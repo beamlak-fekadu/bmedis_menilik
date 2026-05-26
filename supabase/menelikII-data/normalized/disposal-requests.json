@@ -1,0 +1,52 @@
+[
+  {
+    "id": "7e42f41f-c132-d7f4-0ad0-8fa9bef695b2",
+    "request_number": "MNK-DSP-001",
+    "asset_id": "1d2f2d84-32ca-4c81-b1aa-1d690c02040c",
+    "requested_by": "d51446f2-b48c-4a4c-9715-e5810ab7346c",
+    "reason": "Marked 'To Be Disposed' in Menelik II Hospital 2018 E.C. equipment inventory.",
+    "disposal_method_proposed": "other",
+    "status": "pending",
+    "notes": "Imported from Menelik II inventory. Original inventory number: AA/DMCSH/104/4523/776/CB/EM/0003. Equipment: ECG Machine. Department: Adult Emergency. Source row: 27. Assessment required before final disposal method determination."
+  },
+  {
+    "id": "9bcfa059-10d9-7b6a-9316-a417e0f5b8c7",
+    "request_number": "MNK-DSP-002",
+    "asset_id": "b5086a01-13ec-4bfa-b816-375f303fff7f",
+    "requested_by": "d51446f2-b48c-4a4c-9715-e5810ab7346c",
+    "reason": "Marked 'To Be Disposed' in Menelik II Hospital 2018 E.C. equipment inventory.",
+    "disposal_method_proposed": "other",
+    "status": "pending",
+    "notes": "Imported from Menelik II inventory. Original inventory number: AA/DMCSH/104/4523/774/CB/COPH/0001. Equipment: Water Distiller. Department: Compound Pharmacy. Source row: 45. Assessment required before final disposal method determination."
+  },
+  {
+    "id": "c43fc945-87b3-7421-df7a-722b6840736d",
+    "request_number": "MNK-DSP-003",
+    "asset_id": "eefa1d7b-732e-4550-a342-c07a896b2d90",
+    "requested_by": "d51446f2-b48c-4a4c-9715-e5810ab7346c",
+    "reason": "Marked 'To Be Disposed' in Menelik II Hospital 2018 E.C. equipment inventory.",
+    "disposal_method_proposed": "other",
+    "status": "pending",
+    "notes": "Imported from Menelik II inventory. Original inventory number: AA/DMCSH/104/4523/735/CB/ICU/0001. Equipment: Blood Gas Analyzer. Department: ICU. Source row: 120. Assessment required before final disposal method determination."
+  },
+  {
+    "id": "f2b7d24e-88d8-0482-a249-0e8549da8e7a",
+    "request_number": "MNK-DSP-004",
+    "asset_id": "3fea2622-9e92-4c0f-848a-16ddf8c70518",
+    "requested_by": "d51446f2-b48c-4a4c-9715-e5810ab7346c",
+    "reason": "Marked 'To Be Disposed' in Menelik II Hospital 2018 E.C. equipment inventory.",
+    "disposal_method_proposed": "other",
+    "status": "pending",
+    "notes": "Imported from Menelik II inventory. Original inventory number: AA/DMCSH/104/4523/210/CB/NICU/0050. Equipment: Vital Signs Monitor. Department: NICU. Source row: 166. Assessment required before final disposal method determination."
+  },
+  {
+    "id": "04bbbaa7-17fa-7c05-1d54-25772c04e79d",
+    "request_number": "MNK-DSP-005",
+    "asset_id": "05fca758-4635-4a02-9e03-4b0313bf421e",
+    "requested_by": "d51446f2-b48c-4a4c-9715-e5810ab7346c",
+    "reason": "Marked 'To Be Disposed' in Menelik II Hospital 2018 E.C. equipment inventory.",
+    "disposal_method_proposed": "other",
+    "status": "pending",
+    "notes": "Imported from Menelik II inventory. Original inventory number: AA/DMCSH/104/4523/210/CB/NICU/0052. Equipment: Vital Signs Monitor. Department: NICU. Source row: 167. Assessment required before final disposal method determination."
+  }
+]

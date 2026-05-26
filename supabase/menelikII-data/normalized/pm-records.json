@@ -1,8 +1,8 @@
 {
   "plans": [
     {
-      "id": "7840ca37-7e08-0dc6-f8b9-c2456f07f557",
-      "asset_id": "c49495e5-d90c-4b79-898d-d6ac06f385a7",
+      "id": "b6dd2c5f-d504-5185-1f6e-b237d66de2f0",
+      "asset_id": "6b02504a-070e-4461-b6ec-db8dea5a6d07",
       "name": "Preventive Maintenance — Patient Monitor",
       "frequency_days": 365,
       "is_active": false
@@ -10,9 +10,9 @@
   ],
   "schedules": [
     {
-      "id": "783c2112-5445-4bdb-ad57-daa753a5e20d",
-      "plan_id": "7840ca37-7e08-0dc6-f8b9-c2456f07f557",
-      "asset_id": "c49495e5-d90c-4b79-898d-d6ac06f385a7",
+      "id": "97ce2345-b217-481f-b306-fcf63ae23a8f",
+      "plan_id": "b6dd2c5f-d504-5185-1f6e-b237d66de2f0",
+      "asset_id": "6b02504a-070e-4461-b6ec-db8dea5a6d07",
       "scheduled_date": "2017-07-24",
       "status": "completed",
       "result": "pass",
@@ -22,8 +22,8 @@
   ],
   "completions": [
     {
-      "id": "41e69490-d279-4c59-a0a9-92af168ac4aa",
-      "schedule_id": "783c2112-5445-4bdb-ad57-daa753a5e20d",
+      "id": "8da3cea9-6818-4486-b0ef-f57c58950485",
+      "schedule_id": "97ce2345-b217-481f-b306-fcf63ae23a8f",
       "completion_date": "2017-07-24",
       "notes": "Imported from Menelik II Hospital PM record (PM-001). Tasks: 1. Cleaned with gauze & alcohol\n2. Checked parameters (setup/calibration)\n3. Checked power source Completed by: Daniel Ayele, Birhaniyis. Approved by: Amenise Atef."
     }

@@ -42,7 +42,7 @@ export interface DemoRoleValidationResult extends DemoRoleValidationInput {
 
 export const EXPECTED_DEMO_USERS: ExpectedDemoUser[] = [
   {
-    email: 'developer@bmerms-demo.local',
+    email: 'developer@bmedis-menelik.local',
     expectedFullName: 'BMEDIS Developer',
     expectedJobTitle: 'Thesis Developer',
     expectedRole: 'developer',
@@ -50,7 +50,7 @@ export const EXPECTED_DEMO_USERS: ExpectedDemoUser[] = [
     navigationFocus: 'Everything plus Developer Lab',
   },
   {
-    email: 'bme.head@bmerms-demo.local',
+    email: 'bme.head@bmedis-menelik.local',
     expectedFullName: 'Ermias Tadesse',
     expectedJobTitle: 'Biomedical Engineering Head',
     expectedRole: 'bme_head',
@@ -58,7 +58,7 @@ export const EXPECTED_DEMO_USERS: ExpectedDemoUser[] = [
     navigationFocus: 'All operational modules; no Developer Lab',
   },
   {
-    email: 'technician@bmerms-demo.local',
+    email: 'technician@bmedis-menelik.local',
     expectedFullName: 'Hanna Gebremedhin',
     expectedJobTitle: 'Clinical Engineer',
     expectedRole: 'technician',
@@ -66,7 +66,7 @@ export const EXPECTED_DEMO_USERS: ExpectedDemoUser[] = [
     navigationFocus: 'Work execution, PM, calibration, parts, and notifications',
   },
   {
-    email: 'department.head@bmerms-demo.local',
+    email: 'department.head@bmedis-menelik.local',
     expectedFullName: 'Tigist Worku',
     expectedJobTitle: 'ICU Head',
     expectedRole: 'department_head',
@@ -74,7 +74,7 @@ export const EXPECTED_DEMO_USERS: ExpectedDemoUser[] = [
     navigationFocus: 'Department equipment, requests, readiness, and reports',
   },
   {
-    email: 'department.user@bmerms-demo.local',
+    email: 'department.user@bmedis-menelik.local',
     expectedFullName: 'Dr. Fitsum Haile',
     expectedJobTitle: 'Radiologist',
     expectedRole: 'department_user',
@@ -82,7 +82,7 @@ export const EXPECTED_DEMO_USERS: ExpectedDemoUser[] = [
     navigationFocus: 'Create and view department requests',
   },
   {
-    email: 'store.user@bmerms-demo.local',
+    email: 'store.user@bmedis-menelik.local',
     expectedFullName: 'Ato Biniam Teshome',
     expectedJobTitle: 'Medical Equipment Store Officer',
     expectedRole: 'store_user',
@@ -90,7 +90,7 @@ export const EXPECTED_DEMO_USERS: ExpectedDemoUser[] = [
     navigationFocus: 'Spare parts, logistics, procurement, and notifications',
   },
   {
-    email: 'viewer@bmerms-demo.local',
+    email: 'viewer@bmedis-menelik.local',
     expectedFullName: 'Dr. Amanuel Kifle',
     expectedJobTitle: 'Medical Director',
     expectedRole: 'viewer',

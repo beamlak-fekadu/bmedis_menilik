@@ -1,5 +1,5 @@
 {
-  "validatedAt": "2026-05-26T04:36:07.669Z",
+  "validatedAt": "2026-05-26T09:49:48.836Z",
   "supabaseUrl": "https://nxiszgkiharsltyetohm.supabase.co",
   "presentationReady": true,
   "checks": [
@@ -16,7 +16,7 @@
     {
       "name": "Condition variety >= 2",
       "status": "pass",
-      "detail": "Conditions found: functional, decommissioned, non_functional"
+      "detail": "Conditions found: functional, non_functional, decommissioned"
     },
     {
       "name": "Work orders >= 10",
@@ -62,6 +62,36 @@
       "name": "No duplicate asset codes",
       "status": "pass",
       "detail": "No duplicates"
+    },
+    {
+      "name": "Asset codes match format {DEPT}-{NNNN}",
+      "status": "pass",
+      "detail": "All codes match pattern"
+    },
+    {
+      "name": "Original inventory numbers in notes",
+      "status": "pass",
+      "detail": "168 assets have original inventory number in notes"
+    },
+    {
+      "name": "No demo email profiles",
+      "status": "warn",
+      "detail": "7 profiles with demo email"
+    },
+    {
+      "name": "Menelik role emails exist",
+      "status": "pass",
+      "detail": "7/7 Menelik emails found in profiles"
+    },
+    {
+      "name": "Disposal requests match decommissioned assets",
+      "status": "pass",
+      "detail": "5 disposal requests for 5 decommissioned assets"
+    },
+    {
+      "name": "No disposed_assets from import",
+      "status": "pass",
+      "detail": "0 disposed_assets rows"
     }
   ],
   "counts": {
@@ -82,20 +112,22 @@
     "training_sessions": 12,
     "staff_training_records": 12,
     "equipment_training_records": 0,
-    "profiles": 7,
+    "profiles": 14,
     "roles": 7,
-    "user_roles": 7,
+    "user_roles": 14,
     "equipment_reliability_metrics": 165,
     "equipment_risk_scores": 165,
     "pm_compliance_metrics": 0,
     "replacement_priority_scores": 165,
+    "disposal_requests": 5,
+    "disposed_assets": 0,
     "spare_parts": 0,
     "stock_receipts": 0,
     "stock_issues": 0
   },
   "summary": {
-    "passed": 12,
-    "warnings": 0,
+    "passed": 17,
+    "warnings": 1,
     "failed": 0
   }
 }

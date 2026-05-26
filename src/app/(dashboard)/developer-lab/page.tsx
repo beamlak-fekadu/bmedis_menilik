@@ -587,8 +587,8 @@ export default async function DeveloperLabPage({ searchParams }: { searchParams:
         <div>
           <h2 className="text-lg font-semibold text-[var(--foreground)]">Demo Role Integrity</h2>
           <p className="text-sm text-[var(--text-muted)]">
-            Validates the seven Supabase Auth demo logins through auth.users.email, auth.users.id,
-            profiles.user_id, profiles.id, departments, user_roles, and roles. Legacy @bmerms-demo.local auth email domain retained for seeded demo users.
+            Validates the seven Supabase Auth role logins through auth.users.email, auth.users.id,
+            profiles.user_id, profiles.id, departments, user_roles, and roles. Uses @bmedis-menelik.local auth email domain.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">

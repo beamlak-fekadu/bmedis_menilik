@@ -58,6 +58,7 @@ async function main() {
     'profiles', 'roles', 'user_roles',
     'equipment_reliability_metrics', 'equipment_risk_scores',
     'pm_compliance_metrics', 'replacement_priority_scores',
+    'disposal_requests', 'disposed_assets',
     'spare_parts', 'stock_receipts', 'stock_issues',
   ];
 
@@ -229,6 +230,96 @@ async function main() {
     detail: dupes.length === 0 ? 'No duplicates' : `${dupes.length} duplicate codes: ${dupes.map(([k]) => k).join(', ')}`,
   });
   console.log(`  ${dupes.length === 0 ? '✅' : '❌'} Duplicate asset codes: ${dupes.length}`);
+
+  // Asset code format check
+  const { data: allAssetCodes } = await supabase
+    .from('equipment_assets')
+    .select('asset_code, notes')
+    .is('deleted_at', null);
+  const codePattern = /^[A-Z]+-\d{4}$/;
+  const badCodes = (allAssetCodes || []).filter((a: any) => !codePattern.test(a.asset_code));
+  checks.push({
+    name: 'Asset codes match format {DEPT}-{NNNN}',
+    status: badCodes.length === 0 ? 'pass' : 'fail',
+    detail: badCodes.length === 0 ? 'All codes match pattern' : `${badCodes.length} non-matching: ${badCodes.slice(0, 5).map((a: any) => a.asset_code).join(', ')}`,
+  });
+  console.log(`  ${badCodes.length === 0 ? '✅' : '❌'} Asset code format: ${badCodes.length} non-matching`);
+
+  // Original inventory numbers preserved in notes
+  const withInvNote = (allAssetCodes || []).filter((a: any) =>
+    a.notes && a.notes.includes('Original Menelik inventory number:')
+  );
+  checks.push({
+    name: 'Original inventory numbers in notes',
+    status: withInvNote.length > 100 ? 'pass' : withInvNote.length > 0 ? 'warn' : 'fail',
+    detail: `${withInvNote.length} assets have original inventory number in notes`,
+  });
+  console.log(`  ${withInvNote.length > 100 ? '✅' : '⚠️'} Inventory numbers preserved: ${withInvNote.length}`);
+
+  // No demo emails in profiles
+  const { data: demoProfiles } = await supabase
+    .from('profiles')
+    .select('email')
+    .like('email', '%bmerms-demo%');
+  const demoCount = (demoProfiles || []).length;
+  checks.push({
+    name: 'No demo email profiles',
+    status: demoCount === 0 ? 'pass' : 'warn',
+    detail: demoCount === 0 ? 'No @bmerms-demo profiles' : `${demoCount} profiles with demo email`,
+  });
+  console.log(`  ${demoCount === 0 ? '✅' : '⚠️'} Demo emails: ${demoCount}`);
+
+  // Menelik emails exist
+  const menelikEmails = [
+    'developer@bmedis-menelik.local',
+    'bme.head@bmedis-menelik.local',
+    'department.head@bmedis-menelik.local',
+    'department.user@bmedis-menelik.local',
+    'technician@bmedis-menelik.local',
+    'store.user@bmedis-menelik.local',
+    'viewer@bmedis-menelik.local',
+  ];
+  const { data: menelikProfiles } = await supabase
+    .from('profiles')
+    .select('email')
+    .in('email', menelikEmails);
+  const menelikFound = (menelikProfiles || []).length;
+  checks.push({
+    name: 'Menelik role emails exist',
+    status: menelikFound === 7 ? 'pass' : menelikFound > 0 ? 'warn' : 'fail',
+    detail: `${menelikFound}/7 Menelik emails found in profiles`,
+  });
+  console.log(`  ${menelikFound === 7 ? '✅' : '⚠️'} Menelik emails: ${menelikFound}/7`);
+
+  // Disposal requests from "To Be Disposed"
+  const { data: disposalReqs } = await supabase
+    .from('disposal_requests')
+    .select('id, asset_id, notes')
+    .like('notes', '%Menelik II inventory%');
+  const disposalCount = (disposalReqs || []).length;
+  const { data: decommAssets } = await supabase
+    .from('equipment_assets')
+    .select('id')
+    .is('deleted_at', null)
+    .eq('condition', 'decommissioned');
+  const decommCount = (decommAssets || []).length;
+  checks.push({
+    name: 'Disposal requests match decommissioned assets',
+    status: disposalCount > 0 && disposalCount === decommCount ? 'pass' : disposalCount > 0 ? 'warn' : decommCount === 0 ? 'pass' : 'fail',
+    detail: `${disposalCount} disposal requests for ${decommCount} decommissioned assets`,
+  });
+  console.log(`  ${disposalCount > 0 ? '✅' : '⚠️'} Disposal requests: ${disposalCount} (decommissioned: ${decommCount})`);
+
+  // No disposed_assets created from import
+  const { count: disposedActual } = await supabase
+    .from('disposed_assets')
+    .select('*', { count: 'exact', head: true });
+  checks.push({
+    name: 'No disposed_assets from import',
+    status: (disposedActual || 0) === 0 ? 'pass' : 'warn',
+    detail: `${disposedActual || 0} disposed_assets rows`,
+  });
+  console.log(`  ${(disposedActual || 0) === 0 ? '✅' : '⚠️'} Disposed assets: ${disposedActual || 0}`);
 
   // ─── Verdict ──────────────────────────────────────────────────────────
 
