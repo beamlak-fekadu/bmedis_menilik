@@ -1,6 +1,7 @@
 import { requireRole } from '@/lib/auth/helpers';
 import { getQrLabelAssets, getQrCoverageStats } from '@/services/qr.service';
 import { isQrLabelFilter, type QrLabelFilter } from '@/types/qr';
+import { getQrBaseUrl } from '@/utils/qr/url';
 import QrLabelSheetClient from './QrLabelSheetClient';
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
@@ -32,6 +33,7 @@ export default async function QrLabelsPage({ searchParams }: { searchParams: Sea
     getQrLabelAssets(),
     getQrCoverageStats(),
   ]);
+  const qrBaseUrl = getQrBaseUrl();
 
   return (
     <QrLabelSheetClient
@@ -40,6 +42,7 @@ export default async function QrLabelsPage({ searchParams }: { searchParams: Sea
       initialFilter={initialFilter}
       preselectedIds={preselected}
       autoPrint={autoPrint}
+      qrBaseUrl={qrBaseUrl}
     />
   );
 }

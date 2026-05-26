@@ -20,7 +20,6 @@ import {
   markQrLabelsAttachedBulkAction,
   markQrLabelsNeedsReplacementBulkAction,
 } from '@/actions/qr.actions';
-import { getQrBaseUrl } from '@/utils/qr/url';
 
 type Props = {
   assets: QrLabelAsset[];
@@ -28,6 +27,7 @@ type Props = {
   initialFilter: QrLabelFilter;
   preselectedIds: string[];
   autoPrint?: boolean;
+  qrBaseUrl: string | null;
 };
 
 const FILTER_LABELS: Record<QrLabelFilter, string> = {
@@ -52,6 +52,7 @@ export default function QrLabelSheetClient({
   initialFilter,
   preselectedIds,
   autoPrint,
+  qrBaseUrl,
 }: Props) {
   const router = useRouter();
   const [filter, setFilter] = useState<QrLabelFilter>(initialFilter);
@@ -61,7 +62,6 @@ export default function QrLabelSheetClient({
   const [message, setMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const autoPrintRanRef = useRef(false);
-  const qrBaseUrl = getQrBaseUrl();
   const canPrintQrLabels = !!qrBaseUrl;
 
   const filtered = useMemo(() => {
@@ -404,7 +404,7 @@ export default function QrLabelSheetClient({
               : 'All visible tokenized assets'}
           </span>
         </div>
-        <QrLabelPrintSheet assets={printableNow} />
+        <QrLabelPrintSheet assets={printableNow} qrBaseUrl={qrBaseUrl} />
       </section>
     </div>
   );

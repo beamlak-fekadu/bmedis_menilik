@@ -56,15 +56,20 @@ export function buildAssetQrPath(qrToken: string | null | undefined): string | n
   return `/qr/a/${qrToken}`;
 }
 
+export function buildAssetQrUrlFromBase(
+  qrToken: string | null | undefined,
+  baseUrl: string | null | undefined,
+): string | null {
+  const path = buildAssetQrPath(qrToken);
+  if (!path || !baseUrl?.trim()) return null;
+  return `${trimTrailingSlash(withProtocol(baseUrl.trim()))}${path}`;
+}
+
 /**
  * Fully-qualified QR target that is encoded into the QR image.
  * Returns null when the token is missing or malformed so callers
  * never accidentally print a "qra_invalid" QR.
  */
 export function buildAssetQrUrl(qrToken: string | null | undefined): string | null {
-  const path = buildAssetQrPath(qrToken);
-  if (!path) return null;
-  const baseUrl = getQrBaseUrl();
-  if (!baseUrl) return null;
-  return `${baseUrl}${path}`;
+  return buildAssetQrUrlFromBase(qrToken, getQrBaseUrl());
 }

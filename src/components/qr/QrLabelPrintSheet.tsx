@@ -7,15 +7,15 @@
 
 import QrLabelPreview from './QrLabelPreview';
 import type { QrLabelAsset } from '@/types/qr';
-import { buildAssetQrUrl, getQrBaseUrl } from '@/utils/qr/url';
+import { buildAssetQrUrlFromBase } from '@/utils/qr/url';
 
 type Props = {
   assets: QrLabelAsset[];
+  qrBaseUrl: string | null;
 };
 
-export default function QrLabelPrintSheet({ assets }: Props) {
+export default function QrLabelPrintSheet({ assets, qrBaseUrl }: Props) {
   const printable = assets.filter((asset) => !!asset.qr_token);
-  const qrBaseUrl = getQrBaseUrl();
   if (printable.length === 0) {
     return (
       <div className="rounded-md border border-dashed border-[var(--border-subtle)] bg-[var(--surface-1)] p-6 text-center text-sm text-[var(--text-muted)]">
@@ -34,7 +34,7 @@ export default function QrLabelPrintSheet({ assets }: Props) {
   return (
     <div className="qr-print-sheet grid gap-4 sm:grid-cols-2 lg:grid-cols-3 print:grid-cols-2">
       {printable.map((asset) => {
-        const qrUrl = buildAssetQrUrl(asset.qr_token);
+        const qrUrl = buildAssetQrUrlFromBase(asset.qr_token, qrBaseUrl);
         if (!qrUrl) return null;
         return (
           <div key={asset.id} className="flex justify-center break-inside-avoid">

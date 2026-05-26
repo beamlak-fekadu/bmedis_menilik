@@ -23,7 +23,7 @@ import {
   type AssetQrScanSummary,
 } from '@/types/qr';
 import { maskQrToken } from '@/utils/qr/token';
-import { buildAssetQrPath, buildAssetQrUrl } from '@/utils/qr/url';
+import { buildAssetQrPath, buildAssetQrUrlFromBase, getQrBaseUrl } from '@/utils/qr/url';
 import { QRCodeCanvas } from 'qrcode.react';
 import QrLabelPreview from '@/components/qr/QrLabelPreview';
 import {
@@ -75,9 +75,30 @@ export default function QrIdentityPanel({
   const [message, setMessage] = useState<string | null>(null);
   const [scanSummary, setScanSummary] = useState<AssetQrScanSummary | null>(null);
   const [scanEvidenceOpen, setScanEvidenceOpen] = useState(false);
+  const [qrBaseUrl, setQrBaseUrl] = useState<string | null | undefined>(undefined);
   const [pending, startTransition] = useTransition();
 
   const [reloadKey, setReloadKey] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function fetchQrBaseUrl() {
+      try {
+        const response = await fetch('/api/qr/base-url', { cache: 'no-store' });
+        if (!response.ok) throw new Error('QR base URL endpoint failed');
+        const payload = (await response.json()) as { baseUrl?: unknown };
+        if (!cancelled) {
+          setQrBaseUrl(typeof payload.baseUrl === 'string' ? payload.baseUrl : null);
+        }
+      } catch {
+        if (!cancelled) setQrBaseUrl(getQrBaseUrl());
+      }
+    }
+    void fetchQrBaseUrl();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -149,10 +170,10 @@ export default function QrIdentityPanel({
 
   const hasToken = !!identity?.qr_token;
   const status: QrLabelStatus = identity?.qr_label_status ?? 'not_generated';
-  const qrUrl = buildAssetQrUrl(identity?.qr_token ?? null);
+  const qrUrl = buildAssetQrUrlFromBase(identity?.qr_token ?? null, qrBaseUrl ?? null);
   const qrPath = buildAssetQrPath(identity?.qr_token ?? null);
   const canPrintLabel = hasToken && status !== 'revoked' && !!qrUrl;
-  const qrUrlConfigurationMissing = hasToken && status !== 'revoked' && !qrUrl;
+  const qrUrlConfigurationMissing = hasToken && status !== 'revoked' && qrBaseUrl !== undefined && !qrUrl;
   const printRoute = `/equipment/qr-labels?assets=${encodeURIComponent(assetId)}&print=1`;
   const displayAssetCode = assetCode ?? 'ASSET';
   const displayAssetName = assetName ?? 'Equipment';
