@@ -1,18 +1,12 @@
 -- Migration 00044: Expose asset_id and department_id from operational views
 --
--- Root cause: v_open_work_orders did not expose asset_id or department_id,
--- so all department-filtered queries and viewer WO components returned 0 rows.
--- v_overdue_pm lacked department_id for the same reason.
---
--- These are non-breaking additions: existing queries that don't request the
--- new columns continue to work unchanged.
+-- PostgreSQL cannot change existing view column names/order using CREATE OR REPLACE VIEW.
+-- Drop and recreate the views so asset_id and department_id can be exposed safely.
 
 -- ── v_open_work_orders ────────────────────────────────────────────────────────
--- Adds: asset_id (FK → equipment_assets, enables embedded resource queries)
---        department_id (from equipment_assets, enables .eq('department_id', ...) filter)
--- Note: work_orders table has no scheduled_date column; do NOT add one.
+DROP VIEW IF EXISTS v_open_work_orders;
 
-CREATE OR REPLACE VIEW v_open_work_orders AS
+CREATE VIEW v_open_work_orders AS
 SELECT
   wo.id,
   wo.work_order_number,
@@ -33,11 +27,11 @@ LEFT JOIN departments   d ON ea.department_id = d.id
 LEFT JOIN profiles      p ON wo.assigned_to   = p.id
 WHERE wo.status NOT IN ('completed', 'canceled');
 
--- ── v_overdue_pm ──────────────────────────────────────────────────────────────
--- Adds: department_id (from equipment_assets, enables .eq('department_id', ...) filter)
--- Keeps all columns from migration 00042 exactly.
 
-CREATE OR REPLACE VIEW v_overdue_pm AS
+-- ── v_overdue_pm ──────────────────────────────────────────────────────────────
+DROP VIEW IF EXISTS v_overdue_pm;
+
+CREATE VIEW v_overdue_pm AS
 SELECT
     ps.id,
     ps.asset_id,

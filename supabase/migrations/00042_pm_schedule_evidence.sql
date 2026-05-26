@@ -1,5 +1,6 @@
 -- Migration 00042: PM schedule evidence and defer support
--- PM Schedule = one planned task instance. PM Completion = evidence that the task was performed.
+-- PM Schedule = one planned task instance.
+-- PM Completion = evidence that the task was performed.
 
 ALTER TABLE pm_schedules
   DROP CONSTRAINT IF EXISTS pm_schedules_status_check;
@@ -29,7 +30,11 @@ ALTER TABLE pm_schedules
 CREATE INDEX IF NOT EXISTS idx_pm_schedules_assigned_to ON pm_schedules(assigned_to);
 CREATE INDEX IF NOT EXISTS idx_pm_schedules_completed_at ON pm_schedules(completed_at);
 
-CREATE OR REPLACE VIEW v_overdue_pm AS
+-- PostgreSQL cannot change existing view column names/order with CREATE OR REPLACE VIEW.
+-- Drop and recreate the view so the updated column structure is applied cleanly.
+DROP VIEW IF EXISTS v_overdue_pm;
+
+CREATE VIEW v_overdue_pm AS
 SELECT
     ps.id,
     ps.asset_id,

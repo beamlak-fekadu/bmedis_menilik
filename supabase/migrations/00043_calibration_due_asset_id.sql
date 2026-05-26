@@ -1,5 +1,12 @@
+-- Migration 00043: Calibration due view asset_id support
 -- Keep Command Center and Calibration drilldowns exact by exposing the source asset.
-CREATE OR REPLACE VIEW v_calibration_due AS
+--
+-- PostgreSQL cannot change existing view column names/order with CREATE OR REPLACE VIEW.
+-- Drop and recreate the view so the updated column structure is applied cleanly.
+
+DROP VIEW IF EXISTS v_calibration_due;
+
+CREATE VIEW v_calibration_due AS
 SELECT
   cr.id,
   cr.asset_id,
