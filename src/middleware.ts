@@ -68,6 +68,10 @@ function canonicalQrRedirect(request: NextRequest): NextResponse | null {
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  if (process.env.NODE_ENV !== 'production' && pathname.startsWith('/copilot-smoke')) {
+    return NextResponse.next();
+  }
+
   const qrRedirect = canonicalQrRedirect(request);
   if (qrRedirect) return qrRedirect;
 
