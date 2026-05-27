@@ -5,8 +5,8 @@ The checklist is the human-in-the-loop counterpart to `npm run test:system-fix`:
 the test suite proves invariants, this document proves the *user-visible*
 experience holds up across roles, routes, devices, and follow-ups.
 
-> **No browser test was performed by the agent that generated this file.**
-> The agent ran tsc / lint / unit tests / build only. Every box below has to
+> **No browser test was performed for this checklist.**
+> The automated checks covered tsc / lint / unit tests / build only. Every box below has to
 > be ticked by a human running the app in a real browser.
 
 ---

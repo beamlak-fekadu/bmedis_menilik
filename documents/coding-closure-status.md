@@ -81,7 +81,7 @@ code-complete vs. unverified.
 
 - `src/components/ui/action-styles.ts` already enumerates the canonical tones
   (brand / danger / warning / warningSubtle / success / neutral / developer).
-- Per prior sessions (CLAUDE.md 2026-05-12 entry), operational pages already
+- Per prior cleanup notes, operational pages already
   use these exact color choices inline. This pass intentionally did NOT do a
   broad import-rewrite across pages, because the visual outcome is the same
   and the diff blast radius is large. The constant remains available for

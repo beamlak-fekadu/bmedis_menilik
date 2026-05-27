@@ -159,7 +159,7 @@ phase-tests still pass after deployment:
 - [ ] `npm run test:chatbot` ✓
 - [ ] `npm run test:system-fix` ✓
 - [ ] `npm run build` clean on the deployed branch
-- [ ] CLAUDE.md and AGENTS.md reflect the deployed state
+- [ ] Public README and validation notes reflect the deployed state
 
 If any box fails, do not sign off. Re-open the corresponding R# fix and
 re-run the affected workflow before granting evaluation access.

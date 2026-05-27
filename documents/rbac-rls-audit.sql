@@ -244,7 +244,7 @@ SELECT  p.id, p.email, p.full_name, p.is_active
 FROM    profiles p
 WHERE   p.user_id IS NULL
 ORDER   BY p.email;
--- Expected per CLAUDE.md: 14 seed profiles plus beamlak.work@gmail.com which
+-- Expected: 14 seed profiles plus beamlak.work@gmail.com which
 -- IS linked (so should NOT appear). Other profiles can remain unlinked as
 -- assignable staff (PM/WO assignee) without login access — see PART 5 note.
 
@@ -295,7 +295,7 @@ LEFT JOIN profiles p ON p.id = str.staff_user_id
 WHERE   str.staff_user_id IS NOT NULL
 AND     p.id IS NULL;
 -- Expected: zero rows. (Note: column is named staff_user_id; renaming is
--- listed as deferred in CLAUDE.md item 14.)
+-- listed as deferred in the schema cleanup notes.)
 
 
 -- ============================================================================
