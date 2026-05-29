@@ -829,6 +829,7 @@ async function replayStockIssueDraft(params: {
   }
 
   const workOrderId = nullableString(payload, 'work_order_id');
+  const needId = nullableString(payload, 'need_id');
   if (workOrderId) {
     const { data: workOrder } = await params.supabase
       .from('work_orders')
@@ -848,9 +849,12 @@ async function replayStockIssueDraft(params: {
     issued_by: null,
     issue_date: nullableString(payload, 'issue_date') ?? new Date().toISOString().slice(0, 10),
     department_id: nullableString(payload, 'department_id'),
+    work_order_id: workOrderId,
+    need_id: needId,
     notes: mergeNotes(
       nullableString(payload, 'note'),
       workOrderId ? `Linked work order: ${workOrderId}` : null,
+      needId ? `Linked part need: ${needId}` : null,
       nullableString(payload, 'issued_to') ? `Issued to: ${nullableString(payload, 'issued_to')}` : null,
       payload.local_stock_snapshot != null ? `Offline stock snapshot: ${String(payload.local_stock_snapshot)}` : null,
       offlineSourceNote(params.action),

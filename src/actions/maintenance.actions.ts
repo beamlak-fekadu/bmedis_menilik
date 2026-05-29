@@ -4,7 +4,12 @@ import { z } from 'zod';
 import { recomputeAssetAnalytics } from './analytics.actions';
 import { updateEquipmentConditionAction } from './equipment.actions';
 import { getActionContextForCapability, getActionContextForAnyCapability, logServerAuditEvent, revalidateMany, actionError, nullIfEmpty, interpretMissingMutationResult, type ActionResult } from './_shared';
-import { OPEN_MAINTENANCE_REQUEST_STATUSES } from '@/utils/maintenance/request-status';
+import {
+  OPEN_MAINTENANCE_REQUEST_STATUSES,
+  OPEN_WORK_ORDER_STATUSES,
+  isFinalMaintenanceRequestStatus,
+  isFinalWorkOrderStatus,
+} from '@/utils/maintenance/request-status';
 import { requiredCapabilityForWorkOrderTransition } from '@/utils/maintenance/work-order-transitions';
 import {
   deriveReliabilityEvidence,
@@ -454,7 +459,7 @@ export async function createWorkOrderAction(payload: Record<string, unknown>): P
         .from('work_orders')
         .select('*')
         .eq('request_id', data.request_id)
-        .not('status', 'in', '(completed,canceled)')
+        .in('status', [...OPEN_WORK_ORDER_STATUSES])
         .order('created_at', { ascending: false })
         .limit(1);
       if (!existing.error && existing.data && existing.data.length > 0) {
@@ -507,7 +512,7 @@ export async function createWorkOrderAction(payload: Record<string, unknown>): P
         department_id?: string | null;
         asset_id?: string | null;
       } | null;
-      if (current && current.status && !['completed', 'rejected', 'canceled'].includes(current.status)) {
+      if (current && current.status && !isFinalMaintenanceRequestStatus(current.status)) {
         const nextStatus = woRow.assigned_to ? 'assigned' : 'approved';
         if (current.status !== nextStatus) {
           const update = await supabase
@@ -707,6 +712,14 @@ export async function updateWorkOrderAction(id: string, payload: Record<string, 
     // reliability evidence could not be persisted. Completion still succeeds
     // (we don't roll back) — the warning is loud so the gap is visible.
     let reliabilityEvidenceWarning: string | null = null;
+    let requestStatusSyncWarning: string | null = null;
+    let equipmentStatusSyncWarning: string | null = null;
+    let completedRequestContext: {
+      id: string | null;
+      request_number: string | null;
+      requested_by: string | null;
+      department_id: string | null;
+    } | null = null;
     if (assetId) {
       if (data.status === 'in_progress') {
         // Starting work: set equipment to under_maintenance
@@ -832,6 +845,129 @@ export async function updateWorkOrderAction(id: string, payload: Record<string, 
           });
         }
 
+        if (woRequestId) {
+          const requestRow = await supabase
+            .from('maintenance_requests')
+            .select('id, status, request_number, requested_by, department_id, resolved_at')
+            .eq('id', woRequestId)
+            .maybeSingle();
+          const request = requestRow.data as {
+            id?: string;
+            status?: string | null;
+            request_number?: string | null;
+            requested_by?: string | null;
+            department_id?: string | null;
+            resolved_at?: string | null;
+          } | null;
+          if (request) {
+            completedRequestContext = {
+              id: request.id ?? woRequestId,
+              request_number: request.request_number ?? null,
+              requested_by: request.requested_by ?? null,
+              department_id: request.department_id ?? null,
+            };
+
+            if (!isFinalMaintenanceRequestStatus(request.status) || (request.status === 'completed' && !request.resolved_at)) {
+              const requestUpdate = await supabase
+                .from('maintenance_requests')
+                .update({
+                  status: 'completed',
+                  resolved_at: (woRow.completed_at as string | null | undefined) ?? new Date().toISOString(),
+                } as never)
+                .eq('id', woRequestId)
+                .select('id, status, request_number, requested_by, department_id, resolved_at')
+                .maybeSingle();
+              if (requestUpdate.error || !requestUpdate.data) {
+                requestStatusSyncWarning = requestUpdate.error?.message ?? 'Linked maintenance request completion sync returned 0 rows.';
+                await logServerAuditEvent({
+                  supabase,
+                  profileId: profile.id,
+                  action: 'work_order.request_completion_sync_failed',
+                  entityType: 'maintenance_requests',
+                  entityId: woRequestId,
+                  details: {
+                    work_order_id: id,
+                    attempted_status: 'completed',
+                    error: requestStatusSyncWarning,
+                  },
+                });
+              } else {
+                const updatedRequest = requestUpdate.data as {
+                  id?: string;
+                  status?: string | null;
+                  request_number?: string | null;
+                  requested_by?: string | null;
+                  department_id?: string | null;
+                };
+                completedRequestContext = {
+                  id: updatedRequest.id ?? woRequestId,
+                  request_number: updatedRequest.request_number ?? request.request_number ?? null,
+                  requested_by: updatedRequest.requested_by ?? request.requested_by ?? null,
+                  department_id: updatedRequest.department_id ?? request.department_id ?? null,
+                };
+                await logServerAuditEvent({
+                  supabase,
+                  profileId: profile.id,
+                  action: 'maintenance_request.completed_by_work_order',
+                  entityType: 'maintenance_requests',
+                  entityId: woRequestId,
+                  oldValues: { status: request.status, resolved_at: request.resolved_at },
+                  newValues: {
+                    status: 'completed',
+                    resolved_at: (requestUpdate.data as { resolved_at?: string | null }).resolved_at ?? null,
+                    work_order_id: id,
+                  },
+                });
+              }
+            }
+          }
+        }
+
+        if (conditionToSet === 'functional') {
+          const assetRow = await supabase
+            .from('equipment_assets')
+            .select('id, status, condition')
+            .eq('id', assetId)
+            .maybeSingle();
+          const asset = assetRow.data as { status?: string | null; condition?: string | null } | null;
+          const currentStatus = String(asset?.status ?? '').toLowerCase();
+          const currentCondition = String(asset?.condition ?? '').toLowerCase();
+          const canReactivate =
+            asset &&
+            currentStatus !== 'active' &&
+            !['disposed', 'in_storage', 'decommissioned'].includes(currentStatus) &&
+            currentCondition !== 'decommissioned';
+          if (canReactivate) {
+            const statusUpdate = await supabase
+              .from('equipment_assets')
+              .update({ status: 'active' } as never)
+              .eq('id', assetId)
+              .select('id, status')
+              .maybeSingle();
+            if (statusUpdate.error || !statusUpdate.data) {
+              equipmentStatusSyncWarning = statusUpdate.error?.message ?? 'Equipment active-status sync returned 0 rows.';
+              await logServerAuditEvent({
+                supabase,
+                profileId: profile.id,
+                action: 'work_order.equipment_status_sync_failed',
+                entityType: 'equipment_assets',
+                entityId: assetId,
+                details: { work_order_id: id, attempted_status: 'active', error: equipmentStatusSyncWarning },
+              });
+            } else {
+              await logServerAuditEvent({
+                supabase,
+                profileId: profile.id,
+                action: 'work_order.equipment_status_synced',
+                entityType: 'equipment_assets',
+                entityId: assetId,
+                oldValues: { status: currentStatus },
+                newValues: { status: 'active', work_order_id: id },
+              });
+            }
+          }
+        }
+
         // ANALYTICS-01: surface refresh failure (was silently swallowed).
         try {
           await recomputeAssetAnalytics(assetId);
@@ -863,7 +999,17 @@ export async function updateWorkOrderAction(id: string, payload: Record<string, 
 
     let notificationResult: NotificationProcessResult | null = null;
     try {
-      const row = result.data as { id?: string; asset_id?: string; work_order_number?: string; status?: string; priority?: string; assigned_to?: string | null };
+      const row = result.data as {
+        id?: string;
+        asset_id?: string;
+        request_id?: string | null;
+        work_order_number?: string;
+        status?: string;
+        priority?: string;
+        assigned_to?: string | null;
+        completion_outcome?: string | null;
+        final_equipment_condition?: string | null;
+      };
       const assetSummary = await loadAssetSummaryForNotification(supabase, row.asset_id ?? null);
       let eventType: 'work_order.status_changed' | 'work_order.on_hold' | 'work_order.completed' = 'work_order.status_changed';
       let priority: 'critical' | 'high' | 'medium' | 'low' = 'medium';
@@ -883,6 +1029,7 @@ export async function updateWorkOrderAction(id: string, payload: Record<string, 
         asset_id: row.asset_id ?? null,
         department_id: assetSummary.department_id,
         priority,
+        dedupe_key: row.status === 'completed' && row.id ? `work_order.completed:${row.id}` : null,
         payload: {
           asset_name: assetSummary.asset_name,
           asset_code: assetSummary.asset_code,
@@ -890,17 +1037,30 @@ export async function updateWorkOrderAction(id: string, payload: Record<string, 
           status: row.status ?? null,
           priority: row.priority ?? null,
           assigned_to: row.assigned_to ?? null,
+          source_request_id: row.request_id ?? completedRequestContext?.id ?? null,
+          request_number: completedRequestContext?.request_number ?? null,
+          requested_by: completedRequestContext?.requested_by ?? null,
+          completion_outcome: row.completion_outcome ?? completionOutcome ?? null,
+          final_equipment_condition: row.final_equipment_condition ?? finalEquipmentCondition ?? null,
         },
       });
     } catch (e) {
       console.error('[notifications] work_order update emit failed:', e);
     }
 
-    revalidateMany([...maintenancePaths, `/maintenance/work-orders/${id}`, ...(assetId ? [`/equipment/${assetId}`] : [])]);
+    const requestId = ((result.data as Record<string, unknown>).request_id as string | null | undefined) ?? completedRequestContext?.id ?? null;
+    revalidateMany([
+      ...maintenancePaths,
+      `/maintenance/work-orders/${id}`,
+      ...(requestId ? [`/maintenance/requests/${requestId}`, '/requests'] : []),
+      ...(assetId ? [`/equipment/${assetId}`] : []),
+    ]);
     const baseData = result.data as Record<string, unknown>;
     const enriched: Record<string, unknown> = { ...baseData };
     Object.assign(enriched, notificationReviewData(notificationResult));
     if (conditionSyncWarning) enriched.condition_sync_warning = conditionSyncWarning;
+    if (equipmentStatusSyncWarning) enriched.equipment_status_sync_warning = equipmentStatusSyncWarning;
+    if (requestStatusSyncWarning) enriched.request_status_sync_warning = requestStatusSyncWarning;
     if (reliabilityEvidenceWarning) enriched.reliability_evidence_warning = reliabilityEvidenceWarning;
     return { success: true, data: enriched };
   } catch (err) {
@@ -929,7 +1089,7 @@ async function setWorkOrderAssignee(id: string, technicianProfileId: string, act
 
     const oldRow = await supabase.from('work_orders').select('*').eq('id', id).maybeSingle();
     const currentStatus = (oldRow.data as { status?: string } | null)?.status;
-    if (currentStatus === 'completed' || currentStatus === 'canceled') {
+    if (isFinalWorkOrderStatus(currentStatus)) {
       return { success: false, error: 'Terminal work orders cannot be reassigned' };
     }
 
@@ -1078,7 +1238,7 @@ export async function declareWorkOrderPartNeededAction(payload: Record<string, u
       .maybeSingle();
     const wo = woRow.data as { id?: string; status?: string; asset_id?: string } | null;
     if (!wo) return { success: false, error: 'Work order not found' };
-    if (wo.status && ['completed', 'canceled'].includes(wo.status)) {
+    if (isFinalWorkOrderStatus(wo.status)) {
       return { success: false, error: 'Cannot declare parts needed for a terminal work order' };
     }
 
@@ -1124,6 +1284,83 @@ export async function declareWorkOrderPartNeededAction(payload: Record<string, u
       entityId: (insert.data as { id?: string }).id ?? null,
       newValues: insert.data as Record<string, unknown>,
     });
+
+    try {
+      const need = insert.data as {
+        id?: string;
+        work_order_id?: string;
+        spare_part_id?: string;
+        quantity_needed?: number;
+        declared_by?: string | null;
+      };
+      const [partRow, workOrderRow, requesterRow] = await Promise.all([
+        supabase
+          .from('spare_parts')
+          .select('id, part_code, name, current_stock, reorder_level')
+          .eq('id', parsed.spare_part_id)
+          .maybeSingle(),
+        supabase
+          .from('work_orders')
+          .select('id, work_order_number, priority, assigned_to, asset_id')
+          .eq('id', parsed.work_order_id)
+          .maybeSingle(),
+        supabase
+          .from('profiles')
+          .select('id, full_name')
+          .eq('id', profile.id)
+          .maybeSingle(),
+      ]);
+      const part = partRow.data as {
+        id?: string;
+        part_code?: string | null;
+        name?: string | null;
+        current_stock?: number | null;
+        reorder_level?: number | null;
+      } | null;
+      const workOrder = workOrderRow.data as {
+        id?: string;
+        work_order_number?: string | null;
+        priority?: string | null;
+        assigned_to?: string | null;
+        asset_id?: string | null;
+      } | null;
+      const requester = requesterRow.data as { full_name?: string | null } | null;
+      const assetSummary = await loadAssetSummaryForNotification(supabase, workOrder?.asset_id ?? wo.asset_id ?? null);
+      const priority = workOrder?.priority === 'critical'
+        ? 'critical'
+        : workOrder?.priority === 'high'
+          ? 'high'
+          : 'medium';
+      await createNotificationEvent({
+        event_type: 'work_order.part_requested',
+        source_table: 'work_order_parts_needed',
+        source_id: need.id ?? null,
+        asset_id: workOrder?.asset_id ?? wo.asset_id ?? null,
+        department_id: assetSummary.department_id,
+        priority,
+        dedupe_key: need.id ? `work_order.part_requested:${need.id}` : null,
+        payload: {
+          need_id: need.id ?? null,
+          work_order_id: parsed.work_order_id,
+          work_order_number: workOrder?.work_order_number ?? null,
+          part_id: parsed.spare_part_id,
+          part_code: part?.part_code ?? null,
+          part_name: part?.name ?? null,
+          quantity_needed: parsed.quantity_needed,
+          current_stock: part?.current_stock ?? null,
+          reorder_level: part?.reorder_level ?? null,
+          priority: workOrder?.priority ?? null,
+          requested_by: profile.id,
+          declared_by: need.declared_by ?? profile.id,
+          requester_name: requester?.full_name ?? null,
+          assigned_to: workOrder?.assigned_to ?? null,
+          asset_name: assetSummary.asset_name,
+          asset_code: assetSummary.asset_code,
+        },
+      });
+    } catch (e) {
+      console.error('[notifications] work_order.part_requested emit failed:', e);
+    }
 
     revalidateMany([
       ...maintenancePaths,

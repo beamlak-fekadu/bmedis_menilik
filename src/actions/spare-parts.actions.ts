@@ -2,8 +2,123 @@
 
 import { z } from 'zod';
 import { getActionContextForCapability, logServerAuditEvent, refreshDecisionSupportSnapshotsBestEffort, revalidateMany, actionError, nullIfEmpty, interpretMissingMutationResult, type ActionResult } from './_shared';
+import { createNotificationEvent } from '@/services/notifications/notification-engine';
 
 const sparePaths = ['/spare-parts', '/logistics', '/command'];
+
+type SpareActionClient = Awaited<ReturnType<typeof import('@/lib/supabase/server').createClient>>;
+type PartNeedContext = {
+  id: string;
+  work_order_id: string;
+  spare_part_id: string;
+  quantity_needed: number;
+  declared_by: string | null;
+  status: string;
+};
+
+function workOrderPriorityToNotificationPriority(priority: string | null | undefined): 'critical' | 'high' | 'medium' {
+  if (priority === 'critical') return 'critical';
+  if (priority === 'high') return 'high';
+  return 'medium';
+}
+
+async function loadPartIssueContext(
+  supabase: SpareActionClient,
+  input: { partId: string; workOrderId?: string | null; needId?: string | null },
+) {
+  let need: PartNeedContext | null = null;
+
+  if (input.needId) {
+    const { data } = await supabase
+      .from('work_order_parts_needed')
+      .select('id, work_order_id, spare_part_id, quantity_needed, declared_by, status')
+      .eq('id', input.needId)
+      .maybeSingle();
+    need = data as PartNeedContext | null;
+  }
+
+  const linkedWorkOrderId = input.workOrderId ?? need?.work_order_id ?? null;
+  if (!need && linkedWorkOrderId) {
+    const { data } = await supabase
+      .from('work_order_parts_needed')
+      .select('id, work_order_id, spare_part_id, quantity_needed, declared_by, status')
+      .eq('work_order_id', linkedWorkOrderId)
+      .eq('spare_part_id', input.partId)
+      .eq('status', 'open')
+      .order('created_at', { ascending: true })
+      .limit(1)
+      .maybeSingle();
+    need = data as PartNeedContext | null;
+  }
+
+  const [partRow, workOrderRow] = await Promise.all([
+    supabase
+      .from('spare_parts')
+      .select('id, part_code, name, current_stock, reorder_level')
+      .eq('id', input.partId)
+      .maybeSingle(),
+    linkedWorkOrderId
+      ? supabase
+          .from('work_orders')
+          .select('id, work_order_number, priority, assigned_to, asset_id')
+          .eq('id', linkedWorkOrderId)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
+  ]);
+  const part = partRow.data as {
+    id?: string;
+    part_code?: string | null;
+    name?: string | null;
+    current_stock?: number | null;
+    reorder_level?: number | null;
+  } | null;
+  const workOrder = workOrderRow.data as {
+    id?: string;
+    work_order_number?: string | null;
+    priority?: string | null;
+    assigned_to?: string | null;
+    asset_id?: string | null;
+  } | null;
+
+  let assetSummary: { asset_name: string | null; asset_code: string | null; department_id: string | null } = {
+    asset_name: null,
+    asset_code: null,
+    department_id: null,
+  };
+  if (workOrder?.asset_id) {
+    const { data } = await supabase
+      .from('equipment_assets')
+      .select('name, asset_code, department_id')
+      .eq('id', workOrder.asset_id)
+      .maybeSingle();
+    const asset = data as { name?: string | null; asset_code?: string | null; department_id?: string | null } | null;
+    assetSummary = {
+      asset_name: asset?.name ?? null,
+      asset_code: asset?.asset_code ?? null,
+      department_id: asset?.department_id ?? null,
+    };
+  }
+
+  const requesterId = need?.declared_by ?? workOrder?.assigned_to ?? null;
+  let requesterName: string | null = null;
+  if (requesterId) {
+    const { data } = await supabase
+      .from('profiles')
+      .select('full_name')
+      .eq('id', requesterId)
+      .maybeSingle();
+    requesterName = ((data as { full_name?: string | null } | null)?.full_name ?? null);
+  }
+
+  return {
+    need,
+    part,
+    workOrder,
+    requesterId,
+    requesterName,
+    ...assetSummary,
+  };
+}
 
 export async function createSparePartAction(payload: Record<string, unknown>): Promise<ActionResult> {
   try {
@@ -176,7 +291,27 @@ export async function createStockIssueAction(payload: Record<string, unknown>): 
       issue_date: z.string().min(1),
       department_id: z.string().optional().nullable(),
       notes: z.string().optional().nullable(),
+      work_order_id: z.string().optional().nullable(),
+      need_id: z.string().optional().nullable(),
     }).parse(payload);
+    const parsedWorkOrderId = parsed.work_order_id?.trim() || null;
+    const parsedNeedId = parsed.need_id?.trim() || null;
+    const parsedDepartmentId = parsed.department_id?.trim() || null;
+
+    const issueContext = await loadPartIssueContext(supabase, {
+      partId: parsed.part_id,
+      workOrderId: parsedWorkOrderId,
+      needId: parsedNeedId,
+    });
+    if (parsedNeedId && !issueContext.need) {
+      return { success: false, error: 'Linked part need was not found; stock was not issued.' };
+    }
+    if (issueContext.need && issueContext.need.spare_part_id !== parsed.part_id) {
+      return { success: false, error: 'Linked part need does not match the selected spare part; stock was not issued.' };
+    }
+    if (parsedNeedId && issueContext.need && issueContext.need.status !== 'open') {
+      return { success: false, error: `Part need is already ${issueContext.need.status}; stock was not issued again.` };
+    }
 
     // R8: transactional path via record_stock_issue RPC. Insufficient-stock
     // is enforced inside the same lock as the insert+update — concurrent
@@ -199,7 +334,7 @@ export async function createStockIssueAction(payload: Record<string, unknown>): 
       p_issued_by: nullIfEmpty(parsed.issued_by) ?? profile.id,
       p_issue_date: parsed.issue_date,
       p_issued_to_event_id: nullIfEmpty(parsed.issued_to_event_id),
-      p_department_id: nullIfEmpty(parsed.department_id),
+      p_department_id: parsedDepartmentId,
       p_notes: nullIfEmpty(parsed.notes),
     });
 
@@ -227,6 +362,8 @@ export async function createStockIssueAction(payload: Record<string, unknown>): 
         new_current_stock: rpcRow.new_current_stock,
         crossed_reorder: rpcRow.crossed_reorder,
         crossed_zero: rpcRow.crossed_zero,
+        work_order_id: parsedWorkOrderId ?? issueContext.workOrder?.id ?? null,
+        need_id: parsedNeedId ?? issueContext.need?.id ?? null,
       },
     });
     await refreshDecisionSupportSnapshotsBestEffort({
@@ -236,6 +373,78 @@ export async function createStockIssueAction(payload: Record<string, unknown>): 
       entityType: 'stock_issues',
       entityId: rpcRow.issue_id,
     }).catch(() => undefined);
+
+    let partNeedStatusWarning: string | null = null;
+    const linkedNeed = issueContext.need;
+    if (linkedNeed?.id && linkedNeed.status === 'open') {
+      const update = await supabase
+        .from('work_order_parts_needed')
+        .update({ status: 'fulfilled', fulfilled_at: new Date().toISOString() } as never)
+        .eq('id', linkedNeed.id)
+        .eq('status', 'open')
+        .select('*')
+        .maybeSingle();
+      if (update.error || !update.data) {
+        partNeedStatusWarning = update.error?.message ?? 'Part need was not marked fulfilled.';
+        await logServerAuditEvent({
+          supabase,
+          profileId: profile.id,
+          action: 'stock_issue.part_need_fulfill_failed',
+          entityType: 'work_order_parts_needed',
+          entityId: linkedNeed.id,
+          details: { stock_issue_id: rpcRow.issue_id, error: partNeedStatusWarning },
+        });
+      } else {
+        await logServerAuditEvent({
+          supabase,
+          profileId: profile.id,
+          action: 'stock_issue.part_need_fulfilled',
+          entityType: 'work_order_parts_needed',
+          entityId: linkedNeed.id,
+          oldValues: linkedNeed as Record<string, unknown>,
+          newValues: update.data as Record<string, unknown>,
+          details: { stock_issue_id: rpcRow.issue_id },
+        });
+      }
+    }
+
+    if (issueContext.requesterId) {
+      try {
+        const workOrderId = issueContext.workOrder?.id ?? parsedWorkOrderId ?? issueContext.need?.work_order_id ?? null;
+        await createNotificationEvent({
+          event_type: 'work_order.part_issued',
+          source_table: 'stock_issues',
+          source_id: rpcRow.issue_id,
+          asset_id: issueContext.workOrder?.asset_id ?? null,
+          department_id: parsedDepartmentId ?? issueContext.department_id,
+          priority: workOrderPriorityToNotificationPriority(issueContext.workOrder?.priority ?? null),
+          dedupe_key: issueContext.need?.id
+            ? `work_order.part_issued:${issueContext.need.id}`
+            : `work_order.part_issued:${rpcRow.issue_id}`,
+          payload: {
+            issue_id: rpcRow.issue_id,
+            need_id: issueContext.need?.id ?? parsedNeedId,
+            work_order_id: workOrderId,
+            work_order_number: issueContext.workOrder?.work_order_number ?? null,
+            part_id: rpcRow.part_id,
+            part_code: issueContext.part?.part_code ?? null,
+            part_name: issueContext.part?.name ?? null,
+            quantity_issued: parsed.quantity,
+            quantity_needed: issueContext.need?.quantity_needed ?? null,
+            requested_by: issueContext.requesterId,
+            declared_by: issueContext.need?.declared_by ?? null,
+            requester_name: issueContext.requesterName,
+            assigned_to: issueContext.workOrder?.assigned_to ?? null,
+            asset_name: issueContext.asset_name,
+            asset_code: issueContext.asset_code,
+            new_current_stock: rpcRow.new_current_stock,
+            reorder_level: rpcRow.reorder_level,
+          },
+        });
+      } catch (e) {
+        console.error('[notifications] work_order.part_issued emit failed:', e);
+      }
+    }
 
     // R9: emit threshold-crossing events directly from the RPC's
     // authoritative post-update values. No scheduled scan needed for the
@@ -284,7 +493,11 @@ export async function createStockIssueAction(payload: Record<string, unknown>): 
       }
     }
 
-    revalidateMany(sparePaths);
+    const linkedWorkOrderId = issueContext.workOrder?.id ?? parsedWorkOrderId ?? issueContext.need?.work_order_id ?? null;
+    revalidateMany([
+      ...sparePaths,
+      ...(linkedWorkOrderId ? [`/maintenance/work-orders/${linkedWorkOrderId}`, '/work-orders'] : []),
+    ]);
     return {
       success: true,
       data: {
@@ -294,6 +507,9 @@ export async function createStockIssueAction(payload: Record<string, unknown>): 
         reorder_level: rpcRow.reorder_level,
         crossed_reorder: rpcRow.crossed_reorder,
         crossed_zero: rpcRow.crossed_zero,
+        work_order_id: linkedWorkOrderId,
+        need_id: issueContext.need?.id ?? parsedNeedId,
+        ...(partNeedStatusWarning ? { part_need_status_warning: partNeedStatusWarning } : {}),
       },
     };
   } catch (err) {

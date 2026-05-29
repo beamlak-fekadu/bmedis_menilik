@@ -16,10 +16,14 @@ import {
   viewerPMScheduleEvidence,
   viewerReport,
 } from '@/utils/viewer/evidence-links';
+import {
+  computeDepartmentPMCompliance,
+  type DepartmentPMScheduleRow,
+} from '@/utils/pm/department-compliance';
 
 // Compliance Overview combines PM and Calibration evidence into a single
 // read-only management view. Data comes from the canonical operational tables
-// and views — pm_schedules, pm_compliance_metrics, calibration_records,
+// and views — pm_schedules, calibration_records,
 // v_calibration_due, v_overdue_pm — so the numbers agree with /pm, /calibration,
 // and the Reports module.
 //
@@ -117,10 +121,10 @@ export default async function ComplianceOverviewPage() {
     );
   }
 
-  const [pmRecentRes, pmOverdueRes, calRes, pmComplianceRes] = await Promise.all([
+  const [pmRecentRes, pmOverdueRes, calRes, pmDepartmentRes] = await Promise.all([
     supabase
       .from('pm_schedules')
-      .select('id, status, scheduled_date, department_id, equipment_assets(department_id, departments(name))')
+      .select('id, status, scheduled_date, equipment_assets(department_id, departments(id, name))')
       .gte('scheduled_date', last90dIso)
       .lte('scheduled_date', todayIso)
       .limit(2000),
@@ -133,13 +137,12 @@ export default async function ComplianceOverviewPage() {
       .select('id, asset_id, next_due_date, equipment_assets(asset_code, name, departments(name), equipment_categories(criticality_level))')
       .limit(500),
     supabase
-      .from('pm_compliance_metrics')
-      .select('department_id, departments(name), completion_rate, scheduled_count, completed_count')
-      .order('completion_rate', { ascending: true })
-      .limit(50),
+      .from('pm_schedules')
+      .select('id, status, scheduled_date, asset_id, equipment_assets(department_id, departments(id, name))')
+      .limit(5000),
   ]);
 
-  const pmRecent = (pmRecentRes.data ?? []) as Array<{ status: string | null; scheduled_date: string | null; department_id: string | null; equipment_assets?: { department_id?: string; departments?: { name?: string } | { name?: string }[] | null } | { department_id?: string; departments?: { name?: string } | { name?: string }[] | null }[] | null }>;
+  const pmRecent = (pmRecentRes.data ?? []) as Array<{ status: string | null; scheduled_date: string | null; equipment_assets?: { department_id?: string; departments?: { name?: string } | { name?: string }[] | null } | { department_id?: string; departments?: { name?: string } | { name?: string }[] | null }[] | null }>;
   const pmCompletedCount = pmRecent.filter((p) => (p.status ?? '').toLowerCase() === 'completed').length;
   const pmDeferredCount = pmRecent.filter((p) => ['deferred', 'skipped'].includes((p.status ?? '').toLowerCase())).length;
   const pmCompliancePercent = pmRecent.length > 0 ? Math.round((pmCompletedCount / pmRecent.length) * 100) : null;
@@ -183,16 +186,13 @@ export default async function ComplianceOverviewPage() {
   const calibrationDueSoon = calRows.filter((c) => c.next_due_date && c.next_due_date >= todayIso && c.next_due_date <= in30dIso).length;
   const criticalCalibrationOverdue = calibrationOverdue.filter((c) => c.criticality === 'critical' || c.criticality === 'high').length;
 
-  const deptCompliance = ((pmComplianceRes.data ?? []) as Array<Record<string, unknown>>).map((r) => {
-    const dept = firstRelation(r.departments as Record<string, unknown> | Record<string, unknown>[] | null);
-    return {
-      departmentId: r.department_id as string,
-      departmentName: ((dept as Record<string, unknown> | null)?.name as string | undefined) ?? 'Unknown',
-      completionRate: r.completion_rate === null ? null : Math.round(Number(r.completion_rate)),
-      scheduledCount: Number(r.scheduled_count ?? 0),
-      completedCount: Number(r.completed_count ?? 0),
-    };
-  });
+  const deptCompliance = computeDepartmentPMCompliance((pmDepartmentRes.data ?? []) as DepartmentPMScheduleRow[]).map((r) => ({
+    departmentId: r.department_id,
+    departmentName: r.department_name,
+    completionRate: r.percentage === null ? null : Math.round(r.percentage),
+    scheduledCount: r.scheduled,
+    completedCount: r.completed,
+  }));
 
   return (
     <div className="space-y-6">
@@ -221,7 +221,7 @@ export default async function ComplianceOverviewPage() {
         </CardHeader>
         <CardContent>
           {deptCompliance.length === 0 ? (
-            <p className="py-4 text-center text-sm text-[var(--text-muted)]">No PM compliance metrics available.</p>
+            <p className="py-4 text-center text-sm text-[var(--text-muted)]">No PM schedule history available.</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="min-w-[560px] w-full text-sm">
@@ -380,7 +380,7 @@ export default async function ComplianceOverviewPage() {
             </ul>
           )}
           <p className="mt-3 text-xs text-[var(--text-muted)]">
-            Source: <code>v_overdue_pm</code>, <code>v_calibration_due</code>, <code>pm_compliance_metrics</code>. PM Compliance is computed as completed scheduled PM tasks ÷ total scheduled PM tasks. Skipped/deferred are tracked separately and do not count as completed.
+            Source: <code>v_overdue_pm</code>, <code>v_calibration_due</code>, <code>pm_schedules</code>. PM Compliance is computed as completed scheduled PM tasks ÷ total scheduled PM tasks. Skipped/deferred are tracked separately and do not count as completed.
           </p>
         </CardContent>
       </Card>

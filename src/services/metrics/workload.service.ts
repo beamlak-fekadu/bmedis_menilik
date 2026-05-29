@@ -15,6 +15,7 @@
 // delegates to this module.
 
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { OPEN_WORK_ORDER_STATUSES } from '@/utils/maintenance/request-status';
 
 export interface TechnicianWorkloadItem {
   profileId: string;
@@ -64,7 +65,7 @@ export async function fetchCurrentTechnicianWorkload(
     supabase
       .from('work_orders')
       .select('id, status, priority, estimated_hours, assigned_to, profiles!work_orders_assigned_to_fkey(full_name)')
-      .in('status', ['open', 'assigned', 'in_progress', 'on_hold'])
+      .in('status', [...OPEN_WORK_ORDER_STATUSES])
       .not('assigned_to', 'is', null)
       .limit(500),
   ]);

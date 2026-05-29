@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { recomputeAllAnalytics } from './analytics.actions';
+import { OPEN_WORK_ORDER_STATUSES } from '@/utils/maintenance/request-status';
 
 export type ActionResult = { success: boolean; error?: string };
 type DataResult<T> = ActionResult & { data?: T };
@@ -647,7 +648,7 @@ export async function getDepartmentReadinessDetail(departmentId: string): Promis
         .from('work_orders')
         .select('id', { count: 'exact', head: true })
         .in('asset_id', assetIds)
-        .in('status', ['open', 'assigned', 'in_progress', 'on_hold']),
+        .in('status', [...OPEN_WORK_ORDER_STATUSES]),
       supabase
         .from('v_overdue_pm')
         .select('id', { count: 'exact', head: true })

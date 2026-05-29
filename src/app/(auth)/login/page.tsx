@@ -12,6 +12,10 @@ import LogoMark from '@/components/brand/LogoMark';
 import LoginPulseLayer from '@/components/auth/LoginPulseLayer';
 import { APP_NAME_FULL, APP_NAME_SHORT, HOSPITAL_NAME } from '@/constants';
 import { transitions } from '@/lib/ui/motion-presets';
+import {
+  DEFAULT_AUTH_RETURN_PATH,
+  getSafeReturnPathFromSearchParams,
+} from '@/lib/auth/return-path';
 
 const SIGN_IN_TAGLINE = 'Secure access to biomedical equipment analytics and operations.';
 
@@ -39,21 +43,10 @@ function friendlyAuthError(rawMessage: string): string {
   return rawMessage;
 }
 
-// Only accept internal, same-origin paths for returnTo. Rejects protocol-relative
-// URLs (`//evil.com/...`), absolute URLs (`http://...`), and anything that does
-// not start with a single `/`. Used to safely round-trip QR scans through login.
-function safeReturnPath(value: string | null | undefined): string | null {
-  if (!value) return null;
-  if (typeof value !== 'string') return null;
-  if (!value.startsWith('/')) return null;
-  if (value.startsWith('//') || value.startsWith('/\\')) return null;
-  return value;
-}
-
 export default function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const returnTo = safeReturnPath(searchParams.get('returnTo'));
+  const returnTo = getSafeReturnPathFromSearchParams(searchParams);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -80,7 +73,7 @@ export default function LoginPage() {
       setLoading(false);
       return;
     }
-    router.push(returnTo ?? '/');
+    router.push(returnTo ?? DEFAULT_AUTH_RETURN_PATH);
     router.refresh();
   }
 

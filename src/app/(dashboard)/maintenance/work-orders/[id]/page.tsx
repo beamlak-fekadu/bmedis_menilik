@@ -354,11 +354,15 @@ export default function WorkOrderDetailPage() {
     }
 
     if (result.status === 'success') {
-      const actionResult = result.data as { data?: { condition_sync_warning?: string; reliability_evidence_warning?: string; notification_warning?: string; notification_warning_detail?: string | null } };
+      const actionResult = result.data as { data?: { condition_sync_warning?: string; equipment_status_sync_warning?: string; request_status_sync_warning?: string; reliability_evidence_warning?: string; notification_warning?: string; notification_warning_detail?: string | null } };
       const data = actionResult.data;
       if (data?.condition_sync_warning) {
         // R5: completion succeeded but final equipment condition could not be recorded.
         toast('warning', `Work order completed. Final equipment condition could not be recorded: ${data.condition_sync_warning}`);
+      } else if (data?.equipment_status_sync_warning) {
+        toast('warning', `Work order completed. Equipment active status could not be updated: ${data.equipment_status_sync_warning}`);
+      } else if (data?.request_status_sync_warning) {
+        toast('warning', `Work order completed. Originating request could not be closed: ${data.request_status_sync_warning}`);
       } else if (data?.reliability_evidence_warning) {
         // Reliability evidence write failed — surface verbatim so the gap is
         // visible (RLS denial, constraint violation, etc.). Completion itself

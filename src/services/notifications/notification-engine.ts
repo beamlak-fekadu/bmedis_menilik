@@ -165,6 +165,13 @@ function isInsertFailure(error: unknown): boolean {
   return /row-level security|violates|permission|policy|duplicate|constraint|insert/i.test(message);
 }
 
+function isDuplicateDedupeFailure(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false;
+  const err = error as { code?: unknown; message?: unknown };
+  const message = String(err.message ?? '');
+  return err.code === '23505' || /duplicate|unique|dedupe/i.test(message);
+}
+
 function expectedRecipientProfileIdsFromPayload(payload: Record<string, unknown> | null | undefined): string[] {
   const ids = new Set<string>();
   for (const key of ['technician_profile_id', 'assigned_to', 'requested_by', 'actor_profile_id', 'target_profile_id']) {
@@ -203,6 +210,49 @@ export async function createNotificationEvent(
 
   if (error || !data) {
     const message = error?.message ?? 'unknown_event_insert_error';
+    if (input.dedupe_key && isDuplicateDedupeFailure(error)) {
+      const { data: existing } = (await client
+        .from('notification_events')
+        .select('*')
+        .eq('dedupe_key', input.dedupe_key)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()) as { data: NotificationEventRow | null };
+      if (existing) {
+        warnings.push(`notification_event_deduped:${input.dedupe_key}`);
+        if (options?.autoProcess === false) {
+          return emptyProcessResult({
+            eventType: existing.event_type,
+            event: existing,
+            ruleStatus: 'skipped',
+            warnings,
+          });
+        }
+        if (existing.processing_status === 'pending' || existing.processing_status === 'failed') {
+          return await processNotificationEvent(existing, { client, initialWarnings: warnings });
+        }
+        const { data: existingNotifications } = (await client
+          .from('notifications')
+          .select('*')
+          .eq('event_id', existing.id)) as { data: NotificationRow[] | null };
+        const notifications = existingNotifications ?? [];
+        return {
+          ok: true,
+          event: existing,
+          eventId: existing.id,
+          eventType: existing.event_type,
+          notifications,
+          notificationCount: notifications.length,
+          recipientsResolved: notifications.length,
+          ruleLogs: [],
+          delivery: emptyDeliverySummary(),
+          warnings,
+          errors: [],
+          rule_status: 'skipped',
+          rule_name: 'deduped_existing_event',
+        };
+      }
+    }
     console.error('[notifications] failed to insert event:', message);
     return {
       ...emptyProcessResult({

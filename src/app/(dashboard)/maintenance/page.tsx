@@ -21,7 +21,11 @@ import { useRole } from '@/hooks/useRole';
 import type { MaintenanceRequest, WorkOrder } from '@/types/domain';
 import { generateAlertSummary } from '@/utils/decision-support/explanations';
 import { createMaintenanceRequestFromAsset } from '@/app/(dashboard)/command/_lib/command-center-routes';
-import { isOpenMaintenanceRequestStatus } from '@/utils/maintenance/request-status';
+import {
+  isFinalWorkOrderStatus,
+  isOpenMaintenanceRequestStatus,
+  isOpenWorkOrderStatus,
+} from '@/utils/maintenance/request-status';
 import ViewerMaintenanceOverview from './_components/ViewerMaintenanceOverview';
 import StoreMaintenanceBlockers from './_components/StoreMaintenanceBlockers';
 import DepartmentWorkStatus from './_components/DepartmentWorkStatus';
@@ -271,7 +275,7 @@ function OperationalMaintenancePage() {
       pending:   requests.filter((r) => r.status === 'pending').length,
       approved:  requests.filter((r) => r.status === 'approved').length,
       needsWO:   requests.filter((r) => r.status === 'approved' && !(linkedWOByRequest.get(r.id)?.length)).length,
-      openWO:    workOrders.filter((wo) => !['completed', 'canceled'].includes(wo.status)).length,
+      openWO:    workOrders.filter((wo) => isOpenWorkOrderStatus(wo.status)).length,
       unassigned: workOrders.filter((wo) => wo.status === 'open' && !wo.assigned_to).length,
       inProgress: workOrders.filter((wo) => wo.status === 'in_progress').length,
       onHold:    workOrders.filter((wo) => wo.status === 'on_hold').length,
@@ -310,7 +314,7 @@ function OperationalMaintenancePage() {
 
   const filteredWorkOrders = useMemo(() => {
     switch (woFilter) {
-      case 'open':       return assetScopedWorkOrders.filter((wo) => !['completed', 'canceled'].includes(wo.status));
+      case 'open':       return assetScopedWorkOrders.filter((wo) => isOpenWorkOrderStatus(wo.status));
       case 'unassigned': return assetScopedWorkOrders.filter((wo) => wo.status === 'open' && !wo.assigned_to);
       case 'assigned':   return assetScopedWorkOrders.filter((wo) => wo.status === 'assigned');
       case 'in_progress': return assetScopedWorkOrders.filter((wo) => wo.status === 'in_progress');
@@ -399,7 +403,7 @@ function OperationalMaintenancePage() {
       header: 'Next Action',
       render: (row: RequestRow) => {
         const wos = linkedWOByRequest.get(row.id) ?? [];
-        const openWO = wos.find((wo) => !['completed', 'canceled'].includes(wo.status));
+        const openWO = wos.find((wo) => !isFinalWorkOrderStatus(wo.status));
 
         if (openWO) {
           const s = openWO.status;

@@ -8,6 +8,10 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/server';
 import { buildAssetQrPath, buildAssetQrUrl, getQrBaseUrl } from '@/utils/qr/url';
 import { isValidQrTokenFormat, maskQrToken } from '@/utils/qr/token';
+import {
+  isOpenMaintenanceRequestStatus,
+  isOpenWorkOrderStatus,
+} from '@/utils/maintenance/request-status';
 import type { QrLandingAsset } from './qr.service';
 
 type Client = SupabaseClient;
@@ -197,8 +201,6 @@ export type QrRoleContext = {
   };
 };
 
-const OPEN_REQUEST_STATUSES = ['pending', 'approved', 'assigned', 'in_progress'];
-const OPEN_WO_STATUSES = ['open', 'pending', 'assigned', 'in_progress', 'on_hold'];
 const ACTIVE_PM_STATUSES = ['scheduled', 'in_progress', 'overdue', 'deferred'];
 const CALIBRATION_DUE_SOON_DAYS = 30;
 
@@ -457,7 +459,7 @@ export async function getQrRoleContext({
     return ((data ?? []) as Array<Record<string, unknown>>).map(mapRequest);
   }, []);
 
-  context.requests.open = requestRows.filter((row) => row.status ? OPEN_REQUEST_STATUSES.includes(row.status) : false);
+  context.requests.open = requestRows.filter((row) => isOpenMaintenanceRequestStatus(row.status));
   context.requests.department = requestRows;
   context.requests.mine = requestRows.filter((row) => row.requested_by === profile.id);
 
@@ -476,7 +478,7 @@ export async function getQrRoleContext({
     return ((data ?? []) as Array<Record<string, unknown>>).map(mapWorkOrder);
   }, []);
 
-  context.workOrders.open = workRows.filter((row) => row.status ? OPEN_WO_STATUSES.includes(row.status) : false);
+  context.workOrders.open = workRows.filter((row) => isOpenWorkOrderStatus(row.status));
   context.workOrders.assignedToMe = context.workOrders.open.filter((row) => row.assigned_to === profile.id);
   context.workOrders.otherOpen = context.workOrders.open.filter((row) => row.assigned_to !== profile.id);
   context.workOrders.onHold = context.workOrders.open.filter((row) => row.status === 'on_hold');

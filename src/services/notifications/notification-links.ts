@@ -54,6 +54,39 @@ export function buildNotificationLink(
       }
       return { href: '/work-orders', label: 'Open Work Orders' };
 
+    case 'work_order.part_requested': {
+      const workOrderId = pickPayloadString(payload, 'work_order_id');
+      const partId = pickPayloadString(payload, 'part_id');
+      const needId = pickPayloadString(payload, 'need_id') ?? sourceId;
+      const quantity = payload?.quantity_needed;
+      if (partId) {
+        const params = new URLSearchParams({
+          action: 'issue',
+          partId,
+        });
+        if (typeof quantity === 'number' && quantity > 0) params.set('quantity', String(quantity));
+        if (workOrderId) params.set('work_order_id', workOrderId);
+        if (needId) params.set('need_id', needId);
+        return { href: `/spare-parts?${params.toString()}`, label: 'Issue Part' };
+      }
+      if (workOrderId) {
+        return { href: `/maintenance/work-orders/${workOrderId}`, label: 'Open Work Order' };
+      }
+      return { href: '/spare-parts?tab=blockers', label: 'Open Part Requests' };
+    }
+
+    case 'work_order.part_issued': {
+      const workOrderId = pickPayloadString(payload, 'work_order_id');
+      const partId = pickPayloadString(payload, 'part_id');
+      if (workOrderId) {
+        return { href: `/maintenance/work-orders/${workOrderId}`, label: 'Open Work Order' };
+      }
+      if (partId) {
+        return { href: `/spare-parts?partId=${partId}`, label: 'Open Part' };
+      }
+      return { href: '/work-orders', label: 'Open Work Orders' };
+    }
+
     case 'pm.overdue':
     case 'pm.assigned':
     case 'pm.completed': {

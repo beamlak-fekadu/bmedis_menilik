@@ -120,6 +120,8 @@ function OperationalSparePartsPage() {
   const [issQuantity, setIssQuantity] = useState('');
   const [issDepartment, setIssDepartment] = useState('');
   const [issNotes, setIssNotes] = useState('');
+  const [issWorkOrderId, setIssWorkOrderId] = useState<string | null>(null);
+  const [issNeedId, setIssNeedId] = useState<string | null>(null);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -165,6 +167,16 @@ function OperationalSparePartsPage() {
       setIssQuantity(quantity);
     }
     if (searchParams.get('action') === 'issue') setIssueOpen(true);
+    const issueWorkOrderId = searchParams.get('work_order_id') ?? searchParams.get('workOrderId');
+    const issueNeedId = searchParams.get('need_id') ?? searchParams.get('needId');
+    if (issueWorkOrderId) setIssWorkOrderId(issueWorkOrderId);
+    if (issueNeedId) setIssNeedId(issueNeedId);
+    if (searchParams.get('action') === 'issue' && (issueWorkOrderId || issueNeedId) && !issNotes) {
+      setIssNotes([
+        issueWorkOrderId ? `Issue linked to work order ${issueWorkOrderId}` : null,
+        issueNeedId ? `Parts-needed row ${issueNeedId}` : null,
+      ].filter(Boolean).join(' - '));
+    }
     if (searchParams.get('action') === 'receive') setReceiptOpen(true);
     // R21: deep-link from a 'procurement.delivered_pending_receipt'
     // notification. Open the receipt modal and capture the procurement id
@@ -174,7 +186,7 @@ function OperationalSparePartsPage() {
       const procurementId = searchParams.get('procurement_id');
       if (procurementId) setRecProcurementId(procurementId);
     }
-  }, [searchParams]);
+  }, [issNotes, searchParams]);
 
   useEffect(() => {
     if (!recProcurementId) return;
@@ -302,6 +314,8 @@ function OperationalSparePartsPage() {
       issue_date: new Date().toISOString().split('T')[0],
       department_id: issDepartment || null,
       notes: issNotes || null,
+      work_order_id: issWorkOrderId,
+      need_id: issNeedId,
       local_stock_snapshot: typeof partSnapshot?.current_stock === 'number' ? partSnapshot.current_stock : null,
       part_name_snapshot: typeof partSnapshot?.name === 'string' ? partSnapshot.name : null,
     };
@@ -346,6 +360,7 @@ function OperationalSparePartsPage() {
   };
   const resetIssueForm = () => {
     setIssPartId(''); setIssQuantity(''); setIssDepartment(''); setIssNotes('');
+    setIssWorkOrderId(null); setIssNeedId(null);
   };
 
   const partOptions = parts.map((p) => ({
@@ -840,6 +855,11 @@ function OperationalSparePartsPage() {
         <div className="space-y-4">
           <OfflineSubmitBanner actionLabel="Stock issue draft" />
           <OfflineActionResult result={issueOfflineResult} />
+          {(issWorkOrderId || issNeedId) && (
+            <div className="rounded-md border border-cyan-500/30 bg-cyan-500/5 px-3 py-2 text-xs text-cyan-200">
+              Linked to {issWorkOrderId ? `work order ${issWorkOrderId.slice(0, 8)}` : 'work order'}{issNeedId ? ` / need ${issNeedId.slice(0, 8)}` : ''}.
+            </div>
+          )}
           <Select label="Part *" options={partOptions} placeholder="Select part" value={issPartId} onChange={(e) => setIssPartId(e.target.value)} />
           <Input label="Quantity *" type="number" value={issQuantity} onChange={(e) => setIssQuantity(e.target.value)} />
           <Input label="Department" value={issDepartment} onChange={(e) => setIssDepartment(e.target.value)} placeholder="Department or purpose" />

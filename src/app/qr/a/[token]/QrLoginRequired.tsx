@@ -4,6 +4,7 @@ import LogoMark from '@/components/brand/LogoMark';
 import NetworkStatusPill from '@/components/offline/NetworkStatusPill';
 import { Button } from '@/components/ui';
 import { APP_NAME_SHORT, HOSPITAL_NAME } from '@/constants';
+import { loginPathForReturnTo } from '@/lib/auth/return-path';
 
 type Props = {
   returnTo: string;
@@ -12,7 +13,7 @@ type Props = {
 export default function QrLoginRequired({ returnTo }: Props) {
   // returnTo is sanitised by the caller before being passed here; we still
   // never embed asset details or scan metadata on the unauthenticated screen.
-  const loginHref = `/login?returnTo=${encodeURIComponent(returnTo)}`;
+  const loginHref = loginPathForReturnTo(returnTo);
   return (
     <main className="min-h-dvh bg-[var(--background)] px-4 py-8 text-[var(--foreground)]">
       <div className="mx-auto flex max-w-md flex-col items-center text-center">

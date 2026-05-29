@@ -275,17 +275,14 @@ export function countDeliveredProcurement(rows: Array<{ status?: string | null }
 
 // ─── Work orders / maintenance ────────────────────────────────────────────
 
-const WO_CLOSED_STATUSES = new Set(['completed', 'canceled']);
-const WO_ACTIVE_STATUSES = new Set(['open', 'assigned', 'in_progress', 'on_hold']);
-
 // 26. Open work orders = not completed/canceled. Same as "active" in operational UI.
 export function countOpenWorkOrders(rows: Array<{ status?: string | null }>): number {
-  return rows.filter((row) => !WO_CLOSED_STATUSES.has(String(row.status ?? '').toLowerCase())).length;
+  return rows.filter((row) => !isFinalWorkOrderStatus(row.status)).length;
 }
 
 // 27. Active work orders = open/assigned/in_progress/on_hold. Explicit allow-list.
 export function countActiveWorkOrders(rows: Array<{ status?: string | null }>): number {
-  return rows.filter((row) => WO_ACTIVE_STATUSES.has(String(row.status ?? '').toLowerCase())).length;
+  return rows.filter((row) => isOpenWorkOrderStatus(row.status)).length;
 }
 
 // 28. Active critical/high work orders = active AND priority critical/high.
@@ -293,7 +290,7 @@ export function countActiveCriticalHighWorkOrders(
   rows: Array<{ status?: string | null; priority?: string | null }>,
 ): number {
   return rows.filter((row) => {
-    if (!WO_ACTIVE_STATUSES.has(String(row.status ?? '').toLowerCase())) return false;
+    if (!isOpenWorkOrderStatus(row.status)) return false;
     return ['critical', 'high'].includes(String(row.priority ?? '').toLowerCase());
   }).length;
 }
@@ -306,8 +303,14 @@ export function countWorkOrdersCompletedThisMonth(rows: Array<{ status?: string 
 // 30. Open corrective maintenance requests = pending/approved/assigned/in_progress.
 //     Closed: completed/rejected/canceled.
 export function countOpenCorrectiveRequests(rows: Array<{ status?: string | null }>): number {
-  return rows.filter((row) => ['pending', 'approved', 'assigned', 'in_progress'].includes(String(row.status ?? '').toLowerCase())).length;
+  return rows.filter((row) => isOpenMaintenanceRequestStatus(String(row.status ?? '')) && !isFinalMaintenanceRequestStatus(row.status)).length;
 }
 
 // ─── Re-exports of the threshold constants for caller convenience ──────────
 export { REPLACEMENT_REVIEW_THRESHOLD, REPLACEMENT_STRONG_THRESHOLD };
+import {
+  isFinalMaintenanceRequestStatus,
+  isFinalWorkOrderStatus,
+  isOpenMaintenanceRequestStatus,
+  isOpenWorkOrderStatus,
+} from '@/utils/maintenance/request-status';

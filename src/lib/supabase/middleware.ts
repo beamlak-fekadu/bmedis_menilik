@@ -1,5 +1,11 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
+import {
+  AUTH_RETURN_PARAM,
+  DEFAULT_AUTH_RETURN_PATH,
+  currentPathWithSearch,
+  getSafeReturnPathFromSearchParams,
+} from '@/lib/auth/return-path';
 
 // `/qr` is public so unauthenticated scans render the friendly login-required
 // landing page (src/app/qr/a/[token]) instead of bouncing through /login.
@@ -49,23 +55,22 @@ export async function updateSession(request: NextRequest) {
 
   if (!user && !isPublicPath) {
     const url = request.nextUrl.clone();
+    const returnTo = currentPathWithSearch(request.nextUrl.pathname, request.nextUrl.search);
     url.pathname = '/login';
+    url.search = '';
+    url.searchParams.set(AUTH_RETURN_PARAM, returnTo);
     return NextResponse.redirect(url);
   }
 
   if (user && (request.nextUrl.pathname === '/login' || request.nextUrl.pathname === '/reset-password')) {
     const url = request.nextUrl.clone();
-    // If the user is already authenticated and hits /login with a safe
-    // returnTo param (used by the QR scan flow), honour it instead of
-    // always bouncing to /. Only single-leading-slash internal paths pass.
-    const candidate = request.nextUrl.searchParams.get('returnTo');
-    if (candidate && candidate.startsWith('/') && !candidate.startsWith('//') && !candidate.startsWith('/\\')) {
-      url.pathname = candidate;
-      url.search = '';
-    } else {
-      url.pathname = '/';
-      url.search = '';
-    }
+    const candidate = getSafeReturnPathFromSearchParams(
+      request.nextUrl.searchParams,
+      DEFAULT_AUTH_RETURN_PATH,
+    ) ?? DEFAULT_AUTH_RETURN_PATH;
+    const queryStart = candidate.indexOf('?');
+    url.pathname = queryStart >= 0 ? candidate.slice(0, queryStart) : candidate;
+    url.search = queryStart >= 0 ? candidate.slice(queryStart) : '';
     return NextResponse.redirect(url);
   }
 

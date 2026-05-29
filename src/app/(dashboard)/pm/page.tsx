@@ -43,6 +43,10 @@ import {
   todayDate,
   type PlanScheduleState,
 } from '@/utils/pm/semantics';
+import {
+  computeDepartmentPMCompliance,
+  type DepartmentPMCompliance,
+} from '@/utils/pm/department-compliance';
 
 type TabId = 'plans' | 'schedules' | 'overdue';
 type PlanFilter = 'all' | 'active' | 'inactive' | 'due_soon' | 'low_compliance' | 'critical';
@@ -137,16 +141,6 @@ type OverduePM = {
   days_overdue: number;
   search_text: string;
   [key: string]: unknown;
-};
-
-type DeptCompliance = {
-  department_id: string;
-  department_name: string;
-  scheduled: number;
-  completed: number;
-  overdue: number;
-  skippedDeferred: number;
-  percentage: number | null;
 };
 
 function formatDate(value?: string | null) {
@@ -284,7 +278,6 @@ export default function PMPage() {
   const scheduleMetrics = useMemo(() => {
     const byPlan = new Map<string, { scheduled: number; completed: number; overdue: number }>();
     const byAsset = new Map<string, { scheduled: number; completed: number }>();
-    const byDept = new Map<string, DeptCompliance>();
     const currentMonth = monthKey();
 
     let dueSoon = 0;
@@ -294,57 +287,36 @@ export default function PMPage() {
     let skippedDeferred = 0;
 
     for (const row of schedulesRaw) {
-      const asset = row.equipment_assets;
-      const deptId = asset?.departments?.id ?? asset?.department_id ?? 'unknown';
-      const deptName = asset?.departments?.name ?? 'Unknown';
       const plan = byPlan.get(row.plan_id) ?? { scheduled: 0, completed: 0, overdue: 0 };
       const assetCompliance = byAsset.get(row.asset_id) ?? { scheduled: 0, completed: 0 };
-      const dept = byDept.get(deptId) ?? {
-        department_id: deptId,
-        department_name: deptName,
-        scheduled: 0,
-        completed: 0,
-        overdue: 0,
-        skippedDeferred: 0,
-        percentage: null,
-      };
 
       plan.scheduled += 1;
       assetCompliance.scheduled += 1;
-      dept.scheduled += 1;
 
       if (row.status === 'completed') {
         plan.completed += 1;
         assetCompliance.completed += 1;
-        dept.completed += 1;
         const completedDate = row.completed_at ?? row.pm_completions?.[0]?.completion_date ?? row.updated_at;
         if (completedDate && monthKey(new Date(completedDate)) === currentMonth) completedThisMonth += 1;
       }
       if (isOverdueSchedule(row)) {
         plan.overdue += 1;
-        dept.overdue += 1;
       }
       if (isActivePMTask(row.status)) activeTasks += 1;
       if (isDueSoonPMTask(row)) dueSoon += 1;
       if (!row.assigned_to && isActivePMTask(row.status)) unassigned += 1;
       if (row.status === 'skipped' || row.status === 'deferred') {
-        dept.skippedDeferred += 1;
         skippedDeferred += 1;
       }
 
       byPlan.set(row.plan_id, plan);
       byAsset.set(row.asset_id, assetCompliance);
-      byDept.set(deptId, dept);
-    }
-
-    for (const dept of byDept.values()) {
-      dept.percentage = dept.scheduled > 0 ? (dept.completed / dept.scheduled) * 100 : null;
     }
 
     return {
       byPlan,
       byAsset,
-      deptCompliance: Array.from(byDept.values()).sort((a, b) => a.department_name.localeCompare(b.department_name)),
+      deptCompliance: computeDepartmentPMCompliance(schedulesRaw) as DepartmentPMCompliance[],
       activeTasks,
       dueSoon,
       unassigned,

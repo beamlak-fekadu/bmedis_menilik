@@ -29,6 +29,11 @@ import {
   stockProcurementPrefill,
   workOrderDetail,
 } from './command-center-routes';
+import {
+  OPEN_MAINTENANCE_REQUEST_STATUSES,
+  OPEN_WORK_ORDER_STATUSES,
+  isOpenWorkOrderStatus,
+} from '@/utils/maintenance/request-status';
 
 export interface EquipmentSummary {
   total: number;
@@ -369,12 +374,12 @@ async function fetchActiveCorrectiveAssetIds(supabase: SupabaseClient): Promise<
       .from('work_orders')
       .select('asset_id')
       .eq('work_type', 'corrective')
-      .in('status', ['open', 'assigned', 'in_progress', 'on_hold'])
+      .in('status', [...OPEN_WORK_ORDER_STATUSES])
       .limit(500),
     supabase
       .from('maintenance_requests')
       .select('asset_id')
-      .in('status', ['pending', 'approved', 'assigned', 'in_progress'])
+      .in('status', [...OPEN_MAINTENANCE_REQUEST_STATUSES])
       .limit(500),
   ]);
 
@@ -432,12 +437,12 @@ export async function fetchCorrectiveMaintenanceTriage(
         // fragile; PGRST201 ambiguity has already broken other paths.
         .select('id, asset_id, status, priority, assigned_to, created_at, profiles!work_orders_assigned_to_fkey(full_name), equipment_assets(name, asset_code, departments(name))')
         .eq('work_type', 'corrective')
-        .in('status', ['open', 'assigned', 'in_progress', 'on_hold'])
+        .in('status', [...OPEN_WORK_ORDER_STATUSES])
         .limit(200),
       supabase
         .from('maintenance_requests')
         .select('id, asset_id, status, urgency, created_at, fault_description, equipment_assets(name, asset_code, departments(name))')
-        .in('status', ['pending', 'approved', 'assigned', 'in_progress'])
+        .in('status', [...OPEN_MAINTENANCE_REQUEST_STATUSES])
         .limit(200),
     ]);
 
@@ -866,7 +871,7 @@ export async function fetchWorkOrderSummary(supabase: SupabaseClient): Promise<W
     const { data, error } = await supabase
       .from('work_orders')
       .select('id, status, priority, assigned_to')
-      .in('status', ['open', 'assigned', 'in_progress', 'on_hold'])
+      .in('status', [...OPEN_WORK_ORDER_STATUSES])
       .limit(500);
 
     if (error) {
@@ -921,7 +926,7 @@ export async function fetchWorkQueue(supabase: SupabaseClient): Promise<WorkQueu
       .from('work_orders')
       // EMBED-01: explicit FK hint for the assigned technician.
       .select('id, work_order_number, asset_id, status, priority, assigned_to, created_at, profiles!work_orders_assigned_to_fkey(full_name), equipment_assets(name, asset_code)')
-      .in('status', ['open', 'assigned', 'in_progress', 'on_hold'])
+      .in('status', [...OPEN_WORK_ORDER_STATUSES])
       .order('created_at', { ascending: true })
       .limit(100);
 
@@ -1093,7 +1098,7 @@ export async function fetchStockBlockers(
       if (!partId || linkedOpenWorkByPart.has(partId)) continue;
       const wo = row.work_orders as { id?: string; status?: string; asset_id?: string } | Array<{ id?: string; status?: string; asset_id?: string }> | null;
       const workOrder = Array.isArray(wo) ? wo[0] : wo;
-      if (workOrder?.status && ['open', 'assigned', 'in_progress', 'on_hold'].includes(workOrder.status)) {
+      if (isOpenWorkOrderStatus(workOrder?.status)) {
         linkedOpenWorkByPart.set(partId, {
           workOrderId: workOrder.id ?? null,
           assetId: workOrder.asset_id ?? null,
@@ -1109,7 +1114,7 @@ export async function fetchStockBlockers(
       if (!partId || linkedOpenWorkByPart.has(partId)) continue;
       const event = row.maintenance_events as { work_order_id?: string | null; asset_id?: string | null; work_orders?: { id?: string; status?: string } | Array<{ id?: string; status?: string }> | null } | null;
       const workOrder = Array.isArray(event?.work_orders) ? event?.work_orders[0] : event?.work_orders;
-      if (workOrder?.status && ['open', 'assigned', 'in_progress', 'on_hold'].includes(workOrder.status)) {
+      if (isOpenWorkOrderStatus(workOrder?.status)) {
         linkedOpenWorkByPart.set(partId, {
           workOrderId: workOrder.id ?? event?.work_order_id ?? null,
           assetId: event?.asset_id ?? null,

@@ -38,6 +38,9 @@ function meetsMinPriority(priority: string): boolean {
 const ALWAYS_ELIGIBLE_CATEGORIES = new Set(['critical']);
 const ALWAYS_ELIGIBLE_SOURCES = new Set<string>([
   'work_order.assigned',
+  'work_order.completed',
+  'work_order.part_requested',
+  'work_order.part_issued',
   'work_order.stock_blocked',
   'offline_sync.conflict',
   'spare_part.stockout',

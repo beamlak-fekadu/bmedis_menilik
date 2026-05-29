@@ -10,6 +10,8 @@
 // call them. If you find a divergence, fix it here and both surfaces update
 // in lock-step.
 
+import { isOpenWorkOrderStatus } from '@/utils/maintenance/request-status';
+
 export interface EquipmentConditionStats {
   total: number;
   functional: number;
@@ -79,13 +81,11 @@ export interface WorkOrderStats {
   criticalOrHigh: number;
 }
 
-const ACTIVE_WO_STATUSES = new Set(['open', 'assigned', 'in_progress', 'on_hold']);
-
 export function computeWorkOrderStats(
   rows: ReadonlyArray<{ status?: string | null; priority?: string | null }>,
 ): WorkOrderStats {
   const total = rows.length;
-  const active = rows.filter((r) => ACTIVE_WO_STATUSES.has(String(r.status ?? ''))).length;
+  const active = rows.filter((r) => isOpenWorkOrderStatus(r.status)).length;
   const completed = rows.filter((r) => r.status === 'completed').length;
   const criticalOrHigh = rows.filter((r) =>
     ['critical', 'high'].includes(String(r.priority ?? '')),

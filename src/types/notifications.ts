@@ -44,6 +44,8 @@ export type NotificationEventType =
   | 'work_order.on_hold'
   | 'work_order.completed'
   | 'work_order.aging_or_overdue'
+  | 'work_order.part_requested'
+  | 'work_order.part_issued'
   // PM / Calibration
   | 'pm.overdue'
   | 'pm.assigned'

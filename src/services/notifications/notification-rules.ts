@@ -158,10 +158,36 @@ function expectedDirectProfiles(event: NotificationEventRow): ExpectedProfileRec
         sourceFields: picked.sourceFields,
       }];
     }
+    case 'work_order.completed': {
+      const assigned = pickFirstPayloadString(payload, ['assigned_to']);
+      const requester = pickFirstPayloadString(payload, ['requested_by']);
+      return [
+        {
+          label: 'assigned_technician',
+          profileId: assigned.value,
+          expectedRole: 'technician',
+          sourceFields: assigned.sourceFields,
+        },
+        {
+          label: 'requester',
+          profileId: requester.value,
+          expectedRole: null,
+          sourceFields: requester.sourceFields,
+        },
+      ].filter((expected) => expected.profileId);
+    }
+    case 'work_order.part_issued': {
+      const picked = pickFirstPayloadString(payload, ['requested_by', 'declared_by', 'technician_profile_id', 'assigned_to']);
+      return [{
+        label: 'part_requester',
+        profileId: picked.value,
+        expectedRole: null,
+        sourceFields: picked.sourceFields,
+      }];
+    }
     case 'work_order.created':
     case 'work_order.status_changed':
     case 'work_order.on_hold':
-    case 'work_order.completed':
     case 'work_order.aging_or_overdue':
     case 'pm.overdue':
     case 'pm.assigned':
@@ -226,6 +252,10 @@ function expectedRoleRecipients(event: NotificationEventRow): string[] {
       return ['technician', 'bme_head', 'admin'];
     case 'work_order.completed':
       return ['technician', 'bme_head', 'admin', 'department_head'];
+    case 'work_order.part_requested':
+      return ['store_user'];
+    case 'work_order.part_issued':
+      return [];
     case 'pm.overdue':
       return ['bme_head', 'admin', 'technician'];
     case 'pm.assigned':
@@ -533,6 +563,21 @@ async function rule_workOrderStatus(
 
   // Department head if work is completed (visibility on their request)
   if (event.event_type === 'work_order.completed' && departmentId) {
+    const requesterId = pickPayloadString(event.payload ?? {}, 'requested_by');
+    if (requesterId) {
+      const requester = await getProfileById(client, requesterId);
+      if (requester) {
+        rows.push(
+          buildRow(event, requester, {
+            category: 'request',
+            title: 'Repair completed',
+            message: `${asset} repair (${woNumber}) is completed and the request has been closed.`,
+            priority: 'medium',
+          }),
+        );
+      }
+    }
+
     const heads = await getDepartmentHeads(client, departmentId);
     for (const r of heads) {
       rows.push(
@@ -730,6 +775,43 @@ async function rule_stock(
           priority: 'low',
         }),
       );
+    }
+  } else if (event.event_type === 'work_order.part_requested') {
+    const asset = describeAsset(event);
+    const woNumber = describeWorkOrder(event);
+    const quantity = pickPayloadNumber(event.payload ?? {}, 'quantity_needed');
+    const requester = pickPayloadString(event.payload ?? {}, 'requester_name') ?? 'A technician';
+    const urgency = pickPayloadString(event.payload ?? {}, 'priority') ?? event.priority;
+    for (const r of storeUsers) {
+      rows.push(
+        buildRow(event, r, {
+          category: 'stock',
+          title: 'Spare part requested',
+          message: `${requester} requested ${quantity ?? '?'} x ${part} for ${woNumber} on ${asset} (${urgency} priority).`,
+          priority: event.priority,
+        }),
+      );
+    }
+  } else if (event.event_type === 'work_order.part_issued') {
+    const asset = describeAsset(event);
+    const woNumber = describeWorkOrder(event);
+    const quantity = pickPayloadNumber(event.payload ?? {}, 'quantity_issued') ?? pickPayloadNumber(event.payload ?? {}, 'quantity_needed');
+    const requesterId = pickPayloadString(event.payload ?? {}, 'requested_by')
+      ?? pickPayloadString(event.payload ?? {}, 'declared_by')
+      ?? pickPayloadString(event.payload ?? {}, 'technician_profile_id')
+      ?? pickPayloadString(event.payload ?? {}, 'assigned_to');
+    if (requesterId) {
+      const requester = await getProfileById(client, requesterId);
+      if (requester) {
+        rows.push(
+          buildRow(event, requester, {
+            category: 'stock',
+            title: 'Requested part issued',
+            message: `${quantity ?? '?'} x ${part} has been issued for ${woNumber} on ${asset}.`,
+            priority: event.priority,
+          }),
+        );
+      }
     }
   } else if (event.event_type === 'work_order.stock_blocked') {
     const asset = describeAsset(event);
@@ -1118,6 +1200,8 @@ export async function applyNotificationRules(
       case 'spare_part.stockout':
       case 'spare_part.low_stock':
       case 'spare_part.restocked':
+      case 'work_order.part_requested':
+      case 'work_order.part_issued':
       case 'work_order.stock_blocked':
       case 'reorder.requested':
         return await matchedRule(client, event, 'stock', await rule_stock(client, event));

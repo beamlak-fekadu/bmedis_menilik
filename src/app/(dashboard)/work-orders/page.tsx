@@ -26,6 +26,7 @@ import { CloudOff } from 'lucide-react';
 import type { WorkOrder, WorkOrderStatus } from '@/types/domain';
 import { ROUTES } from '@/constants';
 import { maintenanceRequestDetail, workOrderDetail } from '@/app/(dashboard)/command/_lib/command-center-routes';
+import { isOpenWorkOrderStatus } from '@/utils/maintenance/request-status';
 
 type WorkOrderRow = WorkOrder & {
   equipment_assets?: { id: string; asset_code?: string | null; name?: string | null } | Array<{ id: string; asset_code?: string | null; name?: string | null }> | null;
@@ -81,7 +82,7 @@ function timelineLabel(row: WorkOrderRow) {
 }
 
 function isActiveWork(row: WorkOrderRow) {
-  return ['open', 'assigned', 'in_progress', 'on_hold'].includes(row.status);
+  return isOpenWorkOrderStatus(row.status);
 }
 
 function isOverdueActive(row: WorkOrderRow) {
@@ -364,7 +365,7 @@ export default function WorkOrdersPage() {
       header: 'Next Action',
       render: (row: WorkOrderRow) => {
         const action = nextAction(row, canManageMaintenance);
-        const isActive = ['open', 'assigned', 'in_progress', 'on_hold'].includes(row.status);
+        const isActive = isOpenWorkOrderStatus(row.status);
         const primaryCls = isActive
           ? 'rounded-lg bg-[var(--brand)] px-2 py-1 text-xs font-medium text-white hover:bg-[var(--brand-strong)]'
           : 'rounded-lg border border-[var(--border-subtle)] px-2 py-1 text-xs font-medium hover:bg-[var(--surface-2)]';

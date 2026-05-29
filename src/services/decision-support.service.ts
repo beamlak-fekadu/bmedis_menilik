@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/client';
+import { OPEN_WORK_ORDER_STATUSES } from '@/utils/maintenance/request-status';
 
 export interface TriageItem {
   asset_id: string;
@@ -81,7 +82,7 @@ async function computeFromOperationalData(): Promise<DecisionSupportSnapshot> {
     supabase
       .from('work_orders')
       .select('id, assigned_to, status, priority, estimated_hours, profiles!work_orders_assigned_to_fkey(full_name)')
-      .in('status', ['open', 'assigned', 'in_progress', 'on_hold']),
+      .in('status', [...OPEN_WORK_ORDER_STATUSES]),
   ]);
 
   const assets = (assetsRes.data ?? []) as Array<Record<string, unknown>>;

@@ -107,6 +107,8 @@ export default function StoreSparePartsStockControl() {
       partId: searchParams.get('partId') ?? searchParams.get('sparePartId') ?? '',
       quantity: searchParams.get('quantity') ?? searchParams.get('suggestedQuantity') ?? '1',
       procurementId: searchParams.get('procurement_id') ?? searchParams.get('procurementId'),
+      workOrderId,
+      needId,
       issueNote: action === 'issue' && (workOrderId || needId)
         ? [
             workOrderId ? `Issue linked to work order ${workOrderId}` : null,
@@ -402,6 +404,8 @@ export default function StoreSparePartsStockControl() {
               issue_date: new Date().toISOString().split('T')[0],
               department_id: null,
               notes: draftNote || null,
+              work_order_id: deepLink.workOrderId,
+              need_id: deepLink.needId,
               local_stock_snapshot: selectedDraftPart.current_stock ?? 0,
             },
             createdByProfileId: profile?.id ?? null,
@@ -416,6 +420,8 @@ export default function StoreSparePartsStockControl() {
               issue_date: new Date().toISOString().split('T')[0],
               department_id: null,
               notes: draftNote || null,
+              work_order_id: deepLink.workOrderId,
+              need_id: deepLink.needId,
             }),
             metadata: { form: 'store_stock_control_draft' },
           });

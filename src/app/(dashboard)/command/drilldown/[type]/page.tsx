@@ -25,6 +25,10 @@ import {
   equipmentDetail,
   replacementEvidence,
 } from '../../_lib/command-center-routes';
+import {
+  OPEN_MAINTENANCE_REQUEST_STATUSES,
+  OPEN_WORK_ORDER_STATUSES,
+} from '@/utils/maintenance/request-status';
 
 type DrilldownType =
   | 'total-equipment'
@@ -75,8 +79,8 @@ function deptName(row: EquipmentRow): string {
 
 async function getOpenCorrectiveSets(supabase: Awaited<ReturnType<typeof createClient>>) {
   const [woRes, mrRes] = await Promise.all([
-    supabase.from('work_orders').select('id, asset_id').eq('work_type', 'corrective').in('status', ['open', 'assigned', 'in_progress', 'on_hold']).limit(500),
-    supabase.from('maintenance_requests').select('id, asset_id').in('status', ['pending', 'approved', 'assigned', 'in_progress']).limit(500),
+    supabase.from('work_orders').select('id, asset_id').eq('work_type', 'corrective').in('status', [...OPEN_WORK_ORDER_STATUSES]).limit(500),
+    supabase.from('maintenance_requests').select('id, asset_id').in('status', [...OPEN_MAINTENANCE_REQUEST_STATUSES]).limit(500),
   ]);
   const woMap = new Map(((woRes.data ?? []) as Array<{ id: string; asset_id: string | null }>).filter((r) => r.asset_id).map((r) => [r.asset_id as string, r.id]));
   const mrMap = new Map(((mrRes.data ?? []) as Array<{ id: string; asset_id: string | null }>).filter((r) => r.asset_id).map((r) => [r.asset_id as string, r.id]));

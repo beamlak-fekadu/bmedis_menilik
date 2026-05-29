@@ -29,6 +29,8 @@
 // short-circuit and return zero/empty when `departmentId` is empty so the
 // page renders no data and renders an explicit empty/error banner.
 
+import { isOpenMaintenanceRequestStatus } from '@/utils/maintenance/request-status';
+
 import type { createClient } from '@/lib/supabase/server';
 
 type Supabase = Awaited<ReturnType<typeof createClient>>;
@@ -199,7 +201,7 @@ export async function fetchDepartmentMetrics(
   let openReq = 0, pendingReq = 0;
   for (const r of reqs) {
     const s = (r.status ?? '').toLowerCase();
-    if (['pending', 'approved', 'assigned', 'in_progress'].includes(s)) openReq++;
+    if (isOpenMaintenanceRequestStatus(s)) openReq++;
     if (s === 'pending') pendingReq++;
   }
 
