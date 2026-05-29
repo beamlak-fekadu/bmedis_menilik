@@ -116,7 +116,7 @@ export default function DashboardRootLayout({ children }: { children: React.Reac
   // Profile is null while online — this means the auth user has no linked
   // profile or no role assigned. Show a clear error; never silently fall back
   // to viewer so a misconfigured account doesn't masquerade as a valid user.
-  if (!profile && online.isOnline) {
+  if (!profile && online.isOnline && profileError) {
     const message = profileError ??
       'Your account is authenticated but your profile could not be loaded. ' +
       'Please sign out and contact your system administrator.';
@@ -143,6 +143,10 @@ export default function DashboardRootLayout({ children }: { children: React.Reac
         </div>
       </div>
     );
+  }
+
+  if (!profile && online.isOnline) {
+    return <PageLoader />;
   }
 
   const handleLogout = async () => {

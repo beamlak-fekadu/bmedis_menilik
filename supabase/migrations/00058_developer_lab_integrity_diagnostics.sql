@@ -28,7 +28,6 @@ BEGIN
       VALUES
         ('developer@bmerms-demo.local',       'BMEDIS Developer',    'Thesis Developer',                  'developer',       NULL::TEXT),
         ('bme.head@bmerms-demo.local',        'Ermias Tadesse',      'Biomedical Engineering Head',       'bme_head',        NULL::TEXT),
-        ('technician@bmerms-demo.local',      'Hanna Gebremedhin',   'Clinical Engineer',                 'technician',      NULL::TEXT),
         ('department.head@bmerms-demo.local', 'Tigist Worku',        'ICU Head',                          'department_head', 'Intensive Care Unit'),
         ('department.user@bmerms-demo.local', 'Dr. Fitsum Haile',    'Radiologist',                       'department_user', 'Radiology and Imaging'),
         ('store.user@bmerms-demo.local',      'Ato Biniam Teshome',  'Medical Equipment Store Officer',   'store_user',      NULL::TEXT),
@@ -113,7 +112,6 @@ BEGIN
   ORDER BY ARRAY_POSITION(ARRAY[
     'developer@bmerms-demo.local',
     'bme.head@bmerms-demo.local',
-    'technician@bmerms-demo.local',
     'department.head@bmerms-demo.local',
     'department.user@bmerms-demo.local',
     'store.user@bmerms-demo.local',

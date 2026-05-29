@@ -35,6 +35,10 @@ import {
   isReplacementCandidate,
   isStrongReplacementCandidate,
 } from '@/utils/decision-support/replacement-thresholds';
+import {
+  fetchDepartmentPMCompliance,
+  summarizeDepartmentPMCompliance,
+} from '@/utils/pm/department-compliance';
 
 type Supabase = Awaited<ReturnType<typeof createClient>>;
 
@@ -105,8 +109,6 @@ export async function fetchViewerExecutiveMetrics(
     return new Date(d.getUTCFullYear(), d.getUTCMonth(), 1).toISOString().slice(0, 10);
   })();
   const in30dIso = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-  const last90dIso = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-
   const [
     assetsRes,
     readinessRes,
@@ -118,7 +120,7 @@ export async function fetchViewerExecutiveMetrics(
     replacementRes,
     riskRes,
     completedWoRes,
-    pmComplianceRes,
+    departmentPmCompliance,
   ] = await Promise.all([
     supabase
       .from('equipment_assets')
@@ -165,13 +167,7 @@ export async function fetchViewerExecutiveMetrics(
       .eq('status', 'completed')
       .gte('completed_at', monthStart)
       .limit(2000),
-    // PM compliance over rolling 90d: completed / scheduled where scheduled_date in last 90d
-    supabase
-      .from('pm_schedules')
-      .select('id, status, scheduled_date')
-      .gte('scheduled_date', last90dIso)
-      .lte('scheduled_date', todayIso)
-      .limit(2000),
+    fetchDepartmentPMCompliance(supabase),
   ]);
 
   const assets = (assetsRes.data ?? []) as AssetRow[];
@@ -283,13 +279,7 @@ export async function fetchViewerExecutiveMetrics(
 
   const monthlyCompletion = (completedWoRes.data ?? []).length;
 
-  // PM compliance (rolling 90d): completed / scheduled. Skipped/deferred not counted as completed.
-  let pmCompliancePercent: number | null = null;
-  const pmComplianceRows = (pmComplianceRes.data ?? []) as Array<{ status: string | null }>;
-  if (pmComplianceRows.length > 0) {
-    const completed = pmComplianceRows.filter((p) => (p.status ?? '').toLowerCase() === 'completed').length;
-    pmCompliancePercent = Math.round((completed / pmComplianceRows.length) * 100);
-  }
+  const pmCompliancePercent = summarizeDepartmentPMCompliance(departmentPmCompliance).percentage;
 
   return {
     totalAssets,

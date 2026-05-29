@@ -62,17 +62,25 @@ export function useProfile(userId: string | undefined) {
   const supabase = createClient();
 
   useEffect(() => {
+    let cancelled = false;
+
     if (!userId) {
-      const timer = setTimeout(() => setLoading(false), 0);
-      return () => clearTimeout(timer);
+      setProfile(null);
+      setProfileError(null);
+      setLoading(false);
+      return () => {
+        cancelled = true;
+      };
     }
     const authUserId = userId;
+    setLoading(true);
+    setProfile(null);
+    setProfileError(null);
 
     async function fetchProfile() {
-      setProfileError(null);
-
       const snapshot = getOfflineSessionSnapshotForAuthUser(authUserId);
       if (snapshot && typeof navigator !== 'undefined' && !navigator.onLine) {
+        if (cancelled) return;
         setProfile(profileFromSnapshot(snapshot));
         setLoading(false);
         return;
@@ -88,6 +96,7 @@ export function useProfile(userId: string | undefined) {
         if (profileFetchErr) {
           // DB/RLS error — try offline snapshot before surfacing an error
           const fallback = getOfflineSessionSnapshotForAuthUser(authUserId);
+          if (cancelled) return;
           if (fallback) {
             setProfile(profileFromSnapshot(fallback));
           } else {
@@ -104,6 +113,7 @@ export function useProfile(userId: string | undefined) {
           // linked yet (common after a fresh Supabase project where the
           // setup-demo-users script has not been run).
           const fallback = getOfflineSessionSnapshotForAuthUser(authUserId);
+          if (cancelled) return;
           if (fallback) {
             setProfile(profileFromSnapshot(fallback));
           } else {
@@ -127,6 +137,7 @@ export function useProfile(userId: string | undefined) {
         if (roleNames.length === 0) {
           // Profile exists but has no roles assigned
           const fallback = getOfflineSessionSnapshotForAuthUser(authUserId);
+          if (cancelled) return;
           if (fallback && fallback.roleNames.length > 0) {
             setProfile(profileFromSnapshot(fallback));
           } else {
@@ -162,6 +173,7 @@ export function useProfile(userId: string | undefined) {
           primaryRole,
         });
 
+        if (cancelled) return;
         setProfile({
           ...(profileData as unknown as Profile),
           roles,
@@ -173,6 +185,7 @@ export function useProfile(userId: string | undefined) {
         setLoading(false);
       } catch (error) {
         const fallback = getOfflineSessionSnapshotForAuthUser(authUserId);
+        if (cancelled) return;
         if (fallback) {
           setProfile(profileFromSnapshot(fallback));
         } else {
@@ -186,6 +199,9 @@ export function useProfile(userId: string | undefined) {
     }
 
     void fetchProfile();
+    return () => {
+      cancelled = true;
+    };
   }, [userId, supabase]);
 
   return { profile, loading, profileError };

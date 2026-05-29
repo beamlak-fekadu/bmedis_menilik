@@ -18,7 +18,6 @@ WITH expected_demo_accounts AS (
   FROM (
     VALUES
       ('admin',           'bme.head@bmerms-demo.local', 'REPLACE_WITH_ADMIN_AUTH_UUID'),
-      ('technician',      'technician@bmerms-demo.local',        'REPLACE_WITH_TECHNICIAN_AUTH_UUID'),
       ('department_user', 'department.user@bmerms-demo.local',       'REPLACE_WITH_DEPARTMENT_USER_AUTH_UUID'),
       ('store_user',      'store.user@bmerms-demo.local',       'REPLACE_WITH_STORE_USER_AUTH_UUID'),
       ('viewer',          'viewer@bmerms-demo.local',      'REPLACE_WITH_VIEWER_AUTH_UUID')
@@ -46,7 +45,6 @@ WITH expected_demo_accounts AS (
   FROM (
     VALUES
       ('admin',           'bme.head@bmerms-demo.local', 'REPLACE_WITH_ADMIN_AUTH_UUID'),
-      ('technician',      'technician@bmerms-demo.local',        'REPLACE_WITH_TECHNICIAN_AUTH_UUID'),
       ('department_user', 'department.user@bmerms-demo.local',       'REPLACE_WITH_DEPARTMENT_USER_AUTH_UUID'),
       ('store_user',      'store.user@bmerms-demo.local',       'REPLACE_WITH_STORE_USER_AUTH_UUID'),
       ('viewer',          'viewer@bmerms-demo.local',      'REPLACE_WITH_VIEWER_AUTH_UUID')
@@ -77,7 +75,6 @@ WITH expected_demo_accounts AS (
   FROM (
     VALUES
       ('admin',           'bme.head@bmerms-demo.local'),
-      ('technician',      'technician@bmerms-demo.local'),
       ('department_user', 'department.user@bmerms-demo.local'),
       ('store_user',      'store.user@bmerms-demo.local'),
       ('viewer',          'viewer@bmerms-demo.local')
@@ -106,7 +103,6 @@ WITH expected_demo_accounts AS (
   FROM (
     VALUES
       ('admin',           'bme.head@bmerms-demo.local'),
-      ('technician',      'technician@bmerms-demo.local'),
       ('department_user', 'department.user@bmerms-demo.local'),
       ('store_user',      'store.user@bmerms-demo.local'),
       ('viewer',          'viewer@bmerms-demo.local')
@@ -134,7 +130,6 @@ WITH expected_demo_accounts AS (
   FROM (
     VALUES
       ('admin',           'bme.head@bmerms-demo.local'),
-      ('technician',      'technician@bmerms-demo.local'),
       ('department_user', 'department.user@bmerms-demo.local'),
       ('store_user',      'store.user@bmerms-demo.local'),
       ('viewer',          'viewer@bmerms-demo.local')

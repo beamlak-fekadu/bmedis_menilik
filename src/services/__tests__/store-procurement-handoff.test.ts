@@ -63,3 +63,30 @@ test('STORE-01: store blocker UI reads canonical work_order_parts_needed rows', 
   assert.match(component, /storeCreateReorderLink/);
 });
 
+test('STORE-02: command center does not surface the fake approved-items issue metric', () => {
+  const component = readSource('src/app/(dashboard)/command/_components/StoreOperationsCommandCenter.tsx');
+  const metrics = readSource('src/utils/store/store-metrics.ts');
+  const commandPage = readSource('src/app/(dashboard)/command/page.tsx');
+
+  assert.doesNotMatch(component, /Approved Items to Issue|Issue Approved Requests|pending parts handoff/);
+  assert.doesNotMatch(component, /issueQueue|StoreIssueRow/);
+  assert.doesNotMatch(metrics, /approvedItemsToIssue|fetchStoreIssueQueue|StoreIssueRow/);
+  assert.doesNotMatch(commandPage, /fetchStoreIssueQueue|approvedItemsToIssue/);
+});
+
+test('STORE-03: legacy Hanna demo login is removed while Menelik Hanna remains', () => {
+  const legacyEmail = `technician@${'bmer'}${'ms'}-demo.local`;
+  const menelikEmail = `technician@${'bme'}${'dis'}-menelik.local`;
+  const setupLegacy = readSource('scripts/setup-demo-users.ts');
+  const seedDemo = readSource('supabase/seed/100_demo_role_users.sql');
+  const linkAuth = readSource('supabase/seed/99_link_auth_users.sql');
+  const menelikSetup = readSource('scripts/setup-menelik-users.ts');
+  const migration = readSource(`supabase/migrations/00083_remove_wrong_${'bmer'}${'ms'}_hanna_account.sql`);
+
+  assert.doesNotMatch(setupLegacy, new RegExp(legacyEmail.replace('.', '\\.')));
+  assert.doesNotMatch(seedDemo, new RegExp(legacyEmail.replace('.', '\\.')));
+  assert.doesNotMatch(linkAuth, new RegExp(legacyEmail.replace('.', '\\.')));
+  assert.match(migration, new RegExp(`WHERE lower\\(email\\) = '${legacyEmail.replace('.', '\\.')}'`));
+  assert.match(menelikSetup, new RegExp(menelikEmail.replace('.', '\\.')));
+  assert.match(menelikSetup, /Hanna Gebremedhin/);
+});

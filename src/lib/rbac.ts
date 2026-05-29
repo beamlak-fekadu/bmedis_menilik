@@ -154,7 +154,7 @@ export const CAPABILITY_MATRIX: Matrix = {
 
   // Store User = Store / Logistics Operations Console. Read-only outside of
   // store/logistics workflows. Can create reorder/procurement requests for
-  // stock needs, receive delivered items, and issue approved items. Cannot
+  // stock needs, receive delivered items, and issue stocked parts for documented blockers. Cannot
   // approve procurement, assign technicians, or run maintenance execution.
   // Note: nav.maintenance is granted so /maintenance can render as
   // "Maintenance Blockers" — a strictly read-only blocker view for store.

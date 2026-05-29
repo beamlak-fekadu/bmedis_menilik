@@ -65,7 +65,6 @@ SET
 -- Legacy demo email domain retained to avoid breaking seeded Supabase Auth users.
 --   developer@bmerms-demo.local        | BMEDIS Developer    | Thesis Developer                 | developer       | (none)
 --   bme.head@bmerms-demo.local         | Ermias Tadesse      | Biomedical Engineering Head      | bme_head        | (none)
---   technician@bmerms-demo.local       | Hanna Gebremedhin   | Clinical Engineer                | technician      | (none)
 --   department.head@bmerms-demo.local  | Tigist Worku        | ICU Head                         | department_head | Intensive Care Unit
 --   department.user@bmerms-demo.local  | Dr. Fitsum Haile    | Radiologist                      | department_user | Radiology and Imaging
 --   store.user@bmerms-demo.local       | Ato Biniam Teshome  | Medical Equipment Store Officer  | store_user      | (none)
@@ -82,7 +81,6 @@ WITH demo_accounts AS (
     VALUES
       ('developer@bmerms-demo.local',       'BMEDIS Developer',    'Thesis Developer',                  'developer',       NULL::text),
       ('bme.head@bmerms-demo.local',        'Ermias Tadesse',      'Biomedical Engineering Head',       'bme_head',        NULL::text),
-      ('technician@bmerms-demo.local',      'Hanna Gebremedhin',   'Clinical Engineer',                 'technician',      NULL::text),
       ('department.head@bmerms-demo.local', 'Tigist Worku',        'ICU Head',                          'department_head', 'icu'),
       ('department.user@bmerms-demo.local', 'Dr. Fitsum Haile',    'Radiologist',                       'department_user', 'radiology'),
       ('store.user@bmerms-demo.local',      'Ato Biniam Teshome',  'Medical Equipment Store Officer',   'store_user',      NULL::text),
@@ -200,7 +198,6 @@ WITH demo_accounts AS (
     VALUES
       ('developer@bmerms-demo.local',       'BMEDIS Developer',    'Thesis Developer',                  'developer',       NULL::text),
       ('bme.head@bmerms-demo.local',        'Ermias Tadesse',      'Biomedical Engineering Head',       'bme_head',        NULL::text),
-      ('technician@bmerms-demo.local',      'Hanna Gebremedhin',   'Clinical Engineer',                 'technician',      NULL::text),
       ('department.head@bmerms-demo.local', 'Tigist Worku',        'ICU Head',                          'department_head', 'Intensive Care Unit'),
       ('department.user@bmerms-demo.local', 'Dr. Fitsum Haile',    'Radiologist',                       'department_user', 'Radiology and Imaging'),
       ('store.user@bmerms-demo.local',      'Ato Biniam Teshome',  'Medical Equipment Store Officer',   'store_user',      NULL::text),

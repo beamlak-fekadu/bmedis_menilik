@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { ArrowRightLeft, Boxes, ClipboardCheck, HandHelping, PackageCheck, Truck, Warehouse } from 'lucide-react';
+import { ArrowRightLeft, Boxes, ClipboardCheck, PackageCheck, Truck, Warehouse } from 'lucide-react';
 import { PageHeader, Badge, StatCard } from '@/components/ui';
 import { PageLoader } from '@/components/ui/Spinner';
 import { getSpareParts, getLowStockParts } from '@/services/spare-parts.service';
@@ -89,7 +89,7 @@ export default function StoreLogisticsConsole() {
 
   const panels: Array<{ id: WorkflowPanel; title: string; icon: React.ElementType; count: number; desc: string }> = [
     { id: 'receiving', title: 'Receiving', icon: Warehouse, count: summary.receiving, desc: 'Record delivered items into stock.' },
-    { id: 'issue', title: 'Issue Queue', icon: HandHelping, count: summary.issue, desc: 'Issue approved items / track stockout-driven needs.' },
+    { id: 'issue', title: 'Issue Queue', icon: ClipboardCheck, count: summary.issue, desc: 'Track low-stock and stockout-driven needs.' },
     { id: 'balance', title: 'Stock Balance', icon: Boxes, count: summary.balance, desc: 'Current stock and reorder pressure.' },
     { id: 'bin-card', title: 'Bin Card', icon: ArrowRightLeft, count: receipts.length + issues.length, desc: 'Movement ledger per part.' },
     { id: 'procurement', title: 'Procurement Tracking', icon: PackageCheck, count: summary.procurement, desc: 'Items expected to replenish store.' },

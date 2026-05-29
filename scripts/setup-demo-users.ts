@@ -98,14 +98,6 @@ const DEMO_ACCOUNTS: DemoAccount[] = [
     departmentKey: 'radiology',
   },
   {
-    email: 'technician@bmerms-demo.local',
-    password: 'BMERMS@2026Tech!',
-    fullName: 'Hanna Gebremedhin',
-    jobTitle: 'Clinical Engineer',
-    roleName: 'technician',
-    departmentKey: null,
-  },
-  {
     email: 'store.user@bmerms-demo.local',
     password: 'BMERMS@2026Store!',
     fullName: 'Ato Biniam Teshome',

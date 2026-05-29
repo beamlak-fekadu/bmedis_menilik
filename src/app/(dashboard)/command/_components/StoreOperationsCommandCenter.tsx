@@ -6,8 +6,6 @@ import {
   AlertTriangle,
   ArrowRightLeft,
   Boxes,
-  ClipboardCheck,
-  HandHelping,
   Package,
   PackageCheck,
   Timer,
@@ -22,7 +20,6 @@ import {
   type StoreExecutiveMetrics,
   type StoreStockRiskRow,
   type StoreReceivingRow,
-  type StoreIssueRow,
   type StoreBlockerRow,
 } from '@/utils/store/store-metrics';
 import {
@@ -45,7 +42,6 @@ interface Props {
   metrics: StoreExecutiveMetrics;
   stockRisk: StoreStockRiskRow[];
   receiving: StoreReceivingRow[];
-  issueQueue: StoreIssueRow[];
   blockers: StoreBlockerRow[];
   generatedAt: string;
 }
@@ -80,13 +76,11 @@ function iconBg(tone: MetricCard['tone']): string {
   }
 }
 
-export default function StoreOperationsCommandCenter({ metrics, stockRisk, receiving, issueQueue, blockers, generatedAt }: Props) {
+export default function StoreOperationsCommandCenter({ metrics, stockRisk, receiving, blockers, generatedAt }: Props) {
   const cards: MetricCard[] = [
     { label: 'Stockouts', value: metrics.stockoutParts, subtitle: 'Spare parts with current_stock ≤ 0.', icon: <AlertTriangle className="h-5 w-5" />, tone: metrics.stockoutParts > 0 ? 'critical' : 'success', href: '/spare-parts?filter=stockout', hrefLabel: 'Open Stockout Evidence' },
     { label: 'Low Stock Parts', value: metrics.lowStockParts, subtitle: '0 < current_stock ≤ reorder_level.', icon: <Boxes className="h-5 w-5" />, tone: metrics.lowStockParts > 0 ? 'warning' : 'success', href: '/spare-parts?filter=low-stock', hrefLabel: 'Open Low Stock' },
     { label: 'Blocked Work Orders', value: metrics.blockedWorkOrders, subtitle: 'Open work_order_parts_needed rows with exact WO and part context.', icon: <Wrench className="h-5 w-5" />, tone: metrics.blockedWorkOrders > 0 ? 'warning' : 'success', href: '/maintenance', hrefLabel: 'View Blocked Work Orders' },
-    { label: 'Pending Issue Requests', value: metrics.pendingIssueRequests, subtitle: 'Maintenance requests still in pending review.', icon: <ClipboardCheck className="h-5 w-5" />, tone: 'info', href: '/logistics?workflow=issue', hrefLabel: 'Open Issue Queue' },
-    { label: 'Approved Items to Issue', value: metrics.approvedItemsToIssue, subtitle: 'Approved maintenance requests (handoff to store).', icon: <HandHelping className="h-5 w-5" />, tone: metrics.approvedItemsToIssue > 0 ? 'info' : 'success', href: '/logistics?workflow=issue', hrefLabel: 'Open Issue Queue' },
     { label: 'Delivered Items to Receive', value: metrics.deliveredItemsToReceive, subtitle: 'Procurement requests at status = delivered.', icon: <Warehouse className="h-5 w-5" />, tone: metrics.deliveredItemsToReceive > 0 ? 'warning' : 'success', href: storeReceiveLink(), hrefLabel: 'Open Receiving Queue' },
     { label: 'Open Procurement', value: metrics.openProcurement, subtitle: 'Requested / approved / ordered / in transit.', icon: <PackageCheck className="h-5 w-5" />, tone: 'info', href: '/procurement', hrefLabel: 'Track Procurement' },
     { label: 'Delayed Procurement', value: metrics.delayedProcurement, subtitle: 'Procurement requests in delayed status.', icon: <Timer className="h-5 w-5" />, tone: metrics.delayedProcurement > 0 ? 'warning' : 'success', href: '/procurement?filter=delayed', hrefLabel: 'Open Delayed' },
@@ -146,14 +140,10 @@ export default function StoreOperationsCommandCenter({ metrics, stockRisk, recei
         <Card>
           <CardHeader><CardTitle>Today’s Store Work</CardTitle></CardHeader>
           <CardContent>
-            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
               <Link href={storeReceiveLink()} className="flex flex-col gap-1 rounded-lg border border-[var(--border-subtle)] p-3 hover:border-[var(--brand)]/50">
                 <span className="inline-flex items-center gap-2 text-sm font-medium text-[var(--foreground)]"><Warehouse className="h-4 w-4 text-cyan-300" /> Receive Delivered Items</span>
                 <span className="text-xs text-[var(--text-muted)]">{metrics.deliveredItemsToReceive} delivered procurement{metrics.deliveredItemsToReceive === 1 ? '' : 's'} awaiting receipt.</span>
-              </Link>
-              <Link href={storeIssueLink()} className="flex flex-col gap-1 rounded-lg border border-[var(--border-subtle)] p-3 hover:border-[var(--brand)]/50">
-                <span className="inline-flex items-center gap-2 text-sm font-medium text-[var(--foreground)]"><HandHelping className="h-4 w-4 text-violet-300" /> Issue Approved Requests</span>
-                <span className="text-xs text-[var(--text-muted)]">{metrics.approvedItemsToIssue} approved request{metrics.approvedItemsToIssue === 1 ? '' : 's'} pending parts handoff.</span>
               </Link>
               <Link href="/spare-parts?filter=stockout" className="flex flex-col gap-1 rounded-lg border border-[var(--border-subtle)] p-3 hover:border-[var(--brand)]/50">
                 <span className="inline-flex items-center gap-2 text-sm font-medium text-[var(--foreground)]"><AlertTriangle className="h-4 w-4 text-rose-300" /> Review Stockouts</span>
@@ -282,59 +272,6 @@ export default function StoreOperationsCommandCenter({ metrics, stockRisk, recei
                     ))}
                   </tbody>
                 </table>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </section>
-
-      {/* ── Issue queue ─────────────────────────────────────────────── */}
-      <section aria-label="Issue queue">
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle><span className="inline-flex items-center gap-2"><HandHelping className="h-5 w-5 text-violet-300" />Issue queue</span></CardTitle>
-              <Link href={storeIssueLink()} className="text-xs text-violet-300 hover:text-violet-200">Open full issue queue →</Link>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {issueQueue.length === 0 ? (
-              <p className="py-4 text-center text-sm text-[var(--text-muted)]">No approved issue requests found.</p>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="min-w-[820px] w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-[var(--border-subtle)]/60 text-left">
-                      <th className="pb-2 pr-4 text-xs uppercase text-[var(--text-muted)]">Request</th>
-                      <th className="pb-2 pr-4 text-xs uppercase text-[var(--text-muted)]">Asset</th>
-                      <th className="pb-2 pr-4 text-xs uppercase text-[var(--text-muted)]">Department</th>
-                      <th className="pb-2 pr-4 text-xs uppercase text-[var(--text-muted)]">Reported condition</th>
-                      <th className="pb-2 pr-4 text-xs uppercase text-[var(--text-muted)]">Status</th>
-                      <th className="pb-2 text-xs uppercase text-[var(--text-muted)]">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-[var(--border-subtle)]/60">
-                    {issueQueue.slice(0, 15).map((r) => (
-                      <tr key={r.id}>
-                        <td className="py-3 pr-4 font-medium text-[var(--foreground)]">{r.requestNumber}</td>
-                        <td className="py-3 pr-4">
-                          <p className="text-[var(--foreground)]">{r.assetName}</p>
-                          <p className="text-xs text-[var(--text-muted)]">{r.assetCode}</p>
-                        </td>
-                        <td className="py-3 pr-4 text-[var(--text-muted)]">{r.departmentName}</td>
-                        <td className="py-3 pr-4 text-[var(--text-muted)]">{r.reportedCondition ?? '—'}</td>
-                        <td className="py-3 pr-4"><Badge variant="success">{r.status}</Badge></td>
-                        <td className="py-3">
-                          <div className="flex flex-wrap gap-1.5">
-                            <Link href={storeIssueLink()} className="rounded-md bg-[var(--brand)] px-2 py-1 text-xs text-white">Issue Approved Item</Link>
-                            <Link href={`/maintenance/requests/${r.id}`} className="rounded-md border border-[var(--border-subtle)] px-2 py-1 text-xs text-[var(--text-muted)] hover:text-[var(--foreground)]">View Request Evidence</Link>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                <p className="mt-3 text-xs text-[var(--text-muted)]">Approved maintenance requests are surfaced as the handoff queue for the store. Issue mutation must occur on the Logistics &gt; Issue panel — Store cannot approve item requests directly.</p>
               </div>
             )}
           </CardContent>

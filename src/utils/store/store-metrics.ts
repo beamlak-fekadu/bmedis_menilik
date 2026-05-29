@@ -17,8 +17,6 @@
 //   - recommendation_flags        : flag_type in ('low_stock','part_shortage')
 //                                   surfaces stock blockers and acknowledged
 //                                   flags are excluded.
-//   - maintenance_requests        : status='approved' or status='pending' rows
-//                                   for Store handoff visibility.
 //   - work_order_parts_needed     : canonical exact parts-blocker rows tied
 //                                   to work order + spare part + asset context.
 //
@@ -26,11 +24,6 @@
 //   - "Delivered awaiting receipt" reads procurement_requests where
 //     status='delivered'. Receipt rows persist procurement_id, so downstream
 //     evidence can answer exactly what was received for a delivered request.
-//   - "Approved items to issue" is approximated as the count of approved
-//     maintenance requests whose work has not yet been completed (a downstream
-//     handoff that often requires the store to issue a part). The label is
-//     "Approved Items to Issue (handoff)" and is documented in the UI subtitle.
-
 import type { createClient } from '@/lib/supabase/server';
 import {
   classifyStock,
@@ -47,13 +40,11 @@ export interface StoreExecutiveMetrics {
   lowStockParts: number;
   stockoutParts: number;
   blockedWorkOrders: number;
-  approvedItemsToIssue: number; // approved maintenance requests not yet completed
   deliveredItemsToReceive: number; // procurement status='delivered'
   openProcurement: number; // requested + approved + ordered + in_transit
   delayedProcurement: number; // status='delayed'
   recentReceipts: number; // stock_receipts in current month
   recentIssues: number; // stock_issues in current month
-  pendingIssueRequests: number; // maintenance_requests pending
 }
 
 interface PartRow {
@@ -76,8 +67,6 @@ export async function fetchStoreExecutiveMetrics(supabase: Supabase): Promise<St
     receiptsRes,
     issuesRes,
     partsNeededRes,
-    pendingReqRes,
-    approvedReqRes,
   ] = await Promise.all([
     supabase
       .from('spare_parts')
@@ -102,16 +91,6 @@ export async function fetchStoreExecutiveMetrics(supabase: Supabase): Promise<St
       .from('work_order_parts_needed')
       .select('id, status')
       .eq('status', 'open')
-      .limit(2000),
-    supabase
-      .from('maintenance_requests')
-      .select('id, status')
-      .eq('status', 'pending')
-      .limit(2000),
-    supabase
-      .from('maintenance_requests')
-      .select('id, status')
-      .eq('status', 'approved')
       .limit(2000),
   ]);
 
@@ -142,13 +121,11 @@ export async function fetchStoreExecutiveMetrics(supabase: Supabase): Promise<St
     lowStockParts: low,
     stockoutParts: stockout,
     blockedWorkOrders,
-    approvedItemsToIssue: (approvedReqRes.data ?? []).length,
     deliveredItemsToReceive,
     openProcurement,
     delayedProcurement,
     recentReceipts: (receiptsRes.data ?? []).length,
     recentIssues: (issuesRes.data ?? []).length,
-    pendingIssueRequests: (pendingReqRes.data ?? []).length,
   };
 }
 
@@ -260,43 +237,9 @@ export async function fetchStoreReceivingQueue(supabase: Supabase): Promise<Stor
 // downstream. We deliberately surface this as a "handoff" queue, not as a
 // strict approved-issue-request queue, because the BMEDIS schema does not
 // currently model item issue approvals as a distinct workflow.
-export interface StoreIssueRow {
-  id: string;
-  requestNumber: string;
-  assetName: string;
-  assetCode: string;
-  departmentName: string;
-  status: string;
-  reportedCondition: string | null;
-  createdAt: string | null;
-}
-
 function firstRelation<T>(value: T | T[] | null | undefined): T | null {
   if (Array.isArray(value)) return value[0] ?? null;
   return value ?? null;
-}
-
-export async function fetchStoreIssueQueue(supabase: Supabase): Promise<StoreIssueRow[]> {
-  const { data } = await supabase
-    .from('maintenance_requests')
-    .select('id, request_number, status, reported_condition, created_at, equipment_assets(asset_code, name), departments(name)')
-    .eq('status', 'approved')
-    .order('created_at', { ascending: false })
-    .limit(500);
-  return ((data ?? []) as Array<Record<string, unknown>>).map((r) => {
-    const eq = firstRelation(r.equipment_assets as Record<string, unknown> | Record<string, unknown>[] | null);
-    const dept = firstRelation(r.departments as Record<string, unknown> | Record<string, unknown>[] | null);
-    return {
-      id: r.id as string,
-      requestNumber: (r.request_number as string) ?? '',
-      assetName: (eq?.name as string | undefined) ?? 'Unknown',
-      assetCode: (eq?.asset_code as string | undefined) ?? '—',
-      departmentName: (dept?.name as string | undefined) ?? 'Unknown',
-      status: (r.status as string) ?? '',
-      reportedCondition: (r.reported_condition as string | null) ?? null,
-      createdAt: (r.created_at as string | null) ?? null,
-    };
-  });
 }
 
 // Maintenance blockers: work orders on hold + related context.

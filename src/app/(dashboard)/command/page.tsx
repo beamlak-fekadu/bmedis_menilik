@@ -64,7 +64,6 @@ import {
   fetchStoreExecutiveMetrics,
   fetchStoreStockRisk,
   fetchStoreReceivingQueue,
-  fetchStoreIssueQueue,
   fetchStoreBlockers,
 } from '@/utils/store/store-metrics';
 import DepartmentDashboard from './_components/DepartmentDashboard';
@@ -506,18 +505,17 @@ export default async function CommandCenterPage() {
   // ── Store-User Store Operations Command Center ─────────────────────────
   // Renders a dedicated stock/logistics console. Other roles fall through.
   if (primaryRole === 'store_user') {
-    const [storeMetricsBase, stockRisk, receiving, issueQueue, blockers] = await Promise.all([
+    const [storeMetricsBase, stockRisk, receiving, blockers] = await Promise.all([
       fetchStoreExecutiveMetrics(supabase).catch(() => null),
       fetchStoreStockRisk(supabase).catch(() => []),
       fetchStoreReceivingQueue(supabase).catch(() => []),
-      fetchStoreIssueQueue(supabase).catch(() => []),
       fetchStoreBlockers(supabase).catch(() => []),
     ]);
     const storeMetrics = storeMetricsBase ?? {
       totalParts: 0, inStockParts: 0, lowStockParts: 0, stockoutParts: 0,
-      blockedWorkOrders: 0, approvedItemsToIssue: 0, deliveredItemsToReceive: 0,
+      blockedWorkOrders: 0, deliveredItemsToReceive: 0,
       openProcurement: 0, delayedProcurement: 0, recentReceipts: 0,
-      recentIssues: 0, pendingIssueRequests: 0,
+      recentIssues: 0,
     };
     return (
       <>
@@ -530,7 +528,6 @@ export default async function CommandCenterPage() {
             stockoutParts: storeMetrics.stockoutParts,
             blockedWorkOrders: storeMetrics.blockedWorkOrders,
             deliveredItemsToReceive: storeMetrics.deliveredItemsToReceive,
-            approvedItemsToIssue: storeMetrics.approvedItemsToIssue,
           }}
           availableEvidenceLinks={[{ label: 'Spare Parts', href: '/spare-parts', type: 'module' }, { label: 'Logistics', href: '/logistics', type: 'module' }]}
           quickPrompts={['Which parts are stocked out?', 'Which stockouts are blocking work?', 'What deliveries are expected?']}
@@ -539,7 +536,6 @@ export default async function CommandCenterPage() {
           metrics={storeMetrics}
           stockRisk={stockRisk}
           receiving={receiving}
-          issueQueue={issueQueue}
           blockers={blockers}
           generatedAt={now}
         />

@@ -1,4 +1,5 @@
 import { isOverduePMTask } from './semantics';
+import type { createClient } from '@/lib/supabase/server';
 
 type MaybeArray<T> = T | T[] | null | undefined;
 
@@ -30,6 +31,8 @@ export type DepartmentPMCompliance = {
   skippedDeferred: number;
   percentage: number | null;
 };
+
+type Supabase = Awaited<ReturnType<typeof createClient>>;
 
 function firstRelation<T>(value: MaybeArray<T>): T | null {
   if (Array.isArray(value)) return value[0] ?? null;
@@ -75,4 +78,43 @@ export function computeDepartmentPMCompliance(
   }
 
   return Array.from(byDept.values()).sort((a, b) => a.department_name.localeCompare(b.department_name));
+}
+
+export async function fetchDepartmentPMCompliance(
+  supabase: Supabase,
+  options: { from?: string; to?: string; limit?: number } = {},
+): Promise<DepartmentPMCompliance[]> {
+  let query = supabase
+    .from('pm_schedules')
+    .select('id, status, scheduled_date, asset_id, equipment_assets(department_id, departments(id, name))')
+    .limit(options.limit ?? 5000);
+
+  if (options.from) query = query.gte('scheduled_date', options.from);
+  if (options.to) query = query.lte('scheduled_date', options.to);
+
+  const { data, error } = await query;
+  if (error) {
+    console.error('[pm] department compliance read failed:', error.message);
+    return [];
+  }
+
+  return computeDepartmentPMCompliance((data ?? []) as DepartmentPMScheduleRow[]);
+}
+
+export function summarizeDepartmentPMCompliance(
+  rows: DepartmentPMCompliance[],
+): { scheduled: number; completed: number; percentage: number | null } {
+  const totals = rows.reduce(
+    (acc, row) => {
+      acc.scheduled += row.scheduled;
+      acc.completed += row.completed;
+      return acc;
+    },
+    { scheduled: 0, completed: 0 },
+  );
+
+  return {
+    ...totals,
+    percentage: totals.scheduled > 0 ? Math.round((totals.completed / totals.scheduled) * 100) : null,
+  };
 }

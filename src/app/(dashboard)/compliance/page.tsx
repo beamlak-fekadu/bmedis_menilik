@@ -17,8 +17,7 @@ import {
   viewerReport,
 } from '@/utils/viewer/evidence-links';
 import {
-  computeDepartmentPMCompliance,
-  type DepartmentPMScheduleRow,
+  fetchDepartmentPMCompliance,
 } from '@/utils/pm/department-compliance';
 
 // Compliance Overview combines PM and Calibration evidence into a single
@@ -121,7 +120,7 @@ export default async function ComplianceOverviewPage() {
     );
   }
 
-  const [pmRecentRes, pmOverdueRes, calRes, pmDepartmentRes] = await Promise.all([
+  const [pmRecentRes, pmOverdueRes, calRes, pmDepartmentCompliance] = await Promise.all([
     supabase
       .from('pm_schedules')
       .select('id, status, scheduled_date, equipment_assets(department_id, departments(id, name))')
@@ -136,10 +135,7 @@ export default async function ComplianceOverviewPage() {
       .from('v_calibration_due')
       .select('id, asset_id, next_due_date, equipment_assets(asset_code, name, departments(name), equipment_categories(criticality_level))')
       .limit(500),
-    supabase
-      .from('pm_schedules')
-      .select('id, status, scheduled_date, asset_id, equipment_assets(department_id, departments(id, name))')
-      .limit(5000),
+    fetchDepartmentPMCompliance(supabase),
   ]);
 
   const pmRecent = (pmRecentRes.data ?? []) as Array<{ status: string | null; scheduled_date: string | null; equipment_assets?: { department_id?: string; departments?: { name?: string } | { name?: string }[] | null } | { department_id?: string; departments?: { name?: string } | { name?: string }[] | null }[] | null }>;
@@ -186,7 +182,7 @@ export default async function ComplianceOverviewPage() {
   const calibrationDueSoon = calRows.filter((c) => c.next_due_date && c.next_due_date >= todayIso && c.next_due_date <= in30dIso).length;
   const criticalCalibrationOverdue = calibrationOverdue.filter((c) => c.criticality === 'critical' || c.criticality === 'high').length;
 
-  const deptCompliance = computeDepartmentPMCompliance((pmDepartmentRes.data ?? []) as DepartmentPMScheduleRow[]).map((r) => ({
+  const deptCompliance = pmDepartmentCompliance.map((r) => ({
     departmentId: r.department_id,
     departmentName: r.department_name,
     completionRate: r.percentage === null ? null : Math.round(r.percentage),

@@ -243,7 +243,7 @@ export default function ViewerExecutiveCommandCenter({ metrics, departments, cri
                 <p className="mt-1 text-2xl font-semibold text-[var(--foreground)]">
                   {typeof c.value === 'number' ? <AnimatedMetric value={c.value} /> : c.value}
                 </p>
-                <p className="mt-1 text-xs leading-snug text-[var(--text-muted)]">{c.subtitle}</p>
+                <p className="mt-1 text-xs leading-snug text-[var(--foreground)]/80">{c.subtitle}</p>
               </div>
               <Link
                 href={c.evidenceHref}
@@ -351,7 +351,7 @@ export default function ViewerExecutiveCommandCenter({ metrics, departments, cri
                     ))}
                   </tbody>
                 </table>
-                <p className="mt-3 text-xs text-[var(--text-muted)]">
+                <p className="mt-3 text-xs leading-relaxed text-[var(--foreground)]/85">
                   Risk-level rules: <b>High</b> when essential equipment is unavailable or critical/high work orders are open.{' '}
                   <b>Medium</b> when readiness &lt; 80% or combined overdue PM + calibration ≥ 3.{' '}
                   <b>Low</b> otherwise. These thresholds are documented in <code>utils/viewer/readiness.ts</code>.

@@ -27,8 +27,8 @@ INSERT INTO roles (id, name, description, permissions) VALUES
 INSERT INTO profiles (id, full_name, email, phone, department_id, job_title, is_active) VALUES
     -- Admin (Biomedical Head) — linked demo login
     ('a3000001-0000-0000-0000-000000000001', 'Dr. Ermias Tadesse', 'bme.head@bmerms-demo.local', '+251-91-234-5678', NULL, 'Head of Biomedical Engineering', true),
-    -- Technicians (first is the linked demo login; others use menelikii.gov.et)
-    ('a3000001-0000-0000-0000-000000000002', 'Hanna Gebremedhin', 'technician@bmerms-demo.local', '+251-91-345-6789', NULL, 'Senior Biomedical Technician', true),
+    -- Technicians use hospital/staff email addresses; the old BMERMS Hanna demo login is intentionally not seeded.
+    ('a3000001-0000-0000-0000-000000000002', 'Hanna Gebremedhin', 'hanna.g@menelikii.gov.et', '+251-91-345-6789', NULL, 'Senior Biomedical Technician', true),
     ('a3000001-0000-0000-0000-000000000003', 'Solomon Bekele', 'solomon.b@menelikii.gov.et', '+251-91-456-7890', NULL, 'Biomedical Technician', true),
     ('a3000001-0000-0000-0000-000000000004', 'Meron Alemu', 'meron.a@menelikii.gov.et', '+251-91-567-8901', NULL, 'Biomedical Technician', true),
     -- Department Users (first is the linked demo login; others use menelikii.gov.et).

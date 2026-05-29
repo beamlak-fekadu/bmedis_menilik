@@ -3,7 +3,10 @@ import path from 'node:path';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { computeDepartmentPMCompliance } from '@/utils/pm/department-compliance';
+import {
+  computeDepartmentPMCompliance,
+  summarizeDepartmentPMCompliance,
+} from '@/utils/pm/department-compliance';
 
 const root = process.cwd();
 
@@ -33,7 +36,27 @@ test('department PM compliance helper rolls up the same live schedule rows used 
 
 test('Viewer compliance page uses live pm_schedules helper, not stale completion_rate snapshot', () => {
   const src = fs.readFileSync(path.join(root, 'src/app/(dashboard)/compliance/page.tsx'), 'utf8');
-  assert.match(src, /computeDepartmentPMCompliance/);
-  assert.match(src, /\.from\('pm_schedules'\)/);
+  assert.match(src, /fetchDepartmentPMCompliance/);
   assert.doesNotMatch(src, /completion_rate/);
+});
+
+test('Viewer command center uses the same department PM helper source as compliance pages', () => {
+  const src = fs.readFileSync(path.join(root, 'src/utils/viewer/executive-metrics.ts'), 'utf8');
+  assert.match(src, /fetchDepartmentPMCompliance/);
+  assert.match(src, /summarizeDepartmentPMCompliance/);
+  assert.doesNotMatch(src, /pm_compliance_metrics/);
+});
+
+test('department PM compliance summary is weighted by live scheduled/completed counts', () => {
+  const rows = computeDepartmentPMCompliance([
+    { id: 's1', status: 'completed', scheduled_date: '2099-01-01', equipment_assets: { department_id: 'd1', departments: { id: 'd1', name: 'ICU' } } },
+    { id: 's2', status: 'scheduled', scheduled_date: '2099-01-02', equipment_assets: { department_id: 'd1', departments: { id: 'd1', name: 'ICU' } } },
+    { id: 's3', status: 'completed', scheduled_date: '2099-01-03', equipment_assets: { department_id: 'd2', departments: { id: 'd2', name: 'OR' } } },
+  ]);
+
+  assert.deepEqual(summarizeDepartmentPMCompliance(rows), {
+    scheduled: 3,
+    completed: 2,
+    percentage: 67,
+  });
 });
