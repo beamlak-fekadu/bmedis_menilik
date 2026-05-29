@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { AnimatePresence, motion } from 'framer-motion';
 import { signIn } from '@/services/auth.service';
@@ -14,6 +14,7 @@ import { APP_NAME_FULL, APP_NAME_SHORT, HOSPITAL_NAME } from '@/constants';
 import { transitions } from '@/lib/ui/motion-presets';
 import {
   DEFAULT_AUTH_RETURN_PATH,
+  safeReturnPath,
   getSafeReturnPathFromSearchParams,
 } from '@/lib/auth/return-path';
 
@@ -44,7 +45,6 @@ function friendlyAuthError(rawMessage: string): string {
 }
 
 export default function LoginPage() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const returnTo = getSafeReturnPathFromSearchParams(searchParams);
   const [email, setEmail] = useState('');
@@ -73,8 +73,8 @@ export default function LoginPage() {
       setLoading(false);
       return;
     }
-    router.push(returnTo ?? DEFAULT_AUTH_RETURN_PATH);
-    router.refresh();
+    const destination = safeReturnPath(returnTo, DEFAULT_AUTH_RETURN_PATH) ?? DEFAULT_AUTH_RETURN_PATH;
+    window.location.assign(destination);
   }
 
   return (

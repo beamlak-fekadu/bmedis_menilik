@@ -13,6 +13,7 @@
 
 import { headers } from 'next/headers';
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { getServerProfile } from '@/lib/auth/helpers';
 import { resolveQrLandingAsset, logQrScan, logQrSecurityEvent } from '@/services/qr.service';
 import { getQrRoleContext } from '@/services/qr-context.service';
@@ -57,7 +58,9 @@ export default async function QrLandingRoute({
   const returnTo = currentPathWithSearch(`/qr/a/${token}`, stringifyRouteSearchParams(rawSearchParams));
 
   const supabase = await createClient();
-  const resolution = await resolveQrLandingAsset(token, supabase as never);
+  const qrAdmin = createAdminClient();
+  const qrClient = (qrAdmin ?? supabase) as never;
+  const resolution = await resolveQrLandingAsset(token, qrClient);
   const hdrs = await headers();
   const userAgent = hdrs.get('user-agent');
 
@@ -69,7 +72,7 @@ export default async function QrLandingRoute({
       authUserId: user?.id ?? null,
       userAgent,
       metadata: { route: 'qr.landing.invalid' },
-    }, supabase as never);
+    }, qrClient);
     return <QrInvalidState variant="invalid" authenticated={!!user} />;
   }
 
@@ -81,7 +84,7 @@ export default async function QrLandingRoute({
       authUserId: user?.id ?? null,
       userAgent,
       metadata: { route: 'qr.landing.not_found' },
-    }, supabase as never);
+    }, qrClient);
     return <QrInvalidState variant="not_found" authenticated={!!user} />;
   }
 
@@ -106,7 +109,7 @@ export default async function QrLandingRoute({
         replaced_at: resolution.replacedAt ?? null,
         asset_known_to_server: Boolean(resolution.assetId),
       },
-    }, supabase as never);
+    }, qrClient);
 
     // R16: a revoked QR scan is a security/label-integrity event. Emit to
     // Developer/Admin/BME Head so they see the attempted scan. The
@@ -150,7 +153,7 @@ export default async function QrLandingRoute({
       scanStatus: 'auth_required',
       userAgent,
       metadata: { route: 'qr.landing.auth_required' },
-    }, supabase as never);
+    }, qrClient);
     return <QrLoginRequired returnTo={returnTo} />;
   }
 

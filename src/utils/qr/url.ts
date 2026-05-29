@@ -7,6 +7,7 @@
 import { isValidQrTokenFormat } from './token';
 
 const DEFAULT_LOCAL_BASE = 'http://localhost:3000';
+const DEFAULT_VERCEL_DEMO_BASE = 'https://bmedis-menilik.vercel.app';
 const CANONICAL_QR_URL_ENV_KEYS = ['NEXT_PUBLIC_APP_URL', 'NEXT_PUBLIC_SITE_URL'] as const;
 
 function trimTrailingSlash(value: string): string {
@@ -22,11 +23,8 @@ function withProtocol(value: string): string {
  * Resolves the public base URL used to encode QR codes. Order of preference:
  *   1. NEXT_PUBLIC_APP_URL
  *   2. NEXT_PUBLIC_SITE_URL
- *   3. http://localhost:3000 fallback for local development only
- *
- * Vercel deployment/branch URLs are intentionally not fallback candidates.
- * Printed QR labels must point at a stable canonical host, not the deployment
- * that happened to render the print sheet.
+ *   3. the stable Menelik Vercel deployment for this thesis demo in production
+ *   4. http://localhost:3000 fallback for local development only
  */
 export function getQrBaseUrl(): string | null {
   const candidates = CANONICAL_QR_URL_ENV_KEYS.map((key) => process.env[key]);
@@ -42,7 +40,7 @@ export function getQrBaseUrl(): string | null {
     process.env.VERCEL_URL ||
     process.env.NEXT_PUBLIC_VERCEL_URL
   ) {
-    return null;
+    return DEFAULT_VERCEL_DEMO_BASE;
   }
   return DEFAULT_LOCAL_BASE;
 }

@@ -59,6 +59,7 @@ export async function fetchCurrentTechnicianWorkload(
       // otherwise PGRST201 silently zeros the technician roster.
       .select('id, full_name, email, departments(name), user_roles!user_roles_user_id_fkey!inner(roles!inner(name))')
       .eq('is_active', true)
+      .not('user_id', 'is', null)
       .eq('user_roles.roles.name', 'technician')
       .order('full_name', { ascending: true })
       .limit(500),

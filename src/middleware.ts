@@ -32,7 +32,13 @@ function withProtocol(value: string): string {
 }
 
 function getCanonicalQrBaseUrl(): URL | null {
-  const candidates = [process.env.NEXT_PUBLIC_APP_URL, process.env.NEXT_PUBLIC_SITE_URL];
+  const candidates = [
+    process.env.NEXT_PUBLIC_APP_URL,
+    process.env.NEXT_PUBLIC_SITE_URL,
+    process.env.NODE_ENV === 'production' || process.env.VERCEL || process.env.VERCEL_URL
+      ? 'https://bmedis-menilik.vercel.app'
+      : null,
+  ];
   for (const candidate of candidates) {
     if (!candidate?.trim()) continue;
     try {

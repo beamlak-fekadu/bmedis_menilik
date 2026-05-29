@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
@@ -79,6 +80,16 @@ export default function DashboardRootLayout({ children }: { children: React.Reac
   const online = useOnlineStatus();
 
   const loading = authLoading || profileLoading;
+  const loginReturnPath = currentPathWithSearch(
+    pathname,
+    searchParams.toString() ? `?${searchParams.toString()}` : '',
+  );
+
+  useEffect(() => {
+    if (!loading && !user && online.isOnline) {
+      router.replace(loginPathForReturnTo(loginReturnPath));
+    }
+  }, [loading, loginReturnPath, online.isOnline, router, user]);
 
   if (loading) return <PageLoader />;
 
@@ -95,8 +106,6 @@ export default function DashboardRootLayout({ children }: { children: React.Reac
         </div>
       );
     }
-    const search = searchParams.toString();
-    router.push(loginPathForReturnTo(currentPathWithSearch(pathname, search ? `?${search}` : '')));
     return <PageLoader />;
   }
 

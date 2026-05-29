@@ -53,21 +53,21 @@ test('QR URL uses the configured canonical app URL', () => {
   });
 });
 
-test('QR URL does not fall back to Vercel branch or deployment URLs', () => {
+test('QR URL falls back to the stable Menelik Vercel URL, not branch URLs', () => {
   withEnv({
     NODE_ENV: 'production',
     NEXT_PUBLIC_VERCEL_URL: 'bmedis-branch-user-projects.vercel.app',
     VERCEL_URL: 'bmedis-branch-user-projects.vercel.app',
   }, () => {
-    assert.equal(getQrBaseUrl(), null);
-    assert.equal(buildAssetQrUrl(TOKEN), null);
+    assert.equal(getQrBaseUrl(), 'https://bmedis-menilik.vercel.app');
+    assert.equal(buildAssetQrUrl(TOKEN), `https://bmedis-menilik.vercel.app/qr/a/${TOKEN}`);
   });
 });
 
-test('QR URL is unavailable in production when no canonical URL is configured', () => {
+test('QR URL uses the stable Menelik Vercel URL in production when no canonical URL is configured', () => {
   withEnv({ NODE_ENV: 'production' }, () => {
-    assert.equal(getQrBaseUrl(), null);
-    assert.equal(buildAssetQrUrl(TOKEN), null);
+    assert.equal(getQrBaseUrl(), 'https://bmedis-menilik.vercel.app');
+    assert.equal(buildAssetQrUrl(TOKEN), `https://bmedis-menilik.vercel.app/qr/a/${TOKEN}`);
   });
 });
 
@@ -82,5 +82,6 @@ test('QR middleware canonicalizes /qr/a scans while preserving path and search',
   const helperStart = src.indexOf('function getCanonicalQrBaseUrl');
   const helperEnd = src.indexOf('function isLocalRequest');
   const helper = src.slice(helperStart, helperEnd);
-  assert.doesNotMatch(helper, /NEXT_PUBLIC_VERCEL_URL|VERCEL_URL/);
+  assert.doesNotMatch(helper, /NEXT_PUBLIC_VERCEL_URL/);
+  assert.match(helper, /bmedis-menilik\.vercel\.app/);
 });

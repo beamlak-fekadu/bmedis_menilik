@@ -531,7 +531,7 @@ export default function CommandCenterInteractive({
             ) : (
               <div className="space-y-3">
                 {/* Reconciliation note */}
-                <p className="rounded-md border border-[var(--border-subtle)]/40 bg-[var(--surface-2)]/40 px-3 py-2 text-xs text-[var(--text-muted)]">
+                <p className="rounded-md border border-[var(--border-subtle)] bg-[var(--surface-1)] px-3 py-2 text-xs leading-relaxed text-[var(--foreground)]">
                   <strong className="text-[var(--foreground)]">Readiness %</strong> counts only{' '}
                   <strong className="text-[var(--foreground)]">essential equipment</strong> (high/critical criticality).
                   Non-essential and unassigned assets are tracked in the inventory but excluded from readiness scoring.
@@ -610,7 +610,7 @@ export default function CommandCenterInteractive({
                       const nonEssentialAssets = detail.assets.filter((asset) => !asset.is_essential);
                       return (
                         <div className="space-y-3">
-                          <p className="rounded-md border border-violet-500/30 bg-violet-500/10 p-3 text-xs text-violet-200">
+                          <p className="rounded-md border border-violet-500/45 bg-violet-500/15 p-3 text-xs leading-relaxed text-[var(--foreground)]">
                             Readiness percentage is calculated only from essential high/critical equipment. Non-essential equipment is tracked in inventory but not included in the readiness percentage.
                           </p>
                           {/* Reconciliation summary */}

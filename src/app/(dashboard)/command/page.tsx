@@ -868,7 +868,7 @@ export default async function CommandCenterPage() {
         {/* ── SECTION 5: Department Readiness + WIP ────────────────────── */}
         <section aria-label="Department readiness and work in progress">
           <h2 className="mb-3 text-base font-semibold text-[var(--foreground)]">Department readiness</h2>
-          <p className="mb-4 text-xs text-[var(--text-muted)]">
+          <p className="mb-4 rounded-md border border-[var(--border-subtle)] bg-[var(--surface-1)] px-3 py-2 text-xs leading-relaxed text-[var(--foreground)]">
             Readiness is calculated from essential high/critical equipment. Total equipment inventory includes essential and non-essential assets.
             Formula: functional essential ÷ total essential × 100.
           </p>
