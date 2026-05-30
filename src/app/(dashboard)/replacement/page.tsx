@@ -31,6 +31,7 @@ import {
   replacementBand,
   isReplacementCandidate,
 } from '@/utils/decision-support/replacement-thresholds';
+import { compareReplacementCandidatesByRank } from '@/utils/decision-support/replacement-ranking';
 import { useRole } from '@/hooks/useRole';
 import ViewerReplacementRisk from './_components/ViewerReplacementRisk';
 import { ROUTES } from '@/constants';
@@ -201,7 +202,7 @@ function OperationalReplacementPage() {
 
   const ranked = useMemo(() => [...data]
     .filter((d) => d.replacement_priority_index != null)
-    .sort((a, b) => (a.rank ?? 9999) - (b.rank ?? 9999)), [data]);
+    .sort(compareReplacementCandidatesByRank), [data]);
 
   const topCandidates = ranked.filter((row) => isReplacementCandidate(rpiValue(row))).slice(0, 3);
   const replacementCandidates = ranked.filter((row) => isReplacementCandidate(rpiValue(row)));

@@ -51,6 +51,7 @@ import {
 } from './_lib/command-center-data';
 import { equipmentDetail, replacementEvidence, replacementReportPrefill } from './_lib/command-center-routes';
 import { isReplacementCandidate } from '@/utils/decision-support/replacement-thresholds';
+import { sortReplacementCandidatesByRank } from '@/utils/decision-support/replacement-ranking';
 import ViewerExecutiveCommandCenter from './_components/ViewerExecutiveCommandCenter';
 import OfflineCacheRegistrar from '@/components/offline/OfflineCacheRegistrar';
 import {
@@ -151,7 +152,7 @@ interface ReplacementRow {
   risk_score: number | null;
   cost_score: number | null;
   priority_index: number;
-  rank: number;
+  rank: number | null;
   justification: string | null;
 }
 
@@ -398,7 +399,9 @@ async function fetchReplacementData(supabase: Awaited<ReturnType<typeof createCl
   const { data, error } = await supabase
     .from('v_replacement_decision')
     .select('asset_id, asset_code, asset_name, department_name, age_score, failure_score, availability_score, maintenance_burden_score, spare_part_score, risk_score, cost_score, replacement_priority_index, replacement_rank, justification')
+    .order('replacement_rank', { ascending: true, nullsFirst: false })
     .order('replacement_priority_index', { ascending: false })
+    .order('asset_code', { ascending: true })
     .limit(500);
 
   if (error) return { rows: [], total: 0 };
@@ -416,13 +419,13 @@ async function fetchReplacementData(supabase: Awaited<ReturnType<typeof createCl
     risk_score: row.risk_score as number | null,
     cost_score: row.cost_score as number | null,
     priority_index: Number(row.replacement_priority_index ?? 0),
-    rank: Number(row.replacement_rank ?? 0),
+    rank: row.replacement_rank == null ? null : Number(row.replacement_rank),
     justification: (row.justification as string | null) ?? null,
   }));
 
   // Canonical replacement candidate count = Strong + Review (RPI >= 0.55).
   // Monitor-band rows are not "candidates" and must not be counted here.
-  const candidates = all.filter((row) => isReplacementCandidate(row.priority_index));
+  const candidates = sortReplacementCandidatesByRank(all.filter((row) => isReplacementCandidate(row.priority_index)));
   return { rows: candidates.slice(0, 5), total: candidates.length };
 }
 
@@ -991,7 +994,7 @@ export default async function CommandCenterPage() {
                         <tr key={row.asset_id}>
                           <td className="py-3 pr-4">
                             <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-amber-500/20 text-xs font-bold text-amber-300">
-                              {row.rank}
+                              {row.rank ?? '—'}
                             </span>
                           </td>
                           <td className="py-3 pr-4">
@@ -1183,7 +1186,7 @@ export default async function CommandCenterPage() {
                       <tr key={row.asset_id}>
                         <td className="py-3 pr-4">
                           <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-amber-500/20 text-xs font-bold text-amber-300">
-                            {row.rank}
+                            {row.rank ?? '—'}
                           </span>
                         </td>
                         <td className="py-3 pr-4">

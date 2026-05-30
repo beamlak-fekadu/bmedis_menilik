@@ -20,6 +20,7 @@ import {
 import { ScoreExplanation } from '../../_components/ScoreExplanation';
 import { buildReplacementReason } from '@/utils/decision-support/command-center-reasons';
 import { isReplacementCandidate } from '@/utils/decision-support/replacement-thresholds';
+import { sortReplacementCandidatesByRank } from '@/utils/decision-support/replacement-ranking';
 import {
   createMaintenanceRequestFromAsset,
   equipmentDetail,
@@ -247,7 +248,9 @@ async function getReplacementRows(supabase: Awaited<ReturnType<typeof createClie
   const { data, error } = await supabase
     .from('v_replacement_decision')
     .select('asset_id, asset_code, asset_name, department_name, age_score, failure_score, availability_score, maintenance_burden_score, spare_part_score, risk_score, cost_score, replacement_priority_index, replacement_rank, justification')
+    .order('replacement_rank', { ascending: true, nullsFirst: false })
     .order('replacement_priority_index', { ascending: false })
+    .order('asset_code', { ascending: true })
     .limit(100);
   if (error) return { rows: [], total: 0 };
   const rows = ((data ?? []) as Array<Record<string, unknown>>).map((row) => {
@@ -264,7 +267,7 @@ async function getReplacementRows(supabase: Awaited<ReturnType<typeof createClie
       risk_score: row.risk_score as number | null,
       cost_score: row.cost_score as number | null,
       priority_index: Number(row.replacement_priority_index ?? 0),
-      rank: Number(row.replacement_rank ?? 0),
+      rank: row.replacement_rank == null ? null : Number(row.replacement_rank),
     };
     return {
       ...item,
@@ -283,7 +286,7 @@ async function getReplacementRows(supabase: Awaited<ReturnType<typeof createClie
     };
   });
   // Match Command Center: only Strong + Review candidates count (RPI >= 0.55).
-  const candidates = rows.filter((r) => isReplacementCandidate(r.priority_index));
+  const candidates = sortReplacementCandidatesByRank(rows.filter((r) => isReplacementCandidate(r.priority_index)));
   return { rows: candidates, total: candidates.length };
 }
 
@@ -357,7 +360,7 @@ export default async function CommandDrilldownPage({ params }: { params: Promise
     content = <SimpleRows rows={procurement.rows.map((row) => ({ id: row.id, title: row.requestNumber, sub: `${row.status} · ${row.priority ?? 'medium'} · ${row.daysDelayed}d`, score: row.score, reason: row.reason, href: row.detailHref, action: canMutate ? 'Update Status' : 'View Request' }))} scoreKind="Procurement priority" />;
   } else {
     const replacement = await getReplacementRows(supabase);
-    content = <SimpleRows rows={replacement.rows.map((row) => ({ id: row.asset_id, title: row.asset_name, sub: `${row.asset_code} · ${row.department_name} · rank ${row.rank}`, score: Math.round(row.priority_index * 100), reason: row.reason, href: replacementEvidence(row.asset_id), action: 'View Evidence' }))} scoreKind="Replacement Priority Index" />;
+    content = <SimpleRows rows={replacement.rows.map((row) => ({ id: row.asset_id, title: row.asset_name, sub: `${row.asset_code} · ${row.department_name} · rank ${row.rank ?? '—'}`, score: Math.round(row.priority_index * 100), reason: row.reason, href: replacementEvidence(row.asset_id), action: 'View Evidence' }))} scoreKind="Replacement Priority Index" />;
   }
 
   return (

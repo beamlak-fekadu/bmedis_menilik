@@ -129,6 +129,41 @@ Expected behavior:
 
 - Store dashboard should not show the fake “3 approved items to issue” card/list.
 
+## 10. Replacement Watchlist Rank Ordering Validation
+
+Runtime path verified:
+
+- Actual BME Head card route: `src/app/(dashboard)/command/page.tsx`
+- Source view: `v_replacement_decision`
+- Source score/rank table behind the view: `replacement_priority_scores`
+- Full Command Center ranking route: `src/app/(dashboard)/command/drilldown/[type]/page.tsx`
+- Replacement module ranking surface: `src/app/(dashboard)/replacement/page.tsx`
+
+Fix applied:
+
+- Sorting is guarded in both SQL and TypeScript for the Command Center watchlist and Command Center replacement drilldown.
+- SQL query order: `replacement_rank ASC NULLS LAST`, then `replacement_priority_index DESC`, then `asset_code ASC`.
+- TypeScript order before display limiting: stored global `rank` / `replacement_rank` ascending when present, then RPI descending via `rpi` / `replacement_priority_index` / `priority_index`, then asset code/name/id ascending.
+- The BME Head top-five card still displays the stored global rank badge. It does not renumber rows locally.
+
+Before behavior:
+
+- `/command` ordered replacement rows by RPI only, filtered candidates, and then applied `slice(0, 5)`.
+- Assets with equal or effectively tied RPI values could render stored ranks in a confusing sequence such as `1, 5, 3, 2, 6`.
+
+After behavior:
+
+- `/command` sorts eligible replacement candidates by global rank before applying the top-five limit.
+- If ranks 1–5 are all eligible, the watchlist should display `1, 2, 3, 4, 5`.
+- If an eligible rank is excluded by the candidate threshold, the watchlist remains sorted, for example `1, 2, 3, 5, 6`.
+- RPI badges and key driver text are unchanged.
+
+Manual validation step:
+
+- Sign in as BME Head and open `/command`.
+- In “Replacement watchlist — top 5 candidates,” confirm the rank badges are ascending.
+- Click “Full ranking” and confirm the replacement ranking opens and remains ordered by stored rank.
+
 ## Exact Commands Run
 
 ```bash
@@ -141,6 +176,7 @@ node -e "<service-role exact legacy Hanna cleanup and before/after print>"
 node -e "<anon BME Head RLS workload roster query>"
 npm run test:system-fix
 npm run build
+npx tsx --test src/utils/decision-support/__tests__/replacement-ranking.test.ts
 ```
 
 Browser checks run on `localhost:3001`:
@@ -152,14 +188,20 @@ Browser checks run on `localhost:3001`:
 - Confirmed readiness explanation contrast from computed browser styles.
 - Confirmed Work Queue & assignment shows a single Hanna technician availability card.
 - Re-ran `npm run build` after moving the dashboard unauthenticated redirect into an effect.
+- Confirmed BME Head `/command` replacement watchlist shows rank badges `1, 2, 3, 4, 5`, keeps `RPI 57/100`, and exposes `/command/drilldown/replacement` as the Full ranking link.
+- Confirmed `/command/drilldown/replacement` opens to “Lifecycle Decisions” with replacement candidate rows.
+- Confirmed `/replacement` opens to “Replacement Priority” for the BME Head role.
 
 ## Results
 
-- `npm run test:system-fix`: passed, 613 tests.
+- `npm run test:system-fix`: passed, 615 tests.
 - `npm run build`: passed.
+- `npx tsx --test src/utils/decision-support/__tests__/replacement-ranking.test.ts`: passed, 2 tests.
 - QR manual browser acceptance on `localhost:3001`: passed.
 - Readiness explanation manual browser visibility on `localhost:3001`: passed.
 - Hanna duplicate workload manual browser check on `localhost:3001`: passed.
+- Replacement watchlist manual browser check on `localhost:3001`: passed.
+- Replacement page manual browser check on `localhost:3001`: passed.
 
 ## Known Limitations
 

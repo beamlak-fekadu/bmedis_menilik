@@ -291,7 +291,7 @@ export interface ReplacementTriageRow {
   risk_score: number | null;
   cost_score: number | null;
   priority_index: number;
-  rank: number;
+  rank: number | null;
   reason: string;
 }
 
@@ -1558,7 +1558,7 @@ export function buildCriticalActions(params: {
         sparePartScore: item.spare_part_score,
         riskScore: item.risk_score,
       }),
-      scoreBreakdown: [`Base ${CATEGORY_WEIGHTS.replacement}`, `RPI ${Math.round(rpiScore)}/100`, `Rank ${item.rank}`],
+      scoreBreakdown: [`Base ${CATEGORY_WEIGHTS.replacement}`, `RPI ${Math.round(rpiScore)}/100`, `Rank ${item.rank ?? '—'}`],
       primaryAction: 'View Evidence',
       primaryActionHref: replacementEvidence(item.asset_id),
       secondaryAction: 'Add to Report',
